@@ -1,5 +1,0 @@
-llm:
-  api_type: openai
-  base_url: https://xxx/v1
-  model: claude-3-5-sonnet-v2
-  api_key: sk-xxx
