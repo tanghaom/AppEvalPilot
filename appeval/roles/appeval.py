@@ -18,7 +18,7 @@ from metagpt.schema import Message
 from pydantic import BaseModel, ConfigDict, Field
 
 from appeval.actions.test_generator import TestGeneratorAction
-from appeval.prompts.automg import batch_check_prompt
+from appeval.prompts.appeval import batch_check_prompt
 from appeval.roles.osagent import OSAgent
 from appeval.utils.excel2json import list_to_json, make_json_single
 from appeval.utils.json2excel import convert_json_to_excel

@@ -1,5 +1,8 @@
 ### Python template
 
+workspace/
+config/config2.yaml
+
 # Byte-compiled / optimized / DLL files
 __pycache__
 *.py[cod]
@@ -154,16 +157,3 @@ cov.xml
 *.dot
 .python-version
 *.csv
-workspace/202503071618/draw_1.jpg
-workspace/202503071618/draw_2.jpg
-workspace/202503071618/draw_3.jpg
-workspace/202503071618/info.txt
-workspace/202503071618/origin_1.jpg
-workspace/202503071618/origin_2.jpg
-workspace/202503071618/origin_3.jpg
-workspace/202503071618/screenshot/screenshot.jpg
-workspace/202503071621/draw_1.jpg
-workspace/202503071621/info.txt
-workspace/202503071621/origin_1.jpg
-workspace/202503071621/screenshot/screenshot.jpg
-config/config2.yaml

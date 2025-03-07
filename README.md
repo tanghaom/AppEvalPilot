@@ -48,25 +48,26 @@ python scripts/server.py
 
 ```
 AppEvalPilot/
-├── main.py                         # 主程序入口
-├── appeval/                        # 核心模块
-│   ├── roles/                      # 角色定义
-│   │   ├── automg_role.py          # 自动化测试角色
-│   │   └── osagent.py              # 操作系统代理
-│   ├── actions/                    # 动作定义
+├── main.py                           # 主程序入口
+├── appeval/                          # 核心模块
+│   ├── roles/                        # 角色定义
+│   │   ├── appeval.py                # 自动化测试角色
+│   │   └── osagent.py                # 操作系统代理
+│   ├── actions/                      # 动作定义
 │   │   ├── screen_info_extractor.py  # 屏幕信息提取
-│   │   └── reflection.py           # 反思
-│   ├── tools/                      # 工具定义
-│   │   ├── chrome_debugger.py      # 浏览器调试工具
-│   │   ├── icon_detect.py          # 图标检测及描述工具
-│   │   ├── device_controller.py    # 设备控制工具
-│   │   └── ocr.py                  # ocr识别工具
-│   └── utils/                      # 工具函数
-├── scripts/                        # 脚本文件
-│   ├── server.py                   # 部署服务脚本
-│   └── test_server.py              # 测试服务脚本
-├── data/                           # 数据文件
-└── config/                         # 配置文件
+│   │   ├── test_generator.py         # 测试用例生成
+│   │   └── reflection.py             # 反思
+│   ├── tools/                        # 工具定义
+│   │   ├── chrome_debugger.py        # 浏览器调试工具
+│   │   ├── icon_detect.py            # 图标检测及描述工具
+│   │   ├── device_controller.py      # 设备控制工具
+│   │   └── ocr.py                    # ocr识别工具
+│   └── utils/                        # 工具函数
+├── scripts/                          # 脚本文件
+│   ├── server.py                     # 部署服务脚本
+│   └── test_server.py                # 测试服务脚本
+├── data/                             # 数据文件
+└── config/                           # 配置文件
 ```
 
 ## 配置说明
