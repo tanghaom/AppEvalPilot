@@ -1,5 +1,8 @@
 ### Python template
 
+workspace/
+config/config2.yaml
+
 # Byte-compiled / optimized / DLL files
 __pycache__
 *.py[cod]
