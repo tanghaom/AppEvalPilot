@@ -275,6 +275,7 @@ class TaskManager:
                         user_requirement=task["user_requirement"],
                         case_name=task["case_name"],
                     )
+                    result = json.loads(result.content)
 
                     # 关闭后台服务
                     await self.kill_process(pid)
@@ -302,6 +303,7 @@ class TaskManager:
                         user_requirement=task["user_requirement"],
                         case_name=task["case_name"],
                     )
+                    result = json.loads(result.content)
 
                     self.tasks[task_id].update(
                         {"status": TaskStatus.COMPLETED, "result": result, "end_time": datetime.now().isoformat()}

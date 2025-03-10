@@ -1,4 +1,5 @@
 import asyncio
+import json
 from pathlib import Path
 
 from loguru import logger
@@ -27,7 +28,8 @@ async def run_batch_test():
 
         # 执行批量测试
         result = await appeval.run(project_excel_path=project_excel, case_excel_path=case_excel)
-        logger.info(f"批量测试执行结果: {result.content}")
+        result = json.loads(result.content)
+        logger.info(f"批量测试执行结果: {result}")
 
     except Exception as e:
         logger.error(f"批量测试执行失败: {str(e)}")
@@ -58,7 +60,8 @@ async def run_single_test():
 
         # 执行单个测试
         result = await appeval.run(case_name=case_name, url=url, user_requirement=requirement, json_path=json_path)
-        logger.info(f"单个测试执行结果: {result.content}")
+        result = json.loads(result.content)
+        logger.info(f"单个测试执行结果: {result}")
 
     except Exception as e:
         logger.error(f"单个测试执行失败: {str(e)}")

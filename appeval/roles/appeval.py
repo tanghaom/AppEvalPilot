@@ -293,11 +293,11 @@ class AppEvalRole(Role):
                     kwargs["user_requirement"],
                     kwargs.get("json_path", "data/temp.json"),
                 )
-                return Message(content=str(result), cause_by=Action)
+                return Message(content=json.dumps(result), cause_by=Action)
             else:
                 # 批量测试场景
                 await self.run_batch(kwargs.get("project_excel_path"), kwargs.get("case_excel_path"))
-                return Message(content="测试执行完成", cause_by=Action)
+                return Message(content=json.dumps("测试执行完成"), cause_by=Action)
         except Exception as e:
             logger.error(f"执行测试失败: {str(e)}")
-            return Message(content=f"测试执行失败: {str(e)}", cause_by=Action)
+            return Message(content=json.dumps(f"测试执行失败: {str(e)}"), cause_by=Action)
