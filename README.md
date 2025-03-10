@@ -1,83 +1,82 @@
 # AppEvalPilot
 
-## 项目简介
+## Project Overview
 
-AppEvalPilot是一个应用评估自动化工具，旨在简化应用程序的测试、评估和分析流程。通过集成多种自动化技术，帮助开发者和测试人员更高效地完成应用评估工作。
+AppEvalPilot is an application evaluation automation tool designed to simplify the testing, evaluation, and analysis process of applications. By integrating various automation technologies, it helps developers and testers complete application evaluation work more efficiently.
 
-## 功能特点
+## Key Features
 
-- 自动化测试管理
-- 操作系统代理集成
-- 服务部署支持
-- 可扩展的评估框架
+- Automated test management
+- Operating system agent integration
+- Service deployment support
+- Extensible evaluation framework
 
-## 安装方法
+## Installation
 
-### 前提条件
+### Prerequisites
 
 - Python 3.9+
-- 必要的依赖包
+- Required dependencies
 
-### 安装步骤
+### Installation Steps
 
 ```bash
-# 克隆仓库
+# Clone the repository
 git clone https://github.com/tanghaom/AppEvalPilot.git
 cd AppEvalPilot
 
-# 安装appeval
+# Install appeval
 pip install -e .
 
-# 编辑config/config2.yaml文件设置llm模型
+# Edit config/config2.yaml file to set up the LLM model
 ```
 
-## 使用方法
+## Usage
 
-### 基本使用
+### Basic Usage
 
 ```bash
-# 运行主程序
+# Run the main program
 python main.py
 
-# 启动服务
+# Start the service
 python scripts/server.py
 ```
 
-
-## 项目结构
+## Project Structure
 
 ```
 AppEvalPilot/
-├── main.py                           # 主程序入口
-├── appeval/                          # 核心模块
-│   ├── roles/                        # 角色定义
-│   │   ├── appeval.py                # 自动化测试角色
-│   │   └── osagent.py                # 操作系统代理
-│   ├── actions/                      # 动作定义
-│   │   ├── screen_info_extractor.py  # 屏幕信息提取
-│   │   ├── test_generator.py         # 测试用例生成
-│   │   └── reflection.py             # 反思
-│   ├── tools/                        # 工具定义
-│   │   ├── chrome_debugger.py        # 浏览器调试工具
-│   │   ├── icon_detect.py            # 图标检测及描述工具
-│   │   ├── device_controller.py      # 设备控制工具
-│   │   └── ocr.py                    # ocr识别工具
-│   └── utils/                        # 工具函数
-├── scripts/                          # 脚本文件
-│   ├── server.py                     # 部署服务脚本
-│   └── test_server.py                # 测试服务脚本
-├── data/                             # 数据文件
-└── config/                           # 配置文件
+├── main.py                           # Main program entry
+├── appeval/                          # Core modules
+│   ├── roles/                        # Role definitions
+│   │   ├── appeval.py                # Automated testing role
+│   │   └── osagent.py                # Operating system agent
+│   ├── actions/                      # Action definitions
+│   │   ├── screen_info_extractor.py  # Screen information extraction
+│   │   ├── test_generator.py         # Test case generation
+│   │   └── reflection.py             # Reflection
+│   ├── tools/                        # Tool definitions
+│   │   ├── chrome_debugger.py        # Browser debugging tool
+│   │   ├── icon_detect.py            # Icon detection and description tool
+│   │   ├── device_controller.py      # Device control tool
+│   │   └── ocr.py                    # OCR recognition tool
+│   └── utils/                        # Utility functions
+├── scripts/                          # Script files
+│   ├── server.py                     # Service deployment script
+│   └── test_server.py                # Service testing script
+├── data/                             # Data files
+└── config/                           # Configuration files
 ```
 
-## 配置说明
+## Configuration
 
-项目使用`config/config2.yaml`文件存储配置信息，包括：
+The project uses the `config/config2.yaml` file to store configuration information, including:
 
-- llm模型
+- LLM model
 - base_url
 - api_key
 
-## 许可证
+## License
 
-此项目基于MIT许可证 - 详情请查看 LICENSE 文件
+This project is licensed under the MIT License - see the LICENSE file for details
