@@ -12,7 +12,7 @@ setup(
     author="xxx",
     author_email="xxx",
     description="一个应用程序评估工具",
-    long_description=open("README.md").read(),
+    long_description=open("README.md", encoding="utf-8").read(),
     long_description_content_type="text/markdown",
     url="https://github.com/tanghaom/AppEvalPilot",
     classifiers=[

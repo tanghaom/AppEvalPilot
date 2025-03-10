@@ -34,7 +34,9 @@ class TestGeneratorAction(Action):
 
     def __init__(self, config_path: str = "config/config2.yaml"):
         super().__init__()
-        self.config_path = config_path
+        # 获取当前文件所在目录的上两级目录，即项目根目录
+        root_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+        self.config_path = os.path.join(root_dir, config_path)
         # 读取配置
         with open(self.config_path, "r", encoding="utf-8") as file:
             config = yaml.safe_load(file).get("appeval")

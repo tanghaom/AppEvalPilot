@@ -5,7 +5,7 @@ tensorflow
 # tensorflow-gpu==2.9.1
 # keras==2.9.0
 # tf_keras==2.15.0
-# tf_slim
+tf_slim
 transformers
 modelscope
 
@@ -28,3 +28,5 @@ pre-commit
 tenacity
 aiohttp
 pandas
+pyclipper
+shapely

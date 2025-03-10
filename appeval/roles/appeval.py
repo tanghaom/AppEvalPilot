@@ -13,7 +13,7 @@ from typing import Any, Dict, List, Optional
 
 from loguru import logger
 from metagpt.actions import Action
-from metagpt.roles.role import Role
+from metagpt.roles.role import Role, RoleContext
 from metagpt.schema import Message
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -22,9 +22,10 @@ from appeval.prompts.appeval import batch_check_prompt
 from appeval.roles.osagent import OSAgent
 from appeval.utils.excel2json import list_to_json, make_json_single
 from appeval.utils.json2excel import convert_json_to_excel
+from appeval.utils.window_utils import start_windows, kill_windows
 
 
-class AppEvalContext(BaseModel):
+class AppEvalContext(RoleContext):
     """AppEval运行时上下文"""
 
     model_config = ConfigDict(arbitrary_types_allowed=True)
@@ -104,33 +105,6 @@ class AppEvalRole(Role):
             system_prompt=batch_check_prompt(),
         )
 
-    @staticmethod
-    async def _start_env(env_script: str, web_url: str) -> None:
-        """异步启动环境"""
-        if env_script:
-            logger.info(f"启动环境: {env_script}")
-            script_path = os.path.join(os.path.dirname(__file__), "..", "data", env_script)
-            if not os.path.exists(script_path):
-                raise FileNotFoundError(f"环境脚本不存在: {script_path}")
-
-            await asyncio.create_subprocess_shell(f"{script_path} {web_url}", env=os.environ)
-            await asyncio.sleep(5)
-
-    @staticmethod
-    async def _kill_env() -> None:
-        """异步关闭环境"""
-        try:
-            logger.info("关闭 Chrome 浏览器...")
-            process = await asyncio.create_subprocess_exec(
-                "taskkill", "/IM", "chrome.exe", stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE
-            )
-            stdout, stderr = await process.communicate()
-            logger.info(stdout.decode())
-            logger.info(stderr.decode())
-        except Exception as e:
-            logger.error(f"关闭环境失败: {str(e)}")
-            raise
-
     async def execute_batch_check(self, task_id: str, task_id_case_number: int, check_list: dict) -> None:
         """执行单个检验条件"""
         logger.info(f"开始测试项目{task_id}")
@@ -142,7 +116,7 @@ class AppEvalRole(Role):
         task_list = self.rc.osagent.rc.task_list
         memory = self.rc.osagent.rc.memory
 
-        self.write_batch_res_to_json(task_id, task_id_case_number, action_history, task_list, memory)
+        await self.write_batch_res_to_json(task_id, task_id_case_number, action_history, task_list, memory)
 
     async def write_batch_res_to_json(
         self, task_id: str, task_id_case_number: int, action_history: List[str], task_list: str, memory: List[str]
@@ -221,12 +195,12 @@ class AppEvalRole(Role):
 
                 if "测试用例" in task_info:
                     if "url" in task_info:
-                        await self._start_env("chrome.bat", task_info["url"])
+                        await start_windows(task_info["url"])
                     await asyncio.sleep(1)
 
                     task_id_case_number = len(test_cases[task_id]["测试用例"])
                     await self.execute_batch_check(task_id, task_id_case_number, task_info)
-                    await self._kill_env()
+                    await kill_windows(["Chrome"])
 
             # 4. 输出结果到Excel(如果提供了case_excel_path)
             if case_excel_path:
@@ -265,8 +239,22 @@ class AppEvalRole(Role):
             # 3. 执行自动化测试
             logger.info("开始执行自动化测试...")
             self.rc.json_file = json_path
-            result = await self.run_batch()
+            # 3. 执行自动化测试
+            logger.info("开始执行自动化测试...")
+            with open(self.rc.json_file, "r", encoding="utf-8") as f:
+                test_cases = json.load(f)
 
+            for task_id, task_info in test_cases.items():
+                self.rc.osagent.log_dirs = f"work_dirs/{self.rc.date_str}/{task_id}"
+
+                if "测试用例" in task_info:
+                    if "url" in task_info:
+                        await start_windows(task_info["url"])
+                    await asyncio.sleep(1)
+
+                    task_id_case_number = len(test_cases[task_id]["测试用例"])
+                    await self.execute_batch_check(task_id, task_id_case_number, task_info)
+                    await kill_windows(["Chrome"])
             # 4. 读取结果
             with open(self.rc.json_file, "r", encoding="utf-8") as f:
                 result = json.load(f)
