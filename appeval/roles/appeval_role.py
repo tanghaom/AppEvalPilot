@@ -196,7 +196,7 @@ class AppEvalRole(Role):
                 if "测试用例" in task_info:
                     if "url" in task_info:
                         await start_windows(task_info["url"])
-                    await asyncio.sleep(1)
+                    await asyncio.sleep(5)
 
                     task_id_case_number = len(test_cases[task_id]["测试用例"])
                     await self.execute_batch_check(task_id, task_id_case_number, task_info)
@@ -250,7 +250,7 @@ class AppEvalRole(Role):
                 if "测试用例" in task_info:
                     if "url" in task_info:
                         await start_windows(task_info["url"])
-                    await asyncio.sleep(1)
+                    await asyncio.sleep(5)
 
                     task_id_case_number = len(test_cases[task_id]["测试用例"])
                     await self.execute_batch_check(task_id, task_id_case_number, task_info)
