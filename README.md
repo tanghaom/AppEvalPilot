@@ -1,39 +1,52 @@
 # AppEvalPilot
 
-## Project Overview
+## Introduction
 
-AppEvalPilot is an application evaluation automation tool designed to simplify the testing, evaluation, and analysis process of applications. By integrating various automation technologies, it helps developers and testers complete application evaluation work more efficiently.
+AppEvalPilot is an automated evaluation tool for assessing software application functionality completeness. It's designed to work with desktop applications, mobile/app applications, and web applications.
 
-## Key Features
+AppEvalPilot can help you automatically evaluate any application without human intervention, saving time and resources while maintaining high accuracy.
 
-- Automated test management
-- Operating system agent integration
-- Service deployment support
-- Extensible evaluation framework
+In evaluations with 2000+ test cases, AppEvalPilot has demonstrated high correlation with human expert judgments (Pearson correlation coefficient across all versions is 0.9249, and the average Spearman correlation coefficient is 0.9021).
+
+### Features
+
+1. **Ease of Use**: One codebase to evaluate desktop applications, mobile/app applications, and web applications.
+   
+2. **Robust and Reliable Dynamic Assessment**: Unlike other benchmarks that rely on static evaluation methods, AppEvalPilot simulates the workflow of web testing engineers to test applications.
+   
+3. **Cost-Effective**: AppEvalPilot can complete the evaluation of 15-20 functional points in an application in just 8-9 minutes on average. It can operate 24/7 to evaluate various applications while costing only $0.26 per webpage - significantly cheaper than human evaluation.
+
+### Sample Videos
+
+(Videos demonstrating the input requirements, breakdown of test points, agent operation workflow for test points, and test results)
 
 ## Installation
 
-### Prerequisites
-
-- Python 3.9+
-- Required dependencies
-
-### Installation Steps
+### From Scratch
 
 ```bash
+# Create a conda environment
+conda create -n appeval python=3.10
+conda activate appeval
+
 # Clone the repository
 git clone https://github.com/tanghaom/AppEvalPilot.git
 cd AppEvalPilot
 
 # Install appeval
 pip install -e .
-
-# Edit config/config2.yaml file to set up the LLM model
 ```
 
+### LLM Configuration
+
+Recommended configuration:
+- Edit `config/config2.yaml` to configure your LLM model
+- Supported models: gpt-4o, gpt-4o-mini 
+- Make sure to set your `api_key` and `base_url` in the configuration file
+- For other multimodal models(eg. claude-3-5-sonnet-v2), please add them to `metagpt/provider/constant.py` in MULTI_MODAL_MODELS
 ## Usage
 
-### Basic Usage
+### Basic Commands
 
 ```bash
 # Run the main program
@@ -42,6 +55,9 @@ python main.py
 # Start the service
 python scripts/server.py
 ```
+
+### Important Parameters
+
 
 ## Project Structure
 
@@ -69,13 +85,13 @@ AppEvalPilot/
 └── config/                           # Configuration files
 ```
 
-## Configuration
+## Contribution
 
-The project uses the `config/config2.yaml` file to store configuration information, including:
+We welcome contributions to AppEvalPilot! If you have questions, suggestions, or would like to contribute, please join our Discord community: [https://discord.gg/ZRHeExS6xv](https://discord.gg/ZRHeExS6xv)
 
-- LLM model
-- base_url
-- api_key
+## Citation
+
+Our paper will be available on arXiv soon. Please check back for citation information.
 
 ## License
 
