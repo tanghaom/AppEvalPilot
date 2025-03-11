@@ -22,28 +22,28 @@ def match_name(window_name: List[str], patterns: List[str]) -> bool:
     if isinstance(name, str):
         return any(pattern.lower() in name.lower() for pattern in patterns)
 
-async def start_windows(target_url: str, app_path: str = r"C:\Program Files\Google\Chrome\Application\chrome.exe"):
+
+async def start_windows(
+    target_url: str, app_path: str = "C:/Program Files/Google/Chrome/Application/chrome.exe"
+) -> None:
     """
     Start browser with accessibility and remote debugging enabled.
-    
+
     Args:
         target_url: URL to open in browser
         app_path: Path to browser executable, defaults to Chrome
     """
     import asyncio
     import os
-    
+
     if not os.path.exists(app_path):
         raise FileNotFoundError(f"Browser executable not found at: {app_path}")
-        
+
     cmd = f'"{app_path}" --force-renderer-accessibility --remote-debugging-port=9222 {target_url}'
-    
-    process = await asyncio.create_subprocess_shell(
-        cmd,
-        stdout=asyncio.subprocess.PIPE,
-        stderr=asyncio.subprocess.PIPE
-    )
-    
+
+    await asyncio.create_subprocess_shell(cmd, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE)
+
+
 async def kill_windows(target_names: List[str]) -> Optional[List[WindowSpecification]]:
     """
     Find and close windows matching the target names.
@@ -87,16 +87,3 @@ async def kill_windows(target_names: List[str]) -> Optional[List[WindowSpecifica
     except Exception as e:
         logger.error(f"Error while killing windows: {str(e)}")
         return []
-
-
-if __name__ == "__main__":
-    windows_to_kill = ["Chrome", "openhands"]
-    logger.info(f"Attempting to kill windows matching: {windows_to_kill}")
-    result = kill_windows(windows_to_kill)
-
-    if result is None:
-        logger.success("All matching windows were closed successfully")
-    elif not result:
-        logger.warning("No matching windows were found")
-    else:
-        logger.warning(f"Failed to close {len(result)} windows")

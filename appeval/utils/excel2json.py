@@ -2,39 +2,39 @@ import ast
 import json
 import os
 import re
-from typing import List
+from typing import List, Optional
 
 import pandas as pd
 from metagpt.logs import logger
 
 
-def clean_text(text):
-    # 去掉开头的数字和点以及空格
+def clean_text(text: str) -> str:
+    # Remove leading numbers and dots followed by spaces
     return re.sub(r"^\d+\.\s*", "", str(text))
 
 
-def get_result_value(result_text):
-    # 处理预期结果,将"已完成"/"未完成"/"未实现"转换为1/0/-1
+def get_result_value(result_text: str) -> Optional[int]:
+    # Process expected results, convert "Completed"/"Not completed"/"Not implemented" to 1/0/-1
     result_text = clean_text(result_text)
-    if result_text == "已完成":
+    if result_text == "Completed":
         return 1
-    elif result_text == "未完成":
+    elif result_text == "Not completed":
         return 0
-    elif result_text == "未实现":
+    elif result_text == "Not implemented":
         return -1
     return None
 
 
-def excel_to_json(input_path):
-    # 读取Excel文件
+def excel_to_json(input_path: str) -> None:
+    # Read Excel file
     df = pd.read_excel(input_path)
 
-    # 获取列名和对应的索引
+    # Get column names and corresponding indices
     columns = df.columns.tolist()
     test_result_col = columns[1]  # B列 - 测试用例的预期结果
     check_result_col = columns[4]  # E列 - 检验条件的预期结果
 
-    # 初始化结果字典
+    # Initialize result dictionary
     result = {}
     current_test_case = {}
     current_checks = {}
@@ -42,58 +42,64 @@ def excel_to_json(input_path):
     check_index = 0
     current_results = []
 
-    # 遍历DataFrame的每一行
+    # Iterate through each row of the DataFrame
     for index, row in df.iterrows():
-        # 检查是否为新的测试用例（通过检查第一列是否以数字和点开始）
-        if str(row["测试用例"]).strip() and re.match(r"1\.", str(row["测试用例"])):
-            # 如果存在前一个测试用例，保存它
+        # Check if it's a new test case (check if the first column starts with a number and a dot)
+        if str(row["test_cases"]).strip() and re.match(r"1\.", str(row["test_cases"])):
+            # If there is a previous test case, save it
             if current_test_case:
-                current_test_case["检验条件"] = current_checks
+                current_test_case["check_conditions"] = current_checks
                 if current_results:
-                    current_test_case["预期结果"] = f"Tell ({','.join(map(str, current_results))})"
+                    current_test_case["expected_result"] = f"Tell ({','.join(map(str, current_results))})"
                 result[str(case_index)] = current_test_case
                 case_index += 1
 
-            # 创建新的测试用例
-            current_test_case = {"测试用例": "", "url": "None", "预期结果": "", "模型结果": "None", "检验条件": {}}
+            # Create a new test case
+            current_test_case = {
+                "test_cases": "",
+                "url": "None",
+                "expected_result": "",
+                "model_result": "None",
+                "check_conditions": {},
+            }
             current_checks = {}
             current_results = []
             check_index = 0
 
-        # 处理测试用例
-        if not pd.isna(row["测试用例"]):
-            test_step = str(row["测试用例"]).strip()
-            if current_test_case.get("测试用例"):
-                current_test_case["测试用例"] += f" {test_step}"
+        # Process test case
+        if not pd.isna(row["test_cases"]):
+            test_step = str(row["test_cases"]).strip()
+            if current_test_case.get("test_cases"):
+                current_test_case["test_cases"] += f" {test_step}"
             else:
-                current_test_case["测试用例"] = test_step
+                current_test_case["test_cases"] = test_step
 
-            # 处理B列的预期结果
+            # Process expected results in B column
             if not pd.isna(row[test_result_col]):
                 result_value = get_result_value(row[test_result_col])
                 if result_value is not None:
                     current_results.append(result_value)
 
-        # 处理校验条件
-        if not pd.isna(row["校验条件"]) and not pd.isna(row[check_result_col]):
-            clean_condition = clean_text(row["校验条件"])
+        # Process check conditions
+        if not pd.isna(row["check_conditions"]) and not pd.isna(row[check_result_col]):
+            clean_condition = clean_text(row["check_conditions"])
             clean_result = clean_text(row[check_result_col])
             if clean_condition and clean_result:
                 current_checks[str(check_index)] = {
-                    "任务描述": clean_condition,
-                    "预期结果": "Tell (1)" if clean_result == "是" else "Tell (0)",
-                    "模型结果": "None",
+                    "task_description": clean_condition,
+                    "expected_result": "Tell (1)" if clean_result == "Yes" else "Tell (0)",
+                    "model_result": "None",
                 }
                 check_index += 1
 
-    # 保存最后一个测试用例
+    # Save the last test case
     if current_test_case:
-        current_test_case["检验条件"] = current_checks
+        current_test_case["check_conditions"] = current_checks
         if current_results:
-            current_test_case["预期结果"] = f"Tell ({','.join(map(str, current_results))})"
+            current_test_case["expected_result"] = f"Tell ({','.join(map(str, current_results))})"
         result[str(case_index)] = current_test_case
 
-    # 将结果写入JSON文件
+    # Write results to JSON file
     output_path = input_path.split(".")[0] + ".json"
     with open(output_path, "w", encoding="utf-8") as f:
         json.dump(result, f, ensure_ascii=False, indent=4)
@@ -113,9 +119,9 @@ def reset_json_results(json_file_path: str) -> None:
 
         # Iterate through each project
         for project in data.values():
-            if "测试用例" in project:
+            if "test_cases" in project:
                 # Iterate through each test case
-                for case in project["测试用例"].values():
+                for case in project["test_cases"].values():
                     # Reset result and evidence to empty strings
                     case["result"] = ""
                     case["evidence"] = ""
@@ -131,14 +137,14 @@ def reset_json_results(json_file_path: str) -> None:
         raise
 
 
-def list_to_json(excel_file, json_file):
+def list_to_json(excel_file: str, json_file: str) -> None:
     """
-    将 Excel 文件中的数据转换为 JSON 格式，并保存到 JSON 文件中。\n
-    Input：Excel表格中的项目名称，List(case_desc)，prod_url，requirement\n
-    Output：测试json
+    Convert data from Excel file to JSON format and save to JSON file.\n
+    Input: Project name in Excel table, List(case_desc), prod_url, requirement\n
+    Output: Test json
     Args:
-        excel_file (str): Excel 文件的路径。
-        json_file (str): 输出 JSON 文件的路径。
+        excel_file (str): Path to Excel file.
+        json_file (str): Path to output JSON file.
     """
     xls = pd.ExcelFile(excel_file)
     sheet_names = xls.sheet_names
@@ -148,23 +154,23 @@ def list_to_json(excel_file, json_file):
         df = pd.read_excel(excel_file, sheet_name=sheet_name)
         sheet_data = {}
         for index, row in df.iterrows():
-            test_case = row["case_name"] if "case_name" in row else row["项目名称"]
+            test_case = row["case_name"] if "case_name" in row else row["project_name"]
             url = row["prod_url"]
             if pd.isna(test_case):
                 continue
-            task_list_str = row["自动生成测试用例"]
+            task_list_str = row["auto_generated_test_cases"]
 
             try:
-                task_list = ast.literal_eval(task_list_str)  # 将字符串类型的列表转换为list
+                task_list = ast.literal_eval(task_list_str)  # Convert string type list to list
                 if not isinstance(task_list, list):
                     task_list = []
             except (ValueError, SyntaxError):
                 task_list = []
 
-            sheet_data[test_case] = {"url": f"{url}", "测试用例": {}}
+            sheet_data[test_case] = {"url": f"{url}", "test_cases": {}}
 
             for i, task_desc in enumerate(task_list):
-                sheet_data[test_case]["测试用例"][str(i)] = {"case_desc": task_desc, "result": "", "evidence": ""}
+                sheet_data[test_case]["test_cases"][str(i)] = {"case_desc": task_desc, "result": "", "evidence": ""}
 
         output_data.update(sheet_data)
 
@@ -174,28 +180,20 @@ def list_to_json(excel_file, json_file):
 
 def make_json_single(case_name: str, url: str, test_cases: List[str], json_path: str) -> None:
     """
-    将单个测试用例转换为JSON格式并保存
+    Convert a single test case to JSON format and save it
 
     Args:
-        case_name: 测试用例名称
-        url: 测试URL
-        test_cases: 测试用例列表
-        json_path: 输出JSON文件路径
+        case_name: Test case name
+        url: Test URL
+        test_cases: Test case list
+        json_path: Path to output JSON file
     """
-    # 确保目录存在
+    # Ensure the directory exists
     os.makedirs(os.path.dirname(json_path), exist_ok=True)
 
     data = {}
-    data[case_name] = {"url": url, "测试用例": {}}
+    data[case_name] = {"url": url, "test_cases": {}}
     for i, task_desc in enumerate(test_cases):
-        data[case_name]["测试用例"][str(i)] = {"case_desc": task_desc, "result": "", "evidence": ""}
+        data[case_name]["test_cases"][str(i)] = {"case_desc": task_desc, "result": "", "evidence": ""}
     with open(json_path, "w", encoding="utf-8") as f:
         json.dump(data, f, indent=4, ensure_ascii=False)
-
-
-if __name__ == "__main__":
-    try:
-        excel_to_json("data/自动测试用例.xlsx")
-        print("Excel文件已成功转换为JSON格式！")
-    except Exception as e:
-        print(f"转换过程中出现错误：{str(e)}")

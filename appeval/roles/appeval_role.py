@@ -2,12 +2,11 @@
 # -*- coding: utf-8 -*-
 """
 @Time    : 2024/03/21
-@File    : appeval.py
-@Desc    : 自动化测试角色
+@File    : appeval_role.py
+@Desc    : Automated Testing Role
 """
 import asyncio
 import json
-import os
 from datetime import datetime
 from typing import Any, Dict, List, Optional
 
@@ -15,18 +14,18 @@ from loguru import logger
 from metagpt.actions import Action
 from metagpt.roles.role import Role, RoleContext
 from metagpt.schema import Message
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import ConfigDict, Field
 
-from appeval.actions.test_generator import TestGeneratorAction
+from appeval.actions.case_generator import CaseGenerator
 from appeval.prompts.appeval import batch_check_prompt
 from appeval.roles.osagent import OSAgent
 from appeval.utils.excel2json import list_to_json, make_json_single
 from appeval.utils.json2excel import convert_json_to_excel
-from appeval.utils.window_utils import start_windows, kill_windows
+from appeval.utils.window_utils import kill_windows, start_windows
 
 
 class AppEvalContext(RoleContext):
-    """AppEval运行时上下文"""
+    """AppEval Runtime Context"""
 
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
@@ -35,16 +34,16 @@ class AppEvalContext(RoleContext):
     env_process: Optional[Any] = None
     agent_params: Dict = Field(default_factory=dict)
     osagent: Optional[OSAgent] = None
-    test_generator: Optional[TestGeneratorAction] = None
+    test_generator: Optional[CaseGenerator] = None
 
 
 class AppEvalRole(Role):
-    """自动化测试角色"""
+    """Automated Testing Role"""
 
     name: str = "AppEvalRole"
-    profile: str = "自动化测试执行者"
-    goal: str = "执行自动化测试任务"
-    constraints: str = "确保测试执行的准确性和效率"
+    profile: str = "Automated Test Executor"
+    goal: str = "Execute automated testing tasks"
+    constraints: str = "Ensure accuracy and efficiency of test execution"
 
     rc: AppEvalContext = Field(default_factory=AppEvalContext)
 
@@ -52,7 +51,7 @@ class AppEvalRole(Role):
         super().__init__()
         self.rc.json_file = json_file
 
-        # 初始化 agent_params
+        # Initialize agent_params
         self.rc.agent_params = {
             "use_ocr": kwargs.get("use_ocr", True),
             "quad_split_ocr": kwargs.get("quad_split_ocr", True),
@@ -63,14 +62,14 @@ class AppEvalRole(Role):
             "log_dirs": f"work_dirs/{self.rc.date_str}",
         }
 
-        # 初始化 TestGeneratorAction
-        self.rc.test_generator = TestGeneratorAction()
+        # Initialize CaseGenerator Action
+        self.rc.test_generator = CaseGenerator()
 
-        # 初始化 OSAgent
+        # Initialize OSAgent
         self._init_osagent(**kwargs)
 
     def _init_osagent(self, **kwargs) -> None:
-        """初始化 OSAgent"""
+        """Initialize OSAgent"""
         add_info = (
             "If you need to interact with elements outside of a web popup, such as calendar or time selection "
             "popups, make sure to close the popup first. If the content in a text box is entered incorrectly, "
@@ -102,16 +101,16 @@ class AppEvalRole(Role):
             draw_text_box=False,
             log_dirs=self.rc.agent_params["log_dirs"],
             add_info=add_info,
-            system_prompt=batch_check_prompt(),
+            system_prompt=batch_check_prompt,
         )
 
     async def execute_batch_check(self, task_id: str, task_id_case_number: int, check_list: dict) -> None:
-        """执行单个检验条件"""
-        logger.info(f"开始测试项目{task_id}")
+        """Execute single verification condition"""
+        logger.info(f"Start testing project {task_id}")
         instruction = f"Please complete the following tasks，And after completion, use the Tell action to inform me of the results of all the test cases at once: {check_list}\n"
         await self.rc.osagent.run(instruction)
 
-        # 获取动作历史
+        # Get action history
         action_history = self.rc.osagent.rc.action_history
         task_list = self.rc.osagent.rc.task_list
         memory = self.rc.osagent.rc.memory
@@ -121,7 +120,7 @@ class AppEvalRole(Role):
     async def write_batch_res_to_json(
         self, task_id: str, task_id_case_number: int, action_history: List[str], task_list: str, memory: List[str]
     ) -> None:
-        """将检验结果写入json文件"""
+        """Write verification results to json file"""
         try:
             content = action_history[-1]
             results_dict = None
@@ -140,10 +139,9 @@ class AppEvalRole(Role):
                             try:
                                 results_dict = eval(answer[start : end + 1])
                             except Exception as e:
-                                logger.error(f"结果解析失败: {str(e)}")
+                                logger.error(f"Result parsing failed: {str(e)}")
 
             if not results_dict or len(results_dict) != task_id_case_number:
-                # 使用 TestGeneratorAction 替代原来的 generate_results 函数
                 results_dict = await self.rc.test_generator.generate_results_dict(
                     action_history, task_list, memory, task_id_case_number
                 )
@@ -157,36 +155,36 @@ class AppEvalRole(Role):
                 f.truncate()
 
         except Exception as e:
-            logger.error(f"写入检验结果失败: {str(e)}")
+            logger.error(f"Failed to write verification results: {str(e)}")
             raise
 
     async def run_batch(self, project_excel_path: str = None, case_excel_path: str = None) -> None:
-        """运行批量测试
+        """Run batch testing
 
-        完整的测试流程包括:
-        1. 从Excel生成测试用例
-        2. 转换为JSON格式
-        3. 执行自动化测试
-        4. (可选)输出结果到Excel
+        Complete testing process includes:
+        1. Generate test cases from Excel
+        2. Convert to JSON format
+        3. Execute automated testing
+        4. (Optional) Output results to Excel
 
         Args:
-            project_excel_path: 项目级别的Excel文件路径
-            case_excel_path: 用例级别的Excel文件路径(可选)
+            project_excel_path: Project level Excel file path
+            case_excel_path: Case level Excel file path (optional)
         """
         try:
             if project_excel_path:
-                # 1. 生成自动测试样例
-                logger.info("开始生成自动测试样例...")
+                # 1. Generate automated test cases
+                logger.info("Start generating automated test cases...")
                 await self.rc.test_generator.process_excel_file(project_excel_path, "generate_cases")
 
-                # 2. 转换为JSON格式
-                logger.info("开始转换为JSON格式...")
+                # 2. Convert to JSON format
+                logger.info("Start converting to JSON format...")
                 list_to_json(project_excel_path, self.rc.json_file)
             else:
                 raise ValueError("project_excel_path must be provided for batch run if not using existing json file.")
 
-            # 3. 执行自动化测试
-            logger.info("开始执行自动化测试...")
+            # 3. Execute automated testing
+            logger.info("Start executing automated testing...")
             with open(self.rc.json_file, "r", encoding="utf-8") as f:
                 test_cases = json.load(f)
 
@@ -202,45 +200,44 @@ class AppEvalRole(Role):
                     await self.execute_batch_check(task_id, task_id_case_number, task_info)
                     await kill_windows(["Chrome"])
 
-            # 4. 输出结果到Excel(如果提供了case_excel_path)
+            # 4. Output results to Excel (if case_excel_path is provided)
             if case_excel_path:
-                logger.info("开始生成结果表格...")
+                logger.info("Start generating result spreadsheet...")
                 convert_json_to_excel(self.rc.json_file, case_excel_path)
 
-            logger.info("测试流程执行完成")
+            logger.info("Test process completed")
 
         except Exception as e:
-            logger.error(f"执行测试时发生错误: {str(e)}")
+            logger.error(f"Error occurred during test execution: {str(e)}")
             raise
 
     async def run_single(
         self, case_name: str, url: str, user_requirement: str, json_path: str = "data/temp.json"
     ) -> dict:
-        """执行单个测试用例
+        """Execute single test case
 
         Args:
-            case_name (str): 测试用例名称
-            url (str): 测试目标URL
-            user_requirement (str): 测试需求描述
-            json_path (str, optional): 输出JSON文件路径
+            case_name (str): Test case name
+            url (str): Test target URL
+            user_requirement (str): Test requirement description
+            json_path (str, optional): Output JSON file path
 
         Returns:
-            dict: 测试结果字典
+            dict: Test result dictionary
         """
         try:
-            # 1. 生成自动测试样例
-            logger.info(f"开始为用例 '{case_name}' 生成自动测试样例...")
+            # 1. Generate automated test cases
+            logger.info(f"Start generating automated test cases for '{case_name}'...")
             test_cases = await self.rc.test_generator.generate_test_cases(user_requirement)
 
-            # 2. 转换为JSON格式
-            logger.info("开始转换为JSON格式...")
+            # 2. Convert to JSON format
+            logger.info("Start converting to JSON format...")
             make_json_single(case_name, url, test_cases, json_path)
 
-            # 3. 执行自动化测试
-            logger.info("开始执行自动化测试...")
+            # 3. Execute automated testing
+            logger.info("Start executing automated testing...")
             self.rc.json_file = json_path
-            # 3. 执行自动化测试
-            logger.info("开始执行自动化测试...")
+
             with open(self.rc.json_file, "r", encoding="utf-8") as f:
                 test_cases = json.load(f)
 
@@ -255,38 +252,39 @@ class AppEvalRole(Role):
                     task_id_case_number = len(test_cases[task_id]["测试用例"])
                     await self.execute_batch_check(task_id, task_id_case_number, task_info)
                     await kill_windows(["Chrome"])
-            # 4. 读取结果
+
+            # 4. Read results
             with open(self.rc.json_file, "r", encoding="utf-8") as f:
                 result = json.load(f)
 
-            logger.info(f"用例 '{case_name}' 测试流程执行完成")
+            logger.info(f"Test process completed for case '{case_name}'")
             return result
 
         except Exception as e:
-            logger.error(f"测试流程执行失败: {str(e)}")
+            logger.error(f"Test process execution failed: {str(e)}")
             raise
 
     async def run(self, **kwargs) -> Message:
-        """运行自动化测试
+        """Run automated testing
 
-        支持两种调用方式:
-        1. 批量测试: run(project_excel_path="xxx.xlsx", case_excel_path="xxx.xlsx")
-        2. 单个测试: run(case_name="xxx", url="xxx", user_requirement="xxx")
+        Supports two calling methods:
+        1. Batch testing: run(project_excel_path="xxx.xlsx", case_excel_path="xxx.xlsx")
+        2. Single test: run(case_name="xxx", url="xxx", user_requirement="xxx")
 
         Args:
-            **kwargs: 参数
-                批量测试:
-                    - project_excel_path: 项目级别Excel文件路径
-                    - case_excel_path: 用例级别Excel文件路径(可选)
-                单个测试:
-                    - case_name: 测试用例名称
-                    - url: 测试目标URL
-                    - user_requirement: 需求描述
-                    - json_path: 输出JSON文件路径(可选)
+            **kwargs: Parameters
+                Batch testing:
+                    - project_excel_path: Project level Excel file path
+                    - case_excel_path: Case level Excel file path (optional)
+                Single test:
+                    - case_name: Test case name
+                    - url: Test target URL
+                    - user_requirement: Requirement description
+                    - json_path: Output JSON file path (optional)
         """
         try:
             if kwargs.get("case_name") and kwargs.get("user_requirement"):
-                # 单个测试场景
+                # Single test scenario
                 result = await self.run_single(
                     kwargs["case_name"],
                     kwargs["url"],
@@ -295,9 +293,9 @@ class AppEvalRole(Role):
                 )
                 return Message(content=json.dumps(result), cause_by=Action)
             else:
-                # 批量测试场景
+                # Batch test scenario
                 await self.run_batch(kwargs.get("project_excel_path"), kwargs.get("case_excel_path"))
-                return Message(content=json.dumps("测试执行完成"), cause_by=Action)
+                return Message(content=json.dumps("Test execution completed"), cause_by=Action)
         except Exception as e:
-            logger.error(f"执行测试失败: {str(e)}")
-            return Message(content=json.dumps(f"测试执行失败: {str(e)}"), cause_by=Action)
+            logger.error(f"Test execution failed: {str(e)}")
+            return Message(content=json.dumps(f"Test execution failed: {str(e)}"), cause_by=Action)

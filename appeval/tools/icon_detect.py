@@ -4,7 +4,7 @@
 @Time    : 2025/02/11
 @Author  : tanghaoming
 @File    : icon_detect.py
-@Desc    : 图标检测和描述工具类
+@Desc    : Icon detection and description tool class
 """
 
 import asyncio
@@ -12,8 +12,7 @@ from pathlib import Path
 from typing import Dict, List, Tuple, Union
 
 import requests
-from metagpt.const import DATA_PATH, TEST_DATA_PATH
-from metagpt.llm import LLM
+from metagpt.const import DATA_PATH
 from metagpt.logs import logger
 from metagpt.provider.base_llm import BaseLLM
 from metagpt.utils.common import encode_image
@@ -27,24 +26,24 @@ Coordinates = List[BoundingBox]
 
 
 class IconDetector:
-    """图标检测工具类"""
+    """Icon detection tool class"""
 
     MODEL_URL = "https://huggingface.co/microsoft/OmniParser-v2.0/resolve/main/icon_detect/model.pt"
     MODEL_PATH = DATA_PATH / "omniparser_icon_detect.pt"
 
     def __init__(self):
-        """初始化检测器"""
+        """Initialize detector"""
         self.model = self._init_model()
 
     def _init_model(self) -> YOLO:
-        """初始化并返回YOLO模型"""
+        """Initialize and return YOLO model"""
         if not self.MODEL_PATH.exists():
             self._download_model()
         return YOLO(str(self.MODEL_PATH))
 
     def _download_model(self):
-        """下载模型文件"""
-        logger.info("正在下载OmniParser图标检测模型...")
+        """Download model file"""
+        logger.info("Downloading OmniParser icon detection model...")
         self.MODEL_PATH.parent.mkdir(parents=True, exist_ok=True)
 
         try:
@@ -53,29 +52,33 @@ class IconDetector:
                 with open(self.MODEL_PATH, "wb") as f:
                     for chunk in r.iter_content(chunk_size=8192):
                         f.write(chunk)
-            logger.info("OmniParser模型下载完成")
+            logger.info("OmniParser model download completed")
         except Exception as e:
-            logger.error(f"模型下载失败: {e}")
+            logger.error(f"Model download failed: {e}")
             raise
 
     @staticmethod
     def _calculate_area(box: BoundingBox) -> float:
-        """计算边界框面积
+        """Calculate bounding box area
+
         Args:
-            box: 边界框坐标 [x1, y1, x2, y2]
+            box: Bounding box coordinates [x1, y1, x2, y2]
+
         Returns:
-            float: 边界框的面积
+            float: Area of the bounding box
         """
         return (box[2] - box[0]) * (box[3] - box[1])
 
     @staticmethod
     def _calculate_iou(box1: BoundingBox, box2: BoundingBox) -> float:
-        """计算两个边界框的交并比(IoU)
+        """Calculate Intersection over Union (IoU) of two bounding boxes
+
         Args:
-            box1: 第一个边界框坐标 [x1, y1, x2, y2]
-            box2: 第二个边界框坐标 [x1, y1, x2, y2]
+            box1: First bounding box coordinates [x1, y1, x2, y2]
+            box2: Second bounding box coordinates [x1, y1, x2, y2]
+
         Returns:
-            float: 两个边界框的IoU值
+            float: IoU value of the two boxes
         """
         x1, y1 = max(box1[0], box2[0]), max(box1[1], box2[1])
         x2, y2 = min(box1[2], box2[2]), min(box1[3], box2[3])
@@ -89,14 +92,16 @@ class IconDetector:
     def _filter_boxes(
         self, boxes: Coordinates, image_size: Tuple[int, int], iou_threshold: float = 0.5, area_threshold: float = 0.05
     ) -> Coordinates:
-        """过滤和合并重叠的边界框
+        """Filter and merge overlapping bounding boxes
+
         Args:
-            boxes: 边界框列表
-            image_size: 图片尺寸 (宽,高)
-            iou_threshold: IoU阈值
-            area_threshold: 面积阈值(占比)
+            boxes: List of bounding boxes
+            image_size: Image dimensions (width, height)
+            iou_threshold: IoU threshold
+            area_threshold: Area threshold (ratio)
+
         Returns:
-            List[List[int]]: 过滤后的边界框列表
+            List[List[int]]: Filtered list of bounding boxes
         """
         if not boxes:
             return []
@@ -104,12 +109,12 @@ class IconDetector:
         img_area = image_size[0] * image_size[1]
         max_area = img_area * area_threshold
 
-        # 按面积从大到小排序并过滤过大的框
+        # Sort boxes by area from largest to smallest and filter out large boxes
         valid_boxes = [box for box in sorted(boxes, key=self._calculate_area) if self._calculate_area(box) <= max_area]
 
         filtered_boxes = []
         for box in valid_boxes:
-            # 如果当前框与已保留的框IoU都小于阈值，则保留
+            # If current box IoU with all retained boxes is less than threshold, retain
             if not any(self._calculate_iou(box, existing_box) > iou_threshold for existing_box in filtered_boxes):
                 filtered_boxes.append(box)
 
@@ -118,13 +123,15 @@ class IconDetector:
     def detect(
         self, image_path: Union[str, Path], conf_threshold: float = 0.25, iou_threshold: float = 0.3
     ) -> Coordinates:
-        """检测图片中的图标
+        """Detect icons in the image
+
         Args:
-            image_path: 图片路径
-            conf_threshold: 置信度阈值
-            iou_threshold: IoU阈值
+            image_path: Image path
+            conf_threshold: Confidence threshold
+            iou_threshold: IoU threshold
+
         Returns:
-            List[List[int]]: 检测到的图标坐标列表
+            List[List[int]]: List of detected icon coordinates
         """
         try:
             image = Image.open(image_path)
@@ -137,14 +144,15 @@ class IconDetector:
 
             return self._filter_boxes(predictions, image.size)
         except Exception as e:
-            logger.error(f"图标检测失败: {e}")
+            logger.error(f"Icon detection failed: {e}")
             return []
 
 
 class IconDetectTool:
-    """图标检测&描述工具
+    """Icon Detection & Description Tool
 
-    提供完整的图标检测和描述功能，包括模型加载、图片处理和结果生成。
+    Provides complete icon detection and description functionality, including model loading,
+    image processing and result generation.
     """
 
     CAPTION_PROMPT_TEMPLATE = """You are a GUI automation assistant. This is an icon from a {device_type} interface.
@@ -159,28 +167,27 @@ Requirements:
 - Focus on visual elements that would help identify this icon"""
 
     def __init__(self, llm: BaseLLM):
-        """初始化图标检测工具
+        """Initialize icon detection tool
 
         Args:
-            llm: 语言模型实例，用于生成图标描述
+            llm: Language model instance, used to generate icon description
         """
         self.llm = llm
         self.icon_detector = IconDetector()
 
     def detect(self, image_path: Union[str, Path]) -> Coordinates:
-        """检测图片中的图标位置
+        """Detect icon locations in the image
 
         Args:
-            image_path: 图片路径
-            split: 是否使用分割检测策略
+            image_path: Image path
 
         Returns:
-            图标坐标列表
+            List[List[int]]: List of icon coordinates
         """
         try:
             return self.icon_detector.detect(image_path)
         except Exception as e:
-            logger.error(f"图标检测失败: {str(e)}")
+            logger.error(f"Icon detection failed: {str(e)}")
             return []
 
     @retry(
@@ -188,16 +195,26 @@ Requirements:
         wait=wait_fixed(10),
         retry=retry_if_exception_type(Exception),
         before_sleep=lambda retry_state: logger.warning(
-            f"图标{retry_state.args[-1]+1}描述生成失败，第{retry_state.attempt_number}次重试: {str(retry_state.outcome.exception())}"
+            f"Icon {retry_state.args[-1]+1} description generation failed, attempt {retry_state.attempt_number}: {str(retry_state.outcome.exception())}"
         ),
     )
     async def _process_single_icon(self, image: Image.Image, box: List[int], prompt: str, idx: int) -> Tuple[int, str]:
-        """处理单个图标的异步函数"""
+        """Process single icon asynchronously
+
+        Args:
+            image: Image object - The full screenshot image where the icon is located.
+            box: Icon coordinates - Bounding box [x1, y1, x2, y2] of the detected icon in the image.
+            prompt: Icon description prompt - Prompt text used to guide the language model in describing the icon.
+            idx: Icon index - Index of the icon in the list of detected icons, used for tracking and referencing.
+
+        Returns:
+            Tuple[int, str]: Icon index and description
+        """
         height = image.size[1]
         icon_img = image.crop(box)
         icon_width, icon_height = icon_img.size
 
-        # 过滤过大的图标
+        # Filter out large icons
         if icon_height > 0.8 * height or icon_width * icon_height > 0.2 * image.size[0] * height:
             return idx, "None"
 
@@ -212,13 +229,15 @@ Requirements:
     async def caption(
         self, image_path: Union[str, Path], coordinates: Coordinates, platform: str = "Android"
     ) -> Dict[int, str]:
-        """为检测到的图标生成描述
+        """Generate descriptions for detected icons
+
         Args:
-            image_path: 图片路径
-            coordinates: 图标坐标列表
-            platform: 操作系统类型, 默认是Android, 也可以是PC
+            image_path: Image path
+            coordinates: List of icon coordinates
+            platform: Operating system type, default is Android, can also be PC
+
         Returns:
-            Dict[int, str]: 图标索引到描述的映射
+            Dict[int, str]: Mapping from icon index to description
         """
         if not coordinates:
             return {}
@@ -227,47 +246,53 @@ Requirements:
             image = Image.open(image_path)
             prompt = self._get_caption_prompt(platform)
 
-            # 创建信号量限制并发
+            # Create semaphore to limit concurrency
             sem = asyncio.Semaphore(8)
 
             async def process_with_semaphore(idx: int, box: List[int]) -> Tuple[int, str]:
                 async with sem:
                     return await self._process_single_icon(image, box, prompt, idx)
 
-            # 并发处理所有图标
+            # Concurrent processing of all icons
             tasks = [process_with_semaphore(i, box) for i, box in enumerate(coordinates)]
             results = await asyncio.gather(*tasks, return_exceptions=True)
 
-            # 过滤掉异常结果，只保留成功的结果
+            # Filter out exception results, only keep successful results
             descriptions = {}
             for i, result in enumerate(results):
                 if not isinstance(result, Exception) and isinstance(result, tuple):
                     idx, desc = result
                     descriptions[idx + 1] = desc
                 else:
-                    logger.warning(f"图标{i+1}描述生成失败: {result}")
+                    logger.warning(f"Icon {i+1} description generation failed: {result}")
 
             return descriptions
 
         except Exception as e:
-            logger.error(f"生成图标描述失败: {e}")
+            logger.error(f"Icon description generation failed: {e}")
             return {}
 
     def _get_caption_prompt(self, platform: str) -> str:
-        """生成图标描述提示语"""
+        """Generate icon description prompt
+
+        Args:
+            platform: Operating system type
+
+        Returns:
+            str: Icon description prompt
+        """
         device_type = "mobile phone" if platform == "Android" else "PC"
         return self.CAPTION_PROMPT_TEMPLATE.format(device_type=device_type)
 
 
 def detect_icons(image_path: Union[str, Path], llm: BaseLLM = None) -> Coordinates:
-    """图标检测快捷函数
+    """Icon detection shortcut function
 
     Args:
-        image_path: 图片路径
-        split: 是否使用分割检测策略
+        image_path: Image path
 
     Returns:
-        图标坐标列表
+        List[List[int]]: List of icon coordinates
     """
     detector = IconDetectTool(llm)
     return detector.detect(image_path)
@@ -276,37 +301,15 @@ def detect_icons(image_path: Union[str, Path], llm: BaseLLM = None) -> Coordinat
 async def caption_icons(
     image_path: Union[str, Path], coordinates: Coordinates, llm: BaseLLM = None, platform: str = "Android"
 ) -> Dict[int, str]:
-    """图标描述快捷函数
+    """Icon description shortcut function
 
     Args:
-        image_path: 图片路径
-        coordinates: 图标坐标列表
-        platform: 操作系统类型, 默认是Android, 也可以是PC
+        image_path: Image path
+        coordinates: List of icon coordinates
+        platform: Operating system type, default is Android, can also be PC
 
     Returns:
-        图标描述字典
+        Dict[int, str]: Dictionary of icon descriptions
     """
     detector = IconDetectTool(llm)
     return await detector.caption(image_path, coordinates, platform)
-
-
-if __name__ == "__main__":
-    from metagpt.config2 import Config
-
-    async def main():
-        image_path = str(TEST_DATA_PATH / "screenshots" / "chrome.jpg")
-        llm_config = Config.default()
-        llm = LLM(llm_config.llm)
-
-        # 实例化 IconDetectTool 类
-        detector = IconDetectTool(llm)
-
-        # 检测
-        coordinates = detector.detect(image_path)
-        print("检测到的图标坐标:", coordinates, len(coordinates))
-
-        # 生成描述
-        descriptions = await detector.caption(image_path, coordinates)
-        print("图标描述:", descriptions)
-
-    asyncio.run(main())

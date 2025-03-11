@@ -4,20 +4,20 @@
 @Time    : 2025/03/06
 @Author  : tanghaoming
 @File    : server.py
-@Desc    : 任务管理服务器模块
+@Desc    : Task Management Server Module
 
-该模块提供了一个基于FastAPI的任务管理系统，支持以下功能：
-- 提交并管理不同类型的测试任务（URL、Python应用、Python Web应用）
-- 异步任务处理
-- Conda环境管理
-- 进程管理
-- 任务状态跟踪
+This module provides a FastAPI-based task management system with the following features:
+- Submit and manage different types of test tasks (URL, Python app, Python Web app)
+- Asynchronous task processing
+- Conda environment management
+- Process management
+- Task status tracking
 
-主要类:
-- TaskManager: 核心任务管理器
-- OSAgent: 测试代理
-- TaskType: 任务类型枚举
-- TaskStatus: 任务状态枚举
+Main classes:
+- TaskManager: Core task manager
+- OSAgent: Test agent
+- TaskType: Task type enumeration
+- TaskStatus: Task status enumeration
 """
 
 import asyncio
@@ -45,21 +45,21 @@ class MockAppEvalRole:
         pass
 
     async def run(self, url=None, user_requirement=None, case_name=None, task_id=None):
-        """模拟OSAgent的运行过程"""
-        # 等待几秒钟模拟处理过程
+        """Simulate the running process of OSAgent"""
+        # Wait a few seconds to simulate the processing
         for i in range(5):
-            logger.info(f"模拟OSAgent的运行过程: {i}")
+            logger.info(f"Simulating OSAgent running process: {i}")
             await asyncio.sleep(2)
 
         if url:
-            # 模拟URL类型或Web应用的结果
+            # Simulate results for URL type or Web application
             return {
                 "success": True,
                 "message": f"Tested {url} successfully",
                 "details": {"case_name": case_name, "task_id": task_id, "requirement": user_requirement},
             }
         else:
-            # 模拟Python应用的结果
+            # Simulate results for Python application
             return {
                 "success": True,
                 "message": "Python application test completed",
@@ -68,32 +68,34 @@ class MockAppEvalRole:
 
 
 class TaskType:
-    """任务类型常量类"""
+    """Task type constants class"""
 
-    URL = "url"  # URL类型任务
-    PYTHON_APP = "python_app"  # 普通Python应用
-    PYTHON_WEB = "python_web"  # Python Web应用
-    STREAMLIT = "streamlit"  # Streamlit应用
+    URL = "url"  # URL type task
+    PYTHON_APP = "python_app"  # Regular Python application
+    PYTHON_WEB = "python_web"  # Python Web application
+    STREAMLIT = "streamlit"  # Streamlit application
 
 
 class TaskStatus:
-    """任务状态常量类"""
+    """Task status constants class"""
 
-    PENDING = "pending"  # 等待处理
-    RUNNING = "running"  # 正在运行
-    COMPLETED = "completed"  # 已完成
-    FAILED = "failed"  # 失败
+    PENDING = "pending"  # Waiting for processing
+    RUNNING = "running"  # Currently running
+    COMPLETED = "completed"  # Completed
+    FAILED = "failed"  # Failed
 
 
 class TaskManager:
-    """任务管理器类，负责处理任务的完整生命周期"""
+    """Task manager class, responsible for handling the complete lifecycle of tasks"""
 
     def __init__(self):
-        """初始化任务管理器"""
+        """Initialize the task manager"""
         self.tasks: Dict[str, dict] = {}
         self.task_queue: asyncio.Queue = asyncio.Queue()
         self.is_worker_running: bool = False
-        self.app = FastAPI(title="Task Manager API", description="管理和执行测试任务的API服务", version="1.0.0")
+        self.app = FastAPI(
+            title="Task Manager API", description="API service for managing and executing test tasks", version="1.0.0"
+        )
         self.appeval = AppEvalRole(
             data_path="data/temp.json",
             planner_model="claude-3-5-sonnet-v2",
@@ -109,50 +111,50 @@ class TaskManager:
         self.setup_routes()
 
     def setup_routes(self):
-        """设置API路由"""
+        """Set up API routes"""
         self.app.post("/submit_task")(self.submit_task)
         self.app.get("/task_status/{task_id}")(self.get_task_status)
         self.app.get("/task_result/{task_id}")(self.get_task_result)
 
     async def create_conda_env(self, env_name: str, requirements_path: str) -> bool:
         """
-        创建conda环境并安装依赖
+        Create conda environment and install dependencies
 
         Args:
-            env_name: 环境名称
-            requirements_path: requirements.txt文件路径
+            env_name: Environment name
+            requirements_path: Path to requirements.txt file
 
         Returns:
-            bool: 环境创建是否成功
+            bool: Whether the environment creation was successful
         """
         try:
             conda_path = self._get_conda_path()
             if not conda_path:
-                raise Exception("无法找到conda可执行文件")
+                raise Exception("Cannot find conda executable")
 
-            # 创建环境
-            logger.info(f"开始创建conda环境: {env_name}")
+            # Create environment
+            logger.info(f"Starting to create conda environment: {env_name}")
             if not await self._execute_conda_create(conda_path, env_name):
                 return False
 
-            # 安装依赖
-            logger.info(f"开始安装依赖: {requirements_path}")
+            # Install dependencies
+            logger.info(f"Starting to install dependencies: {requirements_path}")
             if not await self._install_requirements(conda_path, env_name, requirements_path):
                 return False
 
             return True
 
         except Exception as e:
-            logger.error(f"创建conda环境失败: {str(e)}")
-            logger.exception("详细错误信息")
+            logger.error(f"Failed to create conda environment: {str(e)}")
+            logger.exception("Detailed error information")
             return False
 
     def _get_conda_path(self) -> Optional[str]:
         """
-        获取conda可执行文件路径
+        Get the path to the conda executable
 
         Returns:
-            str: conda可执行文件路径，如果未找到则返回None
+            str: Path to conda executable, or None if not found
         """
         if os.name == "nt":
             possible_paths = [
@@ -169,15 +171,15 @@ class TaskManager:
         return "conda"
 
     async def run_background_service(self, env_name: str, work_dir: str, start_path: str, task_type: str) -> int:
-        """在后台运行服务，返回进程ID"""
+        """Run service in the background, return process ID"""
         try:
-            if os.name == "nt":  # Windows系统
-                # 获取conda安装路径
+            if os.name == "nt":  # Windows system
+                # Get conda installation path
                 conda_path = self._get_conda_path()
                 if not conda_path:
                     raise Exception("Cannot find conda executable")
 
-                # 根据任务类型选择启动命令
+                # Choose startup command based on task type
                 if task_type == TaskType.STREAMLIT:
                     cmd = f'"{conda_path}" run -n {env_name} streamlit run {start_path}'
                 else:
@@ -193,8 +195,8 @@ class TaskManager:
                         creationflags=subprocess.CREATE_NEW_PROCESS_GROUP,
                     )
                 return process.pid
-            else:  # Linux/Unix系统
-                # 根据任务类型选择启动命令
+            else:  # Linux/Unix system
+                # Choose startup command based on task type
                 if task_type == TaskType.STREAMLIT:
                     cmd = f"nohup conda run -n {env_name} streamlit run {start_path} > service.log 2>&1 & echo $!"
                 else:
@@ -211,15 +213,15 @@ class TaskManager:
             return -1
 
     async def kill_process(self, pid: int) -> bool:
-        """终止指定的进程"""
+        """Terminate the specified process"""
         try:
-            if os.name == "nt":  # Windows系统
-                # 使用psutil来确保进程及其子进程都被终止
+            if os.name == "nt":  # Windows system
+                # Use psutil to ensure the process and its children are all terminated
                 parent = psutil.Process(pid)
                 for child in parent.children(recursive=True):
                     child.kill()
                 parent.kill()
-            else:  # Linux/Unix系统
+            else:  # Linux/Unix system
                 cmd = f"kill {pid}"
                 process = await asyncio.create_subprocess_shell(
                     cmd, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE
@@ -232,7 +234,7 @@ class TaskManager:
             return False
 
     async def process_tasks(self):
-        """后台任务处理器"""
+        """Background task processor"""
         while True:
             task_id = await self.task_queue.get()
             task = self.tasks[task_id]
@@ -242,33 +244,33 @@ class TaskManager:
                 self.tasks[task_id]["status"] = TaskStatus.RUNNING
 
                 if task["type"] in [TaskType.PYTHON_APP, TaskType.PYTHON_WEB, TaskType.STREAMLIT]:
-                    # 解压文件
+                    # Extract files
                     with zipfile.ZipFile(task["zip_path"], "r") as zip_ref:
                         zip_ref.extractall(work_dir)
 
-                    # 创建conda环境
+                    # Create conda environment
                     env_name = f"env_{task_id}"
                     requirements_path = os.path.join(work_dir, "requirements.txt").replace("\\", "/")
 
                     if not await self.create_conda_env(env_name, requirements_path):
                         raise Exception("Failed to create conda environment")
 
-                    # 在后台运行服务
+                    # Run service in the background
                     pid = await self.run_background_service(env_name, work_dir, task["start_path"], task["type"])
                     if pid == -1:
                         raise Exception("Failed to start background service")
 
-                    # 等待服务启动
-                    await asyncio.sleep(5)  # 给予足够的启动时间
+                    # Wait for service to start
+                    await asyncio.sleep(5)  # Give enough time to start
 
-                    # 创建并运行OSAgent
+                    # Create and run AppEval
                     service_url = None
                     if task["type"] == TaskType.PYTHON_WEB:
-                        # 从任务参数中获取端口号，默认为8000
+                        # Get port number from task parameters, default to 8000
                         port = task["params"].get("port", 8000)
                         service_url = f"http://localhost:{port}"
                     elif task["type"] == TaskType.STREAMLIT:
-                        service_url = "http://localhost:8501"  # Streamlit默认端口
+                        service_url = "http://localhost:8501"  # Streamlit default port
 
                     result = await self.appeval.run(
                         url=service_url,
@@ -277,18 +279,18 @@ class TaskManager:
                     )
                     result = json.loads(result.content)
 
-                    # 关闭后台服务
+                    # Shut down background service
                     await self.kill_process(pid)
 
                     time.sleep(4)
 
-                    # 清理conda环境
+                    # Clean up conda environment
                     process = await asyncio.create_subprocess_shell(
                         f"conda env remove -n {env_name} -y",
                         stdout=asyncio.subprocess.PIPE,
                         stderr=asyncio.subprocess.PIPE,
                     )
-                    # 等待进程完成
+                    # Wait for process to complete
                     await process.communicate()
                     logger.info(f"Conda environment {env_name} removed")
 
@@ -297,7 +299,7 @@ class TaskManager:
                     )
 
                 elif task["type"] == TaskType.URL:
-                    # 创建并运行OSAgent
+                    # Create and run OSAgent
                     result = await self.appeval.run(
                         url=task["url"],
                         user_requirement=task["user_requirement"],
@@ -316,7 +318,7 @@ class TaskManager:
 
             finally:
                 try:
-                    # 清理临时文件
+                    # Clean up temporary files
                     if task["type"] in [TaskType.PYTHON_APP, TaskType.PYTHON_WEB]:
                         if os.path.exists(task["zip_path"]):
                             os.remove(task["zip_path"])
@@ -329,17 +331,17 @@ class TaskManager:
 
     async def submit_task(self, file: Optional[UploadFile] = None, params: str = Form(...)) -> Dict[str, str]:
         """
-        提交新任务
+        Submit a new task
 
         Args:
-            file: 上传的ZIP文件（Python应用所需）
-            params: JSON格式的任务参数
+            file: Uploaded ZIP file (required for Python applications)
+            params: Task parameters in JSON format
 
         Returns:
-            包含task_id的字典
+            Dictionary containing task_id
 
         Raises:
-            HTTPException: 当参数无效或缺失时
+            HTTPException: When parameters are invalid or missing
         """
         try:
             params_dict = json.loads(params)
@@ -356,27 +358,27 @@ class TaskManager:
             return {"task_id": task_id}
 
         except json.JSONDecodeError:
-            raise HTTPException(status_code=400, detail="无效的JSON参数")
+            raise HTTPException(status_code=400, detail="Invalid JSON parameters")
         except ValueError as e:
             raise HTTPException(status_code=400, detail=str(e))
 
     def _validate_task_params(self, params: dict, file: Optional[UploadFile]) -> None:
-        """验证任务参数的有效性"""
+        """Validate the task parameters"""
         if "type" not in params:
-            raise ValueError("缺少任务类型参数")
+            raise ValueError("Missing task type parameter")
 
         task_type = params["type"]
         if task_type not in [TaskType.URL, TaskType.PYTHON_APP, TaskType.PYTHON_WEB, TaskType.STREAMLIT]:
-            raise ValueError("无效的任务类型")
+            raise ValueError("Invalid task type")
 
         if task_type in [TaskType.PYTHON_APP, TaskType.PYTHON_WEB, TaskType.STREAMLIT] and not file:
-            raise ValueError("Python应用需要上传ZIP文件")
+            raise ValueError("Python application requires a ZIP file upload")
 
         if task_type == TaskType.URL and "url" not in params:
-            raise ValueError("URL类型任务需要提供url参数")
+            raise ValueError("URL type task requires a url parameter")
 
     def _create_task_info(self, task_id: str, params: dict, file: Optional[UploadFile]) -> dict:
-        """创建任务信息字典"""
+        """Create task information dictionary"""
         task_info = {
             "id": task_id,
             "type": params["type"],
@@ -403,13 +405,13 @@ class TaskManager:
         return task_info
 
     def _ensure_worker_running(self):
-        """确保后台任务处理器正在运行"""
+        """Ensure the background task processor is running"""
         if not self.is_worker_running:
             self.is_worker_running = True
             asyncio.create_task(self.process_tasks())
 
     async def get_task_status(self, task_id: str):
-        """查询任务状态接口"""
+        """Task status query interface"""
         task = self.tasks.get(task_id)
         if not task:
             return JSONResponse(status_code=404, content={"error": "Task not found"})
@@ -422,7 +424,7 @@ class TaskManager:
         }
 
     async def get_task_result(self, task_id: str):
-        """查询任务结果接口"""
+        """Task result query interface"""
         task = self.tasks.get(task_id)
         if not task:
             return JSONResponse(status_code=404, content={"error": "Task not found"})
@@ -434,14 +436,14 @@ class TaskManager:
 
     async def _execute_conda_create(self, conda_path: str, env_name: str) -> bool:
         """
-        执行conda create命令创建新环境
+        Execute conda create command to create a new environment
 
         Args:
-            conda_path: conda可执行文件路径
-            env_name: 要创建的环境名称
+            conda_path: Path to conda executable
+            env_name: Name of the environment to create
 
         Returns:
-            bool: 环境创建是否成功
+            bool: Whether the environment creation was successful
         """
         try:
             process = await asyncio.create_subprocess_exec(
@@ -458,27 +460,27 @@ class TaskManager:
 
             if process.returncode != 0:
                 stderr_text = self._decode_output(stderr)
-                logger.error(f"创建conda环境失败: {stderr_text}")
+                logger.error(f"Failed to create conda environment: {stderr_text}")
                 return False
 
-            logger.info("conda环境创建成功")
+            logger.info("Conda environment created successfully")
             return True
 
         except Exception as e:
-            logger.error(f"执行conda create命令时发生错误: {str(e)}")
+            logger.error(f"Error executing conda create command: {str(e)}")
             return False
 
     async def _install_requirements(self, conda_path: str, env_name: str, requirements_path: str) -> bool:
         """
-        在指定的conda环境中安装依赖
+        Install dependencies in the specified conda environment
 
         Args:
-            conda_path: conda可执行文件路径
-            env_name: 环境名称
-            requirements_path: requirements.txt文件路径
+            conda_path: Path to conda executable
+            env_name: Environment name
+            requirements_path: Path to requirements.txt file
 
         Returns:
-            bool: 依赖安装是否成功
+            bool: Whether the dependency installation was successful
         """
         try:
             process = await asyncio.create_subprocess_exec(
@@ -497,27 +499,27 @@ class TaskManager:
             )
             stdout, stderr = await process.communicate()
 
-            # 检查安装结果
+            # Check installation results
             if stderr:
                 stderr_text = self._decode_output(stderr)
-                logger.warning(f"安装依赖时出现警告: {stderr_text}")
+                logger.warning(f"Warnings during dependency installation: {stderr_text}")
 
-            logger.info("依赖安装完成")
+            logger.info("Dependencies installation completed")
             return True
 
         except Exception as e:
-            logger.error(f"安装依赖时发生错误: {str(e)}")
+            logger.error(f"Error installing dependencies: {str(e)}")
             return False
 
     def _decode_output(self, output: bytes) -> str:
         """
-        解码命令输出，处理不同编码
+        Decode command output, handling different encodings
 
         Args:
-            output: 命令输出的字节串
+            output: Command output bytes
 
         Returns:
-            str: 解码后的文本
+            str: Decoded text
         """
         try:
             return output.decode("utf-8", errors="replace")
@@ -528,7 +530,7 @@ class TaskManager:
                 return str(output)
 
     def run(self, host="0.0.0.0", port=8888):
-        """启动服务器"""
+        """Start the server"""
         uvicorn.run(self.app, host=host, port=port)
 
 

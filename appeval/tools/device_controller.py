@@ -4,7 +4,7 @@
 @Time    : 2025/02/12
 @Author  : tanghaoming
 @File    : device_controller.py
-@Desc    : 设备控制工具类，用于操作Android和PC设备
+@Desc    : Device control utility class for operating Android and PC devices
 """
 
 import re
@@ -23,36 +23,36 @@ from pywinauto.win32structures import RECT
 
 
 class BaseController:
-    """基础设备控制器类
+    """Base device controller class
 
-    为Android和PC控制器提供通用功能。
+    Provides common functionality for Android and PC controllers.
     """
 
     def get_screenshot(self, filepath: str = "./screenshot/screenshot.jpg") -> None:
-        """获取屏幕截图
+        """Take a screenshot
 
         Args:
-            filepath: 截图保存路径
+            filepath: Path to save the screenshot
         """
         try:
             Path(filepath).parent.mkdir(parents=True, exist_ok=True)
             self._take_screenshot(filepath)
-            logger.info(f"截图已保存至: {filepath}")
+            logger.info(f"Screenshot saved to: {filepath}")
         except Exception as e:
-            logger.error(f"截图失败: {str(e)}")
+            logger.error(f"Screenshot failed: {str(e)}")
 
     def _take_screenshot(self, filepath: str) -> None:
-        """实际执行截图的方法，由子类实现"""
+        """Implementation method for taking screenshots, to be implemented by subclasses"""
         raise NotImplementedError
 
     def run_action(self, action: str) -> None:
-        """执行动作
+        """Execute action
 
         Args:
-            action: 动作描述字符串
+            action: Action description string
         """
-        logger.info(f"执行动作: {action}")
-        # 使用列表保持动作顺序
+        logger.info(f"Executing action: {action}")
+        # Use list to maintain action order
         action_handlers = [
             ("Run", lambda x: hasattr(self, "_handle_run") and self._handle_run(x)),
             ("Tell", lambda x: hasattr(self, "_handle_tell") and self._handle_tell(x)),
@@ -64,19 +64,19 @@ class BaseController:
                 break
 
     def _handle_tell(self, action: str) -> None:
-        """处理'Tell'动作"""
-        # 获取action中的text
+        """Handle 'Tell' action"""
+        # Get text from action
         text = self._extract_code(action)
-        logger.info(f"处理'Tell'动作: {text}")
+        logger.info(f"Handling 'Tell' action: {text}")
 
     def _extract_code(self, action: str) -> str:
-        """从动作字符串中提取代码
+        """Extract code from action string
 
         Args:
-            action: 动作字符串
+            action: Action string
 
         Returns:
-            str: 提取的代码
+            str: Extracted code
         """
         start = action.find("(")
         end = action.rfind(")")
@@ -85,72 +85,47 @@ class BaseController:
             return code.strip("```").replace("\n", "; ")
         return ""
 
-    def _parse_coordinates(self, action: str) -> Tuple[int, int]:
-        """解析坐标信息
-
-        Args:
-            action: 动作字符串
-
-        Returns:
-            Tuple[int, int]: 坐标元组
-        """
-        coords = action.split("(")[-1].split(")")[0].split(", ")
-        return int(coords[0]), int(coords[1])
-
-    def _parse_swipe_coordinates(self, action: str) -> Tuple[int, int, int, int]:
-        """解析滑动坐标信息
-
-        Args:
-            action: 动作字符串
-
-        Returns:
-            Tuple[int, int, int, int]: 起点和终点坐标
-        """
-        coord1 = action.split("Swipe (")[-1].split("), (")[0].split(", ")
-        coord2 = action.split("), (")[-1].split(")")[0].split(", ")
-        return (int(coord1[0]), int(coord1[1]), int(coord2[0]), int(coord2[1]))
-
     @staticmethod
     def _contains_chinese(text: str) -> bool:
-        """检查文本是否包含中文
+        """Check if text contains Chinese characters
 
         Args:
-            text: 要检查的文本
+            text: Text to check
 
         Returns:
-            bool: 是否包含中文
+            bool: Whether text contains Chinese characters
         """
         return any("\u4e00" <= char <= "\u9fff" for char in text)
 
 
 class AndroidController(BaseController):
-    """Android设备控制器类
+    """Android device controller class
 
-    提供Android设备的基本操作功能，包括点击、滑动、输入等。
+    Provides basic operations for Android devices, including clicking, swiping, input, etc.
     """
 
     def __init__(self):
-        """初始化Android控制器"""
+        """Initialize Android controller"""
         try:
-            self.device = u2.connect()  # 连接设备
+            self.device = u2.connect()  # Connect device
             u2.enable_pretty_logging()
-            self.device.set_input_ime(False)  # 切换输入法
+            self.device.set_input_ime(False)  # Switch input method
         except Exception as e:
-            logger.error(f"初始化Android控制器失败: {str(e)}")
+            logger.error(f"Failed to initialize Android controller: {str(e)}")
             raise
 
     def _take_screenshot(self, filepath: str) -> None:
-        """实现Android设备的截图功能"""
+        """Implement screenshot function for Android device"""
         self.device.screenshot(filepath)
 
     def get_screen_xml(self, location_info: str = "center") -> List[Dict]:
-        """获取屏幕XML信息
+        """Get screen XML information
 
         Args:
-            location_info: 位置信息格式('center'或'bbox')
+            location_info: Location information format ('center' or 'bbox')
 
         Returns:
-            List[Dict]: 包含元素信息的列表
+            List[Dict]: List containing element information
         """
         result = []
         screen_height = self.device.window_size()[1]
@@ -158,7 +133,7 @@ class AndroidController(BaseController):
         root = ET.fromstring(xml)
 
         def get_element_text(element: ET.Element) -> str:
-            """递归获取元素文本"""
+            """Recursively get element text"""
             if element.attrib.get("text"):
                 return element.attrib.get("text")
             for child in element:
@@ -200,61 +175,61 @@ class AndroidController(BaseController):
         return result
 
     def get_all_packages(self) -> List[str]:
-        """获取所有已安装应用包名
+        """Get all installed app package names
 
         Returns:
-            List[str]: 包名列表
+            List[str]: List of package names
         """
         return self.device.app_list()
 
     def get_current_app_package(self) -> str:
-        """获取当前运行应用的包名
+        """Get current running app's package name
 
         Returns:
-            str: 当前应用包名
+            str: Current app package name
         """
         return self.device.app_current()["package"]
 
     def open_app(self, package_name: str) -> bool:
-        """启动应用
+        """Launch application
 
         Args:
-            package_name: 应用包名
+            package_name: Application package name
 
         Returns:
-            bool: 启动是否成功
+            bool: Whether launch was successful
         """
         package_name = package_name.split(":")[-1].strip()
         try:
             installed_packages = self.get_all_packages()
             if package_name not in installed_packages:
-                logger.error(f"应用 {package_name} 未安装")
+                logger.error(f"App {package_name} is not installed")
                 return False
 
             self.device.app_start(package_name)
-            logger.info(f"成功启动应用: {package_name}")
+            logger.info(f"Successfully launched app: {package_name}")
             return True
 
         except Exception as e:
-            logger.error(f"启动应用失败: {str(e)}")
+            logger.error(f"Failed to launch app: {str(e)}")
             return False
 
     def _handle_run(self, action: str) -> None:
-        """处理'Run'动作"""
+        """Handle 'Run' action"""
         code = self._extract_code(action)
         code = code.replace("self.device.tap(", "self.device.click(")
         code = self._add_ime_control(code)
-        logger.info(f"执行代码: {code}")
+        logger.info(f"Executing code: {code}")
         exec(code)
 
     def _add_ime_control(self, code: str) -> str:
-        """为代码添加输入法控制
+        """Add input method control to code
 
         Args:
-            code: 原始代码
+            code: Original code
 
         Returns:
-            str: 添加输入法控制后的代码
+            str: Code with input method control added
         """
         matches = re.finditer(r'self\.device\.send_keys\("""(.*?)"""(?:, clear=True)?\);', code)
         modified_code = code
@@ -274,9 +249,9 @@ class AndroidController(BaseController):
 
 
 class PCController(BaseController):
-    """PC设备控制器类
+    """PC device controller class
 
-    提供Windows/Mac设备的基本操作功能。
+    Provides basic operations for Windows/Mac devices.
     """
 
     def __init__(
@@ -285,33 +260,33 @@ class PCController(BaseController):
         ctrl_key: str = "ctrl",
         pc_type: str = "windows",
     ):
-        """初始化PC控制器
+        """Initialize PC controller
 
         Args:
-            search_keys: 搜索快捷键
-            ctrl_key: 控制键
-            pc_type: 操作系统类型
+            search_keys: Search shortcut keys
+            ctrl_key: Control key
+            pc_type: Operating system type
         """
         try:
             self.search_keys = search_keys
             self.ctrl_key = ctrl_key
             self.pc_type = pc_type.lower()
         except Exception as e:
-            logger.error(f"初始化PC控制器失败: {str(e)}")
+            logger.error(f"Failed to initialize PC controller: {str(e)}")
             raise
 
     def _take_screenshot(self, filepath: str) -> None:
-        """实现PC设备的截图功能"""
+        """Implement screenshot function for PC device"""
         screenshot = pyautogui.screenshot()
         screenshot.save(filepath)
 
     def open_app(self, name: str) -> None:
-        """打开应用
+        """Open application
 
         Args:
-            name: 应用名称
+            name: Application name
         """
-        logger.info(f"打开应用: {name}")
+        logger.info(f"Opening application: {name}")
         pyautogui.hotkey(*self.search_keys)
         time.sleep(0.5)
 
@@ -325,20 +300,20 @@ class PCController(BaseController):
         pyautogui.press("enter")
 
     def get_screen_xml(self, location_info: str = "center") -> List[Dict]:
-        """获取屏幕元素信息
+        """Get screen element information
 
         Args:
-            location_info: 位置信息格式('center'或'bbox')
+            location_info: Location information format ('center' or 'bbox')
 
         Returns:
-            List[Dict]: 元素信息列表
+            List[Dict]: List of element information
         """
         if self.pc_type == "mac":
-            logger.warning("Mac OS暂未支持")
+            logger.warning("Mac OS not supported yet")
             return []
         t1 = time.time()
         try:
-            # 获取所有可见的非任务栏窗口
+            # Get all visible non-taskbar windows
             windows = [
                 w
                 for w in Desktop(backend="uia").windows()
@@ -346,53 +321,53 @@ class PCController(BaseController):
             ]
 
             if not windows:
-                logger.warning("未找到活动窗口")
+                logger.warning("No active window found")
                 return []
 
-            active_window = windows[0]  # 获取第一个符合条件的窗口
+            active_window = windows[0]  # Get first matching window
             visible_rect = active_window.rectangle()
             t2 = time.time()
-            logger.info(f"获取屏幕元素信息时间: {t2 - t1} 秒")
+            logger.info(f"Time taken to get screen element info: {t2 - t1} seconds")
             processor = WindowsElementProcessor(visible_rect, location_info)
             return processor.process_element(active_window)
 
         except Exception as e:
-            logger.error(f"获取屏幕元素信息失败: {str(e)}")
+            logger.error(f"Failed to get screen element info: {str(e)}")
             return []
 
     def _handle_run(self, action: str) -> None:
-        """处理'Run'动作"""
+        """Handle 'Run' action"""
         code = self._extract_code(action)
-        logger.info(f"执行代码: {code}")
+        logger.info(f"Executing code: {code}")
         exec(code)
 
 
 class WindowsElementProcessor:
-    """Windows UI元素处理器类
+    """Windows UI element processor class
 
-    用于分析和处理Windows窗口中的UI元素。
+    Used for analyzing and processing UI elements in Windows windows.
     """
 
     def __init__(self, visible_rect: RECT, location_info: str = "center"):
-        """初始化Windows元素处理器
+        """Initialize Windows element processor
 
         Args:
-            visible_rect (RECT): 可见区域的矩形范围
-            location_info (str): 位置信息格式，可选值为 'center' 或 'bbox'
+            visible_rect (RECT): Visible area rectangle
+            location_info (str): Location information format, can be 'center' or 'bbox'
         """
         self.visible_rect = visible_rect
         self.location_info = location_info
         self.SPECIAL_CONTROL_TYPES = {"Hyperlink", "TabItem", "Button", "ComboBox", "ScrollBar", "Edit", "ToolBar"}
 
     def process_element(self, element: UIAWrapper, depth: int = 0) -> List[Dict[str, Union[Tuple[int, ...], str]]]:
-        """处理UI元素
+        """Process UI element
 
         Args:
-            element (UIAWrapper): 要处理的UI元素
-            depth (int): 递归深度，默认为0
+            element (UIAWrapper): UI element to process
+            depth (int): Recursion depth, defaults to 0
 
         Returns:
-            List[Dict[str, Union[Tuple[int, ...], str]]]: 元素信息列表，每个元素包含坐标和文本信息
+            List[Dict[str, Union[Tuple[int, ...], str]]]: List of element information, each containing coordinates and text
         """
         current_elements_info = []
         rect = element.rectangle()
@@ -419,13 +394,13 @@ class WindowsElementProcessor:
         return current_elements_info
 
     def _is_element_visible(self, element_rect: RECT) -> bool:
-        """检查元素是否可见
+        """Check if element is visible
 
         Args:
-            element_rect (RECT): 元素的矩形区域
+            element_rect (RECT): Element's rectangle area
 
         Returns:
-            bool: 如果元素在可见区域内返回True，否则返回False
+            bool: Returns True if element is in visible area, False otherwise
         """
         return not (
             element_rect.right < self.visible_rect.left
@@ -435,15 +410,15 @@ class WindowsElementProcessor:
         )
 
     def _calculate_coordinates(self, rect: RECT) -> Union[Tuple[int, int], Tuple[int, int, int, int]]:
-        """计算元素坐标
+        """Calculate element coordinates
 
         Args:
-            rect (RECT): 元素的矩形区域
+            rect (RECT): Element's rectangle area
 
         Returns:
             Union[Tuple[int, int], Tuple[int, int, int, int]]:
-                如果location_info为'center'则返回中心点坐标(x, y)
-                如果location_info为'bbox'则返回边界框坐标(left, top, right, bottom)
+                Returns center point coordinates (x, y) if location_info is 'center'
+                Returns bounding box coordinates (left, top, right, bottom) if location_info is 'bbox'
         """
         if self.location_info == "center":
             return ((rect.left + rect.right) // 2, (rect.top + rect.bottom) // 2)
@@ -451,50 +426,32 @@ class WindowsElementProcessor:
 
 
 class ControllerTool:
-    """设备控制工具类
+    """Device control tool class
 
-    提供统一的设备控制接口，支持Android和PC设备。
+    Provides unified device control interface, supporting Android and PC devices.
     """
 
     def __init__(self, platform: str = "Android", **kwargs):
         self.controller = AndroidController() if platform == "Android" else PCController(**kwargs)
 
     def __getattr__(self, name):
-        """代理所有方法调用到具体控制器"""
+        """Proxy all method calls to specific controller"""
         return getattr(self.controller, name)
 
 
 def create_controller(platform: str = "Android", **kwargs) -> ControllerTool:
-    """创建控制器工具实例
+    """Create controller tool instance
 
     Args:
-        platform: 平台类型
-        **kwargs: 其他参数
+        platform: Platform type
+        **kwargs: Other parameters
 
     Returns:
-        ControllerTool: 控制器工具实例
+        ControllerTool: Controller tool instance
 
     Raises:
-        ValueError: 设备类型无效时抛出
+        ValueError: Raised when device type is invalid
     """
     if platform not in ["Android", "Windows"]:
-        raise ValueError(f"不支持的设备类型: {platform}")
+        raise ValueError(f"Unsupported device type: {platform}")
     return ControllerTool(platform, **kwargs)
-
-
-if __name__ == "__main__":
-    # 测试代码
-    def test_android():
-        controller = create_controller("Android")
-        controller.get_screenshot()
-        elements = controller.get_screen_xml()
-        print("Android元素信息:", elements)
-
-    def test_pc():
-        controller = create_controller("Windows", search_keys=("win", "s"), ctrl_key="ctrl")
-        controller.get_screenshot()
-        elements = controller.get_screen_xml()
-        print("PC元素信息:", elements)
-
-    # test_android()
-    # test_pc()
