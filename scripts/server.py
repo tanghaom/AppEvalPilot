@@ -38,6 +38,7 @@ from fastapi.responses import JSONResponse
 from loguru import logger
 
 from appeval.roles.test_runner import AppEvalRole
+from appeval.utils.window_utils import kill_process
 
 
 class MockAppEvalRole:
@@ -171,7 +172,17 @@ class TaskManager:
         return "conda"
 
     async def run_background_service(self, env_name: str, work_dir: str, start_path: str, task_type: str) -> int:
-        """Run service in the background, return process ID"""
+        """Run service in the background, return process ID
+        
+        Args:
+            env_name: Environment name
+            work_dir: Working directory
+            start_path: Start path
+            task_type: Task type
+
+        Returns:
+            int: Process ID (PID) of the started service
+        """
         try:
             if os.name == "nt":  # Windows system
                 # Get conda installation path
@@ -211,27 +222,6 @@ class TaskManager:
         except Exception as e:
             logger.error(f"Error running background service: {str(e)}")
             return -1
-
-    async def kill_process(self, pid: int) -> bool:
-        """Terminate the specified process"""
-        try:
-            if os.name == "nt":  # Windows system
-                # Use psutil to ensure the process and its children are all terminated
-                parent = psutil.Process(pid)
-                for child in parent.children(recursive=True):
-                    child.kill()
-                parent.kill()
-            else:  # Linux/Unix system
-                cmd = f"kill {pid}"
-                process = await asyncio.create_subprocess_shell(
-                    cmd, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE
-                )
-                await process.communicate()
-            logger.info(f"Process {pid} killed")
-            return True
-        except Exception as e:
-            logger.error(f"Error killing process: {str(e)}")
-            return False
 
     async def process_tasks(self):
         """Background task processor"""
@@ -280,7 +270,7 @@ class TaskManager:
                     result = json.loads(result.content)
 
                     # Shut down background service
-                    await self.kill_process(pid)
+                    await kill_process(pid)
 
                     time.sleep(4)
 
@@ -363,7 +353,15 @@ class TaskManager:
             raise HTTPException(status_code=400, detail=str(e))
 
     def _validate_task_params(self, params: dict, file: Optional[UploadFile]) -> None:
-        """Validate the task parameters"""
+        """Validate the task parameters
+        
+        Args:
+            params: Task parameters
+            file: Uploaded ZIP file (required for Python applications)
+
+        Raises:
+            ValueError: When parameters are invalid or missing
+        """
         if "type" not in params:
             raise ValueError("Missing task type parameter")
 
@@ -378,7 +376,16 @@ class TaskManager:
             raise ValueError("URL type task requires a url parameter")
 
     def _create_task_info(self, task_id: str, params: dict, file: Optional[UploadFile]) -> dict:
-        """Create task information dictionary"""
+        """Create task information dictionary
+        
+        Args:
+            task_id: Task ID
+            params: Task parameters
+            file: Uploaded ZIP file (required for Python applications)
+
+        Returns:
+            Dictionary containing task information
+        """
         task_info = {
             "id": task_id,
             "type": params["type"],
@@ -411,7 +418,14 @@ class TaskManager:
             asyncio.create_task(self.process_tasks())
 
     async def get_task_status(self, task_id: str):
-        """Task status query interface"""
+        """Task status query interface
+        
+        Args:
+            task_id: Task ID
+
+        Returns:
+            Dictionary containing task status information
+        """
         task = self.tasks.get(task_id)
         if not task:
             return JSONResponse(status_code=404, content={"error": "Task not found"})
@@ -424,7 +438,14 @@ class TaskManager:
         }
 
     async def get_task_result(self, task_id: str):
-        """Task result query interface"""
+        """Task result query interface
+        
+        Args:
+            task_id: Task ID
+
+        Returns:
+            Dictionary containing task result information
+        """
         task = self.tasks.get(task_id)
         if not task:
             return JSONResponse(status_code=404, content={"error": "Task not found"})
@@ -530,7 +551,12 @@ class TaskManager:
                 return str(output)
 
     def run(self, host="0.0.0.0", port=8888):
-        """Start the server"""
+        """Start the server
+        
+        Args:
+            host: Host address
+            port: Port number
+        """
         uvicorn.run(self.app, host=host, port=port)
 
 

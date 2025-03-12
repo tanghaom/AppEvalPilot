@@ -45,8 +45,7 @@ class IconDetector:
             self.model = None
             return
             
-        # Initialize model normally
-        self.model = YOLO(model_path) if model_path else YOLO("yolov8n.pt")
+        self.model = self._init_model()
 
     def _init_model(self) -> YOLO:
         """Initialize and return YOLO model"""

@@ -21,7 +21,7 @@ from appeval.actions.case_generator import CaseGenerator
 from appeval.prompts.appeval import batch_check_prompt
 from appeval.roles.osagent import OSAgent
 from appeval.utils.excel_json_converter import list_to_json, convert_json_to_excel, make_json_single
-from appeval.utils.window_utils import kill_windows, start_windows
+from appeval.utils.window_utils import kill_windows, start_windows, kill_process
 
 
 class AppEvalContext(RoleContext):
@@ -193,12 +193,13 @@ class AppEvalRole(Role):
 
                 if "test_cases" in task_info:
                     if "url" in task_info:
-                        await start_windows(task_info["url"])
+                        pid = await start_windows(task_info["url"])
                     await asyncio.sleep(5)
 
                     task_id_case_number = len(test_cases[task_id]["test_cases"])
                     await self.execute_batch_check(task_id, task_id_case_number, task_info)
-                    await kill_windows(["Chrome"])
+                    if "url" in task_info:
+                        await kill_process(pid)
 
             # 4. Output results to Excel (if case_excel_path is provided)
             if case_excel_path:
@@ -244,14 +245,18 @@ class AppEvalRole(Role):
             for task_id, task_info in test_cases.items():
                 self.rc.osagent.log_dirs = f"work_dirs/{self.rc.date_str}/{task_id}"
 
+                await self.rc.osagent.run("tell me the current time")
+                await kill_windows(["Chrome"])
+
                 if "test_cases" in task_info:
                     if "url" in task_info:
-                        await start_windows(task_info["url"])
+                        pid = await start_windows(task_info["url"])
                     await asyncio.sleep(5)
 
                     task_id_case_number = len(test_cases[task_id]["test_cases"])
                     await self.execute_batch_check(task_id, task_id_case_number, task_info)
-                    await kill_windows(["Chrome"])
+                    if "url" in task_info:
+                        await kill_process(pid)
 
             # 4. Read results
             with open(self.rc.json_file, "r", encoding="utf-8") as f:
