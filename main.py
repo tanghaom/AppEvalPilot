@@ -49,7 +49,7 @@ Profile and introduction display module, used to introduce my background and pro
 4. Skill tag cloud display, intuitively presenting the skills and expertise I possess.
 Social media link list for quick access to my social media platforms.
 6. PDF resume download button, allowing visitors to download my resume.
-Responsive design ensures that the website displays well on desktop (greater than 1024px) and mobile (less than 768px) ends.
+Responsive design ensures that the website displays well on desktop (greater than 1024px).
 Below is my input material:
         """
         json_path = "data/test_cases/ProfessionalPortfolio.json"
@@ -85,8 +85,8 @@ async def main():
     await run_single_test()
 
     # Run batch test example
-    logger.info("Starting to execute batch test...")
-    await run_batch_test()
+    # logger.info("Starting to execute batch test...")
+    # await run_batch_test()
 
 
 if __name__ == "__main__":

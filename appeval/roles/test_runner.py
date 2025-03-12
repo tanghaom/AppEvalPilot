@@ -37,7 +37,6 @@ class AppEvalContext(RoleContext):
     json_file: str = ""
     env_process: Optional[Any] = None
     agent_params: Dict = Field(default_factory=dict)
-    osagent: Optional[OSAgent] = None
     test_generator: Optional[CaseGenerator] = None
 
 
@@ -50,6 +49,7 @@ class AppEvalRole(Role):
     constraints: str = "Ensure accuracy and efficiency of test execution"
 
     rc: AppEvalContext = Field(default_factory=AppEvalContext)
+    osagent: Optional[OSAgent] = None
 
     def __init__(self, json_file: str, **kwargs):
         super().__init__()
@@ -89,7 +89,7 @@ class AppEvalRole(Role):
             "Please use the Tell action to report the results of all test cases before executing Stop"
         )
 
-        self.rc.osagent = OSAgent(
+        self.osagent = OSAgent(
             platform=kwargs.get("os_type", "Windows"),
             max_iters=40,
             use_ocr=self.rc.agent_params["use_ocr"],
@@ -112,12 +112,12 @@ class AppEvalRole(Role):
         """Execute single verification condition"""
         logger.info(f"Start testing project {task_id}")
         instruction = f"Please complete the following tasks，And after completion, use the Tell action to inform me of the results of all the test cases at once: {check_list}\n"
-        await self.rc.osagent.run(instruction)
+        await self.osagent.run(instruction)
 
         # Get action history
-        action_history = self.rc.osagent.rc.action_history
-        task_list = self.rc.osagent.rc.task_list
-        memory = self.rc.osagent.rc.memory
+        action_history = self.osagent.rc.action_history
+        task_list = self.osagent.rc.task_list
+        memory = self.osagent.rc.memory
 
         await self.write_batch_res_to_json(task_id, task_id_case_number, action_history, task_list, memory)
 
@@ -193,12 +193,12 @@ class AppEvalRole(Role):
                 test_cases = json.load(f)
 
             for task_id, task_info in test_cases.items():
-                self.rc.osagent.log_dirs = f"work_dirs/{self.rc.date_str}/{task_id}"
+                self.osagent.log_dirs = f"work_dirs/{self.rc.date_str}/{task_id}"
 
                 if "test_cases" in task_info:
                     if "url" in task_info:
                         pid = await start_windows(task_info["url"])
-                    await asyncio.sleep(5)
+                    await asyncio.sleep(10)
 
                     task_id_case_number = len(test_cases[task_id]["test_cases"])
                     await self.execute_batch_check(task_id, task_id_case_number, task_info)
@@ -247,15 +247,12 @@ class AppEvalRole(Role):
                 test_cases = json.load(f)
 
             for task_id, task_info in test_cases.items():
-                self.rc.osagent.log_dirs = f"work_dirs/{self.rc.date_str}/{task_id}"
-
-                await self.rc.osagent.run("tell me the current time")
-                await kill_windows(["Chrome"])
+                self.osagent.log_dirs = f"work_dirs/{self.rc.date_str}/{task_id}"
 
                 if "test_cases" in task_info:
                     if "url" in task_info:
                         pid = await start_windows(task_info["url"])
-                    await asyncio.sleep(5)
+                    await asyncio.sleep(10)
 
                     task_id_case_number = len(test_cases[task_id]["test_cases"])
                     await self.execute_batch_check(task_id, task_id_case_number, task_info)
