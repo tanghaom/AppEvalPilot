@@ -44,18 +44,33 @@ class IconDetector:
     def _download_model(self):
         """Download model file"""
         logger.info("Downloading OmniParser icon detection model...")
+        logger.info("If the original download fails, will automatically try from mirror sites")
         self.MODEL_PATH.parent.mkdir(parents=True, exist_ok=True)
 
-        try:
-            with requests.get(self.MODEL_URL, stream=True) as r:
-                r.raise_for_status()
-                with open(self.MODEL_PATH, "wb") as f:
-                    for chunk in r.iter_content(chunk_size=8192):
-                        f.write(chunk)
-            logger.info("OmniParser model download completed")
-        except Exception as e:
-            logger.error(f"Model download failed: {e}")
-            raise
+        # 主URL和备用镜像URL
+        urls = [
+            self.MODEL_URL,
+            self.MODEL_URL.replace("https://huggingface.co", "https://hf-mirror.com"),
+            "https://gitee.com/hf-models/OmniParser-v2.0/raw/main/icon_detect/model.pt"
+        ]
+        
+        for url in urls:
+            try:
+                logger.info(f"Trying to download model from: {url}")
+                with requests.get(url, stream=True) as r:
+                    r.raise_for_status()
+                    with open(self.MODEL_PATH, "wb") as f:
+                        for chunk in r.iter_content(chunk_size=8192):
+                            f.write(chunk)
+                logger.info("OmniParser model download completed")
+                return  # 下载成功，退出函数
+            except Exception as e:
+                logger.warning(f"Model download from {url} failed: {e}")
+                continue  # 尝试下一个URL
+        
+        # 如果所有URL都失败
+        logger.error("All download attempts failed")
+        raise Exception("Failed to download model from all sources")
 
     @staticmethod
     def _calculate_area(box: BoundingBox) -> float:
