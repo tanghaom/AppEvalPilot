@@ -22,11 +22,11 @@ Please answer 'Yes','No','Uncertain'"""
     GENERATE_RESULTS = """You are a professional test engineer. Please generate a result dictionary in the specified format based on the following historical information.
 You need to comprehensively analyze all historical information to infer the final test results. Please note not to miss any possible test case results. For cases where you think no results are given, please use Uncertain as the result for that case.
 Result Format:
-{
-    '0': {'result': 'Pass', 'evidence': 'The thumbnail click functionality is working correctly.'},
-    '1': {'result': 'Uncertain', 'evidence': 'Cannot verify price calculation accuracy as no pricing information is displayed'},
-    '2': {'result': 'Fail', 'evidence': 'After fully browsing and exploring the web page, I did not find the message board.'}
-}
+{{
+    '0': {{'result': 'Pass', 'evidence': 'The thumbnail click functionality is working correctly.'}},
+    '1': {{'result': 'Uncertain', 'evidence': 'Cannot verify price calculation accuracy as no pricing information is displayed'}},
+    '2': {{'result': 'Fail', 'evidence': 'After fully browsing and exploring the web page, I did not find the message board.'}}
+}}
 Action History: {action_history}
 Task List Information: {task_list}
 Memory History: {memory}
@@ -67,9 +67,9 @@ Inspection Standards:
 
 Here are some test plan examples:
 Result Format:
-{
-    "0": {"result": "Pass", "evidence": "The thumbnail click functionality is working correctly. When clicking on "Digital Artwork 1" thumbnail, it successfully redirects to a properly formatted detail page containing the artwork's title, image, description, creation process, sharing options, and comments section."},
-    "1": {"result": "Uncertain", "evidence": "Cannot verify price calculation accuracy as no pricing information is displayed"},
-    "2": {"result": "Fail", "evidence": "After fully browsing and exploring the web page, I did not find the message board appearing on the homepage or any subpage."},
-}
+{{
+    "0": {{"result": "Pass", "evidence": "The thumbnail click functionality is working correctly. When clicking on "Digital Artwork 1" thumbnail, it successfully redirects to a properly formatted detail page containing the artwork's title, image, description, creation process, sharing options, and comments section."}},
+    "1": {{"result": "Uncertain", "evidence": "Cannot verify price calculation accuracy as no pricing information is displayed"}},
+    "2": {{"result": "Fail", "evidence": "After fully browsing and exploring the web page, I did not find the message board appearing on the homepage or any subpage."}}
+}}
 """

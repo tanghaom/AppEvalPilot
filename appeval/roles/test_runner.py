@@ -304,4 +304,5 @@ class AppEvalRole(Role):
                 return Message(content=json.dumps("Test execution completed"), cause_by=Action)
         except Exception as e:
             logger.error(f"Test execution failed: {str(e)}")
+            logger.exception("Detailed error information")
             return Message(content=json.dumps(f"Test execution failed: {str(e)}"), cause_by=Action)
