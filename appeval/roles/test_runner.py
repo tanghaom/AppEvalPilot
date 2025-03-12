@@ -20,8 +20,12 @@ from pydantic import ConfigDict, Field
 from appeval.actions.case_generator import CaseGenerator
 from appeval.prompts.appeval import batch_check_prompt
 from appeval.roles.osagent import OSAgent
-from appeval.utils.excel_json_converter import list_to_json, convert_json_to_excel, make_json_single
-from appeval.utils.window_utils import kill_windows, start_windows, kill_process
+from appeval.utils.excel_json_converter import (
+    convert_json_to_excel,
+    list_to_json,
+    make_json_single,
+)
+from appeval.utils.window_utils import kill_process, kill_windows, start_windows
 
 
 class AppEvalContext(RoleContext):

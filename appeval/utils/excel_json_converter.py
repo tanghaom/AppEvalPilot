@@ -8,11 +8,11 @@
 import ast
 import json
 import os
-import re
-from typing import List, Optional
+from typing import List
 
 import pandas as pd
 from metagpt.logs import logger
+
 
 def reset_json_results(json_file_path: str) -> None:
     """
@@ -44,6 +44,7 @@ def reset_json_results(json_file_path: str) -> None:
     except Exception as e:
         logger.error(f"Error processing file {json_file_path}: {str(e)}")
         raise
+
 
 def list_to_json(excel_file: str, json_file: str) -> None:
     """
@@ -85,6 +86,7 @@ def list_to_json(excel_file: str, json_file: str) -> None:
     with open(json_file, "w", encoding="utf-8") as f:
         json.dump(output_data, f, indent=4, ensure_ascii=False)
 
+
 def convert_json_to_excel(json_file_path: str, excel_file_path: str) -> None:
     """
     Read JSON file and convert it to Excel table.\n
@@ -113,6 +115,7 @@ def convert_json_to_excel(json_file_path: str, excel_file_path: str) -> None:
 
     df = pd.DataFrame(excel_data)
     df.to_excel(excel_file_path, index=False)
+
 
 def make_json_single(case_name: str, url: str, test_cases: List[str], json_path: str) -> None:
     """

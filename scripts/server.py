@@ -31,7 +31,6 @@ import zipfile
 from datetime import datetime
 from typing import Dict, Optional
 
-import psutil
 import uvicorn
 from fastapi import FastAPI, Form, HTTPException, UploadFile
 from fastapi.responses import JSONResponse
@@ -173,7 +172,7 @@ class TaskManager:
 
     async def run_background_service(self, env_name: str, work_dir: str, start_path: str, task_type: str) -> int:
         """Run service in the background, return process ID
-        
+
         Args:
             env_name: Environment name
             work_dir: Working directory
@@ -354,7 +353,7 @@ class TaskManager:
 
     def _validate_task_params(self, params: dict, file: Optional[UploadFile]) -> None:
         """Validate the task parameters
-        
+
         Args:
             params: Task parameters
             file: Uploaded ZIP file (required for Python applications)
@@ -377,7 +376,7 @@ class TaskManager:
 
     def _create_task_info(self, task_id: str, params: dict, file: Optional[UploadFile]) -> dict:
         """Create task information dictionary
-        
+
         Args:
             task_id: Task ID
             params: Task parameters
@@ -419,7 +418,7 @@ class TaskManager:
 
     async def get_task_status(self, task_id: str):
         """Task status query interface
-        
+
         Args:
             task_id: Task ID
 
@@ -439,7 +438,7 @@ class TaskManager:
 
     async def get_task_result(self, task_id: str):
         """Task result query interface
-        
+
         Args:
             task_id: Task ID
 
@@ -552,7 +551,7 @@ class TaskManager:
 
     def run(self, host="0.0.0.0", port=8888):
         """Start the server
-        
+
         Args:
             host: Host address
             port: Port number

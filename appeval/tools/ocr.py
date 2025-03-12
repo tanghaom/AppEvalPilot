@@ -16,6 +16,7 @@ from metagpt.logs import logger
 try:
     from modelscope.pipelines import pipeline
     from modelscope.utils.constant import Tasks
+
     _has_modelscope = True
 except ImportError:
     _has_modelscope = False
@@ -32,7 +33,7 @@ class OCRTool:
             self.detection_model = None
             self.recognition_model = None
             return
-            
+
         # Initialize text detection and recognition models
         self.detection_model = pipeline(Tasks.ocr_detection, model="iic/cv_resnet18_ocr-detection-db-line-level_damo")
         self.recognition_model = pipeline(
@@ -183,7 +184,7 @@ class OCRTool:
             logger.warning("Warning: modelscope package is not installed, OCR function is unavailable.")
             logger.warning("Please use 'pip install appeval[ultra]' to install the required dependencies.")
             return [], []
-        
+
         image_full = self._read_image(image_input)
         if not split:
             return self._ocr_on_image(image_full)

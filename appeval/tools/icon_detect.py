@@ -21,6 +21,7 @@ from tenacity import retry, retry_if_exception_type, stop_after_attempt, wait_fi
 
 try:
     from ultralytics import YOLO
+
     _has_ultralytics = True
 except ImportError:
     _has_ultralytics = False
@@ -44,7 +45,7 @@ class IconDetector:
             logger.warning("Please use 'pip install appeval[ultra]' to install the required dependencies.")
             self.model = None
             return
-            
+
         self.model = self._init_model()
 
     def _init_model(self) -> YOLO:
@@ -63,9 +64,9 @@ class IconDetector:
         urls = [
             self.MODEL_URL,
             self.MODEL_URL.replace("https://huggingface.co", "https://hf-mirror.com"),
-            "https://gitee.com/hf-models/OmniParser-v2.0/raw/main/icon_detect/model.pt"
+            "https://gitee.com/hf-models/OmniParser-v2.0/raw/main/icon_detect/model.pt",
         ]
-        
+
         for url in urls:
             try:
                 logger.info(f"Trying to download model from: {url}")
@@ -79,7 +80,7 @@ class IconDetector:
             except Exception as e:
                 logger.warning(f"Model download from {url} failed: {e}")
                 continue  # Try next URL
-        
+
         logger.error("All download attempts failed")
         raise Exception("Failed to download model from all sources")
 
@@ -146,12 +147,14 @@ class IconDetector:
 
         return filtered_boxes
 
-    def detect(self, image_path: Union[str, Path], conf_threshold: float = 0.25, iou_threshold: float = 0.3) -> Coordinates:
+    def detect(
+        self, image_path: Union[str, Path], conf_threshold: float = 0.25, iou_threshold: float = 0.3
+    ) -> Coordinates:
         if not _has_ultralytics:
             logger.error("Error: ultralytics package is not installed, icon detection function is unavailable.")
             logger.error("Please use 'pip install appeval[ultra]' to install the required dependencies.")
             return []
-            
+
         try:
             image = Image.open(image_path)
             predictions = (

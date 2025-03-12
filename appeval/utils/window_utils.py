@@ -2,8 +2,8 @@ import os
 import subprocess
 from typing import List, Optional
 
-from metagpt.logs import logger
 import psutil
+from metagpt.logs import logger
 from pywinauto import Desktop
 from pywinauto.application import WindowSpecification
 
@@ -35,7 +35,7 @@ async def start_windows(
     Args:
         target_url: URL to open in browser
         app_path: Path to browser executable, defaults to Chrome
-        
+
     Returns:
         int: Process ID (PID) of the started browser process
     """
@@ -95,7 +95,7 @@ async def kill_windows(target_names: List[str]) -> Optional[List[WindowSpecifica
 
 async def kill_process(pid: int) -> bool:
     """Terminate the specified process
-    
+
     Args:
         pid: Process ID (PID) of the process to terminate
 
