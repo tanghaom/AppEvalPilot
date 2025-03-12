@@ -12,13 +12,27 @@ from typing import Generator, List, Tuple, Union
 import cv2
 import numpy as np
 from metagpt.logs import logger
-from modelscope.pipelines import pipeline
-from modelscope.utils.constant import Tasks
+
+try:
+    from modelscope.pipelines import pipeline
+    from modelscope.utils.constant import Tasks
+    _has_modelscope = True
+except ImportError:
+    _has_modelscope = False
+    logger.warning("Warning: modelscope package is not installed, OCR function is unavailable.")
+    logger.warning("Please use 'pip install appeval[ultra]' to install the required dependencies.")
 
 
 class OCRTool:
     def __init__(self):
         """Initialize OCR tool class"""
+        if not _has_modelscope:
+            logger.warning("Warning: modelscope package is not installed, OCR function is unavailable.")
+            logger.warning("Please use 'pip install appeval[ultra]' to install the required dependencies.")
+            self.detection_model = None
+            self.recognition_model = None
+            return
+            
         # Initialize text detection and recognition models
         self.detection_model = pipeline(Tasks.ocr_detection, model="iic/cv_resnet18_ocr-detection-db-line-level_damo")
         self.recognition_model = pipeline(
@@ -165,6 +179,11 @@ class OCRTool:
             texts: List of recognized texts
             coordinates: List of text box coordinates [[x1,y1,x2,y2],...]
         """
+        if not _has_modelscope:
+            logger.warning("Warning: modelscope package is not installed, OCR function is unavailable.")
+            logger.warning("Please use 'pip install appeval[ultra]' to install the required dependencies.")
+            return [], []
+        
         image_full = self._read_image(image_input)
         if not split:
             return self._ocr_on_image(image_full)

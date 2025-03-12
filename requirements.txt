@@ -1,19 +1,5 @@
-# Deep Learning Frameworks
-torch==2.5.1
-torchvision==0.20.1
-tensorflow
-# tensorflow-gpu==2.9.1
-# keras==2.9.0
-# tf_keras==2.15.0
-tf_slim
-transformers
-modelscope
-
 # Computer Vision
 opencv-python
-ultralytics
-
-# Visualization
 matplotlib
 
 # UI Automation

@@ -18,9 +18,16 @@ from metagpt.provider.base_llm import BaseLLM
 from metagpt.utils.common import encode_image
 from PIL import Image
 from tenacity import retry, retry_if_exception_type, stop_after_attempt, wait_fixed
-from ultralytics import YOLO
 
-# 类型别名
+try:
+    from ultralytics import YOLO
+    _has_ultralytics = True
+except ImportError:
+    _has_ultralytics = False
+    logger.warning("Warning: ultralytics package is not installed, icon detection function is unavailable.")
+    logger.warning("Please use 'pip install appeval[ultra]' to install the required dependencies.")
+
+# Type aliases
 BoundingBox = List[int]  # [x1, y1, x2, y2]
 Coordinates = List[BoundingBox]
 
@@ -31,9 +38,15 @@ class IconDetector:
     MODEL_URL = "https://huggingface.co/microsoft/OmniParser-v2.0/resolve/main/icon_detect/model.pt"
     MODEL_PATH = DATA_PATH / "omniparser_icon_detect.pt"
 
-    def __init__(self):
-        """Initialize detector"""
-        self.model = self._init_model()
+    def __init__(self, model_path=None):
+        if not _has_ultralytics:
+            logger.warning("Warning: ultralytics package is not installed, icon detection function is unavailable.")
+            logger.warning("Please use 'pip install appeval[ultra]' to install the required dependencies.")
+            self.model = None
+            return
+            
+        # Initialize model normally
+        self.model = YOLO(model_path) if model_path else YOLO("yolov8n.pt")
 
     def _init_model(self) -> YOLO:
         """Initialize and return YOLO model"""
@@ -47,7 +60,7 @@ class IconDetector:
         logger.info("If the original download fails, will automatically try from mirror sites")
         self.MODEL_PATH.parent.mkdir(parents=True, exist_ok=True)
 
-        # 主URL和备用镜像URL
+        # Main URL and backup mirror URL
         urls = [
             self.MODEL_URL,
             self.MODEL_URL.replace("https://huggingface.co", "https://hf-mirror.com"),
@@ -63,12 +76,11 @@ class IconDetector:
                         for chunk in r.iter_content(chunk_size=8192):
                             f.write(chunk)
                 logger.info("OmniParser model download completed")
-                return  # 下载成功，退出函数
+                return  # Download successful, exit function
             except Exception as e:
                 logger.warning(f"Model download from {url} failed: {e}")
-                continue  # 尝试下一个URL
+                continue  # Try next URL
         
-        # 如果所有URL都失败
         logger.error("All download attempts failed")
         raise Exception("Failed to download model from all sources")
 
@@ -135,19 +147,12 @@ class IconDetector:
 
         return filtered_boxes
 
-    def detect(
-        self, image_path: Union[str, Path], conf_threshold: float = 0.25, iou_threshold: float = 0.3
-    ) -> Coordinates:
-        """Detect icons in the image
-
-        Args:
-            image_path: Image path
-            conf_threshold: Confidence threshold
-            iou_threshold: IoU threshold
-
-        Returns:
-            List[List[int]]: List of detected icon coordinates
-        """
+    def detect(self, image_path: Union[str, Path], conf_threshold: float = 0.25, iou_threshold: float = 0.3) -> Coordinates:
+        if not _has_ultralytics:
+            logger.error("Error: ultralytics package is not installed, icon detection function is unavailable.")
+            logger.error("Please use 'pip install appeval[ultra]' to install the required dependencies.")
+            return []
+            
         try:
             image = Image.open(image_path)
             predictions = (

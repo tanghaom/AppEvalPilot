@@ -1,14 +1,26 @@
 from setuptools import find_packages, setup
 
-# 读取 requirements.txt 中的依赖
 with open("requirements.txt") as f:
     required = f.read().splitlines()
+
+extras_require = {
+    "ultra": [
+        "torch==2.5.1",
+        "torchvision==0.20.1",
+        "tensorflow",
+        "tf_slim",
+        "transformers",
+        "modelscope",
+        "ultralytics",
+    ]
+}
 
 setup(
     name="appeval",
     version="0.1.0",
     packages=find_packages(),
     install_requires=required,
+    extras_require=extras_require,
     author="xxx",
     author_email="xxx",
     description="一个应用程序评估工具",
