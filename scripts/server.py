@@ -37,7 +37,7 @@ from fastapi import FastAPI, Form, HTTPException, UploadFile
 from fastapi.responses import JSONResponse
 from loguru import logger
 
-from appeval.roles.appeval_role import AppEvalRole
+from appeval.roles.test_runner import AppEvalRole
 
 
 class MockAppEvalRole:

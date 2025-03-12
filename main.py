@@ -4,23 +4,23 @@ from pathlib import Path
 
 from loguru import logger
 
-from appeval.roles.appeval_role import AppEvalRole
+from appeval.roles.test_runner import AppEvalRole
 
 
 async def run_batch_test():
     """Run batch test example"""
     try:
         # Set test related paths
-        project_excel = "data/test_cases/project_cases.xlsx"
+        project_excel = "data/test_cases/test.xlsx"
         case_excel = "data/test_cases/test_results.xlsx"
-        json_file = "data/test_cases/test_cases.json"
+        json_file = "data/test_cases/test_cases_1.json"
 
         # Initialize automated test role
         appeval = AppEvalRole(
             json_file=json_file,
             use_ocr=True,
             quad_split_ocr=True,
-            use_memory=True,
+            use_memory=False,
             use_reflection=True,
             use_chrome_debugger=True,
             extend_xml_infos=True,
@@ -42,14 +42,14 @@ async def run_single_test():
         case_name = "首页"
         url = "https://www.baidu.com"
         requirement = "中间有个输入框"
-        json_path = "data/test_cases/single_test.json"
+        json_path = "data/test_cases/single_test_0.json"
 
         # Initialize automated test role
         appeval = AppEvalRole(
             json_file=json_path,
             use_ocr=True,
             quad_split_ocr=True,
-            use_memory=True,
+            use_memory=False,
             use_reflection=True,
             use_chrome_debugger=True,
             extend_xml_infos=True,
@@ -71,12 +71,12 @@ async def main():
     Path("data/test_cases").mkdir(parents=True, exist_ok=True)
 
     # Run single test example
-    logger.info("Starting to execute single test...")
-    await run_single_test()
+    # logger.info("Starting to execute single test...")
+    # await run_single_test()
 
     # Run batch test example
-    # logger.info("Starting to execute batch test...")
-    # await run_batch_test()
+    logger.info("Starting to execute batch test...")
+    await run_batch_test()
 
 
 if __name__ == "__main__":

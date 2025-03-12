@@ -203,7 +203,7 @@ class CaseGenerator(Action):
                     continue
 
                 result = await self.check_result(task_desc, model_output)
-                df.at[index, "Auto Function Detection (Unreliable Cases Removed)"] = result
+                df.at[index, "Auto Function Detection"] = result
                 df.to_excel(excel_path, index=False)
 
         else:
