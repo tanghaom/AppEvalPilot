@@ -13,7 +13,7 @@ async def run_batch_test():
         # Set test related paths
         project_excel = "data/test_cases/test.xlsx"
         case_excel = "data/test_cases/test_results.xlsx"
-        json_file = "data/test_cases/test_cases_1.json"
+        json_file = "data/test_cases/test_results.json"
 
         # Initialize automated test role
         appeval = AppEvalRole(
@@ -39,10 +39,20 @@ async def run_single_test():
     """Run single test case example"""
     try:
         # Set test parameters
-        case_name = "首页"
-        url = "https://www.baidu.com"
-        requirement = "中间有个输入框"
-        json_path = "data/test_cases/single_test_0.json"
+        case_name = "Professional Portfolio"
+        url = "https://mgx.dev/app/pzo8wd"
+        requirement = """
+Please help me create a professional personal portfolio website. I will provide a PDF resume containing work experience, project experience, and a list of skills, as well as a professional portrait photo. The website needs to highlight my project experience, display my portrait at appropriate locations, and also hide sensitive salary information from the resume. The website will include the following features:
+Fixed navigation bar, including Home, Projects, Skills, Contact, and other page links.
+Profile and introduction display module, used to introduce my background and professional field.
+3. List of project experience cards, showing in detail the important projects I have participated in.
+4. Skill tag cloud display, intuitively presenting the skills and expertise I possess.
+Social media link list for quick access to my social media platforms.
+6. PDF resume download button, allowing visitors to download my resume.
+Responsive design ensures that the website displays well on desktop (greater than 1024px) and mobile (less than 768px) ends.
+Below is my input material:
+        """
+        json_path = "data/test_cases/ProfessionalPortfolio.json"
 
         # Initialize automated test role
         appeval = AppEvalRole(
@@ -71,8 +81,8 @@ async def main():
     Path("data/test_cases").mkdir(parents=True, exist_ok=True)
 
     # Run single test example
-    # logger.info("Starting to execute single test...")
-    # await run_single_test()
+    logger.info("Starting to execute single test...")
+    await run_single_test()
 
     # Run batch test example
     logger.info("Starting to execute batch test...")
