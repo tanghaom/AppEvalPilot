@@ -22,7 +22,7 @@ from tenacity import (
     wait_fixed,
 )
 
-from appeval.prompts.appeval import CasePrompts
+from appeval.prompts.test_runner import CasePrompts
 
 
 class CaseGenerator(Action):

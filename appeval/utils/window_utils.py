@@ -1,3 +1,10 @@
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+"""
+@Time    : 2025/03/11
+@File    : window_utils.py
+@Desc    : Window control and browser automation utilities
+"""
 import os
 import subprocess
 from typing import List, Optional

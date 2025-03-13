@@ -2,19 +2,17 @@
 
 ## Introduction
 
-AppEvalPilot is an automated evaluation tool for assessing software application functionality completeness. It's designed to work with desktop applications, mobile/app applications, and web applications.
+Welcome to the AppEvalPilot project, a cutting-edge automated evaluation framework designed to comprehensively assess software application functionalities across an array of platforms. Tailored for versatility, this framework adeptly handles the evaluation of desktop, mobile, and web-based applications under a unified methodology. 
 
-AppEvalPilot can help you automatically evaluate any application without human intervention, saving time and resources while maintaining high accuracy.
-
-In evaluations with 2000+ test cases, AppEvalPilot has demonstrated high correlation with human expert judgments (Pearson correlation coefficient across all versions is 0.9249, and the average Spearman correlation coefficient is 0.9021).
+AppEvalPilot's fully automated process operates without manual intervention, streamlining your workflow while significantly cutting costs. By leveraging our framework, you not only accelerate the evaluation process but also achieve superior accuracy in assessment outcomes. Ideal for developers and QA teams looking to enhance efficiency and quality in their testing procedures, AppEvalPilot stands out as a reliable solution for comprehensive, precise, and efficient application assessments. Join us in advancing software evaluation with AppEvalPilot.
 
 ### Features
 
-1. **Ease of Use**: One codebase to evaluate desktop applications, mobile/app applications, and web applications.
+1. **Cross-Platform Compatibility**: A unified codebase facilitating evaluation across desktop applications, mobile applications, and web-based interfaces.
    
-2. **Robust and Reliable Dynamic Assessment**: Unlike other benchmarks that rely on static evaluation methods, AppEvalPilot simulates the workflow of web testing engineers to test applications.
+2. **Methodologically Robust Dynamic Assessment**: In contrast to conventional benchmarks employing static evaluation methodologies, AppEvalPilot replicates the systematic workflow of professional testing engineers to conduct thorough application evaluation.
    
-3. **Cost-Effective**: AppEvalPilot can complete the evaluation of 15-20 functional points in an application in just 8-9 minutes on average. It can operate 24/7 to evaluate various applications while costing only $0.26 per webpage - significantly cheaper than human evaluation.
+3. **Resource Efficiency**: AppEvalPilot completes comprehensive evaluation of 15-20 functional components within an application in approximately 8-9 minutes. The system operates continuously (24/7) to evaluate diverse applications at a cost of $0.26 per webpage—substantially more economical than human-conducted evaluations.
 
 ### Sample Videos
 
@@ -42,8 +40,9 @@ pip install -e .
 Recommended configuration:
 - Edit `config/config2.yaml` to configure your LLM model
 - Supported models: gpt-4o, gpt-4o-mini 
-- Make sure to set your `api_key` and `base_url` in the configuration file
-- For other multimodal models(eg. claude-3-5-sonnet-v2), please add them to `metagpt/provider/constant.py` in MULTI_MODAL_MODELS
+- Ensure appropriate configuration of `api_key` and `base_url` parameters in the configuration file
+- For integration of additional multimodal models (e.g., claude-3-5-sonnet-v2), add the corresponding model identifiers to MULTI_MODAL_MODELS in `metagpt/provider/constant.py`
+
 ## Usage
 
 ### Basic Commands
@@ -64,35 +63,50 @@ python scripts/server.py
 ```
 AppEvalPilot/
 ├── main.py                           # Main program entry
+├── setup.py                          # Package setup script
+├── requirements.txt                  # Project dependencies
+├── README.md                         # English documentation
+├── README_zh.md                      # Chinese documentation
+├── LICENSE                           # MIT License
+├── .gitignore                        # Git ignore file
+├── .pre-commit-config.yaml           # Pre-commit hooks configuration
 ├── appeval/                          # Core modules
 │   ├── roles/                        # Role definitions
-│   │   ├── appeval.py                # Automated testing role
+│   │   ├── test_runner.py            # Automated testing role
 │   │   └── osagent.py                # Operating system agent
 │   ├── actions/                      # Action definitions
 │   │   ├── screen_info_extractor.py  # Screen information extraction
-│   │   ├── test_generator.py         # Test case generation
-│   │   └── reflection.py             # Reflection
+│   │   ├── case_generator.py         # Test case generation
+│   │   └── reflection.py             # Reflection and analysis
 │   ├── tools/                        # Tool definitions
 │   │   ├── chrome_debugger.py        # Browser debugging tool
 │   │   ├── icon_detect.py            # Icon detection and description tool
 │   │   ├── device_controller.py      # Device control tool
 │   │   └── ocr.py                    # OCR recognition tool
-│   └── utils/                        # Utility functions
+│   ├── prompts/                      # Prompt templates
+│   │   ├── test_runner.py            # Application evaluation prompts
+│   │   └── osagent.py                # OS agent prompts
+│   ├── utils/                        # Utility functions
+│   │   ├── excel_json_converter.py   # Excel and JSON format conversion utilities
+│   │   └── window_utils.py           # Window control and browser automation utilities
+│   └── __init__.py                   # Package initialization
 ├── scripts/                          # Script files
 │   ├── server.py                     # Service deployment script
-│   └── test_server.py                # Service testing script
+│   └── test_*.py                     # Various component test scripts
 ├── data/                             # Data files
-└── config/                           # Configuration files
+├── config/                           # Configuration files
+│   └── config2.yaml.example          # Example configuration template
+└── work_dirs/                        # Working directories for runtime data
 ```
 
 ## Contribution
 
-We welcome contributions to AppEvalPilot! If you have questions, suggestions, or would like to contribute, please join our Discord community: [https://discord.gg/ZRHeExS6xv](https://discord.gg/ZRHeExS6xv)
+Contributions to AppEvalPilot are welcomed by the research community. For inquiries, suggestions, or potential collaborations, please join our Discord community: [https://discord.gg/ZRHeExS6xv](https://discord.gg/ZRHeExS6xv)
 
 ## Citation
 
-Our paper will be available on arXiv soon. Please check back for citation information.
+The corresponding research paper will be available on arXiv in the near future. Please refer back for citation information.
 
 ## License
 
-This project is licensed under the MIT License - see the LICENSE file for details
+This project is distributed under the MIT License - refer to the LICENSE file for comprehensive details.

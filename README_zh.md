@@ -2,23 +2,21 @@
 
 ## 介绍
 
-AppEvalPilot是一个软件应用功能完整性评估自动化工具。它专为桌面应用、移动/App应用和Web应用设计。
+欢迎来到 AppEvalPilot 项目，这是一个前沿的自动化评估框架，旨在全面评估跨多种平台上的软件应用功能。本框架针对通用性而设计，能够熟练处理桌面、移动和基于 Web 的应用程序的评估，采用统一的方法。
 
-AppEvalPilot可以帮助您全自动评估任何应用，无需人工干预，节省时间和资源的同时保持高准确度。
-
-在2000多个测试样例的评估中，AppEvalPilot与人类专家的判断高度相关（所有版本的Pearson相关系数为0.9249，平均Spearman相关系数为0.9021）。
+AppEvalPilot 的完全自动化流程无需人工干预，简化了您的流程，同时大幅降低成本。通过利用我们的框架，您不仅加快了评估过程，还实现了评估结果的卓越准确性。非常适合寻求提高测试流程效率和质量的开发人员和 QA 团队，AppEvalPilot 作为全面、精确和高效的应用程序评估的可靠解决方案而脱颖而出。加入我们，共同使用 AppEvalPilot 推进软件评估。
 
 ### 特性
 
-1. **使用便捷**：一套代码评估桌面应用、移动/App应用、Web应用。
+1. **跨平台兼容性**：统一的代码库，便于跨桌面应用、移动应用和基于Web的界面进行评估。
    
-2. **稳健又可靠的动态评估**：不同于其他benchmark测评使用的静态评估方式，我们是通过模拟网页测试工程师的方式来测试网页。
+2. **方法论上稳健的动态评估**：与采用静态评估方法的传统基准不同，AppEvalPilot复制专业测试工程师的系统工作流程，进行全面的应用评估。
    
-3. **成本优势**：平均8~9分钟便可完成对一个应用15~20个功能点的测评，它可以24/7的去评估各种各样的应用。与此同时，却只花费0.26$每个网页，比真实人类评估便宜的多。
+3. **资源效率**：AppEvalPilot在大约8-9分钟内完成对应用程序中15-20个功能组件的全面评估。系统持续运行（24/7）以评估各种应用，每个网页的成本为0.26美元——比人工评估经济得多。
 
 ### 样例视频
 
-（体现 输入需求，看到拆解的测试点，测试点的agent操作流程，测试结果）
+（视频展示输入需求、测试点的分解、测试点的代理操作工作流程和测试结果）
 
 ## 安装
 
@@ -26,7 +24,7 @@ AppEvalPilot可以帮助您全自动评估任何应用，无需人工干预，�
 
 ```bash
 # 创建conda环境
-conda create -n appeval python=3.9
+conda create -n appeval python=3.10
 conda activate appeval
 
 # 克隆仓库
@@ -42,8 +40,8 @@ pip install -e .
 推荐配置：
 - 编辑`config/config2.yaml`文件配置您的LLM模型
 - 支持的模型：gpt-4o, gpt-4o-mini
-- 确保在配置文件中设置您的`api_key`和`base_url`
-- 对于其他多模态模型（例如 claude-3-5-sonnet-v2），请将它们添加到 `metagpt/provider/constant.py` 中的 MULTI_MODAL_MODELS
+- 确保在配置文件中正确配置`api_key`和`base_url`参数
+- 对于其他多模态模型（例如claude-3-5-sonnet-v2），请将相应的模型标识符添加到`metagpt/provider/constant.py`中的MULTI_MODAL_MODELS
 
 ## 使用方法
 
@@ -65,35 +63,48 @@ python scripts/server.py
 ```
 AppEvalPilot/
 ├── main.py                           # 主程序入口
+├── setup.py                          # 包安装脚本
+├── requirements.txt                  # 项目依赖
+├── README.md                         # 英文文档
+├── README_zh.md                      # 中文文档
+├── LICENSE                           # MIT许可证
 ├── appeval/                          # 核心模块
 │   ├── roles/                        # 角色定义
-│   │   ├── appeval.py                # 自动化测试角色
+│   │   ├── test_runner.py            # 自动化测试角色
 │   │   └── osagent.py                # 操作系统代理
 │   ├── actions/                      # 动作定义
 │   │   ├── screen_info_extractor.py  # 屏幕信息提取
-│   │   ├── test_generator.py         # 测试用例生成
-│   │   └── reflection.py             # 反思
+│   │   ├── case_generator.py         # 测试用例生成
+│   │   └── reflection.py             # 反思和分析
 │   ├── tools/                        # 工具定义
 │   │   ├── chrome_debugger.py        # 浏览器调试工具
 │   │   ├── icon_detect.py            # 图标检测及描述工具
 │   │   ├── device_controller.py      # 设备控制工具
-│   │   └── ocr.py                    # ocr识别工具
-│   └── utils/                        # 工具函数
+│   │   └── ocr.py                    # OCR识别工具
+│   ├── prompts/                      # 提示模板
+│   │   ├── test_runner.py            # 应用评估提示
+│   │   └── osagent.py                # OS代理提示
+│   ├── utils/                        # 工具函数
+│   │   ├── excel_json_converter.py   # Excel和JSON格式转换工具
+│   │   └── window_utils.py           # 窗口控制和浏览器自动化工具
+│   └── __init__.py                   # 包初始化
 ├── scripts/                          # 脚本文件
-│   ├── server.py                     # 部署服务脚本
-│   └── test_server.py                # 测试服务脚本
+│   ├── server.py                     # 服务部署脚本
+│   └── test_*.py                     # 各种组件测试脚本
 ├── data/                             # 数据文件
-└── config/                           # 配置文件
+├── config/                           # 配置文件
+│   └── config2.yaml.example          # 示例配置模板
+└── work_dirs/                        # 运行时数据的工作目录
 ```
 
 ## 贡献
 
-我们欢迎对AppEvalPilot的贡献！如果您有问题、建议或想要贡献，请加入我们的Discord社区：[https://discord.gg/ZRHeExS6xv](https://discord.gg/ZRHeExS6xv)
+我们欢迎研究社区对AppEvalPilot的贡献。如有疑问、建议或潜在合作，请加入我们的Discord社区：[https://discord.gg/ZRHeExS6xv](https://discord.gg/ZRHeExS6xv)
 
 ## 引用
 
-我们的论文将很快在arXiv上发布。请稍后查看引用信息。
+相关研究论文将在不久的将来在arXiv上发布。请稍后查看引用信息。
 
 ## 许可证
 
-此项目基于MIT许可证 - 详情请查看 LICENSE 文件
+此项目基于MIT许可证分发 - 详情请查看LICENSE文件。

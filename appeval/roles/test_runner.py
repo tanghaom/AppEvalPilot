@@ -18,7 +18,7 @@ from metagpt.schema import Message
 from pydantic import ConfigDict, Field
 
 from appeval.actions.case_generator import CaseGenerator
-from appeval.prompts.appeval import batch_check_prompt
+from appeval.prompts.test_runner import batch_check_prompt
 from appeval.roles.osagent import OSAgent
 from appeval.utils.excel_json_converter import (
     convert_json_to_excel,
