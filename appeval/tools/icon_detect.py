@@ -243,7 +243,7 @@ Requirements:
 
         description = await self.llm.aask(
             prompt,
-            system_msgs="You are a helpful assistant that describes icons.",
+            system_msgs=["You are a helpful assistant that describes icons."],
             images=[encode_image(icon_img)],
             stream=False,
         )
