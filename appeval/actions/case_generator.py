@@ -14,8 +14,6 @@ import yaml
 from metagpt.actions.action import Action
 from metagpt.logs import logger
 from tenacity import (
-    after_log,
-    before_sleep_log,
     retry,
     retry_if_exception_type,
     stop_after_attempt,

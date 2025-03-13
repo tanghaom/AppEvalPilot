@@ -7,8 +7,10 @@
 """
 import asyncio
 
-from appeval.actions.case_generator import CaseGenerator
 from loguru import logger
+
+from appeval.actions.case_generator import CaseGenerator
+
 
 async def test_generate_test_cases_and_name():
     # Create CaseGenerator instance
@@ -29,12 +31,12 @@ async def test_generate_test_cases_and_name():
     except Exception as e:
         print(f"Execution failed: {str(e)}")
 
+
 async def test_generate_results_dict():
     # Create CaseGenerator instance
     case_generator = CaseGenerator()
 
     # Test generating test cases
-    demand = "Please develop a math practice game based on the following requirements:\n1. The game randomly generates arithmetic problems with four operations: addition, subtraction, multiplication, and division.\n2. Players need to input answers in the input box, and the game will judge the correctness of the answers.\n3. The game needs to record the player's score, with points added for correct answers.\n4. Support difficulty selection, with difficulty levels determining the complexity of questions.\n5. Display the player's total score and accuracy rate when the game ends"
 
     try:
         # test_cases = await case_generator.generate_test_cases(demand)
@@ -58,23 +60,23 @@ async def test_generate_results_dict():
             "Run (pyautogui.scroll(-1000); time.sleep(2))",
             'Tell ({"9": {"result": "Fail", "evidence": "After thoroughly scrolling through the entire page, no skills tag cloud section was found"}, "10": {"result": "Fail", "evidence": "Skills tags are not present on the page as the skills cloud section is not implemented"}, "11": {"result": "Fail", "evidence": "Cannot verify skills cloud layout as the section does not exist on the page"}, "12": {"result": "Pass", "evidence": "Social media links are visible in the footer section with GitHub, LinkedIn, and Twitter icons"}, "13": {"result": "Pass", "evidence": "Social media links are clickable and properly formatted to open respective platforms"}, "19": {"result": "Pass", "evidence": "Page loads within 2-3 seconds with all content and images rendering properly"}})',
             "Run (pyautogui.click(2039, 207); time.sleep(3))",
-            'Tell ({"14": {"result": "Pass", "evidence": "Resume download button is visible in the navigation bar"}, "15": {"result": "Fail", "evidence": "Clicking the download button does not trigger any file download"}, "16": {"result": "Uncertain", "evidence": "Cannot verify PDF content as download functionality is not working"}})'
+            'Tell ({"14": {"result": "Pass", "evidence": "Resume download button is visible in the navigation bar"}, "15": {"result": "Fail", "evidence": "Clicking the download button does not trigger any file download"}, "16": {"result": "Uncertain", "evidence": "Cannot verify PDF content as download functionality is not working"}})',
         ]
 
         task_list = [
             "Scrolling down the page to test navigation bar visibility and fixed position.",
-            "Click the \"About\" link in the navigation bar to test navigation functionality.",
-            "Clicking the \"Portfolio\" link in the navigation bar to test navigation functionality.",
-            "Clicking the \"Blog\" link in the navigation bar to test navigation functionality.",
-            "Clicking the \"Contact\" link in the navigation bar to test navigation functionality.",
-            "Clicking the \"Home\" link in the navigation bar to complete navigation functionality testing.",
+            'Click the "About" link in the navigation bar to test navigation functionality.',
+            'Clicking the "Portfolio" link in the navigation bar to test navigation functionality.',
+            'Clicking the "Blog" link in the navigation bar to test navigation functionality.',
+            'Clicking the "Contact" link in the navigation bar to test navigation functionality.',
+            'Clicking the "Home" link in the navigation bar to complete navigation functionality testing.',
             "Clicking Home link and scrolling to top to check profile section visibility and content.",
             "Report test results for completed test cases including navigation bar, profile section, and project cards functionality.",
             "Scrolling down the page to locate and examine the skills cloud section.",
             "Continue scrolling down the page to find and examine the skills cloud section.",
             "Report test results for skills cloud section (not found) and social media links functionality.",
-            "Clicking the \"Download Resume\" button to test download functionality.",
-            "Report final test results for resume download functionality test cases."
+            'Clicking the "Download Resume" button to test download functionality.',
+            "Report final test results for resume download functionality test cases.",
         ]
 
         memory = [
@@ -90,7 +92,7 @@ async def test_generate_results_dict():
             "None",
             "None",
             "None",
-            "None"
+            "None",
         ]
         task_id_case_number = 20
         res = await case_generator.generate_results_dict(action_history, task_list, memory, task_id_case_number)

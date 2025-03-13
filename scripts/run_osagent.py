@@ -3,8 +3,8 @@
 """
 @Time    : 2025/03/11
 @Author  : tanghaoming
-@File    : test_osagent.py
-@Desc    : Test script for OSAgent
+@File    : run_osagent.py
+@Desc    : OSAgent demo script
 """
 import argparse
 import asyncio
@@ -13,9 +13,9 @@ from pathlib import Path
 from appeval.roles.osagent import OSAgent
 
 
-async def test_osagent(args):
-    """Test OSAgent with given arguments"""
-    print(f"Testing OSAgent with platform: {args.platform}, instruction: {args.instruction}")
+async def run_osagent(args):
+    """Run OSAgent with given arguments"""
+    print(f"Running OSAgent with platform: {args.platform}, instruction: {args.instruction}")
 
     # Initialize OSAgent with provided arguments
     agent = OSAgent(
@@ -92,13 +92,13 @@ def main():
     parser.add_argument(
         "--font_path",
         type=str,
-        default=str(Path(__file__).parent.parent / "appeval" / "roles" / "simhei.ttf"),
+        default=str(Path(__file__).parent.parent / "simhei.ttf"),
         help="Font path",
     )
     parser.add_argument(
         "--knowledge_base_path",
         type=str,
-        default=str(Path(__file__).parent.parent / "appeval" / "roles"),
+        default=str(Path(__file__).parent.parent / "data" / "knowledge"),
         help="Preset knowledge base file directory path",
     )
 
@@ -126,7 +126,7 @@ def main():
             )
 
     # Run the test
-    asyncio.run(test_osagent(args))
+    asyncio.run(run_osagent(args))
 
 
 if __name__ == "__main__":

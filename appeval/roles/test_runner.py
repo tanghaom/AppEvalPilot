@@ -25,7 +25,7 @@ from appeval.utils.excel_json_converter import (
     list_to_json,
     make_json_single,
 )
-from appeval.utils.window_utils import kill_process, kill_windows, start_windows
+from appeval.utils.window_utils import kill_process, start_windows
 
 
 class AppEvalContext(RoleContext):
