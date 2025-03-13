@@ -7,10 +7,10 @@ extras_require = {
     "ultra": [
         "torch==2.5.1",
         "torchvision==0.20.1",
-        "tensorflow",
+        "tensorflow==2.17.1",
         "tf_slim",
         "transformers",
-        "modelscope",
+        "modelscope[framework]==1.22.3",
         "ultralytics",
     ]
 }
