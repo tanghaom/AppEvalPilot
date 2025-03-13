@@ -33,28 +33,34 @@ cd AppEvalPilot
 
 # 安装appeval
 pip install -e .
+# 带ocr和目标检测的增强版Agent
+pip install -e .[ultra]
 ```
 
 ### LLM配置
-
-推荐配置：
 - 编辑`config/config2.yaml`文件配置您的LLM模型
-- 支持的模型：gpt-4o, gpt-4o-mini
+- 建议模型：claude-3-5-sonnet-v2
 - 确保在配置文件中正确配置`api_key`和`base_url`参数
-- 对于其他多模态模型（例如claude-3-5-sonnet-v2），请将相应的模型标识符添加到`metagpt/provider/constant.py`中的MULTI_MODAL_MODELS
+- 对于其他多模态模型（例如Qwen2.5-VL-72B），请将相应的模型标识符添加到[`metagpt/provider/constant.py`](https://github.com/geekan/MetaGPT/blob/79390a28247dbfaf8097d3bcd6e6f23b56e9e444/metagpt/provider/constant.py#L34)
 
 ## 使用方法
 
 ### 基本命令
 
 ```bash
-# 运行主程序
+# 运行主项目
 python main.py
-
-# 启动服务
-python scripts/server.py
 ```
 
+```bash
+# 运行 OSagent
+python scripts/run_osagent.py
+```
+
+```bash
+# 启动测试服务
+python scripts/server.py
+```
 ### 重要参数
 
 
@@ -64,10 +70,6 @@ python scripts/server.py
 AppEvalPilot/
 ├── main.py                           # 主程序入口
 ├── setup.py                          # 包安装脚本
-├── requirements.txt                  # 项目依赖
-├── README.md                         # 英文文档
-├── README_zh.md                      # 中文文档
-├── LICENSE                           # MIT许可证
 ├── appeval/                          # 核心模块
 │   ├── roles/                        # 角色定义
 │   │   ├── test_runner.py            # 自动化测试角色

@@ -33,15 +33,16 @@ cd AppEvalPilot
 
 # Install appeval
 pip install -e .
+# Enhanced version of appeval with OCR and icon detection capabilities
+pip install -e .[ultra]
 ```
 
 ### LLM Configuration
 
-Recommended configuration:
 - Edit `config/config2.yaml` to configure your LLM model
-- Supported models: gpt-4o, gpt-4o-mini 
+- Recommended models: claude-3-5-sonnet-v2
 - Ensure appropriate configuration of `api_key` and `base_url` parameters in the configuration file
-- For integration of additional multimodal models (e.g., claude-3-5-sonnet-v2), add the corresponding model identifiers to MULTI_MODAL_MODELS in `metagpt/provider/constant.py`
+- For integration of additional multimodal models (e.g., Qwen2.5-VL-72B), add the corresponding model identifiers in [`metagpt/provider/constant.py`](https://github.com/geekan/MetaGPT/blob/79390a28247dbfaf8097d3bcd6e6f23b56e9e444/metagpt/provider/constant.py#L34)
 
 ## Usage
 
@@ -50,7 +51,14 @@ Recommended configuration:
 ```bash
 # Run the main program
 python main.py
+```
 
+```bash
+# Run OSagent
+python scripts/run_osagent.py
+```
+
+```bash
 # Start the service
 python scripts/server.py
 ```
@@ -64,12 +72,6 @@ python scripts/server.py
 AppEvalPilot/
 ├── main.py                           # Main program entry
 ├── setup.py                          # Package setup script
-├── requirements.txt                  # Project dependencies
-├── README.md                         # English documentation
-├── README_zh.md                      # Chinese documentation
-├── LICENSE                           # MIT License
-├── .gitignore                        # Git ignore file
-├── .pre-commit-config.yaml           # Pre-commit hooks configuration
 ├── appeval/                          # Core modules
 │   ├── roles/                        # Role definitions
 │   │   ├── test_runner.py            # Automated testing role
