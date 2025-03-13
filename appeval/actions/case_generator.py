@@ -43,8 +43,9 @@ class CaseGenerator(Action):
         stop=stop_after_attempt(3),
         wait=wait_fixed(5),
         retry=retry_if_exception_type(Exception),
-        before_sleep=before_sleep_log(logger, log_level=logger.level("WARNING")),
-        after=after_log(logger, log_level=logger.level("INFO")),
+        before_sleep=lambda retry_state: logger.warning(
+            f"_inference_chat failed, {retry_state.attempt_number}th retry: {str(retry_state.outcome.exception())}"
+        ),
         reraise=True,
     )
     async def _inference_chat(self, content: str) -> str:

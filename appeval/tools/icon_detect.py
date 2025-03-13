@@ -24,6 +24,7 @@ try:
 
     _has_ultralytics = True
 except ImportError:
+    YOLO = None
     _has_ultralytics = False
     logger.warning("Warning: ultralytics package is not installed, icon detection function is unavailable.")
     logger.warning("Please use 'pip install appeval[ultra]' to install the required dependencies.")
