@@ -29,7 +29,7 @@ class CaseGenerator(Action):
         self.config_path = Path(config_path)
         # Load configuration
         with open(self.config_path, "r", encoding="utf-8") as file:
-            config = yaml.safe_load(file).get("appeval")
+            config = yaml.safe_load(file).get("case_generator")
             self.config = Config.from_llm_config(config)
         logger.info(f"CaseGenerator Config: {self.config}")
         self.llm = LLM(self.config.llm)
