@@ -1,7 +1,28 @@
 from setuptools import find_packages, setup
 
-with open("requirements.txt") as f:
-    required = f.read().splitlines()
+required = [
+    # Computer Vision
+    "opencv-python",
+    "matplotlib",
+    
+    # UI Automation
+    "uiautomator2",
+    "pynput",
+    "pyautogui",
+    "pywinauto",
+    
+    # Utils
+    "loguru",
+    "pre-commit",
+    "tenacity",
+    "aiohttp",
+    "pandas",
+    "pyclipper",
+    "shapely",
+    
+    # MetaGPT
+    # "metagpt"  # 需要单独通过 pip install git+https://github.com/geekan/MetaGPT.git 安装
+]
 
 extras_require = {
     "ultra": [
