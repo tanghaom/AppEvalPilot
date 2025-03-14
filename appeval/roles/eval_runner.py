@@ -8,17 +8,17 @@
 """
 import asyncio
 import json
-from datetime import datetime
 from typing import Any, Dict, List, Optional
 
 from loguru import logger
 from metagpt.actions import Action
 from metagpt.roles.role import Role, RoleContext
 from metagpt.schema import Message
+from metagpt.utils.common import read_json_file, write_json_file
 from pydantic import ConfigDict, Field
 
 from appeval.actions.case_generator import CaseGenerator
-from appeval.prompts.test_runner import batch_check_prompt
+from appeval.prompts.osagent import case_batch_check_system_prompt
 from appeval.roles.osagent import OSAgent
 from appeval.utils.excel_json_converter import (
     convert_json_to_excel,
@@ -103,7 +103,7 @@ class AppEvalRole(Role):
             draw_text_box=False,
             log_dirs=self.rc.agent_params["log_dirs"],
             add_info=add_info,
-            system_prompt=batch_check_prompt,
+            system_prompt=case_batch_check_system_prompt,
         )
 
     async def execute_batch_check(self, task_id: str, task_id_case_number: int, check_list: dict) -> None:
@@ -149,13 +149,10 @@ class AppEvalRole(Role):
                     action_history, task_list, memory, task_id_case_number
                 )
 
-            with open(self.rc.json_file, "r+", encoding="utf-8") as f:
-                data = json.load(f)
-                for key, value in results_dict.items():
-                    data[task_id]["test_cases"][key].update({"result": value["result"], "evidence": value["evidence"]})
-                f.seek(0)
-                json.dump(data, f, ensure_ascii=False, indent=4)
-                f.truncate()
+            data = read_json_file(self.rc.json_file)
+            for key, value in results_dict.items():
+                data[task_id]["test_cases"][key].update({"result": value["result"], "evidence": value["evidence"]})
+                write_json_file(self.rc.json_file, data, indent=4)
 
         except Exception as e:
             logger.error(f"Failed to write verification results: {str(e)}")
@@ -188,8 +185,7 @@ class AppEvalRole(Role):
 
             # 3. Execute automated testing
             logger.info("Start executing automated testing...")
-            with open(self.rc.json_file, "r", encoding="utf-8") as f:
-                test_cases = json.load(f)
+            test_cases = read_json_file(self.rc.json_file)
 
             for task_id, task_info in test_cases.items():
                 self.osagent.log_dirs = f"work_dirs/{task_id}"
@@ -242,8 +238,7 @@ class AppEvalRole(Role):
             logger.info("Start executing automated testing...")
             self.rc.json_file = json_path
 
-            with open(self.rc.json_file, "r", encoding="utf-8") as f:
-                test_cases = json.load(f)
+            test_cases = read_json_file(self.rc.json_file)
 
             for task_id, task_info in test_cases.items():
                 if "test_cases" in task_info:
@@ -257,8 +252,7 @@ class AppEvalRole(Role):
                         await kill_process(pid)
 
             # 4. Read results
-            with open(self.rc.json_file, "r", encoding="utf-8") as f:
-                result = json.load(f)
+            result = read_json_file(self.rc.json_file)
 
             logger.info(f"Test process completed for case '{case_name}'")
             return result

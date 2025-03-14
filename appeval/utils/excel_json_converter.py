@@ -6,12 +6,12 @@
 @Desc    : Excel and JSON format conversion utilities
 """
 import ast
-import json
 import os
 from typing import List
 
 import pandas as pd
 from metagpt.logs import logger
+from metagpt.utils.common import read_json_file, write_json_file
 
 
 def reset_json_results(json_file_path: str) -> None:
@@ -23,8 +23,7 @@ def reset_json_results(json_file_path: str) -> None:
     """
     try:
         # Read the JSON file
-        with open(json_file_path, "r", encoding="utf-8") as f:
-            data = json.load(f)
+        data = read_json_file(json_file_path)
 
         # Iterate through each project
         for project in data.values():
@@ -36,8 +35,7 @@ def reset_json_results(json_file_path: str) -> None:
                     case["evidence"] = ""
 
         # Write back to the JSON file
-        with open(json_file_path, "w", encoding="utf-8") as f:
-            json.dump(data, f, ensure_ascii=False, indent=4)
+        write_json_file(json_file_path, data, indent=4)
 
         logger.info(f"Successfully reset results and evidence in {json_file_path}")
 
@@ -83,8 +81,7 @@ def list_to_json(excel_file: str, json_file: str) -> None:
 
         output_data.update(sheet_data)
 
-    with open(json_file, "w", encoding="utf-8") as f:
-        json.dump(output_data, f, indent=4, ensure_ascii=False)
+    write_json_file(json_file, output_data, indent=4)
 
 
 def convert_json_to_excel(json_file_path: str, excel_file_path: str) -> None:
@@ -95,8 +92,7 @@ def convert_json_to_excel(json_file_path: str, excel_file_path: str) -> None:
         json_file_path (str): Path to JSON file.
         excel_file_path (str): Path to output Excel file.
     """
-    with open(json_file_path, "r", encoding="utf-8") as f:
-        data = json.load(f)
+    data = read_json_file(json_file_path)
 
     excel_data = []
     for task, details in data.items():
@@ -134,5 +130,4 @@ def make_json_single(case_name: str, url: str, test_cases: List[str], json_path:
     data[case_name] = {"url": url, "test_cases": {}}
     for i, task_desc in enumerate(test_cases):
         data[case_name]["test_cases"][str(i)] = {"case_desc": task_desc, "result": "", "evidence": ""}
-    with open(json_path, "w", encoding="utf-8") as f:
-        json.dump(data, f, indent=4, ensure_ascii=False)
+    write_json_file(json_path, data, indent=4)

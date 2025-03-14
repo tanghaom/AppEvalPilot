@@ -70,7 +70,7 @@ AppEvalPilot/
 ├── setup.py                          # 包安装脚本
 ├── appeval/                          # 核心模块
 │   ├── roles/                        # 角色定义
-│   │   ├── test_runner.py            # 自动化测试角色
+│   │   ├── eval_runner.py            # 自动化测试角色
 │   │   └── osagent.py                # 操作系统代理
 │   ├── actions/                      # 动作定义
 │   │   ├── screen_info_extractor.py  # 屏幕信息提取
@@ -82,7 +82,7 @@ AppEvalPilot/
 │   │   ├── device_controller.py      # 设备控制工具
 │   │   └── ocr.py                    # OCR识别工具
 │   ├── prompts/                      # 提示模板
-│   │   ├── test_runner.py            # 应用评估提示
+│   │   ├── case_generator.py         # 应用评估提示
 │   │   └── osagent.py                # OS代理提示
 │   ├── utils/                        # 工具函数
 │   │   ├── excel_json_converter.py   # Excel和JSON格式转换工具
@@ -99,7 +99,7 @@ AppEvalPilot/
 
 ## 贡献
 
-我们欢迎研究社区对AppEvalPilot的贡献。如有疑问、建议或潜在合作，请加入我们的Discord社区：[https://discord.gg/ZRHeExS6xv](https://discord.gg/ZRHeExS6xv)
+我们欢迎研究社区对AppEvalPilot的贡献。如有疑问、建议或潜在合作，请加入我们的Discord社区：[MetaGPT](https://discord.gg/ZRHeExS6xv)
 
 ## 引用
 

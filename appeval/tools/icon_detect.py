@@ -26,12 +26,19 @@ try:
 except ImportError:
     YOLO = None
     _has_ultralytics = False
-    logger.warning("Warning: ultralytics package is not installed, icon detection function is unavailable.")
-    logger.warning("Please use 'pip install appeval[ultra]' to install the required dependencies.")
 
 # Type aliases
 BoundingBox = List[int]  # [x1, y1, x2, y2]
 Coordinates = List[BoundingBox]
+
+
+def _check_ultralytics() -> bool:
+    """Check if ultralytics package is installed"""
+    if not _has_ultralytics:
+        logger.warning("Warning: ultralytics package is not installed, icon detection function is unavailable.")
+        logger.warning("Please use 'pip install appeval[ultra]' to install the required dependencies.")
+        return False
+    return True
 
 
 class IconDetector:
@@ -41,9 +48,7 @@ class IconDetector:
     MODEL_PATH = DATA_PATH / "omniparser_icon_detect.pt"
 
     def __init__(self, model_path=None):
-        if not _has_ultralytics:
-            logger.warning("Warning: ultralytics package is not installed, icon detection function is unavailable.")
-            logger.warning("Please use 'pip install appeval[ultra]' to install the required dependencies.")
+        if not _check_ultralytics():
             self.model = None
             return
 
@@ -151,9 +156,7 @@ class IconDetector:
     def detect(
         self, image_path: Union[str, Path], conf_threshold: float = 0.25, iou_threshold: float = 0.3
     ) -> Coordinates:
-        if not _has_ultralytics:
-            logger.error("Error: ultralytics package is not installed, icon detection function is unavailable.")
-            logger.error("Please use 'pip install appeval[ultra]' to install the required dependencies.")
+        if not _check_ultralytics():
             return []
 
         try:

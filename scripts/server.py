@@ -36,7 +36,7 @@ from fastapi import FastAPI, Form, HTTPException, UploadFile
 from fastapi.responses import JSONResponse
 from loguru import logger
 
-from appeval.roles.test_runner import AppEvalRole
+from appeval.roles.eval_runner import AppEvalRole
 from appeval.utils.window_utils import kill_process
 
 

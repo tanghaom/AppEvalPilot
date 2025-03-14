@@ -5,7 +5,7 @@
 @File    : case_generator.py
 @Desc    : Action for generating and validating test cases
 """
-import os
+from enum import Enum
 from pathlib import Path
 from typing import Dict, List
 
@@ -17,7 +17,13 @@ from metagpt.llm import LLM
 from metagpt.logs import logger
 from tenacity import retry, retry_if_exception_type, stop_after_attempt, wait_fixed
 
-from appeval.prompts.test_runner import CasePrompts
+from appeval.prompts.case_generator import CasePrompts
+
+
+class OperationType(Enum):
+    GENERATE_CASES = "generate_cases"
+    MAKE_CASE_NAME = "make_case_name"
+    CHECK_RESULTS = "check_results"
 
 
 class CaseGenerator(Action):
@@ -151,14 +157,17 @@ class CaseGenerator(Action):
             logger.error(f"Error occurred while generating result dictionary: {str(e)}")
             raise
 
-    async def process_excel_file(self, excel_path: str, operation: str = "generate_cases") -> None:
+    async def process_excel_file(
+        self, excel_path: str, operation: OperationType = OperationType.GENERATE_CASES
+    ) -> None:
         """Process Excel file
 
         Args:
             excel_path: Excel file path
-            operation: Operation type, supports "generate_cases", "make_case_name", "check_results"
+            operation: Operation type, supports GENERATE_CASES, MAKE_CASE_NAME, CHECK_RESULTS
         """
-        if not os.path.exists(excel_path):
+        excel_path = Path(excel_path)
+        if not excel_path.exists():
             raise FileNotFoundError(f"File does not exist: {excel_path}")
 
         # Read Excel file
@@ -168,7 +177,7 @@ class CaseGenerator(Action):
             logger.warning("Excel file is empty")
             return
 
-        if operation == "generate_cases":
+        if operation == OperationType.GENERATE_CASES:
             # Process each row to generate test cases
             for index, row in df.iterrows():
                 ori_demand = str(row["requirement"])
@@ -180,7 +189,7 @@ class CaseGenerator(Action):
                 # Save after processing each row
                 df.to_excel(excel_path, index=False)
 
-        elif operation == "make_case_name":
+        elif operation == OperationType.MAKE_CASE_NAME:
             # Generate case_name for each test case
             for index, row in df.iterrows():
                 task_desc = str(row["case_desc"])
@@ -191,7 +200,7 @@ class CaseGenerator(Action):
                 df.at[index, "case_name"] = case_name
                 df.to_excel(excel_path, index=False)
 
-        elif operation == "check_results":
+        elif operation == OperationType.CHECK_RESULTS:
             # Check each test result
             for index, row in df.iterrows():
                 task_desc = str(row["case_desc"])
@@ -206,4 +215,4 @@ class CaseGenerator(Action):
         else:
             raise ValueError(f"Unsupported operation type: {operation}")
 
-        logger.info(f"{operation} operation completed and saved")
+        logger.info(f"{operation.value} operation completed and saved")

@@ -4,7 +4,7 @@ from pathlib import Path
 
 from loguru import logger
 
-from appeval.roles.test_runner import AppEvalRole
+from appeval.roles.eval_runner import AppEvalRole
 
 
 async def run_batch_test():

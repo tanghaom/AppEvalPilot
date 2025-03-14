@@ -317,7 +317,7 @@ class PCController(BaseController):
             windows = [
                 w
                 for w in Desktop(backend="uia").windows()
-                if w.is_visible() and w.texts() and w.texts()[0] not in ["任务栏", ""]
+                if w.is_visible() and w.texts() and w.texts()[0] not in ["任务栏", "Taskbar", ""]
             ]
 
             if not windows:

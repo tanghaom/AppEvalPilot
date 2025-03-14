@@ -41,7 +41,7 @@ pip install -e .[ultra]
 ### LLM Configuration
 
 - Edit `config/config2.yaml` to configure your LLM model
-- Recommended models: claude-3-5-sonnet-v2
+- Recommended model: claude-3-5-sonnet-v2
 - Ensure appropriate configuration of `api_key` and `base_url` parameters in the configuration file
 - For integration of additional multimodal models (e.g., Qwen2.5-VL-72B), add the corresponding model identifiers in [`metagpt/provider/constant.py`](https://github.com/geekan/MetaGPT/blob/79390a28247dbfaf8097d3bcd6e6f23b56e9e444/metagpt/provider/constant.py#L34)
 
@@ -72,7 +72,7 @@ AppEvalPilot/
 ├── setup.py                          # Package setup script
 ├── appeval/                          # Core modules
 │   ├── roles/                        # Role definitions
-│   │   ├── test_runner.py            # Automated testing role
+│   │   ├── eval_runner.py            # Automated testing role
 │   │   └── osagent.py                # Operating system agent
 │   ├── actions/                      # Action definitions
 │   │   ├── screen_info_extractor.py  # Screen information extraction
@@ -84,7 +84,7 @@ AppEvalPilot/
 │   │   ├── device_controller.py      # Device control tool
 │   │   └── ocr.py                    # OCR recognition tool
 │   ├── prompts/                      # Prompt templates
-│   │   ├── test_runner.py            # Application evaluation prompts
+│   │   ├── case_generator.py         # Application evaluation prompts
 │   │   └── osagent.py                # OS agent prompts
 │   ├── utils/                        # Utility functions
 │   │   ├── excel_json_converter.py   # Excel and JSON format conversion utilities
@@ -101,7 +101,7 @@ AppEvalPilot/
 
 ## Contribution
 
-Contributions to AppEvalPilot are welcomed by the research community. For inquiries, suggestions, or potential collaborations, please join our Discord community: [https://discord.gg/ZRHeExS6xv](https://discord.gg/ZRHeExS6xv)
+Contributions to AppEvalPilot are welcomed by the research community. For inquiries, suggestions, or potential collaborations, please join our Discord community: [MetaGPT](https://discord.gg/ZRHeExS6xv)
 
 ## Citation
 
