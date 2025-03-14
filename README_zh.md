@@ -33,7 +33,7 @@ cd AppEvalPilot
 
 # 安装appeval
 pip install -e .
-# 带ocr和目标检测的增强版Agent
+# 可选：带ocr和目标检测的增强版Appeval
 pip install -e .[ultra]
 ```
 
@@ -61,8 +61,6 @@ python scripts/run_osagent.py
 # 启动测试服务
 python scripts/server.py
 ```
-### 重要参数
-
 
 ## 项目结构
 

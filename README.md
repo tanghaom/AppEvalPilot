@@ -33,7 +33,8 @@ cd AppEvalPilot
 
 # Install appeval
 pip install -e .
-# Enhanced version of appeval with OCR and icon detection capabilities
+
+# Optional: Install enhanced version with OCR and icon detection capabilities
 pip install -e .[ultra]
 ```
 
@@ -62,9 +63,6 @@ python scripts/run_osagent.py
 # Start the service
 python scripts/server.py
 ```
-
-### Important Parameters
-
 
 ## Project Structure
 
