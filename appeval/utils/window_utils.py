@@ -115,21 +115,27 @@ async def kill_process(pid: int) -> bool:
             # Use psutil to send termination signal instead of directly killing the process
             parent = psutil.Process(pid)
             for child in parent.children(recursive=True):
-                # Use terminate() to send normal termination signal
-                child.terminate()
-                # Give the process some time to gracefully shut down
                 try:
+                    # Use terminate() to send normal termination signal
+                    child.terminate()
+                    # Give the process some time to gracefully shut down
                     child.wait(timeout=5)
-                except psutil.TimeoutExpired:
-                    # If timeout, force terminate
-                    child.kill()
-
-            # Do the same for parent process
-            parent.terminate()
+                except:
+                    try:
+                        # If timeout, force terminate
+                        child.kill()
+                    except Exception as e:
+                        logger.error(f"Error killing child process: {str(e)}")
+            
             try:
+                # Do the same for parent process
+                parent.terminate()
                 parent.wait(timeout=5)
-            except psutil.TimeoutExpired:
-                parent.kill()
+            except:
+                try:
+                    parent.kill()
+                except Exception as e:
+                    logger.error(f"Error killing parent process: {str(e)}")
         else:  # Linux/Unix system
             # First try to send SIGTERM signal
             cmd = f"kill -15 {pid}"
@@ -154,4 +160,5 @@ async def kill_process(pid: int) -> bool:
         return True
     except Exception as e:
         logger.error(f"Error terminating process: {str(e)}")
+        logger.exception(e)
         return False
