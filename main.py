@@ -52,7 +52,7 @@ Social media link list for quick access to my social media platforms.
 Responsive design ensures that the website displays well on desktop (greater than 1024px).
 Below is my input material:
         """
-        json_path = "data/test_cases/ProfessionalPortfolio.json"
+        json_path = f"data/{case_name}.json"
 
         # Initialize automated test role
         appeval = AppEvalRole(
@@ -63,6 +63,7 @@ Below is my input material:
             use_reflection=True,
             use_chrome_debugger=True,
             extend_xml_infos=True,
+            log_dirs=f"work_dirs/{case_name}",
         )
 
         # Execute single test

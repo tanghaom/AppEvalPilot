@@ -32,8 +32,6 @@ class AppEvalContext(RoleContext):
     """AppEval Runtime Context"""
 
     model_config = ConfigDict(arbitrary_types_allowed=True)
-
-    date_str: str = Field(default_factory=lambda: datetime.now().strftime("%m-%d"))
     json_file: str = ""
     env_process: Optional[Any] = None
     agent_params: Dict = Field(default_factory=dict)
@@ -63,7 +61,7 @@ class AppEvalRole(Role):
             "use_reflection": kwargs.get("use_reflection", True),
             "use_chrome_debugger": kwargs.get("use_chrome_debugger", True),
             "extend_xml_infos": kwargs.get("extend_xml_infos", True),
-            "log_dirs": f"work_dirs/{self.rc.date_str}",
+            "log_dirs": kwargs.get("log_dirs", "work_dirs"),
         }
 
         # Initialize CaseGenerator Action
@@ -111,6 +109,7 @@ class AppEvalRole(Role):
     async def execute_batch_check(self, task_id: str, task_id_case_number: int, check_list: dict) -> None:
         """Execute single verification condition"""
         logger.info(f"Start testing project {task_id}")
+        logger.info(f"Setting log_dirs to: {self.osagent.log_dirs}")
         instruction = f"Please complete the following tasks，And after completion, use the Tell action to inform me of the results of all the test cases at once: {check_list}\n"
         await self.osagent.run(instruction)
 
@@ -193,7 +192,7 @@ class AppEvalRole(Role):
                 test_cases = json.load(f)
 
             for task_id, task_info in test_cases.items():
-                self.osagent.log_dirs = f"work_dirs/{self.rc.date_str}/{task_id}"
+                self.osagent.log_dirs = f"work_dirs/{task_id}"
 
                 if "test_cases" in task_info:
                     if "url" in task_info:
@@ -247,8 +246,6 @@ class AppEvalRole(Role):
                 test_cases = json.load(f)
 
             for task_id, task_info in test_cases.items():
-                self.osagent.log_dirs = f"work_dirs/{self.rc.date_str}/{task_id}"
-
                 if "test_cases" in task_info:
                     if "url" in task_info:
                         pid = await start_windows(task_info["url"])
