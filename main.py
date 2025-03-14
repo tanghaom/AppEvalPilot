@@ -39,19 +39,9 @@ async def run_single_test():
     """Run single test case example"""
     try:
         # Set test parameters
-        case_name = "Professional Portfolio"
-        url = "https://mgx.dev/app/pzo8wd"
-        requirement = """
-Please help me create a professional personal portfolio website. I will provide a PDF resume containing work experience, project experience, and a list of skills, as well as a professional portrait photo. The website needs to highlight my project experience, display my portrait at appropriate locations, and also hide sensitive salary information from the resume. The website will include the following features:
-Fixed navigation bar, including Home, Projects, Skills, Contact, and other page links.
-Profile and introduction display module, used to introduce my background and professional field.
-3. List of project experience cards, showing in detail the important projects I have participated in.
-4. Skill tag cloud display, intuitively presenting the skills and expertise I possess.
-Social media link list for quick access to my social media platforms.
-6. PDF resume download button, allowing visitors to download my resume.
-Responsive design ensures that the website displays well on desktop (greater than 1024px).
-Below is my input material:
-        """
+        case_name = "MGX"
+        url = "https://mgx.dev/"
+        requirement = "Please help me create an MGX official website. The website should include the following: 1. Homepage 2. Dialog box 3. AppWorld 4. Contact information"
         json_path = f"data/{case_name}.json"
 
         # Initialize automated test role
