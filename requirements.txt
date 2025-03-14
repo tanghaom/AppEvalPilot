@@ -1,3 +1,6 @@
+# MetaGPT
+git+https://github.com/geekan/MetaGPT.git
+
 # Computer Vision
 opencv-python
 matplotlib
