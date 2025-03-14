@@ -5,6 +5,7 @@
 @File    : window_utils.py
 @Desc    : Window control and browser automation utilities
 """
+import asyncio
 import os
 import subprocess
 from typing import List, Optional
@@ -111,19 +112,46 @@ async def kill_process(pid: int) -> bool:
     """
     try:
         if os.name == "nt":  # Windows system
-            # Use psutil to ensure the process and its children are all terminated
+            # Use psutil to send termination signal instead of directly killing the process
             parent = psutil.Process(pid)
             for child in parent.children(recursive=True):
-                child.kill()
-            parent.kill()
+                # Use terminate() to send normal termination signal
+                child.terminate()
+                # Give the process some time to gracefully shut down
+                try:
+                    child.wait(timeout=5)
+                except psutil.TimeoutExpired:
+                    # If timeout, force terminate
+                    child.kill()
+
+            # Do the same for parent process
+            parent.terminate()
+            try:
+                parent.wait(timeout=5)
+            except psutil.TimeoutExpired:
+                parent.kill()
         else:  # Linux/Unix system
-            cmd = f"kill {pid}"
+            # First try to send SIGTERM signal
+            cmd = f"kill -15 {pid}"
             process = await asyncio.create_subprocess_shell(
                 cmd, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE
             )
             await process.communicate()
-        logger.info(f"Process {pid} killed")
+
+            # Give the process some time to respond to SIGTERM
+            await asyncio.sleep(5)
+
+            # Check if the process still exists
+            if psutil.pid_exists(pid):
+                # If the process still exists, send SIGKILL
+                cmd = f"kill -9 {pid}"
+                process = await asyncio.create_subprocess_shell(
+                    cmd, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE
+                )
+                await process.communicate()
+
+        logger.info(f"Process {pid} terminated")
         return True
     except Exception as e:
-        logger.error(f"Error killing process: {str(e)}")
+        logger.error(f"Error terminating process: {str(e)}")
         return False
