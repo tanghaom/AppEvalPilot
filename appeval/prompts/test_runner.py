@@ -19,19 +19,21 @@ Case Description: {case_desc}
 Model Result: {model_output}
 Please answer 'Yes','No','Uncertain'"""
 
-    GENERATE_RESULTS = """You are a professional test engineer. Please generate a result dictionary in the specified format based on the following historical information.
+    GENERATE_RESULTS = """You are a professional test engineer. Please generate a result in the specified format based on the following historical information.
 You need to comprehensively analyze all historical information to infer the final test results. Please note not to miss any possible test case results. For cases where you think no results are given, please use Uncertain as the result for that case.
-Result Format:
-{{
-    '0': {{'result': 'Pass', 'evidence': 'The thumbnail click functionality is working correctly.'}},
-    '1': {{'result': 'Uncertain', 'evidence': 'Cannot verify price calculation accuracy as no pricing information is displayed'}},
-    '2': {{'result': 'Fail', 'evidence': 'After fully browsing and exploring the web page, I did not find the message board.'}}
-}}
 Action History: {action_history}
 Task List Information: {task_list}
 Memory History: {memory}
 Number of test cases in result dictionary: {task_id_case_number}
-Please return the result dictionary without any additional characters, as the result will be converted using the eval function."""
+**Return only the result string. Do not include any additional text, markdown formatting, or code blocks.**
+
+### output example ###
+{{
+    "0": {{"result": "Pass", "evidence": "The thumbnail click functionality is working correctly."}},
+    "1": {{"result": "Uncertain", "evidence": "Cannot verify price calculation accuracy as no pricing information is displayed"}},
+    "2": {{"result": "Fail", "evidence": "After fully browsing and exploring the web page, I did not find the message board."}}
+}}
+"""
 
 
 batch_check_prompt = """
@@ -72,4 +74,5 @@ Result Format:
     "1": {{"result": "Uncertain", "evidence": "Cannot verify price calculation accuracy as no pricing information is displayed"}},
     "2": {{"result": "Fail", "evidence": "After fully browsing and exploring the web page, I did not find the message board appearing on the homepage or any subpage."}}
 }}
+**Return only the result string. Do not include any additional text, markdown formatting, or code blocks.**
 """

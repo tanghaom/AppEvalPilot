@@ -12,13 +12,10 @@ from typing import Dict, List
 import pandas as pd
 import yaml
 from metagpt.actions.action import Action
+from metagpt.config2 import Config
+from metagpt.llm import LLM
 from metagpt.logs import logger
-from tenacity import (
-    retry,
-    retry_if_exception_type,
-    stop_after_attempt,
-    wait_fixed,
-)
+from tenacity import retry, retry_if_exception_type, stop_after_attempt, wait_fixed
 
 from appeval.prompts.test_runner import CasePrompts
 
@@ -33,9 +30,9 @@ class CaseGenerator(Action):
         # Load configuration
         with open(self.config_path, "r", encoding="utf-8") as file:
             config = yaml.safe_load(file).get("appeval")
-            self.model = config.get("model")
-            self.base_url = config.get("base_url")
-            self.api_key = config.get("api_key")
+            self.config = Config.from_llm_config(config)
+        logger.info(f"CaseGenerator Config: {self.config}")
+        self.llm = LLM(self.config.llm)
 
     @retry(
         stop=stop_after_attempt(3),
@@ -145,6 +142,7 @@ class CaseGenerator(Action):
             logger.info(f"History information length: {len(str(action_history))}")
             # Call chat to generate results
             answer = await self._inference_chat(prompt)
+            logger.info(f"answer: {answer}")
             # Convert string to dictionary
             results = eval(answer)
             return results
