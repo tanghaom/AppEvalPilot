@@ -18,8 +18,7 @@ AppEvalPilot's fully automated process operates without manual intervention, str
 
 ### Sample Videos
 
-<video src="assets/videos/MathGame.mp4" controls="controls" style="max-width: 730px;">
-</video>
+https://github.com/user-attachments/assets/b17faa5f-05c8-47e5-9ec3-36a646236892
 
 ## Installation
 
