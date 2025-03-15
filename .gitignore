@@ -153,6 +153,7 @@ output
 .dependencies.json
 *.tmp
 *.png
+!assets/images/workflow.png
 htmlcov
 htmlcov.*
 cov.xml

@@ -65,14 +65,14 @@ def main():
     parser.add_argument(
         "--platform", type=str, default="Windows", help="Operating system type (Windows, Mac, or Android)"
     )
-    parser.add_argument("--max_iters", type=int, default=5, help="Maximum number of iterations")
-    parser.add_argument("--instruction", type=str, default="Search Xiamen weather tomorrow", help="User instruction")
+    parser.add_argument("--max_iters", type=int, default=40, help="Maximum number of iterations")
+    parser.add_argument("--instruction", type=str, default="游玩游戏直到结束", help="User instruction")
 
     # Feature switch parameters
     parser.add_argument("--use_ocr", type=int, default=0, help="Whether to use OCR")
     parser.add_argument("--use_icon_detect", type=int, default=0, help="Whether to use icon detection")
     parser.add_argument("--use_icon_caption", type=int, default=0, help="Whether to use icon caption")
-    parser.add_argument("--use_memory", type=int, default=1, help="Whether to enable important content memory")
+    parser.add_argument("--use_memory", type=int, default=0, help="Whether to enable important content memory")
     parser.add_argument("--use_reflection", type=int, default=1, help="Whether to perform reflection")
     parser.add_argument("--use_som", type=int, default=0, help="Whether to draw visualization boxes on screenshots")
     parser.add_argument("--extend_xml_infos", type=int, default=1, help="Whether to get XML element information")
