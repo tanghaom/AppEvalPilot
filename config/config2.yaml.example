@@ -3,3 +3,9 @@ llm:
   model: "claude-3-5-sonnet-v2"
   base_url: "https://xxx.xxx/v1"
   api_key: "sk-xxx"
+
+case_generator:
+  api_type: "openai"
+  model: "claude-3-5-sonnet-v2"
+  base_url: "https://xxx.xxx/v1"
+  api_key: "sk-xxx"
