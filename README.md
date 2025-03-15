@@ -12,7 +12,7 @@ AppEvalPilot's fully automated process operates without manual intervention, str
    
 2. **Methodologically Robust Dynamic Assessment**: In contrast to conventional benchmarks employing static evaluation methodologies, AppEvalPilot replicates the systematic workflow of professional testing engineers to conduct thorough application evaluation.
    
-3. **Resource Efficiency**: AppEvalPilot completes comprehensive evaluation of 15-20 functional components within an application in approximately 8-9 minutes. The system operates continuously (24/7) to evaluate diverse applications at a cost of $0.26 per webpage—substantially more economical than human-conducted evaluations.
+3. **Resource Efficiency**: AppEvalPilot completes comprehensive evaluation of 15-20 functional components within an application in approximately 8-9 minutes. The system operates continuously (24/7) to evaluate diverse applications at a cost of $0.26 per app—substantially more economical than human-conducted evaluations.
 
 ### Sample Videos
 
@@ -50,18 +50,31 @@ pip install -e .[ultra]
 ### Basic Commands
 
 ```bash
-# Run the main program
+# Run the main program to execute automated application evaluation
+# This will run a single test case on a web application and evaluate its functionality
 python main.py
 ```
 
 ```bash
-# Run OSagent
+# Run OSagent, which is a powerful GUI-based agent that automates everyday tasks for you - from ordering food delivery and booking rides to searching information and sending it to your contacts.
 python scripts/run_osagent.py
 ```
 
 ```bash
-# Start the service
+# Start the FastAPI task management server, which enables you to:
+# - Submit and manage different types of test tasks (URL, Python app, Python Web app)
+# - Asynchronously process tasks with status tracking
+# - Manage conda environments and processes for application testing
 python scripts/server.py
+```
+
+```bash
+# Launch the Gradio web interface for easy test configuration and execution
+# Provides a user-friendly UI to:
+# - Configure and run tests on web applications
+# - Monitor test execution progress and action history
+# - View and analyze test results in real-time
+python gradio_app.py
 ```
 
 ## Project Structure
@@ -69,6 +82,7 @@ python scripts/server.py
 ```
 AppEvalPilot/
 ├── main.py                           # Main program entry
+├── gradio_app.py                     # Gradio web interface for test configuration and execution
 ├── setup.py                          # Package setup script
 ├── appeval/                          # Core modules
 │   ├── roles/                        # Role definitions

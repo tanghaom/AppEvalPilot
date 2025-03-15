@@ -48,18 +48,33 @@ pip install -e .[ultra]
 ### 基本命令
 
 ```bash
-# 运行主项目
+# 运行主项目执行自动化应用程序评估
+# 这将对网络应用程序运行单个测试用例并评估其功能
 python main.py
 ```
 
 ```bash
-# 运行 OSagent
+# 运行 OSagent，这是一个强大的基于GUI的代理，可以为您自动执行日常任务
+# - 它可以帮你点外卖，替你打车回家，还可以帮助你发信息，打电话...
+# 接受各种命令行参数来控制行为、OCR、图标检测等
 python scripts/run_osagent.py
 ```
 
 ```bash
-# 启动测试服务
+# 启动FastAPI任务管理服务器，它使您能够：
+# - 提交和管理不同类型的测试任务（URL、Python应用、Python Web应用）
+# - 异步处理任务并跟踪状态
+# - 管理conda环境和应用程序测试的进程
 python scripts/server.py
+```
+
+```bash
+# 启动Gradio网页界面，用于轻松配置和执行测试
+# 提供用户友好的UI，可以：
+# - 配置和运行网络应用程序测试
+# - 监控测试执行进度和操作历史
+# - 实时查看和分析测试结果
+python gradio_app.py
 ```
 
 ## 项目结构
@@ -67,6 +82,7 @@ python scripts/server.py
 ```
 AppEvalPilot/
 ├── main.py                           # 主程序入口
+├── gradio_app.py                     # Gradio网页界面，用于测试配置和执行
 ├── setup.py                          # 包安装脚本
 ├── appeval/                          # 核心模块
 │   ├── roles/                        # 角色定义
