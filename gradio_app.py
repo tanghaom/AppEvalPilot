@@ -12,6 +12,7 @@ import numpy as np
 from PIL import Image as PILImage
 
 from appeval.roles.eval_runner import AppEvalRole
+from appeval.utils.excel_json_converter import make_json_single
 from datetime import datetime
 # Global variables to control execution
 stop_execution = False
@@ -19,7 +20,7 @@ current_test_task = None
 current_appeval = None  # Add global variable to store AppEval instance
 
 # Non-async wrapper functions that will be called directly by Gradio
-def run_single_test_wrapper(case_name, url, requirement, json_file, result):
+def run_single_test_wrapper(case_name, url, requirement, test_cases_input=None):
     """Wrapper function for running a single test case"""
     # Create a new event loop for this thread
     loop = asyncio.new_event_loop()
@@ -27,9 +28,10 @@ def run_single_test_wrapper(case_name, url, requirement, json_file, result):
     
     try:
         # Run the async function in the new event loop
-        return loop.run_until_complete(
-            run_single_test(case_name, url, requirement, json_file, result)
+        result = loop.run_until_complete(
+            run_single_test(case_name, url, requirement, test_cases_input)
         )
+        return result
     finally:
         loop.close()
 
@@ -70,7 +72,20 @@ def get_task_list():
         return "No tasks recorded yet"
     return inner
 
-async def run_single_test(case_name, url, requirement, json_file, result):
+def get_test_cases():
+    """Get current test cases from AppEval instance"""
+    def inner():
+        global current_appeval
+        if current_appeval and hasattr(current_appeval.rc, 'test_cases'):
+            try:
+                test_cases = current_appeval.rc.test_cases
+                return "\n".join(test_cases) if test_cases else "No test cases generated yet"
+            except Exception as e:
+                return "ERROR: " + str(e)
+        return "No test cases generated yet"
+    return inner
+
+async def run_single_test(case_name, url, requirement, test_cases_input=None):
     """Run a single test case and update the UI with results"""
     global stop_execution, current_test_task, current_appeval
     stop_execution = False
@@ -79,7 +94,7 @@ async def run_single_test(case_name, url, requirement, json_file, result):
         # Create case-specific directory for logs
         log_dir = Path(f"work_dirs/{case_name}")
         log_dir.mkdir(parents=True, exist_ok=True)
-        # Save JSON file if uploaded
+        # Define default JSON path
         json_path = f"data/{case_name}.json"
         # Initialize automated test role
         current_appeval = AppEvalRole(
@@ -92,11 +107,34 @@ async def run_single_test(case_name, url, requirement, json_file, result):
             extend_xml_infos=True,
             log_dirs=f"work_dirs/{case_name}"
         )
-        
-        # Execute single test
-        current_test_task = asyncio.create_task(
-            current_appeval.run(case_name=case_name, url=url, user_requirement=requirement, json_path=json_path)
-        )
+
+        # More intelligent test cases input handling
+        should_generate = True
+        if test_cases_input:
+            # Clean and validate test cases input
+            cleaned_cases = [case.strip() for case in test_cases_input.split('\n') if case.strip()]
+            # Check if the input is actually valid test cases
+            if cleaned_cases and not any(x in test_cases_input for x in ["No test cases generated yet", "ERROR:"]):
+                should_generate = False
+                test_cases = cleaned_cases
+                current_appeval.rc.test_cases = test_cases
+                logger.info(f"User provided test cases: {test_cases}")
+                # Convert test cases to JSON format
+                make_json_single(case_name, url, test_cases, json_path)
+                current_test_task = asyncio.create_task(
+                    current_appeval.run(case_name=case_name, url=url, user_requirement=requirement, json_path=json_path, use_json_only=True)
+                )
+
+        if should_generate:
+            # Generate test cases from requirement
+            test_cases = await current_appeval.rc.test_generator.generate_test_cases(requirement)
+            logger.info(f"Generated test cases: {test_cases}")
+            current_appeval.rc.test_cases = test_cases
+            # Convert to JSON format
+            make_json_single(case_name, url, test_cases, json_path)
+            current_test_task = asyncio.create_task(
+                current_appeval.run(case_name=case_name, url=url, user_requirement=requirement, json_path=json_path, use_json_only=False)
+            )
         
         # Wait for test completion
         output_result = await current_test_task
@@ -105,14 +143,18 @@ async def run_single_test(case_name, url, requirement, json_file, result):
         result_json = json.loads(output_result.content)
         formatted_result = json.dumps(result_json, indent=2)
         logger.info(f"Single test execution result: {result_json}")
-        return formatted_result, "Test completed successfully! Check the results below."
+
+        # Return test cases in the input box
+        if should_generate:
+            return formatted_result, "Test completed successfully! Check the results below.", "\n".join(test_cases)
+        return formatted_result, "Test completed successfully! Check the results below.", test_cases_input
     
     except asyncio.CancelledError:
-        return "Test execution was cancelled by user", "Test execution was cancelled by user"
+        return "Test execution was cancelled by user", "Test execution was cancelled by user", test_cases_input or ""
     except Exception as e:
         logger.error(f"Single test execution failed: {str(e)}")
         logger.exception("Detailed error information")
-        return f"Test execution failed: {str(e)}", f"Test execution failed: {str(e)}"
+        return f"Test execution failed: {str(e)}", f"Test execution failed: {str(e)}", test_cases_input or ""
     finally:
         current_test_task = None
         current_appeval = None
@@ -153,35 +195,45 @@ def create_ui():
         """)    
         # Main Testing Interface
         with gr.Row(elem_classes="main-container"):
-            with gr.Column(scale=2):
+            with gr.Column():
                 with gr.Group(elem_classes="config-group"):
                     gr.Markdown("""<div class="section-header"><i class="icon-gear"></i> Test Configuration</div>""")
-                    case_name = gr.Textbox(
-                        label="📋 Case Name",
-                        placeholder="Enter test case name",
-                        value="Professional Portfolio",
-                        info="Unique identifier for this test case",
-                        elem_classes="input-field"
-                    )
-                    url = gr.Textbox(
-                        label="🔗 Target URL",
-                        placeholder="Enter target URL",
-                        value="https://mgx.dev/app/pzo8wd",
-                        info="The URL of the application to test",
-                        elem_classes="input-field"
-                    )
-                    requirement = gr.TextArea(
-                        label="📝 Requirements",
-                        placeholder="Enter test requirements",
-                        value="""Please help me create a professional personal portfolio website...""",
-                        lines=5,
-                        info="Detailed description of what needs to be tested",
-                        elem_classes="input-field"
-                    )
-                    json_file = gr.File(
-                        label="📁 JSON Config File (Optional)",
-                        elem_classes="file-input"
-                    )
+                    with gr.Row():
+                        with gr.Column():
+                            case_name = gr.TextArea(
+                                label="📋 Case Name",
+                                placeholder="Enter test case name",
+                                value="Professional Portfolio",
+                                info="Unique identifier for this test case",
+                                elem_classes="input-field",
+                                lines=5
+                            )
+                            url = gr.TextArea(
+                                label="🔗 Target URL",
+                                placeholder="Enter target URL",
+                                value="https://mgx.dev/app/pzo8wd",
+                                info="The URL of the application to test",
+                                elem_classes="input-field",
+                                lines=5
+                            )
+                        with gr.Column():
+                            requirement = gr.TextArea(
+                                label="📝 Requirements",
+                                placeholder="Enter test requirements",
+                                value="""Please help me create a professional personal portfolio website...""",
+                                lines=5,
+                                info="Detailed description of what needs to be tested",
+                                elem_classes="input-field"
+                            )
+                            test_cases = gr.TextArea(
+                                label="📝 Test Cases",
+                                placeholder="Enter test cases (one per line). Leave empty to auto-generate from requirements.",
+                                lines=5,
+                                info="Test cases will be shown here after generation if not provided",
+                                value=get_test_cases(),
+                                every=2,
+                                elem_classes="input-field"
+                            )
                 
                 with gr.Row(elem_classes="button-container"):
                     single_run_btn = gr.Button(
@@ -197,12 +249,6 @@ def create_ui():
                         elem_classes="action-button"
                     )
                 
-                single_status = gr.Textbox(
-                    label="🚦 Status",
-                    interactive=False,
-                    elem_classes="status-box"
-                )
-        
         # Monitoring Section
         with gr.Row(elem_classes="monitoring-container"):
             with gr.Column(scale=1):
@@ -211,7 +257,7 @@ def create_ui():
                     action_history = gr.Textbox(
                         label="📜 Actions",
                         interactive=False,
-                        lines=10,
+                        lines=17,
                         value=get_action_history(),
                         every=2,
                         elem_classes="history-box"
@@ -222,22 +268,33 @@ def create_ui():
                     task_list = gr.Textbox(
                         label="📋 Tasks",
                         interactive=False,
-                        lines=10,
+                        lines=17,
                         value=get_task_list(),
                         every=2,
                         elem_classes="task-box"
                     )
-            # Add Screenshot Column
-            with gr.Column(scale=2):
+            with gr.Column(scale=1):
+                with gr.Group(elem_classes="monitor-group"):
+                    gr.Markdown("""<div class="section-header"><i class="icon-status"></i> Status</div>""")
+                    single_status = gr.Textbox(
+                        label="🚦 Current Status",
+                        interactive=False,
+                        lines=17,
+                        elem_classes="status-box"
+                    )
+        
+        # Screenshot Section
+        with gr.Row(elem_classes="screenshot-container"):
+            with gr.Column():
                 with gr.Group(elem_classes="monitor-group"):
                     gr.Markdown("""<div class="section-header"><i class="icon-screenshot"></i> Live Screenshot</div>""")
                     screenshot = gr.Image(
                         label="📸 Current Screenshot",
                         value=get_screenshot_image(),
-                        every=3,  # Refresh every 3 seconds
+                        every=3,
                         elem_classes="screenshot-box",
                         show_download_button=True,
-                        height=400
+                        height=409
                     )
         
         # Add custom CSS
@@ -294,7 +351,7 @@ def create_ui():
         }
         
         /* Main containers */
-        .main-container, .monitoring-container {
+        .main-container, .monitoring-container, .screenshot-container {
             margin-bottom: 1.5rem;
         }
         
@@ -306,6 +363,7 @@ def create_ui():
             box-shadow: 0 4px 12px var(--shadow-color);
             border: none;
             transition: transform 0.2s, box-shadow 0.2s;
+            height: 100%;
         }
         
         .config-group:hover, .monitor-group:hover {
@@ -334,19 +392,43 @@ def create_ui():
         .icon-gear:before { content: "⚙️"; }
         .icon-history:before { content: "🕒"; }
         .icon-tasks:before { content: "📋"; }
+        .icon-test-cases:before { content: "🧪"; }
         .icon-screenshot:before { content: "📸"; }
         
+        /* History, task and status boxes */
+        .history-box, .task-box, .status-box {
+            background-color: #fcfcfc;
+            border-radius: 8px;
+            padding: 1rem;
+            font-family: 'Courier New', monospace;
+            box-shadow: inset 0 1px 3px var(--shadow-color);
+            border: 1px solid #e0e0e0;
+            height: 300px;
+            overflow-y: auto;
+        }
+        
+        .status-box {
+            border-left: 4px solid var(--highlight-color);
+        }
+        
         /* Form inputs */
-        .input-field input, .input-field textarea {
+        .input-field {
+            margin-bottom: 1rem;
+        }
+        
+        .input-field textarea {
             border-radius: 8px;
             border: 1px solid #e0e0e0;
             padding: 0.8rem;
             font-size: 1rem;
             transition: border-color 0.2s, box-shadow 0.2s;
             background-color: #fcfcfc;
+            width: 100%;
+            resize: none;
+            height: 150px !important;
         }
         
-        .input-field input:focus, .input-field textarea:focus {
+        .input-field textarea:focus {
             border-color: var(--accent-color);
             box-shadow: 0 0 0 2px rgba(172, 201, 233, 0.3);
             outline: none;
@@ -356,6 +438,13 @@ def create_ui():
             font-weight: 500;
             color: var(--text-primary);
             margin-bottom: 0.5rem;
+            display: block;
+        }
+        
+        /* Monitor groups */
+        .monitor-group {
+            height: auto;
+            margin-bottom: 0;
         }
         
         /* File input */
@@ -376,6 +465,7 @@ def create_ui():
             display: flex;
             gap: 1rem;
             margin: 1.5rem 0;
+            justify-content: center;
         }
         
         /* Buttons */
@@ -386,6 +476,8 @@ def create_ui():
             letter-spacing: 0.5px;
             transition: transform 0.2s, box-shadow 0.2s;
             box-shadow: 0 2px 8px var(--shadow-color);
+            padding: 0.8rem 2rem;
+            min-width: 150px;
         }
         
         .action-button:hover {
@@ -393,29 +485,11 @@ def create_ui():
             box-shadow: 0 4px 12px var(--shadow-color);
         }
         
-        /* Status box */
-        .status-box {
-            background-color: white;
-            border-radius: 8px;
-            padding: 1rem;
-            margin-top: 1rem;
-            box-shadow: 0 2px 8px var(--shadow-color);
-            border-left: 4px solid var(--highlight-color);
+        /* Screenshot container */
+        .screenshot-container {
+            margin-top: 1.5rem;
         }
         
-        /* History and task boxes */
-        .history-box, .task-box {
-            background-color: #fcfcfc;
-            border-radius: 8px;
-            padding: 1rem;
-            font-family: 'Courier New', monospace;
-            box-shadow: inset 0 1px 3px var(--shadow-color);
-            border: 1px solid #e0e0e0;
-            max-height: 300px;
-            overflow-y: auto;
-        }
-        
-        /* Screenshot box */
         .screenshot-box {
             background-color: #fcfcfc;
             border-radius: 8px;
@@ -423,6 +497,8 @@ def create_ui():
             box-shadow: 0 2px 8px var(--shadow-color);
             transition: transform 0.2s;
             overflow: hidden;
+            height: 400px;
+            object-fit: contain;
         }
         
         .screenshot-box:hover {
@@ -435,8 +511,8 @@ def create_ui():
         # Bind event handlers to UI components
         single_run_btn.click(
             fn=run_single_test_wrapper,
-            inputs=[case_name, url, requirement, json_file],
-            outputs=[single_status]
+            inputs=[case_name, url, requirement, test_cases],
+            outputs=[single_status, single_status, test_cases]
         )
         
         single_stop_btn.click(fn=stop_test, outputs=[single_status])

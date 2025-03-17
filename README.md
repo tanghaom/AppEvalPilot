@@ -4,6 +4,8 @@
 
 Welcome to the AppEvalPilot project, a cutting-edge automated evaluation framework designed to comprehensively assess software application functionalities across an array of platforms. Tailored for versatility, this framework adeptly handles the evaluation of desktop, mobile, and web-based applications under a unified methodology. 
 
+![Evaluation Process Overview](assets/images/workflow.png)
+
 AppEvalPilot's fully automated process operates without manual intervention, streamlining your workflow while significantly cutting costs. By leveraging our framework, you not only accelerate the evaluation process but also achieve superior accuracy in assessment outcomes. Ideal for developers and QA teams looking to enhance efficiency and quality in their testing procedures, AppEvalPilot stands out as a reliable solution for comprehensive, precise, and efficient application assessments. Join us in advancing software evaluation with AppEvalPilot.
 
 ### Features
@@ -16,7 +18,7 @@ AppEvalPilot's fully automated process operates without manual intervention, str
 
 ### Sample Videos
 
-(Videos demonstrating the input requirements, breakdown of test points, agent operation workflow for test points, and test results)
+https://github.com/user-attachments/assets/b17faa5f-05c8-47e5-9ec3-36a646236892
 
 ## Installation
 
@@ -84,6 +86,9 @@ AppEvalPilot/
 ├── main.py                           # Main program entry
 ├── gradio_app.py                     # Gradio web interface for test configuration and execution
 ├── setup.py                          # Package setup script
+├── assets/                           # Media assets for documentation
+│   ├── images/                       # Images for README and documentation
+│   └── videos/                       # Demo videos showcasing functionality
 ├── appeval/                          # Core modules
 │   ├── roles/                        # Role definitions
 │   │   ├── eval_runner.py            # Automated testing role

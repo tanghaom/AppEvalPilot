@@ -36,7 +36,7 @@ class AppEvalContext(RoleContext):
     env_process: Optional[Any] = None
     agent_params: Dict = Field(default_factory=dict)
     test_generator: Optional[CaseGenerator] = None
-
+    test_cases: Optional[List[str]] = None
 
 class AppEvalRole(Role):
     """Automated Testing Role"""
@@ -212,7 +212,7 @@ class AppEvalRole(Role):
             raise
 
     async def run_single(
-        self, case_name: str, url: str, user_requirement: str, json_path: str = "data/temp.json"
+        self, case_name: str, url: str, user_requirement: str, json_path: str = "data/temp.json", use_json_only: bool = False
     ) -> dict:
         """Execute single test case
 
@@ -221,18 +221,19 @@ class AppEvalRole(Role):
             url (str): Test target URL
             user_requirement (str): Test requirement description
             json_path (str, optional): Output JSON file path
-
+            use_json_only (bool, optional): Whether to only use JSON files
         Returns:
             dict: Test result dictionary
         """
         try:
-            # 1. Generate automated test cases
-            logger.info(f"Start generating automated test cases for '{case_name}'...")
-            test_cases = await self.rc.test_generator.generate_test_cases(user_requirement)
+            if use_json_only:
+                # 1. Generate automated test cases
+                logger.info(f"Start generating automated test cases for '{case_name}'...")
+                test_cases = await self.rc.test_generator.generate_test_cases(user_requirement)
 
-            # 2. Convert to JSON format
-            logger.info("Start converting to JSON format...")
-            make_json_single(case_name, url, test_cases, json_path)
+                # 2. Convert to JSON format
+                logger.info("Start converting to JSON format...")
+                make_json_single(case_name, url, test_cases, json_path)
 
             # 3. Execute automated testing
             logger.info("Start executing automated testing...")
@@ -265,7 +266,7 @@ class AppEvalRole(Role):
         """Run automated testing
 
         Supports two calling methods:
-        1. Batch testing: run(project_excel_path="xxx.xlsx", case_excel_path="xxx.xlsx")
+        1. Batch testing: run(project_excel_path="xxx.xlsx", case_excel_path="xxx.xlsx", use_json_only=False)
         2. Single test: run(case_name="xxx", url="xxx", user_requirement="xxx")
 
         Args:
@@ -273,6 +274,7 @@ class AppEvalRole(Role):
                 Batch testing:
                     - project_excel_path: Project level Excel file path
                     - case_excel_path: Case level Excel file path (optional)
+                    - use_json_only: Whether to only use JSON files (optional)
                 Single test:
                     - case_name: Test case name
                     - url: Test target URL
@@ -287,6 +289,7 @@ class AppEvalRole(Role):
                     kwargs["url"],
                     kwargs["user_requirement"],
                     kwargs.get("json_path", "data/temp.json"),
+                    kwargs.get("use_json_only", False),
                 )
                 return Message(content=json.dumps(result), cause_by=Action)
             else:
