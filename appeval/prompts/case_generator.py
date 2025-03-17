@@ -7,6 +7,8 @@ Requirements:
 2. Please return all test cases in Python list format
 3. When generating test cases, consider both whether the corresponding module is displayed on the webpage and whether the corresponding function is working properly. You need to generate methods to verify webpage functionality based on your knowledge.
 4. Please do not implement test cases that require other device assistance for verification.
+5. Please control the number of test cases to 15~20, focusing only on the main functionalities mentioned in the user requirements. Do not generate test cases that are not directly related to the user requirements.
+6. When generating test cases, focus on functional testing, not UI testing.
 User Requirements: {demand}
 Please return the test case list in List(str) format, without any additional characters, as the result will be converted using the eval function."""
 
