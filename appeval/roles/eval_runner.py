@@ -162,9 +162,12 @@ class AppEvalRole(Role):
                 )
 
             data = read_json_file(self.rc.json_file)
+            data[task_id]["iters"] = iter_num
             for key, value in results_dict.items():
-                data[task_id]["test_cases"][key].update({"result": value["result"], "iters": iter_num})
-                write_json_file(self.rc.json_file, data, indent=4)
+                data[task_id]["test_cases"][key].update({
+                    "result": value["result"],
+                })
+            write_json_file(self.rc.json_file, data, indent=4)
 
         except Exception as e:
             logger.error(f"Failed to write verification results: {str(e)}")

@@ -127,7 +127,7 @@ def make_json_single(case_name: str, url: str, test_cases: List[str], json_path:
     os.makedirs(os.path.dirname(json_path), exist_ok=True)
 
     data = {}
-    data[case_name] = {"url": url, "test_cases": {}}
+    data[case_name] = {"url": url, "iters": "", "test_cases": {}}
     for i, task_desc in enumerate(test_cases):
-        data[case_name]["test_cases"][str(i)] = {"case_desc": task_desc, "result": "", "iters": ""}
+        data[case_name]["test_cases"][str(i)] = {"case_desc": task_desc, "result": "", "evidence": ""}
     write_json_file(json_path, data, indent=4)
