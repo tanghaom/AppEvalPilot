@@ -25,7 +25,7 @@ from appeval.utils.excel_json_converter import (
     list_to_json,
     make_json_single,
 )
-from appeval.utils.window_utils import kill_process, start_windows
+from appeval.utils.window_utils import kill_process, start_windows, kill_windows
 
 
 class AppEvalContext(RoleContext):
@@ -213,7 +213,8 @@ class AppEvalRole(Role):
                     task_id_case_number = len(test_cases[task_id]["test_cases"])
                     await self.execute_batch_check(task_id, task_id_case_number, task_info)
                     if "url" in task_info:
-                        await kill_process(pid)
+                        await kill_windows(["Chrome"])
+                        await kill_process(pid)     # ensure the process is killed
 
             # 4. Output results to Excel (if case_excel_path is provided)
             if case_excel_path:
@@ -270,7 +271,8 @@ class AppEvalRole(Role):
                     task_id_case_number = len(test_cases[task_id]["test_cases"])
                     await self.execute_batch_check(task_id, task_id_case_number, task_info)
                     if "url" in task_info:
-                        await kill_process(pid)
+                        await kill_windows(["Chrome"])
+                        await kill_process(pid)     # ensure the process is killed
 
             # 4. Read results
             result = read_json_file(self.rc.json_file)
