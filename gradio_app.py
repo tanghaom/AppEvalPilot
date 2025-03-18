@@ -271,7 +271,7 @@ def create_ui() -> gr.Blocks:
             """
         )
 
-        with gr.Row(elem_classes="main-container"):
+        with gr.Row(elem_classes="config-container"):
             with gr.Column():
                 with gr.Group(elem_classes="config-group"):
                     with gr.Row():
@@ -309,51 +309,48 @@ def create_ui() -> gr.Blocks:
                                 elem_classes="status-box"
                             )
 
-                with gr.Row(elem_classes="button-container"):
-                    single_run_btn = gr.Button(
-                        "▶️ Run Test", variant="primary", size="large", elem_classes="action-button"
-                    )
-                    single_stop_btn = gr.Button(
-                        "⏹️ Stop Test", variant="stop", size="large", elem_classes="action-button"
-                    )
-
-        with gr.Row(elem_classes="monitoring-container"):
+        with gr.Row(elem_classes="main-container"):
             with gr.Column(scale=1):
-                with gr.Group(elem_classes="monitor-group"):
-                    gr.Markdown("""<div class="section-header"><i class="icon-history"></i> Action History</div>""")
-                    gr.Textbox(
-                        label="📜 Actions",
-                        interactive=False,
-                        lines=17,
-                        value=get_action_history(),
-                        every=2,
-                        elem_classes="history-box",
-                    )
-            with gr.Column(scale=1):
-                with gr.Group(elem_classes="monitor-group"):
-                    gr.Markdown("""<div class="section-header"><i class="icon-tasks"></i> Task List</div>""")
-                    gr.Textbox(
-                        label="📋 Tasks",
-                        interactive=False,
-                        lines=17,
-                        value=get_task_list(),
-                        every=2,
-                        elem_classes="task-box",
-                    )
-            with gr.Column(scale=1):
-                with gr.Group(elem_classes="monitor-group"):
+                with gr.Group(elem_classes="monitor-group-large"):
                     gr.Markdown("""<div class="section-header"><i class="icon-test-cases"></i> Test Cases</div>""")
                     test_cases = gr.Textbox(
                         label="📝 Test Cases",
-                        lines=17,
+                        lines=10,
                         value=get_test_cases(),
                         every=2,
                         elem_classes="input-field",
                         )
+                with gr.Group(elem_classes="monitor-group-large"):
+                    gr.Markdown("""<div class="section-header"><i class="icon-tasks"></i> Task List</div>""")
+                    gr.Textbox(
+                        label="📋 Tasks",
+                        interactive=False,
+                        lines=10,
+                        value=get_task_list(),
+                        every=2,
+                        elem_classes="task-box",
+                    )
+                with gr.Group(elem_classes="monitor-group-small"):
+                    gr.Markdown("""<div class="section-header"><i class="icon-history"></i> Action History</div>""")
+                    gr.Textbox(
+                        label="📜 Actions",
+                        interactive=False,
+                        lines=4,
+                        value=get_action_history(),
+                        every=2,
+                        elem_classes="history-box",
+                    )
 
-
-        with gr.Row(elem_classes="screenshot-container"):
-            with gr.Column():
+            with gr.Column(scale=2):
+                with gr.Group(elem_classes="control-group"):
+                    with gr.Row(elem_classes="button-container"):
+                        single_run_btn = gr.Button(
+                            "▶️ Run Test", variant="primary", size="large", elem_classes="action-button"
+                        )
+                        single_stop_btn = gr.Button(
+                            "⏹️ Stop Test", variant="stop", size="large", elem_classes="action-button"
+                        )
+                    
                 with gr.Group(elem_classes="monitor-group"):
                     gr.Markdown("""<div class="section-header"><i class="icon-screenshot"></i> Live Screenshot</div>""")
                     gr.Image(
@@ -362,7 +359,7 @@ def create_ui() -> gr.Blocks:
                         every=3,
                         elem_classes="screenshot-box",
                         show_download_button=True,
-                        height=409,
+                        height=729,
                     )
 
         gr.Markdown(
@@ -500,9 +497,36 @@ def create_ui() -> gr.Blocks:
             display: block;
         }
         
-        .monitor-group {
-            height: auto;
-            margin-bottom: 0;
+        .monitor-group-large {
+            background-color: white;
+            border-radius: 12px;
+            padding: 1.5rem;
+            box-shadow: 0 4px 12px var(--shadow-color);
+            border: none;
+            transition: transform 0.2s, box-shadow 0.2s;
+            height: 250px;
+            margin-bottom: 1rem;
+        }
+        
+        .monitor-group-small {
+            background-color: white;
+            border-radius: 12px;
+            padding: 1.5rem;
+            box-shadow: 0 4px 12px var(--shadow-color);
+            border: none;
+            transition: transform 0.2s, box-shadow 0.2s;
+            height: 100px;
+            margin-bottom: 1rem;
+        }
+        
+        .control-group {
+            background-color: white;
+            border-radius: 12px;
+            padding: 1.5rem;
+            box-shadow: 0 4px 12px var(--shadow-color);
+            border: none;
+            transition: transform 0.2s, box-shadow 0.2s;
+            margin-bottom: 1rem;
         }
         
         .file-input {
