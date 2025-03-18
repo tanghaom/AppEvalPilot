@@ -17,7 +17,7 @@ from metagpt.schema import Message
 from metagpt.utils.common import read_json_file, write_json_file
 from pydantic import ConfigDict, Field
 
-from appeval.actions.case_generator import CaseGenerator
+from appeval.actions.case_generator import CaseGenerator, OperationType
 from appeval.prompts.osagent import case_batch_check_system_prompt
 from appeval.roles.osagent import OSAgent
 from appeval.utils.excel_json_converter import (
@@ -37,6 +37,7 @@ class AppEvalContext(RoleContext):
     agent_params: Dict = Field(default_factory=dict)
     test_generator: Optional[CaseGenerator] = None
     test_cases: Optional[List[str]] = None
+
 
 class AppEvalRole(Role):
     """Automated Testing Role"""
@@ -73,18 +74,20 @@ class AppEvalRole(Role):
     def _init_osagent(self, **kwargs) -> None:
         """Initialize OSAgent"""
         add_info = (
-            "If you need to interact with elements outside of a web popup, such as calendar or time selection "
-            "popups, make sure to close the popup first. If the content in a text box is entered incorrectly, "
-            "use the select all and delete actions to clear it, then re-enter the correct information. "
-            "To open a folder in File Explorer, please use a double-click. "
-            "If there is a problem with opening the web page, please do not keep trying to "
-            "refresh the page or click repeatedly. After an attempt, please proceed directly to the remaining tasks. "
-            "Pay attention not to use shortcut keys to change the window size when testing on the web page. "
-            "If it involves the display effect of a web page on mobile devices, you can open the developer mode of the web page by pressing F12, "
-            "and then use the shortcut key Ctrl+Shift+M to switch to the mobile view. "
-            "When testing game-related content, please pay close attention to judge whether the game functions are abnormal. "
-            "If you find that no expected changes occur after certain operations, directly exit and mark this feature as negative."
-            "Please use the Tell action to report the results of all test cases before executing Stop"
+            "If you need to interact with elements outside of a web popup, such as calendar or time "
+            "selection popups, make sure to close the popup first. If the content in a text box is "
+            "entered incorrectly, use the select all and delete actions to clear it, then re-enter "
+            "the correct information. To open a folder in File Explorer, please use a double-click. "
+            "If there is a problem with opening the web page, please do not keep trying to refresh "
+            "the page or click repeatedly. After an attempt, please proceed directly to the remaining "
+            "tasks. Pay attention not to use shortcut keys to change the window size when testing "
+            "on the web page. If it involves the display effect of a web page on mobile devices, "
+            "you can open the developer mode of the web page by pressing F12, and then use the "
+            "shortcut key Ctrl+Shift+M to switch to the mobile view. When testing game-related "
+            "content, please pay close attention to judge whether the game functions are abnormal. "
+            "If you find that no expected changes occur after certain operations, directly exit "
+            "and mark this feature as negative. Please use the Tell action to report the results "
+            "of all test cases before executing Stop"
         )
 
         self.osagent = OSAgent(
@@ -110,7 +113,10 @@ class AppEvalRole(Role):
         """Execute single verification condition"""
         logger.info(f"Start testing project {task_id}")
         logger.info(f"Setting log_dirs to: {self.osagent.log_dirs}")
-        instruction = f"Please complete the following tasks，And after completion, use the Tell action to inform me of the results of all the test cases at once: {check_list}\n"
+        instruction = (
+            "Please complete the following tasks，And after completion, use the Tell action to "
+            f"inform me of the results of all the test cases at once: {check_list}\n"
+        )
         await self.osagent.run(instruction)
 
         # Get action history
@@ -121,7 +127,12 @@ class AppEvalRole(Role):
         await self.write_batch_res_to_json(task_id, task_id_case_number, action_history, task_list, memory)
 
     async def write_batch_res_to_json(
-        self, task_id: str, task_id_case_number: int, action_history: List[str], task_list: str, memory: List[str]
+        self,
+        task_id: str,
+        task_id_case_number: int,
+        action_history: List[str],
+        task_list: str,
+        memory: List[str],
     ) -> None:
         """Write verification results to json file"""
         try:
@@ -135,7 +146,7 @@ class AppEvalRole(Role):
                     answer = content[start + 1 : end]
                     try:
                         results_dict = eval(answer)
-                    except:
+                    except Exception:
                         start = answer.find("{")
                         end = answer.rfind("}")
                         if start != -1 and end != -1 and end > start:
@@ -175,7 +186,7 @@ class AppEvalRole(Role):
             if project_excel_path:
                 # 1. Generate automated test cases
                 logger.info("Start generating automated test cases...")
-                await self.rc.test_generator.process_excel_file(project_excel_path, "generate_cases")
+                await self.rc.test_generator.process_excel_file(project_excel_path, OperationType.GENERATE_CASES)
 
                 # 2. Convert to JSON format
                 logger.info("Start converting to JSON format...")
@@ -212,7 +223,12 @@ class AppEvalRole(Role):
             raise
 
     async def run_single(
-        self, case_name: str, url: str, user_requirement: str, json_path: str = "data/temp.json", use_json_only: bool = False
+        self,
+        case_name: str,
+        url: str,
+        user_requirement: str,
+        json_path: str = "data/temp.json",
+        use_json_only: bool = False,
     ) -> dict:
         """Execute single test case
 

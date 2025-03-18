@@ -11,9 +11,9 @@ async def run_batch_test():
     """Run batch test example"""
     try:
         # Set test related paths
-        project_excel = "data/test_cases/test.xlsx"
-        case_excel = "data/test_cases/test_results.xlsx"
-        json_file = "data/test_cases/test_results.json"
+        project_excel = "data/4d807943.xlsx"
+        case_excel = "data/4d807943_results.xlsx"
+        json_file = "data/4d807943_results.json"
 
         # Initialize automated test role
         appeval = AppEvalRole(
@@ -41,7 +41,10 @@ async def run_single_test():
         # Set test parameters
         case_name = "MGX"
         url = "https://mgx.dev/"
-        requirement = "Please help me create an MGX official website. The website should include the following: 1. Homepage 2. Dialog box 3. AppWorld 4. Contact information"
+        requirement = (
+            "Please help me create an MGX official website. The website should include "
+            "the following: 1. Homepage 2. Dialog box 3. AppWorld 4. Contact information"
+        )
         json_path = f"data/{case_name}.json"
 
         # Initialize automated test role
@@ -72,12 +75,12 @@ async def main():
     Path("data/test_cases").mkdir(parents=True, exist_ok=True)
 
     # Run single test example
-    logger.info("Starting to execute single test...")
-    await run_single_test()
+    # logger.info("Starting to execute single test...")
+    # await run_single_test()
 
     # Run batch test example
     # logger.info("Starting to execute batch test...")
-    # await run_batch_test()
+    await run_batch_test()
 
 
 if __name__ == "__main__":

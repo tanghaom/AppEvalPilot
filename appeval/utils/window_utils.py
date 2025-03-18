@@ -126,7 +126,7 @@ async def kill_process(pid: int) -> bool:
                         child.kill()
                     except Exception as e:
                         logger.error(f"Error killing child process: {str(e)}")
-            
+
             try:
                 # Do the same for parent process
                 parent.terminate()
