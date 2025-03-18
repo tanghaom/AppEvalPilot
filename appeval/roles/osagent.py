@@ -880,6 +880,63 @@ class OSAgent(Role):
 
         return AIMessage(content=self.rc.action, cause_by=Action)
 
+    async def _generate_initial_task_list(
+        self, instruction: str, screenshot_file: str, screenshot_som_file: str = None
+    ) -> str:
+        """Generate initial task list for the first iteration.
+
+        Args:
+            instruction: User instruction
+            screenshot_file: Path to the screenshot file
+            screenshot_som_file: Path to the SOM screenshot file (if use_som is enabled)
+
+        Returns:
+            str: Generated initial task list
+        """
+        # Create the task list prompt
+        initial_task_prompt = f"""
+        Based on the following instruction, please generate an initial task list:
+        {instruction}
+        
+        Please output the task list in the following format:
+        * **[Completed Tasks]:** 
+          * None
+        * **[Current Task]:** <describe the first high-level task to execute>
+        * **[Next Operation]:** 
+          * <describe the first step in detail>
+        * **[Remaining Tasks]:** (List the remaining high-level tasks that need to be completed to achieve the user's objective, excluding the current and next operation.)
+          * <describe remaining high-level task 1>
+          * <describe remaining high-level task 2>
+          * ...
+        """
+
+        # Prepare images for LLM
+        images = [encode_image(screenshot_file)]
+        if self.use_som and screenshot_som_file:
+            images.append(encode_image(screenshot_som_file))
+
+        # Prepare system message
+        system_msg = (
+            self.system_prompt
+            if self.system_prompt
+            else f"You are a helpful AI {'mobile phone' if self.platform=='Android' else 'PC'} operating assistant. You need to help me operate the device to complete the user's instruction."
+        )
+
+        # Generate task list using LLM
+        initial_task_list = await self.llm.aask(
+            initial_task_prompt,
+            system_msgs=[system_msg],
+            images=images,
+            stream=False,
+        )
+
+        task_list = initial_task_list.strip()
+        logger.info(
+            f"\n\n######################## Initial Task List:\n{task_list}\n\n######################## End of Initial Task List\n\n\n\n"
+        )
+
+        return task_list
+
     async def _react(self) -> Message:
         self.rc.iter = 0
         rsp = AIMessage(content="No actions taken yet", cause_by=Action)  # will be overwritten after Role _act
@@ -899,6 +956,11 @@ class OSAgent(Role):
 
                 # Save images
                 self._save_iteration_images(self.rc.iter)
+
+                # Generate initial task list
+                self.rc.task_list = await self._generate_initial_task_list(
+                    self.instruction, self.screenshot_file, self.screenshot_som_file if self.use_som else None
+                )
 
             # think
             has_todo = await self._think()
