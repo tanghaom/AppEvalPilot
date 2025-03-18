@@ -123,8 +123,8 @@ class AppEvalRole(Role):
         action_history = self.osagent.rc.action_history
         task_list = self.osagent.rc.task_list
         memory = self.osagent.rc.memory
-
-        await self.write_batch_res_to_json(task_id, task_id_case_number, action_history, task_list, memory)
+        iter_num = self.osagent.rc.iter
+        await self.write_batch_res_to_json(task_id, task_id_case_number, action_history, task_list, memory, iter_num)
 
     async def write_batch_res_to_json(
         self,
@@ -133,6 +133,7 @@ class AppEvalRole(Role):
         action_history: List[str],
         task_list: str,
         memory: List[str],
+        iter_num: str,
     ) -> None:
         """Write verification results to json file"""
         try:
@@ -162,7 +163,7 @@ class AppEvalRole(Role):
 
             data = read_json_file(self.rc.json_file)
             for key, value in results_dict.items():
-                data[task_id]["test_cases"][key].update({"result": value["result"], "evidence": value["evidence"]})
+                data[task_id]["test_cases"][key].update({"result": value["result"], "iters": iter_num})
                 write_json_file(self.rc.json_file, data, indent=4)
 
         except Exception as e:
@@ -242,7 +243,7 @@ class AppEvalRole(Role):
             dict: Test result dictionary
         """
         try:
-            if use_json_only:
+            if not use_json_only:
                 # 1. Generate automated test cases
                 logger.info(f"Start generating automated test cases for '{case_name}'...")
                 test_cases = await self.rc.test_generator.generate_test_cases(user_requirement)

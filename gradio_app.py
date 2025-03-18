@@ -274,7 +274,6 @@ def create_ui() -> gr.Blocks:
         with gr.Row(elem_classes="main-container"):
             with gr.Column():
                 with gr.Group(elem_classes="config-group"):
-                    gr.Markdown("""<div class="section-header"><i class="icon-gear"></i> Test Configuration</div>""")
                     with gr.Row():
                         with gr.Column():
                             case_name = gr.TextArea(
@@ -302,14 +301,12 @@ def create_ui() -> gr.Blocks:
                                 info="Detailed description of what needs to be tested",
                                 elem_classes="input-field",
                             )
-                            test_cases = gr.TextArea(
-                                label="📝 Test Cases",
-                                placeholder="Enter test cases (one per line). Leave empty to auto-generate from requirements.",
-                                lines=5,
-                                info="Test cases will be shown here after generation if not provided",
-                                value=get_test_cases(),
-                                every=2,
-                                elem_classes="input-field",
+                            single_status = gr.TextArea(
+                                label="🚦 Current Status", 
+                                interactive=False, 
+                                lines=5, 
+                                info="Status will be displayed here during test execution",
+                                elem_classes="status-box"
                             )
 
                 with gr.Row(elem_classes="button-container"):
@@ -345,10 +342,15 @@ def create_ui() -> gr.Blocks:
                     )
             with gr.Column(scale=1):
                 with gr.Group(elem_classes="monitor-group"):
-                    gr.Markdown("""<div class="section-header"><i class="icon-status"></i> Status</div>""")
-                    single_status = gr.Textbox(
-                        label="🚦 Current Status", interactive=False, lines=17, elem_classes="status-box"
-                    )
+                    gr.Markdown("""<div class="section-header"><i class="icon-test-cases"></i> Test Cases</div>""")
+                    test_cases = gr.Textbox(
+                        label="📝 Test Cases",
+                        lines=17,
+                        value=get_test_cases(),
+                        every=2,
+                        elem_classes="input-field",
+                        )
+
 
         with gr.Row(elem_classes="screenshot-container"):
             with gr.Column():
