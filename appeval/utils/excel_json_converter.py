@@ -131,3 +131,51 @@ def make_json_single(case_name: str, url: str, test_cases: List[str], json_path:
     for i, task_desc in enumerate(test_cases):
         data[case_name]["test_cases"][str(i)] = {"case_desc": task_desc, "result": "", "evidence": ""}
     write_json_file(json_path, data, indent=4)
+
+
+def update_project_excel_iters(project_excel_path: str, json_file_path: str) -> None:
+    """
+    Update the project Excel file with iteration counts from the JSON results.
+    
+    The JSON structure is expected to have the following format:
+    {
+        "App Name 1": {
+            "url": "https://example.com",
+            "test_cases": { ... },
+            "iters": 6  # Number of iterations for this app
+        },
+        "App Name 2": { ... }
+    }
+
+    Args:
+        project_excel_path (str): Path to the Excel file to update
+        json_file_path (str): Path to the JSON file containing app data with iteration counts
+    """
+    try:
+        # Read JSON data
+        json_data = read_json_file(json_file_path)
+        
+        # Read Excel file
+        df = pd.read_excel(project_excel_path)
+        
+        # Add iters column if it doesn't exist
+        if 'iters' not in df.columns:
+            df['iters'] = ''
+        
+        # Update iters for each app
+        for index, row in df.iterrows():
+            app_name = row['app_name']
+            if pd.isna(app_name):
+                continue
+                
+            if app_name in json_data:
+                # Update the iters value directly from the JSON structure
+                df.at[index, 'iters'] = json_data[app_name].get('iters', '')
+        
+        # Write back to Excel
+        df.to_excel(project_excel_path, index=False)
+        logger.info(f"Successfully updated iteration counts in {project_excel_path}")
+        
+    except Exception as e:
+        logger.error(f"Error updating project Excel file {project_excel_path}: {str(e)}")
+        raise

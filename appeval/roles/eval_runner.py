@@ -24,6 +24,7 @@ from appeval.utils.excel_json_converter import (
     convert_json_to_excel,
     list_to_json,
     make_json_single,
+    update_project_excel_iters,
 )
 from appeval.utils.window_utils import kill_process, start_windows, kill_windows
 
@@ -165,9 +166,10 @@ class AppEvalRole(Role):
             data[task_id]["iters"] = iter_num
             for key, value in results_dict.items():
                 data[task_id]["test_cases"][key].update({
-                    "result": value["result"],
+                    "result": value.get("result", ""),
+                    "evidence": value.get("evidence", "")
                 })
-            write_json_file(self.rc.json_file, data, indent=4)
+                write_json_file(self.rc.json_file, data, indent=4)
 
         except Exception as e:
             logger.error(f"Failed to write verification results: {str(e)}")
@@ -190,7 +192,7 @@ class AppEvalRole(Role):
             if project_excel_path:
                 # 1. Generate automated test cases
                 logger.info("Start generating automated test cases...")
-                await self.rc.test_generator.process_excel_file(project_excel_path, OperationType.GENERATE_CASES)
+                await self.test_generator.process_excel_file(project_excel_path, OperationType.GENERATE_CASES)
 
                 # 2. Convert to JSON format
                 logger.info("Start converting to JSON format...")
@@ -220,6 +222,10 @@ class AppEvalRole(Role):
             if case_excel_path:
                 logger.info("Start generating result spreadsheet...")
                 convert_json_to_excel(self.rc.json_file, case_excel_path)
+                
+            # 5. Update project Excel with iteration counts
+            logger.info("Updating project Excel with iteration counts...")
+            update_project_excel_iters(project_excel_path, self.rc.json_file)
 
             logger.info("Test process completed")
 
