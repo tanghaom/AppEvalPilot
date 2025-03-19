@@ -1,5 +1,16 @@
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+"""
+@Time    : 2025/03/11
+@File    : window_utils.py
+@Desc    : Window control and browser automation utilities
+"""
+import asyncio
+import os
+import subprocess
 from typing import List, Optional
 
+import psutil
 from metagpt.logs import logger
 from pywinauto import Desktop
 from pywinauto.application import WindowSpecification
@@ -23,7 +34,29 @@ def match_name(window_name: List[str], patterns: List[str]) -> bool:
         return any(pattern.lower() in name.lower() for pattern in patterns)
 
 
-def kill_windows(target_names: List[str]) -> Optional[List[WindowSpecification]]:
+async def start_windows(
+    target_url: str, app_path: str = "C:/Program Files/Google/Chrome/Application/chrome.exe"
+) -> int:
+    """
+    Start browser with accessibility and remote debugging enabled.
+
+    Args:
+        target_url: URL to open in browser
+        app_path: Path to browser executable, defaults to Chrome
+
+    Returns:
+        int: Process ID (PID) of the started browser process
+    """
+    if not os.path.exists(app_path):
+        raise FileNotFoundError(f"Browser executable not found at: {app_path}")
+
+    cmd = f'"{app_path}" --force-renderer-accessibility --remote-debugging-port=9222 {target_url}'
+
+    process = subprocess.Popen(cmd)
+    return process.pid
+
+
+async def kill_windows(target_names: List[str]) -> Optional[List[WindowSpecification]]:
     """
     Find and close windows matching the target names.
 
@@ -68,14 +101,64 @@ def kill_windows(target_names: List[str]) -> Optional[List[WindowSpecification]]
         return []
 
 
-if __name__ == "__main__":
-    windows_to_kill = ["Chrome", "openhands"]
-    logger.info(f"Attempting to kill windows matching: {windows_to_kill}")
-    result = kill_windows(windows_to_kill)
+async def kill_process(pid: int) -> bool:
+    """Terminate the specified process
 
-    if result is None:
-        logger.success("All matching windows were closed successfully")
-    elif not result:
-        logger.warning("No matching windows were found")
-    else:
-        logger.warning(f"Failed to close {len(result)} windows")
+    Args:
+        pid: Process ID (PID) of the process to terminate
+
+    Returns:
+        bool: True if the process was terminated successfully, False otherwise
+    """
+    try:
+        if os.name == "nt":  # Windows system
+            # Use psutil to send termination signal instead of directly killing the process
+            parent = psutil.Process(pid)
+            for child in parent.children(recursive=True):
+                try:
+                    # Use terminate() to send normal termination signal
+                    child.terminate()
+                    # Give the process some time to gracefully shut down
+                    child.wait(timeout=5)
+                except:
+                    try:
+                        # If timeout, force terminate
+                        child.kill()
+                    except Exception as e:
+                        logger.error(f"Error killing child process: {str(e)}")
+
+            try:
+                # Do the same for parent process
+                parent.terminate()
+                parent.wait(timeout=5)
+            except:
+                try:
+                    parent.kill()
+                except Exception as e:
+                    logger.error(f"Error killing parent process: {str(e)}")
+        else:  # Linux/Unix system
+            # First try to send SIGTERM signal
+            cmd = f"kill -15 {pid}"
+            process = await asyncio.create_subprocess_shell(
+                cmd, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE
+            )
+            await process.communicate()
+
+            # Give the process some time to respond to SIGTERM
+            await asyncio.sleep(5)
+
+            # Check if the process still exists
+            if psutil.pid_exists(pid):
+                # If the process still exists, send SIGKILL
+                cmd = f"kill -9 {pid}"
+                process = await asyncio.create_subprocess_shell(
+                    cmd, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE
+                )
+                await process.communicate()
+
+        logger.info(f"Process {pid} terminated")
+        return True
+    except Exception as e:
+        logger.error(f"Error terminating process: {str(e)}")
+        logger.exception(e)
+        return False

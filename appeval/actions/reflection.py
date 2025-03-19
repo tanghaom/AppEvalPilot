@@ -4,22 +4,20 @@
 @Time    : 2025/02/12
 @Author  : tanghaoming
 @File    : reflection.py
-@Desc    : 用于对操作结果进行反思的Action
+@Desc    : Action for reflecting on operation results
 """
-import asyncio
 from typing import Any, Dict, List, Tuple
 
 from metagpt.actions.action import Action
-from metagpt.const import TEST_DATA_PATH
 from metagpt.logs import logger
 from metagpt.utils.common import encode_image
 
 
 class Reflection(Action):
     name: str = "Reflection"
-    desc: str = "用于对操作结果进行反思的Action"
+    desc: str = "Action for reflecting on operation results"
 
-    # 添加提示词模板作为类变量
+    # Add prompt template as class variable
     REFLECTION_PROMPT_TEMPLATE: str = """
 These images are two {platform} screenshots before and after an operation. Their widths are {width} pixels and their heights are {height} pixels.
 
@@ -54,7 +52,7 @@ ERROR: If the operation failed or produced unexpected results
 
     def __init__(self, platform="Android"):
         super().__init__()
-        self.platform = platform  # 平台类型：Android/PC
+        self.platform = platform  # Platform type: Android/PC
 
     def get_reflection_prompt(
         self,
@@ -67,8 +65,22 @@ ERROR: If the operation failed or produced unexpected results
         action: str,
         add_info: str,
     ) -> str:
-        """生成反思提示词"""
-        # 处理感知信息
+        """Generate reflection prompt
+
+        Args:
+            instruction: User instruction
+            last_perception_infos: Previous perception information
+            perception_infos: Current perception information
+            width: Screen width
+            height: Screen height
+            summary: Operation summary
+            action: Executed action
+            add_info: Additional information
+
+        Returns:
+            str: Reflection prompt
+        """
+        # Process perception information
         before_info = "\n".join(
             f"{info['coordinates']}; {info['text']}"
             for info in last_perception_infos
@@ -79,13 +91,10 @@ ERROR: If the operation failed or produced unexpected results
             f"{info['coordinates']}; {info['text']}" for info in perception_infos if self._is_valid_perception(info)
         )
 
-        # 处理额外信息
+        # Process additional information
         additional_info = f"You also need to note the following requirements: {add_info}." if add_info else ""
 
-        # 处理操作思考
-        operation_thought = summary.split(" to ")[0].strip()
-
-        # 填充模板
+        # Fill template
         return self.REFLECTION_PROMPT_TEMPLATE.format(
             platform=self.platform,
             width=width,
@@ -94,12 +103,12 @@ ERROR: If the operation failed or produced unexpected results
             after_info=after_info,
             instruction=instruction,
             additional_info=additional_info,
-            operation_thought=operation_thought,
+            operation_thought=summary,
             action=action,
         )
 
     def _is_valid_perception(self, perception: Dict[str, Any]) -> bool:
-        """检查感知信息是否有效"""
+        """Check if perception information is valid"""
         return perception["text"] != "" and perception["text"] != "icon: None" and perception["coordinates"] != (0, 0)
 
     async def run(
@@ -115,22 +124,22 @@ ERROR: If the operation failed or produced unexpected results
         last_screenshot: str,
         current_screenshot: str,
     ) -> Tuple[str, str]:
-        """执行反思任务
+        """Execute reflection task
 
         Args:
-            instruction (str): 用户指令
-            last_perception_infos (List[Dict]): 上一次的感知信息
-            perception_infos (List[Dict]): 当前的感知信息
-            width (int): 屏幕宽度
-            height (int): 屏幕高度
-            summary (str): 操作总结
-            action (str): 执行的动作
-            add_info (str): 额外信息
-            last_screenshot (str): 上一次截图路径
-            current_screenshot (str): 当前截图路径
+            instruction (str): User instruction
+            last_perception_infos (List[Dict]): Previous perception information
+            perception_infos (List[Dict]): Current perception information
+            width (int): Screen width
+            height (int): Screen height
+            summary (str): Operation summary
+            action (str): Executed action
+            add_info (str): Additional information
+            last_screenshot (str): Previous screenshot path
+            current_screenshot (str): Current screenshot path
 
         Returns:
-            Tuple[str, str]: (反思结果, 反思思考)
+            Tuple[str, str]: (Reflection result, Reflection thought)
         """
         prompt = self.get_reflection_prompt(
             instruction, last_perception_infos, perception_infos, width, height, summary, action, add_info
@@ -153,67 +162,15 @@ ERROR: If the operation failed or produced unexpected results
         )
 
         reflection_thought = output.split("### Thought ###")[-1].split("### Answer ###")[0].replace("\n", " ").strip()
-        reflect = output.split("### Answer ###")[-1].replace("\n", " ").strip()
+        reflect = output.split("### Answer ###")[-1].strip()
 
-        # 验证输出结果是否符合预期
-        if reflect.strip().upper().startswith("CORRECT"):
+        # Validate if output matches expectations
+        if "CORRECT" in reflect.upper():
             reflect = "CORRECT"
-        elif reflect.strip().upper().startswith("ERROR"):
+        elif "ERROR" in reflect.upper():
             reflect = "ERROR"
         else:
             logger.warning(f"Unexpected reflection result: {reflect}, defaulting to ERROR")
             reflect = "ERROR"
 
         return reflect, reflection_thought
-
-
-if __name__ == "__main__":
-
-    async def main():
-        from PIL import Image
-
-        # 创建Reflection实例
-        reflection_action = Reflection()
-
-        # 测试参数 - 伪造缺失的参数
-        instruction = "打开微信"
-        last_perception_infos = [{"coordinates": (10, 10), "text": "上一次的感知信息"}]
-        perception_infos = [{"coordinates": (20, 20), "text": "当前的感知信息"}]
-        summary = "打开微信"
-        action = "点击微信图标"
-        add_info = ""
-
-        # 指定截图路径
-        last_screenshot_path = str(TEST_DATA_PATH / "screenshots" / "android.jpg")  # 替换为实际的截图路径
-        current_screenshot_path = str(TEST_DATA_PATH / "screenshots" / "android.jpg")  # 替换为实际的截图路径
-
-        # 利用PIL读取当前截图获取宽高
-        try:
-            with Image.open(current_screenshot_path) as img:
-                width, height = img.size
-        except Exception as e:
-            print(f"读取截图尺寸失败: {str(e)}，将使用默认尺寸 1080x1920")
-            width, height = 1080, 1920
-
-        try:
-            # 执行反思
-            reflect, reflection_thought = await reflection_action.run(
-                instruction,
-                last_perception_infos,
-                perception_infos,
-                width,
-                height,
-                summary,
-                action,
-                add_info,
-                last_screenshot_path,
-                current_screenshot_path,
-            )
-            print("\n反思结果:")
-            print(reflect)
-            print("\n反思思考:")
-            print(reflection_thought)
-        except Exception as e:
-            print(f"执行失败: {str(e)}")
-
-    asyncio.run(main())
