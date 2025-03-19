@@ -67,7 +67,7 @@ class AppEvalRole(Role):
         }
 
         # Initialize CaseGenerator Action
-        self.rc.test_generator = CaseGenerator()
+        self.test_generator = CaseGenerator()
 
         # Initialize OSAgent
         self._init_osagent(**kwargs)
