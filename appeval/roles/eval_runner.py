@@ -210,13 +210,19 @@ class AppEvalRole(Role):
                 if "test_cases" in task_info:
                     if "url" in task_info:
                         pid = await start_windows(task_info["url"])
-                    await asyncio.sleep(10)
+                    elif "work_path" in task_info:
+                        pid = await start_windows(work_path=task_info["work_path"])
+                    await asyncio.sleep(30)
 
                     task_id_case_number = len(test_cases[task_id]["test_cases"])
                     await self.execute_batch_check(task_id, task_id_case_number, task_info)
                     if "url" in task_info:
                         await kill_windows(["Chrome"])
                         await kill_process(pid)     # ensure the process is killed
+                    elif "work_path" in task_info:
+                        await kill_windows(["Chrome", "cmd", "npm"])
+                        await kill_process(pid)     # ensure the process is killed
+
 
             # 4. Output results to Excel (if case_excel_path is provided)
             if case_excel_path:

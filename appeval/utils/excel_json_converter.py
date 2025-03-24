@@ -47,7 +47,7 @@ def reset_json_results(json_file_path: str) -> None:
 def list_to_json(excel_file: str, json_file: str) -> None:
     """
     Convert data from Excel file to JSON format and save to JSON file.\n
-    Input: app_name in Excel table, Auto Generated Test Cases, prod_url\n
+    Input: app_name in Excel table, Auto Generated Test Cases, prod_url, work_path\n
     Output: Test json
     Args:
         excel_file (str): Path to Excel file.
@@ -62,7 +62,6 @@ def list_to_json(excel_file: str, json_file: str) -> None:
         sheet_data = {}
         for index, row in df.iterrows():
             app_name = row["app_name"]
-            url = row["prod_url"]
             if pd.isna(app_name):
                 continue
             task_list_str = row["Auto Generated Test Cases"]
@@ -74,7 +73,21 @@ def list_to_json(excel_file: str, json_file: str) -> None:
             except (ValueError, SyntaxError):
                 task_list = []
 
-            sheet_data[app_name] = {"url": f"{url}", "test_cases": {}}
+            # Initialize app entry with empty dict
+            sheet_data[app_name] = {"test_cases": {}}
+            
+            # Check and add prod_url if available
+            if "prod_url" in row and not pd.isna(row["prod_url"]):
+                sheet_data[app_name]["url"] = f"{row['prod_url']}"
+                
+            # Check and add work_path if available
+            if "work_path" in row and not pd.isna(row["work_path"]):
+                sheet_data[app_name]["work_path"] = f"{row['work_path']}"
+                
+            # Ensure at least one of url or work_path is available
+            if not ("url" in sheet_data[app_name] or "work_path" in sheet_data[app_name]):
+                # Add empty url as fallback if neither field is present
+                sheet_data[app_name]["url"] = ""
 
             for i, task_desc in enumerate(task_list):
                 sheet_data[app_name]["test_cases"][str(i)] = {"case_desc": task_desc, "result": "", "evidence": ""}
@@ -178,4 +191,37 @@ def update_project_excel_iters(project_excel_path: str, json_file_path: str) -> 
         
     except Exception as e:
         logger.error(f"Error updating project Excel file {project_excel_path}: {str(e)}")
+        raise
+
+
+def make_work_path(excel_file: str, project_path: str) -> None:
+    """
+    Add work_path column to Excel file based on project path and id column.
+    Each work_path will be constructed as: project_path/id/start.bat
+
+    Args:
+        excel_file (str): Path to Excel file
+        project_path (str): Base project path
+    """
+    try:
+        # Read Excel file
+        df = pd.read_excel(excel_file)
+        
+        # Add work_path column if it doesn't exist
+        if 'work_path' not in df.columns:
+            df['work_path'] = ''
+            
+        # Update work_path for each row
+        for index, row in df.iterrows():
+            if 'id' in row and not pd.isna(row['id']):
+                # Construct work_path as project_path/id/start.bat
+                work_path = os.path.join(project_path, str(row['id']), 'start.bat')
+                df.at[index, 'work_path'] = work_path
+                
+        # Save back to Excel
+        df.to_excel(excel_file, index=False)
+        logger.info(f"Successfully added work_path column to {excel_file}")
+        
+    except Exception as e:
+        logger.error(f"Error processing Excel file {excel_file}: {str(e)}")
         raise

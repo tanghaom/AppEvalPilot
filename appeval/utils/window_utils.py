@@ -35,24 +35,44 @@ def match_name(window_name: List[str], patterns: List[str]) -> bool:
 
 
 async def start_windows(
-    target_url: str, app_path: str = "C:/Program Files/Google/Chrome/Application/chrome.exe"
+    target_url: str = "", 
+    app_path: str = "C:/Program Files/Google/Chrome/Application/chrome.exe",
+    work_path: str = ""
 ) -> int:
     """
-    Start browser with accessibility and remote debugging enabled.
+    Start browser with accessibility and remote debugging enabled or launch a batch file.
 
     Args:
-        target_url: URL to open in browser
+        target_url: URL to open in browser, used if provided
         app_path: Path to browser executable, defaults to Chrome
+        work_path: Path to batch file or executable to run (e.g., xxx/start.bat)
 
     Returns:
-        int: Process ID (PID) of the started browser process
+        int: Process ID (PID) of the started process
     """
-    if not os.path.exists(app_path):
-        raise FileNotFoundError(f"Browser executable not found at: {app_path}")
+    if target_url:
+        if not os.path.exists(app_path):
+            raise FileNotFoundError(f"Browser executable not found at: {app_path}")
 
-    cmd = f'"{app_path}" --force-renderer-accessibility --remote-debugging-port=9222 {target_url}'
+        cmd = f'"{app_path}" --force-renderer-accessibility --remote-debugging-port=9222 {target_url}'
+    elif work_path:
+        if not os.path.exists(work_path):
+            raise FileNotFoundError(f"Executable not found at: {work_path}")
+            
+        # Get the directory containing the batch file
+        work_dir = os.path.dirname(work_path)
+        logger.info(f"Working directory: {work_dir}")
+        # Change to the directory and then execute the batch file
+        if work_dir:
+            cmd = f'cd /d "{work_dir}" && "{os.path.basename(work_path)}"'
+            logger.info(f"Command: {cmd}")
+        else:
+            cmd = f'"{work_path}"'
+            logger.info(f"Command: {cmd}")
+    else:
+        raise ValueError("Either target_url or work_path must be provided")
 
-    process = subprocess.Popen(cmd)
+    process = subprocess.Popen(cmd, shell=True)
     return process.pid
 
 
