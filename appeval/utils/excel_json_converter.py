@@ -75,15 +75,15 @@ def list_to_json(excel_file: str, json_file: str) -> None:
 
             # Initialize app entry with empty dict
             sheet_data[app_name] = {"test_cases": {}}
-            
+
             # Check and add prod_url if available
             if "prod_url" in row and not pd.isna(row["prod_url"]):
                 sheet_data[app_name]["url"] = f"{row['prod_url']}"
-                
+
             # Check and add work_path if available
             if "work_path" in row and not pd.isna(row["work_path"]):
                 sheet_data[app_name]["work_path"] = f"{row['work_path']}"
-                
+
             # Ensure at least one of url or work_path is available
             if not ("url" in sheet_data[app_name] or "work_path" in sheet_data[app_name]):
                 # Add empty url as fallback if neither field is present
@@ -149,7 +149,7 @@ def make_json_single(case_name: str, url: str, test_cases: List[str], json_path:
 def update_project_excel_iters(project_excel_path: str, json_file_path: str) -> None:
     """
     Update the project Excel file with iteration counts from the JSON results.
-    
+
     The JSON structure is expected to have the following format:
     {
         "App Name 1": {
@@ -167,28 +167,28 @@ def update_project_excel_iters(project_excel_path: str, json_file_path: str) -> 
     try:
         # Read JSON data
         json_data = read_json_file(json_file_path)
-        
+
         # Read Excel file
         df = pd.read_excel(project_excel_path)
-        
+
         # Add iters column if it doesn't exist
-        if 'iters' not in df.columns:
-            df['iters'] = ''
-        
+        if "iters" not in df.columns:
+            df["iters"] = ""
+
         # Update iters for each app
         for index, row in df.iterrows():
-            app_name = row['app_name']
+            app_name = row["app_name"]
             if pd.isna(app_name):
                 continue
-                
+
             if app_name in json_data:
                 # Update the iters value directly from the JSON structure
-                df.at[index, 'iters'] = json_data[app_name].get('iters', '')
-        
+                df.at[index, "iters"] = json_data[app_name].get("iters", "")
+
         # Write back to Excel
         df.to_excel(project_excel_path, index=False)
         logger.info(f"Successfully updated iteration counts in {project_excel_path}")
-        
+
     except Exception as e:
         logger.error(f"Error updating project Excel file {project_excel_path}: {str(e)}")
         raise
@@ -206,22 +206,22 @@ def make_work_path(excel_file: str, project_path: str) -> None:
     try:
         # Read Excel file
         df = pd.read_excel(excel_file)
-        
+
         # Add work_path column if it doesn't exist
-        if 'work_path' not in df.columns:
-            df['work_path'] = ''
-            
+        if "work_path" not in df.columns:
+            df["work_path"] = ""
+
         # Update work_path for each row
         for index, row in df.iterrows():
-            if 'id' in row and not pd.isna(row['id']):
+            if "id" in row and not pd.isna(row["id"]):
                 # Construct work_path as project_path/id/start.bat
-                work_path = os.path.join(project_path, str(row['id']), 'start.bat')
-                df.at[index, 'work_path'] = work_path
-                
+                work_path = os.path.join(project_path, str(row["id"]), "start.bat")
+                df.at[index, "work_path"] = work_path
+
         # Save back to Excel
         df.to_excel(excel_file, index=False)
         logger.info(f"Successfully added work_path column to {excel_file}")
-        
+
     except Exception as e:
         logger.error(f"Error processing Excel file {excel_file}: {str(e)}")
         raise

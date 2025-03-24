@@ -301,9 +301,9 @@ def create_ui() -> gr.Blocks:
                                 info="Detailed description of what needs to be tested",
                             )
                             single_status = gr.TextArea(
-                                label="🚦 Current Status", 
-                                interactive=False, 
-                                lines=5, 
+                                label="🚦 Current Status",
+                                interactive=False,
+                                lines=5,
                                 info="Status will be displayed here during test execution",
                             )
 
@@ -317,7 +317,7 @@ def create_ui() -> gr.Blocks:
                         value=get_test_cases(),
                         # value="",
                         every=2,
-                        )
+                    )
                 with gr.Group():
                     gr.Textbox(
                         label="📋 Tasks",
@@ -340,13 +340,9 @@ def create_ui() -> gr.Blocks:
             with gr.Column(scale=2):
                 with gr.Group():
                     with gr.Row():
-                        single_run_btn = gr.Button(
-                            "Run Test", variant="primary", size="large"
-                        )
-                        single_stop_btn = gr.Button(
-                            "Stop Test", variant="stop", size="large"
-                        )
-                    
+                        single_run_btn = gr.Button("Run Test", variant="primary", size="large")
+                        single_stop_btn = gr.Button("Stop Test", variant="stop", size="large")
+
                 with gr.Group():
                     gr.Markdown("### Live Screenshot")
                     gr.Image(

@@ -26,7 +26,7 @@ from appeval.utils.excel_json_converter import (
     make_json_single,
     update_project_excel_iters,
 )
-from appeval.utils.window_utils import kill_process, start_windows, kill_windows
+from appeval.utils.window_utils import kill_process, kill_windows, start_windows
 
 
 class AppEvalContext(RoleContext):
@@ -158,17 +158,16 @@ class AppEvalRole(Role):
                                 logger.error(f"Result parsing failed: {str(e)}")
 
             if not results_dict or len(results_dict) != task_id_case_number:
-                results_dict = await self.rc.test_generator.generate_results_dict(
+                results_dict = await self.test_generator.generate_results_dict(
                     action_history, task_list, memory, task_id_case_number
                 )
 
             data = read_json_file(self.rc.json_file)
             data[task_id]["iters"] = iter_num
             for key, value in results_dict.items():
-                data[task_id]["test_cases"][key].update({
-                    "result": value.get("result", ""),
-                    "evidence": value.get("evidence", "")
-                })
+                data[task_id]["test_cases"][key].update(
+                    {"result": value.get("result", ""), "evidence": value.get("evidence", "")}
+                )
                 write_json_file(self.rc.json_file, data, indent=4)
 
         except Exception as e:
@@ -218,17 +217,16 @@ class AppEvalRole(Role):
                     await self.execute_batch_check(task_id, task_id_case_number, task_info)
                     if "url" in task_info:
                         await kill_windows(["Chrome"])
-                        await kill_process(pid)     # ensure the process is killed
+                        await kill_process(pid)  # ensure the process is killed
                     elif "work_path" in task_info:
                         await kill_windows(["Chrome", "cmd", "npm"])
-                        await kill_process(pid)     # ensure the process is killed
-
+                        await kill_process(pid)  # ensure the process is killed
 
             # 4. Output results to Excel (if case_excel_path is provided)
             if case_excel_path:
                 logger.info("Start generating result spreadsheet...")
                 convert_json_to_excel(self.rc.json_file, case_excel_path)
-                
+
             # 5. Update project Excel with iteration counts
             logger.info("Updating project Excel with iteration counts...")
             update_project_excel_iters(project_excel_path, self.rc.json_file)
@@ -262,7 +260,7 @@ class AppEvalRole(Role):
             if not use_json_only:
                 # 1. Generate automated test cases
                 logger.info(f"Start generating automated test cases for '{case_name}'...")
-                test_cases = await self.rc.test_generator.generate_test_cases(user_requirement)
+                test_cases = await self.test_generator.generate_test_cases(user_requirement)
 
                 # 2. Convert to JSON format
                 logger.info("Start converting to JSON format...")
@@ -284,7 +282,7 @@ class AppEvalRole(Role):
                     await self.execute_batch_check(task_id, task_id_case_number, task_info)
                     if "url" in task_info:
                         await kill_windows(["Chrome"])
-                        await kill_process(pid)     # ensure the process is killed
+                        await kill_process(pid)  # ensure the process is killed
 
             # 4. Read results
             result = read_json_file(self.rc.json_file)

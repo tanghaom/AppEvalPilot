@@ -8,6 +8,7 @@
 import asyncio
 import os
 import subprocess
+from pathlib import Path
 from typing import List, Optional
 
 import psutil
@@ -35,9 +36,7 @@ def match_name(window_name: List[str], patterns: List[str]) -> bool:
 
 
 async def start_windows(
-    target_url: str = "", 
-    app_path: str = "C:/Program Files/Google/Chrome/Application/chrome.exe",
-    work_path: str = ""
+    target_url: str = "", app_path: str = "C:/Program Files/Google/Chrome/Application/chrome.exe", work_path: str = ""
 ) -> int:
     """
     Start browser with accessibility and remote debugging enabled or launch a batch file.
@@ -51,20 +50,22 @@ async def start_windows(
         int: Process ID (PID) of the started process
     """
     if target_url:
-        if not os.path.exists(app_path):
+        app_path = Path(app_path)
+        if not app_path.exists():
             raise FileNotFoundError(f"Browser executable not found at: {app_path}")
 
         cmd = f'"{app_path}" --force-renderer-accessibility --remote-debugging-port=9222 {target_url}'
     elif work_path:
-        if not os.path.exists(work_path):
+        work_path = Path(work_path)
+        if not work_path.exists():
             raise FileNotFoundError(f"Executable not found at: {work_path}")
-            
+
         # Get the directory containing the batch file
-        work_dir = os.path.dirname(work_path)
+        work_dir = work_path.parent
         logger.info(f"Working directory: {work_dir}")
         # Change to the directory and then execute the batch file
         if work_dir:
-            cmd = f'cd /d "{work_dir}" && "{os.path.basename(work_path)}"'
+            cmd = f'cd /d "{work_dir}" && "{work_path.name}"'
             logger.info(f"Command: {cmd}")
         else:
             cmd = f'"{work_path}"'

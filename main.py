@@ -7,14 +7,15 @@ from loguru import logger
 from appeval.roles.eval_runner import AppEvalRole
 from appeval.utils.excel_json_converter import make_work_path
 
+
 async def run_batch_test():
     """Run batch test example"""
     try:
         # Set test related paths
-        project_excel = r"G:\torch\gpt_pilot\gpt_pilot_v1_test.xlsx"
+        project_excel = r""
         case_excel = "data/gpt_pilot_v1_test_results.xlsx"
         json_file = "data/gpt_pilot_v1_test_results.json"
-        work_dir = r"G:\torch\gpt_pilot\gpt_pilot_workspace_v1"
+        work_dir = r""
         # Make work path
         make_work_path(project_excel, work_dir)
 
