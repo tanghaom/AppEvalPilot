@@ -54,7 +54,7 @@ async def start_windows(
         if not app_path.exists():
             raise FileNotFoundError(f"Browser executable not found at: {app_path}")
 
-        cmd = f'"{app_path}" --force-renderer-accessibility --remote-debugging-port=9222 {target_url}'
+        cmd = f'"{app_path}" --force-renderer-accessibility --remote-debugging-port=9222 --start-fullscreen {target_url}'
     elif work_path:
         work_path = Path(work_path)
         if not work_path.exists():
