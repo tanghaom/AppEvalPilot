@@ -483,8 +483,6 @@ Inspection Standards:
 For each individual test case completion, you can use Tell action to report just that result:
 Tell ({"case_number": {"result": "Pass/Fail/Uncertain", "evidence": "Your evidence here"}})
 
-If you found: ***1. The observed app(or webpage) has large areas of blank space 2. The homepage has 404 error messages or other errors 3. The homepage layout is chaotic, and most icons have no actual function. In these cases, the results of all test cases are False.***
-
 Even in these failure cases, you must perform sufficient testing steps to prove your judgment before using the Tell action to report all results.
 
 [VERIFICATION REQUIRED]: Before submitting your final report, verify that:
