@@ -54,11 +54,11 @@ async def run_single_test():
         # Initialize automated test role
         appeval = AppEvalRole(
             json_file=json_path,
-            use_ocr=True,
-            quad_split_ocr=True,
+            use_ocr=False,
+            quad_split_ocr=False,
             use_memory=False,
             use_reflection=True,
-            use_chrome_debugger=True,
+            use_chrome_debugger=False,
             extend_xml_infos=True,
             log_dirs=f"work_dirs/{case_name}",
         )

@@ -113,12 +113,9 @@ def convert_json_to_excel(json_file_path: str, excel_file_path: str) -> None:
             excel_data.append(
                 {
                     "project_name": task,
-                    "case_name": "",
                     "case_desc": condition.get("case_desc", ""),
                     "result": condition.get("result", ""),
                     "evidence": condition.get("evidence", ""),
-                    "auto_function_detection": "",
-                    "console_logs": "",
                 }
             )
 
