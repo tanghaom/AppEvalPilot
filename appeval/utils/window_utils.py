@@ -16,6 +16,12 @@ from metagpt.logs import logger
 from pywinauto import Desktop
 from pywinauto.application import WindowSpecification
 
+# Add CREATE_NO_WINDOW flag import
+if os.name == "nt":  # Only import on Windows systems
+    CREATE_NO_WINDOW = 0x08000000
+else:
+    CREATE_NO_WINDOW = 0  # Set to 0 (invalid value) on non-Windows systems
+
 
 def match_name(window_name: List[str], patterns: List[str]) -> bool:
     """
@@ -54,7 +60,9 @@ async def start_windows(
         if not app_path.exists():
             raise FileNotFoundError(f"Browser executable not found at: {app_path}")
 
-        cmd = f'"{app_path}" --force-renderer-accessibility --remote-debugging-port=9222 --start-fullscreen {target_url}'
+        cmd = (
+            f'"{app_path}" --force-renderer-accessibility --remote-debugging-port=9222 --start-fullscreen {target_url}'
+        )
     elif work_path:
         work_path = Path(work_path)
         if not work_path.exists():
@@ -73,7 +81,10 @@ async def start_windows(
     else:
         raise ValueError("Either target_url or work_path must be provided")
 
-    process = subprocess.Popen(cmd, shell=True)
+    if os.name == "nt":  # Windows system
+        process = subprocess.Popen(cmd, shell=True, creationflags=CREATE_NO_WINDOW)
+    else:  # Non-Windows system
+        process = subprocess.Popen(cmd, shell=True)
     return process.pid
 
 
