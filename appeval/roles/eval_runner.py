@@ -242,7 +242,7 @@ class AppEvalRole(Role):
                         await kill_windows(["Chrome"])
                         await kill_process(pid)  # ensure the process is killed
                     elif "work_path" in task_info:
-                        await kill_windows(["Chrome", "cmd", "npm", "projectapp"])
+                        await kill_windows(["Chrome", "cmd", "npm", "projectapp", "Edge"])
                         await kill_process(pid)  # ensure the process is killed
 
             # 4. Output results to Excel (if case_excel_path is provided)

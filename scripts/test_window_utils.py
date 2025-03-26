@@ -65,7 +65,7 @@ async def test_kill_windows():
         # await asyncio.sleep(3)
 
         # Now try to kill the window
-        target_names = ["cmd", "Chrome", "npm"]
+        target_names = ["cmd", "Chrome", "npm", "projectapp", "Edge"]
         failed_windows = await kill_windows(target_names)
 
         if failed_windows is None:
