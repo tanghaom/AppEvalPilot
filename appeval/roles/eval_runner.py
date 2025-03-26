@@ -111,21 +111,44 @@ class AppEvalRole(Role):
         )
 
     async def execute_batch_check(self, task_id: str, task_id_case_number: int, check_list: dict) -> None:
-        """Execute single verification condition"""
+        """Execute single verification condition with retry mechanism"""
         logger.info(f"Start testing project {task_id}")
         logger.info(f"Setting log_dirs to: {self.osagent.log_dirs}")
         instruction = (
             "Please complete the following tasks，And after completion, use the Tell action to "
             f"inform me of the results of all the test cases at once: {check_list}\n"
         )
-        await self.osagent.run(instruction)
-
-        # Get action history
-        action_history = self.osagent.rc.action_history
-        task_list = self.osagent.rc.task_list
-        memory = self.osagent.rc.memory
-        iter_num = self.osagent.rc.iter
-        await self.write_batch_res_to_json(task_id, task_id_case_number, action_history, task_list, memory, iter_num)
+        max_retries = 2
+        retry_count = 0
+        while retry_count <= max_retries:
+            try:
+                await self.osagent.run(instruction)
+                # Get action history
+                action_history = self.osagent.rc.action_history
+                task_list = self.osagent.rc.task_list
+                memory = self.osagent.rc.memory
+                iter_num = self.osagent.rc.iter
+                await self.write_batch_res_to_json(task_id, task_id_case_number, action_history, task_list, memory, iter_num)
+                break  # If successful, break the retry loop
+            except Exception as e:
+                retry_count += 1
+                if retry_count <= max_retries:
+                    logger.warning(f"Attempt {retry_count} failed for task {task_id}, retrying... Error: {str(e)}")
+                    await asyncio.sleep(5)  # Wait a bit before retrying
+                else:
+                    logger.error(f"All {max_retries + 1} attempts failed for task {task_id}. Error: {str(e)}")
+                    # Write failed result to JSON
+                    try:
+                        await self.write_batch_res_to_json(
+                            task_id, 
+                            task_id_case_number, 
+                            ["Failed after all retries"], 
+                            "Failed", 
+                            [f"Error: {str(e)}"], 
+                            "0"
+                        )
+                    except Exception as write_error:
+                        logger.error(f"Failed to write error result to JSON: {str(write_error)}")
 
     async def write_batch_res_to_json(
         self,
@@ -219,7 +242,7 @@ class AppEvalRole(Role):
                         await kill_windows(["Chrome"])
                         await kill_process(pid)  # ensure the process is killed
                     elif "work_path" in task_info:
-                        await kill_windows(["Chrome", "cmd", "npm"])
+                        await kill_windows(["Chrome", "cmd", "npm", "projectapp"])
                         await kill_process(pid)  # ensure the process is killed
 
             # 4. Output results to Excel (if case_excel_path is provided)
