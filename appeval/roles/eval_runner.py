@@ -27,6 +27,7 @@ from appeval.utils.excel_json_converter import (
     update_project_excel_iters,
 )
 from appeval.utils.window_utils import kill_process, kill_windows, start_windows
+from hijack_osagent import OSAgentHijacker
 
 
 class AppEvalContext(RoleContext):
@@ -50,6 +51,7 @@ class AppEvalRole(Role):
 
     rc: AppEvalContext = Field(default_factory=AppEvalContext)
     osagent: Optional[OSAgent] = None
+    hijacker: Optional[OSAgentHijacker] = None
 
     def __init__(self, json_file: str, **kwargs):
         super().__init__()
@@ -91,6 +93,7 @@ class AppEvalRole(Role):
             "of all test cases before executing Stop"
         )
 
+        # Initialize OSAgent
         self.osagent = OSAgent(
             platform=kwargs.get("os_type", "Windows"),
             max_iters=40,
@@ -109,6 +112,16 @@ class AppEvalRole(Role):
             add_info=add_info,
             system_prompt=case_batch_check_system_prompt,
         )
+
+        # Initialize and apply hijacker
+        self.hijacker = OSAgentHijacker(
+            log_dir=f"{self.rc.agent_params['log_dirs']}/hijack_logs",
+            save_full_state=True,
+            save_images=True,
+            log_level="INFO",
+            perf_stats_interval=5
+        )
+        self.osagent = self.hijacker.hijack(self.osagent)
 
     async def execute_batch_check(self, task_id: str, task_id_case_number: int, check_list: dict) -> None:
         """Execute single verification condition with retry mechanism"""
@@ -149,6 +162,13 @@ class AppEvalRole(Role):
                         )
                     except Exception as write_error:
                         logger.error(f"Failed to write error result to JSON: {str(write_error)}")
+            finally:
+                # Cleanup hijacker after task completion
+                if self.hijacker:
+                    try:
+                        await self.hijacker.cleanup()
+                    except Exception as cleanup_error:
+                        logger.error(f"Failed to cleanup hijacker: {str(cleanup_error)}")
 
     async def write_batch_res_to_json(
         self,
