@@ -690,9 +690,9 @@ class OSAgentHijacker:
 
         # 创建新的reset_state方法
         @wraps(self.original_reset_state)
-        def patched_reset_state(instruction=None):
+        def patched_reset_state():
             # 先调用原始的reset_state方法
-            result = self.original_reset_state(instruction)
+            result = self.original_reset_state()
 
             # 重置劫持器的会话目录
             logger.info("检测到OSAgent状态重置，创建新的日志会话目录")
