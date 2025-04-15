@@ -27,7 +27,7 @@ from appeval.utils.excel_json_converter import (
     update_project_excel_iters,
 )
 from appeval.utils.window_utils import kill_process, kill_windows, start_windows
-from hijack_osagent import OSAgentHijacker
+from appeval.utils.hijack_osagent import OSAgentHijacker
 
 
 class AppEvalContext(RoleContext):
