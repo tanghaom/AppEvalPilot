@@ -22,9 +22,11 @@ from appeval.prompts.osagent import case_batch_check_system_prompt
 from appeval.roles.osagent import OSAgent
 from appeval.utils.excel_json_converter import (
     convert_json_to_excel,
+    mini_list_to_json,
     list_to_json,
     make_json_single,
     update_project_excel_iters,
+    mini_list_to_excel
 )
 from appeval.utils.window_utils import kill_process, kill_windows, start_windows
 
@@ -249,6 +251,69 @@ class AppEvalRole(Role):
             if case_excel_path:
                 logger.info("Start generating result spreadsheet...")
                 convert_json_to_excel(self.rc.json_file, case_excel_path)
+
+            # 5. Update project Excel with iteration counts
+            logger.info("Updating project Excel with iteration counts...")
+            update_project_excel_iters(project_excel_path, self.rc.json_file)
+
+            logger.info("Test process completed")
+
+        except Exception as e:
+            logger.error(f"Error occurred during test execution: {str(e)}")
+            raise
+
+    async def run_mini_batch(self, project_excel_path: str = None, case_excel_path: str = None) -> None:
+        """Run batch testing
+
+        Complete testing process includes:
+        1. Generate test cases from Excel
+        2. Convert to JSON format
+        3. Execute automated testing
+        4. (Optional) Output results to Excel
+
+        Args:
+            project_excel_path: Project level Excel file path
+            case_excel_path: Case level Excel file path (optional)
+        """
+        try:
+            if project_excel_path:
+                # 1. Generate automated test cases
+                logger.info("Start generating automated test cases...")
+                await self.test_generator.process_excel_file(project_excel_path, OperationType.GENERATE_CASES_MINI_BATCH)
+
+                # 2. Convert to JSON format
+                logger.info("Start converting to JSON format...")
+                mini_list_to_json(project_excel_path, self.rc.json_file)
+            else:
+                raise ValueError("project_excel_path must be provided for batch run if not using existing json file.")
+
+            # 3. Execute automated testing
+            logger.info("Start executing automated testing...")
+            test_cases = read_json_file(self.rc.json_file)
+
+            for task_id, task_info in test_cases.items():
+                self.osagent.log_dirs = f"work_dirs/{task_id}"
+
+                if "test_cases" in task_info:
+                    if "url" in task_info:
+                        pid = await start_windows(task_info["url"])
+                    elif "work_path" in task_info:
+                        pid = await start_windows(work_path=task_info["work_path"])
+                    await asyncio.sleep(30)
+
+                    task_id_case_number = len(test_cases[task_id]["test_cases"])
+                    await self.execute_batch_check(task_id, task_id_case_number, task_info)
+                    if "url" in task_info:
+                        await kill_windows(["Chrome"])
+                        await kill_process(pid)  # ensure the process is killed
+                    elif "work_path" in task_info:
+                        await kill_windows(["Chrome", "cmd", "npm", "projectapp", "Edge"])
+                        await kill_process(pid)  # ensure the process is killed
+
+            # 4. Output results to Excel (if case_excel_path is provided)
+            if case_excel_path:
+                logger.info("Start generating result spreadsheet...")
+                mini_list_to_excel(self.rc.json_file, case_excel_path)
 
             # 5. Update project Excel with iteration counts
             logger.info("Updating project Excel with iteration counts...")

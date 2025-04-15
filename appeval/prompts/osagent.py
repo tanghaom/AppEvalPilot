@@ -261,7 +261,7 @@ You must choose one of the actions below:
         # Build last operation information
         last_operation = ""
         if ctx.error_flag:
-            last_operation = f'### Last operation ###\nYou previously wanted to perform the operation "{ctx.last_summary}" on this page and executed the Action "{ctx.last_action}". But you find that this operation does not meet your expectation. You need to reflect and revise your operation this time.'
+            last_operation = f'### Last operation ###\nYou previously wanted to perform the operation "{ctx.last_summary}" on this page and executed the Action "{ctx.last_action}". But you find that this operation does not meet your expectation.There are two possible situations that may cause the above problem: 1. Your action is incorrect, possibly due to incorrect operation coordinates, etc. 2. The target you are operating has not been implemented. You need additional operations to confirm which situation the problem is. You need to reflect and revise your operation this time.'
 
         # Build reflection information
         reflection_thought = (
@@ -303,7 +303,9 @@ class PC_prompt(BasePrompt):
         # PC-specific hints
         self.hints += """
 If Tell action was used in the previous round, it cannot be used again this time.
-To fully view webpage content, you must use the 'pagedown' key to scroll. Note that you can only advance one page at a time."""
+To fully view webpage content, you must use the 'pagedown' key to scroll. Note that you can only advance one page at a time.
+If you need to change the size of the webpage, you can do so by simultaneously pressing the ctrl and + or - keys.
+"""
 
         # PC-specific task requirements
         self.task_requirements = """

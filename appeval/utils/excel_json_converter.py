@@ -96,6 +96,105 @@ def list_to_json(excel_file: str, json_file: str) -> None:
 
     write_json_file(json_file, output_data, indent=4)
 
+def mini_list_to_json(excel_file: str, json_file: str) -> None:
+    """
+    Convert data from Excel file to JSON format and save to JSON file.\n
+    Input: app_name in Excel table, Auto Generated Test Cases, prod_url, work_path\n
+    Output: Test json with separate entries for each category of test cases
+    Args:
+        excel_file (str): Path to Excel file.
+        json_file (str): Path to output JSON file.
+    """
+    xls = pd.ExcelFile(excel_file)
+    sheet_names = xls.sheet_names
+    output_data = {}
+
+    for sheet_name in sheet_names:
+        df = pd.read_excel(excel_file, sheet_name=sheet_name)
+        sheet_data = {}
+        for index, row in df.iterrows():
+            app_name = row["app_name"]
+            if pd.isna(app_name):
+                continue
+            task_list_str = row["Auto Generated Test Cases"]
+
+            try:
+                # Convert string to list of lists
+                task_list = ast.literal_eval(task_list_str)
+                if not isinstance(task_list, list):
+                    task_list = []
+                # Ensure each element is a list
+                task_list = [item if isinstance(item, list) else [] for item in task_list]
+            except (ValueError, SyntaxError):
+                task_list = []
+
+            # Create separate entries for each category
+            for i, category_tasks in enumerate(task_list):
+                category_app_name = f"{app_name}_{i}"
+                # Initialize app entry with empty dict
+                sheet_data[category_app_name] = {"test_cases": {}}
+
+                # Check and add prod_url if available
+                if "prod_url" in row and not pd.isna(row["prod_url"]):
+                    sheet_data[category_app_name]["url"] = f"{row['prod_url']}"
+
+                # Check and add work_path if available
+                if "work_path" in row and not pd.isna(row["work_path"]):
+                    sheet_data[category_app_name]["work_path"] = f"{row['work_path']}"
+
+                # Ensure at least one of url or work_path is available
+                if not ("url" in sheet_data[category_app_name] or "work_path" in sheet_data[category_app_name]):
+                    # Add empty url as fallback if neither field is present
+                    sheet_data[category_app_name]["url"] = ""
+
+                # Add test cases for this category
+                for j, task_desc in enumerate(category_tasks):
+                    sheet_data[category_app_name]["test_cases"][str(j)] = {
+                        "case_desc": task_desc,
+                        "result": "",
+                        "evidence": ""
+                    }
+
+        output_data.update(sheet_data)
+
+    write_json_file(json_file, output_data, indent=4)
+
+def mini_list_to_excel(json_file: str, excel_file: str) -> None:
+    """
+    Convert JSON file with categorized test cases back to Excel format.\n
+    Merges test cases from different categories back into their original project names.
+
+    Args:
+        json_file (str): Path to JSON file.
+        excel_file (str): Path to output Excel file.
+    """
+    data = read_json_file(json_file)
+    excel_data = []
+
+    # Group data by original project name (removing the category suffix)
+    project_data = {}
+    for app_name, details in data.items():
+        # Extract original project name by removing the category suffix
+        base_name = app_name.rsplit('_', 1)[0]
+        if base_name not in project_data:
+            project_data[base_name] = []
+
+        # Add test cases for this category
+        for case_id, case in details.get("test_cases", {}).items():
+            project_data[base_name].append({
+                "project_name": base_name,
+                "case_desc": case.get("case_desc", ""),
+                "result": case.get("result", ""),
+                "evidence": case.get("evidence", "")
+            })
+
+    # Flatten the data into a single list
+    for cases in project_data.values():
+        excel_data.extend(cases)
+
+    # Create DataFrame and save to Excel
+    df = pd.DataFrame(excel_data)
+    df.to_excel(excel_file, index=False)
 
 def convert_json_to_excel(json_file_path: str, excel_file_path: str) -> None:
     """

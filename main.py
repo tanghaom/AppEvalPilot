@@ -12,26 +12,27 @@ async def run_batch_test():
     """Run batch test example"""
     try:
         # Set test related paths
-        project_excel = r""
-        case_excel = "data/gpt_pilot_v1_test_results.xlsx"
-        json_file = "data/gpt_pilot_v1_test_results.json"
-        work_dir = r""
+        project_excel = r"G:\torch\AppEvalPilot\data\test.xlsx"
+        case_excel = r"G:\torch\AppEvalPilot\data\test_results.xlsx"
+        json_file = r"G:\torch\AppEvalPilot\data\test_results.json"
+        work_dir = r"work_dirs\test"
         # Make work path
         make_work_path(project_excel, work_dir)
 
         # Initialize automated test role
         appeval = AppEvalRole(
             json_file=json_file,
-            use_ocr=True,
-            quad_split_ocr=True,
+            use_ocr=False,
+            quad_split_ocr=False,
             use_memory=False,
             use_reflection=True,
-            use_chrome_debugger=True,
+            use_chrome_debugger=False,
             extend_xml_infos=True,
         )
 
         # Execute batch test
-        result = await appeval.run(project_excel_path=project_excel, case_excel_path=case_excel)
+        # result = await appeval.run_batch(project_excel_path=project_excel, case_excel_path=case_excel)
+        result = await appeval.run_mini_batch(project_excel_path=project_excel, case_excel_path=case_excel)
         result = json.loads(result.content)
         logger.info(f"Batch test execution result: {result}")
 
