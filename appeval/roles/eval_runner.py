@@ -10,25 +10,24 @@ import asyncio
 import json
 from typing import Any, Dict, List, Optional
 
+from appeval.actions.case_generator import CaseGenerator, OperationType
+from appeval.prompts.osagent import case_batch_check_system_prompt
+from appeval.roles.osagent import OSAgent
+from appeval.utils.excel_json_converter import (
+    convert_json_to_excel,
+    list_to_json,
+    make_json_single,
+    mini_list_to_excel,
+    mini_list_to_json,
+    update_project_excel_iters,
+)
+from appeval.utils.window_utils import kill_process, kill_windows, start_windows
 from loguru import logger
 from metagpt.actions import Action
 from metagpt.roles.role import Role, RoleContext
 from metagpt.schema import Message
 from metagpt.utils.common import read_json_file, write_json_file
 from pydantic import ConfigDict, Field
-
-from appeval.actions.case_generator import CaseGenerator, OperationType
-from appeval.prompts.osagent import case_batch_check_system_prompt
-from appeval.roles.osagent import OSAgent
-from appeval.utils.excel_json_converter import (
-    convert_json_to_excel,
-    mini_list_to_json,
-    list_to_json,
-    make_json_single,
-    update_project_excel_iters,
-    mini_list_to_excel
-)
-from appeval.utils.window_utils import kill_process, kill_windows, start_windows
 
 
 class AppEvalContext(RoleContext):
@@ -130,7 +129,9 @@ class AppEvalRole(Role):
                 task_list = self.osagent.rc.task_list
                 memory = self.osagent.rc.memory
                 iter_num = self.osagent.rc.iter
-                await self.write_batch_res_to_json(task_id, task_id_case_number, action_history, task_list, memory, iter_num)
+                await self.write_batch_res_to_json(
+                    task_id, task_id_case_number, action_history, task_list, memory, iter_num
+                )
                 break  # If successful, break the retry loop
             except Exception as e:
                 retry_count += 1
@@ -142,12 +143,12 @@ class AppEvalRole(Role):
                     # Write failed result to JSON
                     try:
                         await self.write_batch_res_to_json(
-                            task_id, 
-                            task_id_case_number, 
-                            ["Failed after all retries"], 
-                            "Failed", 
-                            [f"Error: {str(e)}"], 
-                            "0"
+                            task_id,
+                            task_id_case_number,
+                            ["Failed after all retries"],
+                            "Failed",
+                            [f"Error: {str(e)}"],
+                            "0",
                         )
                     except Exception as write_error:
                         logger.error(f"Failed to write error result to JSON: {str(write_error)}")
@@ -279,7 +280,9 @@ class AppEvalRole(Role):
             if project_excel_path:
                 # 1. Generate automated test cases
                 logger.info("Start generating automated test cases...")
-                await self.test_generator.process_excel_file(project_excel_path, OperationType.GENERATE_CASES_MINI_BATCH)
+                await self.test_generator.process_excel_file(
+                    project_excel_path, OperationType.GENERATE_CASES_MINI_BATCH
+                )
 
                 # 2. Convert to JSON format
                 logger.info("Start converting to JSON format...")
@@ -329,6 +332,7 @@ class AppEvalRole(Role):
         self,
         case_name: str,
         url: str,
+        work_path: str,
         user_requirement: str,
         json_path: str = "data/temp.json",
         use_json_only: bool = False,
@@ -338,6 +342,7 @@ class AppEvalRole(Role):
         Args:
             case_name (str): Test case name
             url (str): Test target URL
+            work_path (str): Test working directory
             user_requirement (str): Test requirement description
             json_path (str, optional): Output JSON file path
             use_json_only (bool, optional): Whether to only use JSON files
@@ -352,7 +357,7 @@ class AppEvalRole(Role):
 
                 # 2. Convert to JSON format
                 logger.info("Start converting to JSON format...")
-                make_json_single(case_name, url, test_cases, json_path)
+                make_json_single(case_name, url, test_cases, json_path, work_path)
 
             # 3. Execute automated testing
             logger.info("Start executing automated testing...")
@@ -411,11 +416,12 @@ class AppEvalRole(Role):
             if kwargs.get("case_name") and kwargs.get("user_requirement"):
                 # Single test scenario
                 result = await self.run_single(
-                    kwargs["case_name"],
-                    kwargs["url"],
-                    kwargs["user_requirement"],
-                    kwargs.get("json_path", "data/temp.json"),
-                    kwargs.get("use_json_only", False),
+                    case_name=kwargs["case_name"],
+                    url=kwargs.get("url", ""),
+                    work_path=kwargs.get("work_path", ""),
+                    user_requirement=kwargs["user_requirement"],
+                    json_path=kwargs.get("json_path", "data/temp.json"),
+                    use_json_only=kwargs.get("use_json_only", False),
                 )
                 return Message(content=json.dumps(result), cause_by=Action)
             else:

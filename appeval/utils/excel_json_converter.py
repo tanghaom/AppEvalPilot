@@ -96,6 +96,7 @@ def list_to_json(excel_file: str, json_file: str) -> None:
 
     write_json_file(json_file, output_data, indent=4)
 
+
 def mini_list_to_json(excel_file: str, json_file: str) -> None:
     """
     Convert data from Excel file to JSON format and save to JSON file.\n
@@ -152,12 +153,13 @@ def mini_list_to_json(excel_file: str, json_file: str) -> None:
                     sheet_data[category_app_name]["test_cases"][str(j)] = {
                         "case_desc": task_desc,
                         "result": "",
-                        "evidence": ""
+                        "evidence": "",
                     }
 
         output_data.update(sheet_data)
 
     write_json_file(json_file, output_data, indent=4)
+
 
 def mini_list_to_excel(json_file: str, excel_file: str) -> None:
     """
@@ -175,18 +177,20 @@ def mini_list_to_excel(json_file: str, excel_file: str) -> None:
     project_data = {}
     for app_name, details in data.items():
         # Extract original project name by removing the category suffix
-        base_name = app_name.rsplit('_', 1)[0]
+        base_name = app_name.rsplit("_", 1)[0]
         if base_name not in project_data:
             project_data[base_name] = []
 
         # Add test cases for this category
         for case_id, case in details.get("test_cases", {}).items():
-            project_data[base_name].append({
-                "project_name": base_name,
-                "case_desc": case.get("case_desc", ""),
-                "result": case.get("result", ""),
-                "evidence": case.get("evidence", "")
-            })
+            project_data[base_name].append(
+                {
+                    "project_name": base_name,
+                    "case_desc": case.get("case_desc", ""),
+                    "result": case.get("result", ""),
+                    "evidence": case.get("evidence", ""),
+                }
+            )
 
     # Flatten the data into a single list
     for cases in project_data.values():
@@ -195,6 +199,7 @@ def mini_list_to_excel(json_file: str, excel_file: str) -> None:
     # Create DataFrame and save to Excel
     df = pd.DataFrame(excel_data)
     df.to_excel(excel_file, index=False)
+
 
 def convert_json_to_excel(json_file_path: str, excel_file_path: str) -> None:
     """
@@ -222,7 +227,7 @@ def convert_json_to_excel(json_file_path: str, excel_file_path: str) -> None:
     df.to_excel(excel_file_path, index=False)
 
 
-def make_json_single(case_name: str, url: str, test_cases: List[str], json_path: str) -> None:
+def make_json_single(case_name: str, url: str, test_cases: List[str], json_path: str, work_path: str) -> None:
     """
     Convert a single test case to JSON format and save it
 
@@ -231,12 +236,16 @@ def make_json_single(case_name: str, url: str, test_cases: List[str], json_path:
         url: Test URL
         test_cases: Test case list
         json_path: Path to output JSON file
+        work_path: Test case work path
     """
     # Ensure the directory exists
     os.makedirs(os.path.dirname(json_path), exist_ok=True)
 
     data = {}
-    data[case_name] = {"url": url, "iters": "", "test_cases": {}}
+    if url:
+        data[case_name] = {"url": url, "iters": "", "test_cases": {}}
+    else:
+        data[case_name] = {"work_path": work_path, "iters": "", "test_cases": {}}
     for i, task_desc in enumerate(test_cases):
         data[case_name]["test_cases"][str(i)] = {"case_desc": task_desc, "result": "", "evidence": ""}
     write_json_file(json_path, data, indent=4)
