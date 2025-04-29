@@ -5,29 +5,34 @@ from pathlib import Path
 from loguru import logger
 
 from appeval.roles.eval_runner import AppEvalRole
+from appeval.utils.excel_json_converter import make_work_path
 
 
 async def run_batch_test():
     """Run batch test example"""
     try:
         # Set test related paths
-        project_excel = "data/4d807943.xlsx"
-        case_excel = "data/4d807943_results.xlsx"
-        json_file = "data/4d807943_results.json"
+        project_excel = r"G:\torch\AppEvalPilot\data\test.xlsx"
+        case_excel = r"G:\torch\AppEvalPilot\data\test_results.xlsx"
+        json_file = r"G:\torch\AppEvalPilot\data\test_results.json"
+        work_dir = r"work_dirs\test"
+        # Make work path
+        make_work_path(project_excel, work_dir)
 
         # Initialize automated test role
         appeval = AppEvalRole(
             json_file=json_file,
-            use_ocr=True,
-            quad_split_ocr=True,
+            use_ocr=False,
+            quad_split_ocr=False,
             use_memory=False,
             use_reflection=True,
-            use_chrome_debugger=True,
+            use_chrome_debugger=False,
             extend_xml_infos=True,
         )
 
         # Execute batch test
-        result = await appeval.run(project_excel_path=project_excel, case_excel_path=case_excel)
+        # result = await appeval.run_batch(project_excel_path=project_excel, case_excel_path=case_excel)
+        result = await appeval.run_mini_batch(project_excel_path=project_excel, case_excel_path=case_excel)
         result = json.loads(result.content)
         logger.info(f"Batch test execution result: {result}")
 
@@ -50,11 +55,11 @@ async def run_single_test():
         # Initialize automated test role
         appeval = AppEvalRole(
             json_file=json_path,
-            use_ocr=True,
-            quad_split_ocr=True,
+            use_ocr=False,
+            quad_split_ocr=False,
             use_memory=False,
             use_reflection=True,
-            use_chrome_debugger=True,
+            use_chrome_debugger=False,
             extend_xml_infos=True,
             log_dirs=f"work_dirs/{case_name}",
         )

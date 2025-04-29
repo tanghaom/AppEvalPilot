@@ -3,6 +3,7 @@
 workspace/
 work_dirs/
 data/
+rc_states/
 config/config2.yaml
 
 # Byte-compiled / optimized / DLL files

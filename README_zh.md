@@ -18,7 +18,7 @@ AppEvalPilot 的完全自动化流程无需人工干预，简化了您的流程�
 
 ### 样例视频
 
-https://github.com/user-attachments/assets/b17faa5f-05c8-47e5-9ec3-36a646236892
+https://github.com/user-attachments/assets/27c791ef-096b-4dd0-b5a5-8319a80b2748
 
 ## 安装
 

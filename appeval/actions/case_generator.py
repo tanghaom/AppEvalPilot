@@ -24,7 +24,7 @@ class OperationType(Enum):
     GENERATE_CASES = "generate_cases"
     MAKE_CASE_NAME = "make_case_name"
     CHECK_RESULTS = "check_results"
-
+    GENERATE_CASES_MINI_BATCH = "generate_cases_mini_batch"
 
 class CaseGenerator(Action):
     name: str = "CaseGenerator"
@@ -80,6 +80,28 @@ class CaseGenerator(Action):
         """
         try:
             prompt = CasePrompts.GENERATE_CASES.format(demand=demand)
+            logger.info(f"Original requirement: {demand}")
+            # Call chat to generate test cases
+            answer = await self._inference_chat(prompt)
+            # Convert string to list
+            test_cases = eval(answer)
+            return test_cases
+
+        except Exception as e:
+            logger.error(f"Error occurred while generating test cases: {str(e)}")
+            raise
+    
+    async def generate_test_cases_mini_batch(self, demand: str) -> List[str]:
+        """Generate test cases based on requirements
+
+        Args:
+            demand: User requirement description
+
+        Returns:
+            List[List[str], List[str], ...]: List of test case lists, where each inner list contains related test cases for a category
+        """
+        try:
+            prompt = CasePrompts.GENERATE_CASES_MINI_BATCH.format(demand=demand)
             logger.info(f"Original requirement: {demand}")
             # Call chat to generate test cases
             answer = await self._inference_chat(prompt)
@@ -188,7 +210,16 @@ class CaseGenerator(Action):
                 df.at[index, "Auto Generated Test Cases"] = str(test_cases)
                 # Save after processing each row
                 df.to_excel(excel_path, index=False)
-
+        elif operation == OperationType.GENERATE_CASES_MINI_BATCH:
+            # Process each row to generate test cases
+            for index, row in df.iterrows():
+                ori_demand = str(row["requirement"])
+                if not ori_demand:
+                    continue
+                test_cases = await self.generate_test_cases_mini_batch(ori_demand)
+                df.at[index, "Auto Generated Test Cases"] = str(test_cases)
+                # Save after processing each row
+                df.to_excel(excel_path, index=False)
         elif operation == OperationType.MAKE_CASE_NAME:
             # Generate case_name for each test case
             for index, row in df.iterrows():

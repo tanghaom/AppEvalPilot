@@ -8,12 +8,19 @@
 import asyncio
 import os
 import subprocess
+from pathlib import Path
 from typing import List, Optional
 
 import psutil
 from metagpt.logs import logger
 from pywinauto import Desktop
 from pywinauto.application import WindowSpecification
+
+# Add CREATE_NO_WINDOW flag import
+if os.name == "nt":  # Only import on Windows systems
+    CREATE_NO_WINDOW = 0x08000000
+else:
+    CREATE_NO_WINDOW = 0  # Set to 0 (invalid value) on non-Windows systems
 
 
 def match_name(window_name: List[str], patterns: List[str]) -> bool:
@@ -35,24 +42,49 @@ def match_name(window_name: List[str], patterns: List[str]) -> bool:
 
 
 async def start_windows(
-    target_url: str, app_path: str = "C:/Program Files/Google/Chrome/Application/chrome.exe"
+    target_url: str = "", app_path: str = "C:/Program Files/Google/Chrome/Application/chrome.exe", work_path: str = ""
 ) -> int:
     """
-    Start browser with accessibility and remote debugging enabled.
+    Start browser with accessibility and remote debugging enabled or launch a batch file.
 
     Args:
-        target_url: URL to open in browser
+        target_url: URL to open in browser, used if provided
         app_path: Path to browser executable, defaults to Chrome
+        work_path: Path to batch file or executable to run (e.g., xxx/start.bat)
 
     Returns:
-        int: Process ID (PID) of the started browser process
+        int: Process ID (PID) of the started process
     """
-    if not os.path.exists(app_path):
-        raise FileNotFoundError(f"Browser executable not found at: {app_path}")
+    if target_url:
+        app_path = Path(app_path)
+        if not app_path.exists():
+            raise FileNotFoundError(f"Browser executable not found at: {app_path}")
 
-    cmd = f'"{app_path}" --force-renderer-accessibility --remote-debugging-port=9222 {target_url}'
+        cmd = (
+            f'"{app_path}" --force-renderer-accessibility --remote-debugging-port=9222 --start-fullscreen {target_url}'
+        )
+    elif work_path:
+        work_path = Path(work_path)
+        if not work_path.exists():
+            raise FileNotFoundError(f"Executable not found at: {work_path}")
 
-    process = subprocess.Popen(cmd)
+        # Get the directory containing the batch file
+        work_dir = work_path.parent
+        logger.info(f"Working directory: {work_dir}")
+        # Change to the directory and then execute the batch file
+        if work_dir:
+            cmd = f'cd /d "{work_dir}" && "{work_path.name}"'
+            logger.info(f"Command: {cmd}")
+        else:
+            cmd = f'"{work_path}"'
+            logger.info(f"Command: {cmd}")
+    else:
+        raise ValueError("Either target_url or work_path must be provided")
+
+    if os.name == "nt":  # Windows system
+        process = subprocess.Popen(cmd, shell=True, creationflags=CREATE_NO_WINDOW)
+    else:  # Non-Windows system
+        process = subprocess.Popen(cmd, shell=True)
     return process.pid
 
 
