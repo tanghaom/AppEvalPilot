@@ -261,7 +261,7 @@ You must choose one of the actions below:
         # Build last operation information
         last_operation = ""
         if ctx.error_flag:
-            last_operation = f'### Last operation ###\nYou previously wanted to perform the operation "{ctx.last_summary}" on this page and executed the Action "{ctx.last_action}". But you find that this operation does not meet your expectation. You need to reflect and revise your operation this time.'
+            last_operation = f'### Last operation ###\nYou previously wanted to perform the operation "{ctx.last_summary}" on this page and executed the Action "{ctx.last_action}". But you find that this operation does not meet your expectation.There are two possible situations that may cause the above problem: 1. Your action is incorrect, possibly due to incorrect operation coordinates, etc. 2. The target you are operating has not been implemented. You need additional operations to confirm which situation the problem is. You need to reflect and revise your operation this time.'
 
         # Build reflection information
         reflection_thought = (
@@ -303,16 +303,18 @@ class PC_prompt(BasePrompt):
         # PC-specific hints
         self.hints += """
 If Tell action was used in the previous round, it cannot be used again this time.
-To fully view webpage content, you must use the 'pagedown' key to scroll. Note that you can only advance one page at a time."""
+To fully view webpage content, you must use the 'pagedown' key to scroll. Note that you can only advance one page at a time.
+If you need to change the size of the webpage, you can do so by simultaneously pressing the ctrl and + or - keys.
+The webpage you need to test is already displayed in front of you, so you don't need to open a browser.
+If the target application requires uploading an image for testing, please upload the image located in "C:/Users/admin/Pictures".
+If the target application requires entering a password, please first register an account and then use the account to log in.
+"""
 
         # PC-specific task requirements
         self.task_requirements = """
 In order to meet the user's requirements, you need to select one of the following operations to operate on the current screen:
-Note that to open an app, use the Open App action, rather than tapping the app's icon. 
 For certain items that require selection, such as font and font size, direct input is more efficient than scrolling through choices.
 You must choose one of the actions below:
-- Open App (app name)
-    If you want to open an app, you should use this action to open the app named 'app name'.
 
 - Run (your code)
     You can use this action to run python code. Your code will run on the computer for controlling the mouse and keyboard. You are required to use `pyautogui` to perform the action grounded to the observation, but DO NOT use the `pyautogui.locateCenterOnScreen` function to locate the element you want to operate with since we have no image of the element you want to operate with. DO NOT USE `pyautogui.screenshot()` to make a screenshot. Return one line of python code to perform the action each time. When predicting multiple code statements, separate them with semicolons (;) within the same line. Each time you need to predict a complete code, no variables or functions can be shared from history.
