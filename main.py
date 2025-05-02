@@ -56,48 +56,53 @@ async def run_api_test():
         )
         project_excel = r"G:\torch\AppEvalPilot\data\test.xlsx"
         case_excel = r"G:\torch\AppEvalPilot\data\test_results.xlsx"
-        result = await appeval.run_mini_batch(project_excel_path=project_excel, case_excel_path=case_excel, generate_case_only=True)
+        case_result = await appeval.run_mini_batch(project_excel_path=project_excel, case_excel_path=case_excel, generate_case_only=True)
         logger.info(f"Batch test execution result: {result}")
         #其中url和work_path二者只存在一种
-        # "1": {
-        # "task_name": "Example Task",
-        # "url": "https://mgx.dev/", or "work_path": "C:/Users/Administrator/Desktop/test",
-        # "requirement": "Create a login page with username and password fields",
-        # "tag": "1",
-        # "test_cases": {
-        #     "0": {
-        #         "case_desc": "Verify successful login with valid username and password",
-        #         "result": "",
-        #         "evidence": ""
-        #     },
-        #     "1": {
-        #         "case_desc": "Verify login fails with invalid username and valid password",
-        #         "result": "",
-        #         "evidence": ""
-        #     },
-        #     "2": {
-        #         "case_desc": "Verify login fails with valid username and invalid password",
-        #         "result": "",
-        #         "evidence": ""
-        #     },
-        #     "3": {
-        #         "case_desc": "Verify login fails with empty username and valid password",
-        #         "result": "",
-        #         "evidence": ""
-        #     },
-        #     "4": {
-        #         "case_desc": "Verify login fails with valid username and empty password",
-        #         "result": "",
-        #         "evidence": ""
-        #     },
-        #     "5": {
-        #         "case_desc": "Verify login fails with empty username and empty password",
-        #         "result": "",
-        #         "evidence": ""
-        #     }
-        # }
-
+        case_result_example = {
+            "1": {
+                "task_name": "Example Task",
+                "url": "https://mgx.dev/",
+                "requirement": "Create a login page with username and password fields",
+                "tag": "1",
+                "test_cases": {
+                    "0": {
+                        "case_desc": "Verify successful login with valid username and password",
+                        "result": "",
+                        "evidence": ""
+                    },
+                    "1": {
+                        "case_desc": "Verify login fails with invalid username and valid password",
+                        "result": "",
+                        "evidence": ""
+                    },
+                    "2": {
+                        "case_desc": "Verify login fails with valid username and invalid password",
+                        "result": "",
+                        "evidence": ""
+                    },
+                    "3": {
+                        "case_desc": "Verify login fails with empty username and valid password",
+                        "result": "",
+                        "evidence": ""
+                    },
+                    "4": {
+                        "case_desc": "Verify login fails with valid username and empty password",
+                        "result": "",
+                        "evidence": ""
+                    },
+                    "5": {
+                        "case_desc": "Verify login fails with empty username and empty password",
+                        "result": "",
+                        "evidence": ""
+                    }
+                }
+            }
+        }
+        test_cases = case_result_example["1"]["test_cases"]
         result = await appeval.run_api(task_name="MGX", test_cases=test_cases, start_func="https://mgx.dev/", log_dir="work_dirs/MGX")
+        # eval output format
+        # {'0': {'result': 'Pass', 'evidence': 'All required login page UI elements are present and properly displayed: username/email input field at (1414, 750), password input field at (1414, 840), and sign in button at (1413, 984). The elements are clearly visible and positioned appropriately on the login form.'}, '1': {'result': 'Pass', 'evidence': "Successfully entered alphanumeric string 'Test123User' into the username field. The field accepted and displayed the input correctly without any restrictions or errors."}, '2': {'result': 'Pass', 'evidence': "The password field successfully masks input characters - when 'testpass123' was entered, it displays as bullet points/dots (•••••••••••) instead of plain text, providing proper password security."}, '3': {'result': 'Uncertain', 'evidence': 'Unable to verify special character acceptance in password field due to connection error with accounts.google.com (ERR_CONNECTION_CLOSED)'}}
         logger.info(f"Batch test execution result: {result}")
 
     except Exception as e:
