@@ -39,6 +39,70 @@ async def run_batch_test():
     except Exception as e:
         logger.error(f"Batch test execution failed: {str(e)}")
 
+async def run_api_test():
+    """Run batch test example"""
+    try:
+        json_file = r"G:\torch\AppEvalPilot\data\test_results.json"
+        # Initialize automated test role
+        appeval = AppEvalRole(
+            json_file=json_file,
+            use_ocr=False,
+            quad_split_ocr=False,
+            use_memory=False,
+            use_reflection=True,
+            use_chrome_debugger=False,
+            extend_xml_infos=True,
+
+        )
+        project_excel = r"G:\torch\AppEvalPilot\data\test.xlsx"
+        case_excel = r"G:\torch\AppEvalPilot\data\test_results.xlsx"
+        result = await appeval.run_mini_batch(project_excel_path=project_excel, case_excel_path=case_excel, generate_case_only=True)
+        logger.info(f"Batch test execution result: {result}")
+        #其中url和work_path二者只存在一种
+        # "1": {
+        # "task_name": "Example Task",
+        # "url": "https://mgx.dev/", or "work_path": "C:/Users/Administrator/Desktop/test",
+        # "requirement": "Create a login page with username and password fields",
+        # "tag": "1",
+        # "test_cases": {
+        #     "0": {
+        #         "case_desc": "Verify successful login with valid username and password",
+        #         "result": "",
+        #         "evidence": ""
+        #     },
+        #     "1": {
+        #         "case_desc": "Verify login fails with invalid username and valid password",
+        #         "result": "",
+        #         "evidence": ""
+        #     },
+        #     "2": {
+        #         "case_desc": "Verify login fails with valid username and invalid password",
+        #         "result": "",
+        #         "evidence": ""
+        #     },
+        #     "3": {
+        #         "case_desc": "Verify login fails with empty username and valid password",
+        #         "result": "",
+        #         "evidence": ""
+        #     },
+        #     "4": {
+        #         "case_desc": "Verify login fails with valid username and empty password",
+        #         "result": "",
+        #         "evidence": ""
+        #     },
+        #     "5": {
+        #         "case_desc": "Verify login fails with empty username and empty password",
+        #         "result": "",
+        #         "evidence": ""
+        #     }
+        # }
+
+        result = await appeval.run_api(task_name="MGX", test_cases=test_cases, start_func="https://mgx.dev/", log_dir="work_dirs/MGX")
+        logger.info(f"Batch test execution result: {result}")
+
+    except Exception as e:
+        logger.error(f"Batch test execution failed: {str(e)}")
+
 
 async def run_single_test():
     """Run single test case example"""
@@ -76,16 +140,14 @@ async def run_single_test():
 
 async def main():
     """Main function"""
-    # Create necessary directories
-    Path("data/test_cases").mkdir(parents=True, exist_ok=True)
-
     # Run single test example
     # logger.info("Starting to execute single test...")
     # await run_single_test()
 
     # Run batch test example
     # logger.info("Starting to execute batch test...")
-    await run_batch_test()
+    # await run_batch_test()
+    await run_api_test()
 
 
 if __name__ == "__main__":

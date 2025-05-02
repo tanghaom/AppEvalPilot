@@ -152,6 +152,47 @@ class AppEvalRole(Role):
                         )
                     except Exception as write_error:
                         logger.error(f"Failed to write error result to JSON: {str(write_error)}")
+    async def execute_api_check(self, task_id: str, task_id_case_number: int, check_list: dict) -> None:
+        """Execute single verification condition with retry mechanism"""
+        logger.info(f"Start testing project {task_id}")
+        logger.info(f"Setting log_dirs to: {self.osagent.log_dirs}")
+        instruction = (
+            "Please complete the following tasks，And after completion, use the Tell action to "
+            f"inform me of the results of all the test cases at once: {check_list}\n"
+        )
+        max_retries = 2
+        retry_count = 0
+        while retry_count <= max_retries:
+            try:
+                await self.osagent.run(instruction)
+                # Get action history
+                action_history = self.osagent.rc.action_history
+                task_list = self.osagent.rc.task_list
+                memory = self.osagent.rc.memory
+                iter_num = self.osagent.rc.iter
+                result_dict = await self.process_api_res(
+                    task_id, task_id_case_number, action_history, task_list, memory, iter_num
+                )
+                return result_dict
+            except Exception as e:
+                retry_count += 1
+                if retry_count <= max_retries:
+                    logger.warning(f"Attempt {retry_count} failed for task {task_id}, retrying... Error: {str(e)}")
+                    await asyncio.sleep(5)  # Wait a bit before retrying
+                else:
+                    logger.error(f"All {max_retries + 1} attempts failed for task {task_id}. Error: {str(e)}")
+                    # Write failed result to JSON
+                    try:
+                        await self.write_batch_res_to_json(
+                            task_id,
+                            task_id_case_number,
+                            ["Failed after all retries"],
+                            "Failed",
+                            [f"Error: {str(e)}"],
+                            "0",
+                        )
+                    except Exception as write_error:
+                        logger.error(f"Failed to write error result to JSON: {str(write_error)}")
 
     async def write_batch_res_to_json(
         self,
@@ -195,6 +236,46 @@ class AppEvalRole(Role):
                     {"result": value.get("result", ""), "evidence": value.get("evidence", "")}
                 )
                 write_json_file(self.rc.json_file, data, indent=4)
+
+        except Exception as e:
+            logger.error(f"Failed to write verification results: {str(e)}")
+            raise
+
+    async def process_api_res(
+        self,
+        task_id: str,
+        task_id_case_number: int,
+        action_history: List[str],
+        task_list: str,
+        memory: List[str],
+        iter_num: str,
+    ) -> None:
+        """Write verification results to json file"""
+        try:
+            content = action_history[-1]
+            results_dict = None
+
+            if content.startswith("Tell ("):
+                start = content.find("(")
+                end = content.rfind(")")
+                if start != -1 and end != -1 and end > start:
+                    answer = content[start + 1 : end]
+                    try:
+                        results_dict = eval(answer)
+                    except Exception:
+                        start = answer.find("{")
+                        end = answer.rfind("}")
+                        if start != -1 and end != -1 and end > start:
+                            try:
+                                results_dict = eval(answer[start : end + 1])
+                            except Exception as e:
+                                logger.error(f"Result parsing failed: {str(e)}")
+
+            if not results_dict or len(results_dict) != task_id_case_number:
+                results_dict = await self.test_generator.generate_results_dict(
+                    action_history, task_list, memory, task_id_case_number
+                )
+            return results_dict
 
         except Exception as e:
             logger.error(f"Failed to write verification results: {str(e)}")
@@ -263,7 +344,7 @@ class AppEvalRole(Role):
             logger.error(f"Error occurred during test execution: {str(e)}")
             raise
 
-    async def run_mini_batch(self, project_excel_path: str = None, case_excel_path: str = None) -> None:
+    async def run_mini_batch(self, project_excel_path: str = None, case_excel_path: str = None, generate_case_only:bool=False) -> None:
         """Run batch testing
 
         Complete testing process includes:
@@ -271,10 +352,11 @@ class AppEvalRole(Role):
         2. Convert to JSON format
         3. Execute automated testing
         4. (Optional) Output results to Excel
-
+        5. (Optional) Only generate test cases
         Args:
             project_excel_path: Project level Excel file path
             case_excel_path: Case level Excel file path (optional)
+            generate_case_only: Whether to only generate test cases
         """
         try:
             if project_excel_path:
@@ -286,43 +368,86 @@ class AppEvalRole(Role):
 
                 # 2. Convert to JSON format
                 logger.info("Start converting to JSON format...")
-                mini_list_to_json(project_excel_path, self.rc.json_file)
+                result = mini_list_to_json(project_excel_path, self.rc.json_file)
+                return result
             else:
                 raise ValueError("project_excel_path must be provided for batch run if not using existing json file.")
+            if not generate_case_only:
+                # 3. Execute automated testing
+                logger.info("Start executing automated testing...")
+                test_cases = read_json_file(self.rc.json_file)
 
-            # 3. Execute automated testing
+                for task_id, task_info in test_cases.items():
+                    self.osagent.log_dirs = f"work_dirs/{task_id}"
+
+                    if "test_cases" in task_info:
+                        if "url" in task_info:
+                            pid = await start_windows(task_info["url"])
+                        elif "work_path" in task_info:
+                            pid = await start_windows(work_path=task_info["work_path"])
+                        await asyncio.sleep(30)
+
+                        task_id_case_number = len(test_cases[task_id]["test_cases"])
+                        await self.execute_batch_check(task_id, task_id_case_number, task_info)
+                        if "url" in task_info:
+                            await kill_windows(["Chrome"])
+                            await kill_process(pid)  # ensure the process is killed
+                        elif "work_path" in task_info:
+                            await kill_windows(["Chrome", "cmd", "npm", "projectapp", "Edge"])
+                            await kill_process(pid)  # ensure the process is killed
+
+                # 4. Output results to Excel (if case_excel_path is provided)
+                if case_excel_path:
+                    logger.info("Start generating result spreadsheet...")
+                    mini_list_to_excel(self.rc.json_file, case_excel_path)
+
+                # 5. Update project Excel with iteration counts
+                logger.info("Updating project Excel with iteration counts...")
+                update_project_excel_iters(project_excel_path, self.rc.json_file)
+
+                logger.info("Test process completed")
+
+        except Exception as e:
+            logger.error(f"Error occurred during test execution: {str(e)}")
+            raise
+    
+    async def run_api(self, task_name: str, test_cases: dict, start_func: str, log_dir: str) -> dict:
+        """Run API testing
+
+        Execute automated testing with provided test cases and custom start function.
+
+        Args:
+            task_name: Name of the test task
+            test_cases: Dictionary containing test cases
+            start_func: Function to start the test environment
+
+        Returns:
+            dict: Test results
+        """
+        try:
+            # Set up logging directory
+            self.osagent.log_dirs = f"work_dirs/{log_dir}/{task_name}"
+            if start_func.startswith("http"):
+                await start_windows(target_url=start_func)
+            else:
+                await start_windows(work_path=start_func)
+            await asyncio.sleep(30)
+            # Execute automated testing
             logger.info("Start executing automated testing...")
-            test_cases = read_json_file(self.rc.json_file)
-
-            for task_id, task_info in test_cases.items():
-                self.osagent.log_dirs = f"work_dirs/{task_id}"
-
-                if "test_cases" in task_info:
-                    if "url" in task_info:
-                        pid = await start_windows(task_info["url"])
-                    elif "work_path" in task_info:
-                        pid = await start_windows(work_path=task_info["work_path"])
-                    await asyncio.sleep(30)
-
-                    task_id_case_number = len(test_cases[task_id]["test_cases"])
-                    await self.execute_batch_check(task_id, task_id_case_number, task_info)
-                    if "url" in task_info:
-                        await kill_windows(["Chrome"])
-                        await kill_process(pid)  # ensure the process is killed
-                    elif "work_path" in task_info:
-                        await kill_windows(["Chrome", "cmd", "npm", "projectapp", "Edge"])
-                        await kill_process(pid)  # ensure the process is killed
-
-            # 4. Output results to Excel (if case_excel_path is provided)
-            if case_excel_path:
-                logger.info("Start generating result spreadsheet...")
-                mini_list_to_excel(self.rc.json_file, case_excel_path)
-
-            # 5. Update project Excel with iteration counts
-            logger.info("Updating project Excel with iteration counts...")
-            update_project_excel_iters(project_excel_path, self.rc.json_file)
-
+            
+            # Execute test cases
+            task_id_case_number = len(test_cases)
+            result_dict = await self.execute_api_check(task_name, task_id_case_number, test_cases)
+            
+            # Cleanup: kill windows and processes
+            if "url" in test_cases:
+                await kill_windows(["Chrome"])
+            elif "work_path" in test_cases:
+                await kill_windows(["Chrome", "cmd", "npm", "projectapp", "Edge"])
+            
+            # Read and return results
             logger.info("Test process completed")
+            return result_dict
 
         except Exception as e:
             logger.error(f"Error occurred during test execution: {str(e)}")
