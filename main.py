@@ -12,10 +12,10 @@ async def run_batch_test():
     """Run batch test example"""
     try:
         # Set test related paths
-        project_excel = r"G:\torch\AppEvalPilot\data\test.xlsx"
-        case_excel = r"G:\torch\AppEvalPilot\data\test_results.xlsx"
-        json_file = r"G:\torch\AppEvalPilot\data\test_results.json"
-        work_dir = r"work_dirs\test"
+        project_excel = r"data/test.xlsx"
+        case_excel = r"data/test_results.xlsx"
+        json_file = r"data/test_results.json"
+        work_dir = r"work_dirs/test"
         # Make work path
         make_work_path(project_excel, work_dir)
 
@@ -42,7 +42,7 @@ async def run_batch_test():
 async def run_api_test():
     """Run batch test example"""
     try:
-        json_file = r"G:\torch\AppEvalPilot\data\test_results.json"
+        json_file = r"data/test_results.json"
         # Initialize automated test role
         appeval = AppEvalRole(
             json_file=json_file,
@@ -54,8 +54,8 @@ async def run_api_test():
             extend_xml_infos=True,
 
         )
-        project_excel = r"G:\torch\AppEvalPilot\data\test.xlsx"
-        case_excel = r"G:\torch\AppEvalPilot\data\test_results.xlsx"
+        project_excel = r"data/test.xlsx"
+        case_excel = r"data/test_results.xlsx"
         case_result = await appeval.run_mini_batch(project_excel_path=project_excel, case_excel_path=case_excel, generate_case_only=True)
         logger.info(f"Batch test execution result: {result}")
         #其中url和work_path二者只存在一种
@@ -109,39 +109,100 @@ async def run_api_test():
         logger.error(f"Batch test execution failed: {str(e)}")
 
 
-async def run_single_test():
+async def run_single_test(mode: str = "all"):
     """Run single test case example"""
-    try:
-        # Set test parameters
-        case_name = "MGX"
-        url = "https://mgx.dev/"
-        requirement = (
-            "Please help me create an MGX official website. The website should include "
-            "the following: 1. Homepage 2. Dialog box 3. AppWorld 4. Contact information"
-        )
-        json_path = f"data/{case_name}.json"
+    if mode == "all":
+        try:
+            # Set test parameters
+            case_name = "MGX"
+            url = "https://mgx.dev/"
+            requirement = (
+                "Please help me create an MGX official website. The website should include "
+                "the following: 1. Homepage 2. Dialog box 3. AppWorld 4. Contact information"
+            )
+            json_path = f"data/{case_name}.json"
 
-        # Initialize automated test role
-        appeval = AppEvalRole(
-            json_file=json_path,
-            use_ocr=False,
-            quad_split_ocr=False,
-            use_memory=False,
-            use_reflection=True,
-            use_chrome_debugger=False,
-            extend_xml_infos=True,
-            log_dirs=f"work_dirs/{case_name}",
-        )
+            # Initialize automated test role
+            appeval = AppEvalRole(
+                json_file=json_path,
+                use_ocr=False,
+                quad_split_ocr=False,
+                use_memory=False,
+                use_reflection=True,
+                use_chrome_debugger=False,
+                extend_xml_infos=True,
+                log_dirs=f"work_dirs/{case_name}",
+            )
 
-        # Execute single test
-        result = await appeval.run(case_name=case_name, url=url, user_requirement=requirement, json_path=json_path)
-        result = json.loads(result.content)
-        logger.info(f"Single test execution result: {result}")
+            # Execute single test
+            result = await appeval.run(case_name=case_name, url=url, user_requirement=requirement, json_path=json_path)
+            result = json.loads(result.content)
+            logger.info(f"Single test execution result: {result}")
 
-    except Exception as e:
-        logger.error(f"Single test execution failed: {str(e)}")
-        logger.exception("Detailed error information")
-
+        except Exception as e:
+            logger.error(f"Single test execution failed: {str(e)}")
+            logger.exception("Detailed error information")
+    elif mode == "api":
+        try:
+            # Set test parameters
+            case_result_example = {
+                "1": {
+                    "task_name": "Example Task",
+                    "url": "https://mgx.dev/",
+                    "requirement": "Create a login page with username and password fields",
+                    "tag": "1",
+                    "test_cases": {
+                        "0": {
+                            "case_desc": "Verify successful login with valid username and password",
+                            "result": "",
+                            "evidence": ""
+                        },
+                        "1": {
+                            "case_desc": "Verify login fails with invalid username and valid password",
+                            "result": "",
+                            "evidence": ""
+                        },
+                        "2": {
+                            "case_desc": "Verify login fails with valid username and invalid password",
+                            "result": "",
+                            "evidence": ""
+                        },
+                        "3": {
+                            "case_desc": "Verify login fails with empty username and valid password",
+                            "result": "",
+                            "evidence": ""
+                        },
+                        "4": {
+                            "case_desc": "Verify login fails with valid username and empty password",
+                            "result": "",
+                            "evidence": ""
+                        },
+                        "5": {
+                            "case_desc": "Verify login fails with empty username and empty password",
+                            "result": "",
+                            "evidence": ""
+                        }
+                    }
+                }
+            }
+            test_cases = case_result_example["1"]["test_cases"]
+            task_name = case_result_example["1"]["task_name"]
+            url = case_result_example["1"]["url"]
+            result = await appeval.run_api(task_name=task_name, test_cases=test_cases, start_func=url, log_dir=f"work_dirs/{task_name}")
+            logger.info(f"Batch test execution result: {result}")
+        except Exception as e:
+            logger.error(f"Single test execution failed: {str(e)}")
+            logger.exception("Detailed error information")
+    elif mode == "generate_case":
+        try:
+            # Set test parameters
+            project_excel = r"data/test.xlsx"
+            case_excel = r"data/test_results.xlsx"
+            case_result = await appeval.run_mini_batch(project_excel_path=project_excel, case_excel_path=case_excel, generate_case_only=True)
+            logger.info(f"Batch test execution result: {case_result}")
+        except Exception as e:
+            logger.error(f"Single test execution failed: {str(e)}")
+            logger.exception("Detailed error information")
 
 async def main():
     """Main function"""
