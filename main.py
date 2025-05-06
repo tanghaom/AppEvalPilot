@@ -54,10 +54,10 @@ async def run_api_test():
             extend_xml_infos=True,
 
         )
-        project_excel = r"data/test.xlsx"
-        case_excel = r"data/test_results.xlsx"
-        case_result = await appeval.run_mini_batch(project_excel_path=project_excel, case_excel_path=case_excel, generate_case_only=True)
-        logger.info(f"Batch test execution result: {result}")
+        # project_excel = r"data/test.xlsx"
+        # case_excel = r"data/test_results.xlsx"
+        # case_result = await appeval.run_mini_batch(project_excel_path=project_excel, case_excel_path=case_excel, generate_case_only=True)
+        # logger.info(f"Batch test execution result: {case_result}")
         #其中url和work_path二者只存在一种
         case_result_example = {
             "1": {
@@ -100,10 +100,11 @@ async def run_api_test():
             }
         }
         test_cases = case_result_example["1"]["test_cases"]
-        result = await appeval.run_api(task_name="MGX", test_cases=test_cases, start_func="https://mgx.dev/", log_dir="work_dirs/MGX")
+        result, executability = await appeval.run_api(task_name="MGX", test_cases=test_cases, start_func="http://localhost:7687", log_dir="work_dirs/MGX")
         # eval output format
         # {'0': {'result': 'Pass', 'evidence': 'All required login page UI elements are present and properly displayed: username/email input field at (1414, 750), password input field at (1414, 840), and sign in button at (1413, 984). The elements are clearly visible and positioned appropriately on the login form.'}, '1': {'result': 'Pass', 'evidence': "Successfully entered alphanumeric string 'Test123User' into the username field. The field accepted and displayed the input correctly without any restrictions or errors."}, '2': {'result': 'Pass', 'evidence': "The password field successfully masks input characters - when 'testpass123' was entered, it displays as bullet points/dots (•••••••••••) instead of plain text, providing proper password security."}, '3': {'result': 'Uncertain', 'evidence': 'Unable to verify special character acceptance in password field due to connection error with accounts.google.com (ERR_CONNECTION_CLOSED)'}}
         logger.info(f"Batch test execution result: {result}")
+        logger.info(f"Executability: {executability}")
 
     except Exception as e:
         logger.error(f"Batch test execution failed: {str(e)}")
@@ -188,8 +189,9 @@ async def run_single_test(mode: str = "all"):
             test_cases = case_result_example["1"]["test_cases"]
             task_name = case_result_example["1"]["task_name"]
             url = case_result_example["1"]["url"]
-            result = await appeval.run_api(task_name=task_name, test_cases=test_cases, start_func=url, log_dir=f"work_dirs/{task_name}")
+            result, executability = await appeval.run_api(task_name=task_name, test_cases=test_cases, start_func=url, log_dir=f"work_dirs/{task_name}")
             logger.info(f"Batch test execution result: {result}")
+            logger.info(f"Executability: {executability}")
         except Exception as e:
             logger.error(f"Single test execution failed: {str(e)}")
             logger.exception("Detailed error information")

@@ -438,7 +438,9 @@ class AppEvalRole(Role):
             # Execute test cases
             task_id_case_number = len(test_cases)
             result_dict = await self.execute_api_check(task_name, task_id_case_number, test_cases)
-            
+            # execute executability check
+            image = self.osagent.output_image_path
+            executability = await self.test_generator.generate_executability(result_dict, image)
             # Cleanup: kill windows and processes
             if "url" in test_cases:
                 await kill_windows(["Chrome"])
@@ -447,7 +449,7 @@ class AppEvalRole(Role):
             
             # Read and return results
             logger.info("Test process completed")
-            return result_dict
+            return result_dict, executability
 
         except Exception as e:
             logger.error(f"Error occurred during test execution: {str(e)}")
@@ -557,3 +559,5 @@ class AppEvalRole(Role):
             logger.error(f"Test execution failed: {str(e)}")
             logger.exception("Detailed error information")
             return Message(content=json.dumps(f"Test execution failed: {str(e)}"), cause_by=Action)
+        
+        
