@@ -32,7 +32,7 @@ async def run_batch_test():
 
         # Execute batch test
         # result = await appeval.run_batch(project_excel_path=project_excel, case_excel_path=case_excel)
-        result = await appeval.run_mini_batch(project_excel_path=project_excel, case_excel_path=case_excel)
+        result = await appeval.run_mini_batch(project_excel_path=project_excel, case_excel_path=case_excel, generate_case_only=False)
         result = json.loads(result.content)
         logger.info(f"Batch test execution result: {result}")
 
@@ -112,7 +112,7 @@ async def run_api_test():
 
 async def run_single_test(mode: str = "all"):
     """Run single test case example"""
-    if mode == "all":
+    if mode == "single":
         try:
             # Set test parameters
             case_name = "MGX"
@@ -136,9 +136,9 @@ async def run_single_test(mode: str = "all"):
             )
 
             # Execute single test
-            result = await appeval.run(case_name=case_name, url=url, user_requirement=requirement, json_path=json_path)
-            result = json.loads(result.content)
+            result, executability = await appeval.run(case_name=case_name, url=url, user_requirement=requirement, json_path=json_path)
             logger.info(f"Single test execution result: {result}")
+            logger.info(f"Executability: {executability}")
 
         except Exception as e:
             logger.error(f"Single test execution failed: {str(e)}")
@@ -189,6 +189,18 @@ async def run_single_test(mode: str = "all"):
             test_cases = case_result_example["1"]["test_cases"]
             task_name = case_result_example["1"]["task_name"]
             url = case_result_example["1"]["url"]
+            # Initialize automated test role
+            json_path = f"data/{task_name}.json"
+            appeval = AppEvalRole(
+                json_file=json_path,
+                use_ocr=False,
+                quad_split_ocr=False,
+                use_memory=False,
+                use_reflection=True,
+                use_chrome_debugger=False,
+                extend_xml_infos=True,
+                log_dirs=f"work_dirs/{task_name}",
+            )
             result, executability = await appeval.run_api(task_name=task_name, test_cases=test_cases, start_func=url, log_dir=f"work_dirs/{task_name}")
             logger.info(f"Batch test execution result: {result}")
             logger.info(f"Executability: {executability}")
@@ -200,6 +212,15 @@ async def run_single_test(mode: str = "all"):
             # Set test parameters
             project_excel = r"data/test.xlsx"
             case_excel = r"data/test_results.xlsx"
+            appeval = AppEvalRole(
+                use_ocr=False,
+                quad_split_ocr=False,
+                use_memory=False,
+                use_reflection=True,
+                use_chrome_debugger=False,
+                extend_xml_infos=True,
+                log_dirs=f"work_dirs/{task_name}",
+            )
             case_result = await appeval.run_mini_batch(project_excel_path=project_excel, case_excel_path=case_excel, generate_case_only=True)
             logger.info(f"Batch test execution result: {case_result}")
         except Exception as e:

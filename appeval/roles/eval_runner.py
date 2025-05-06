@@ -34,7 +34,7 @@ class AppEvalContext(RoleContext):
     """AppEval Runtime Context"""
 
     model_config = ConfigDict(arbitrary_types_allowed=True)
-    json_file: str = ""
+    json_file: str = "data/default_results.json"
     env_process: Optional[Any] = None
     agent_params: Dict = Field(default_factory=dict)
     test_generator: Optional[CaseGenerator] = None
@@ -52,7 +52,7 @@ class AppEvalRole(Role):
     rc: AppEvalContext = Field(default_factory=AppEvalContext)
     osagent: Optional[OSAgent] = None
 
-    def __init__(self, json_file: str, **kwargs):
+    def __init__(self, json_file: str = "data/default_results.json", **kwargs):
         super().__init__()
         self.rc.json_file = json_file
 
@@ -281,7 +281,7 @@ class AppEvalRole(Role):
             logger.error(f"Failed to write verification results: {str(e)}")
             raise
 
-    async def run_batch(self, project_excel_path: str = None, case_excel_path: str = None) -> None:
+    async def run_batch(self, project_excel_path: str = None, case_excel_path: str = None) -> dict:
         """Run batch testing
 
         Complete testing process includes:
@@ -293,6 +293,9 @@ class AppEvalRole(Role):
         Args:
             project_excel_path: Project level Excel file path
             case_excel_path: Case level Excel file path (optional)
+            
+        Returns:
+            dict: test result dictionary
         """
         try:
             if project_excel_path:
@@ -309,6 +312,7 @@ class AppEvalRole(Role):
             # 3. Execute automated testing
             logger.info("Start executing automated testing...")
             test_cases = read_json_file(self.rc.json_file)
+            result_dict = {}
 
             for task_id, task_info in test_cases.items():
                 self.osagent.log_dirs = f"work_dirs/{task_id}"
@@ -339,12 +343,13 @@ class AppEvalRole(Role):
             update_project_excel_iters(project_excel_path, self.rc.json_file)
 
             logger.info("Test process completed")
+            return result_dict
 
         except Exception as e:
             logger.error(f"Error occurred during test execution: {str(e)}")
             raise
 
-    async def run_mini_batch(self, project_excel_path: str = None, case_excel_path: str = None, generate_case_only:bool=False) -> None:
+    async def run_mini_batch(self, project_excel_path: str = None, case_excel_path: str = None, generate_case_only: bool = False) -> None:
         """Run batch testing
 
         Complete testing process includes:
@@ -369,49 +374,51 @@ class AppEvalRole(Role):
                 # 2. Convert to JSON format
                 logger.info("Start converting to JSON format...")
                 result = mini_list_to_json(project_excel_path, self.rc.json_file)
-                return result
+                
+                if generate_case_only:
+                    return result
             else:
                 raise ValueError("project_excel_path must be provided for batch run if not using existing json file.")
-            if not generate_case_only:
-                # 3. Execute automated testing
-                logger.info("Start executing automated testing...")
-                test_cases = read_json_file(self.rc.json_file)
+                
+            # 3. Execute automated testing
+            logger.info("Start executing automated testing...")
+            test_cases = read_json_file(self.rc.json_file)
 
-                for task_id, task_info in test_cases.items():
-                    self.osagent.log_dirs = f"work_dirs/{task_id}"
+            for task_id, task_info in test_cases.items():
+                self.osagent.log_dirs = f"work_dirs/{task_id}"
 
-                    if "test_cases" in task_info:
-                        if "url" in task_info:
-                            pid = await start_windows(task_info["url"])
-                        elif "work_path" in task_info:
-                            pid = await start_windows(work_path=task_info["work_path"])
-                        await asyncio.sleep(30)
+                if "test_cases" in task_info:
+                    if "url" in task_info:
+                        pid = await start_windows(task_info["url"])
+                    elif "work_path" in task_info:
+                        pid = await start_windows(work_path=task_info["work_path"])
+                    await asyncio.sleep(30)
 
-                        task_id_case_number = len(test_cases[task_id]["test_cases"])
-                        await self.execute_batch_check(task_id, task_id_case_number, task_info)
-                        if "url" in task_info:
-                            await kill_windows(["Chrome"])
-                            await kill_process(pid)  # ensure the process is killed
-                        elif "work_path" in task_info:
-                            await kill_windows(["Chrome", "cmd", "npm", "projectapp", "Edge"])
-                            await kill_process(pid)  # ensure the process is killed
+                    task_id_case_number = len(test_cases[task_id]["test_cases"])
+                    await self.execute_batch_check(task_id, task_id_case_number, task_info)
+                    if "url" in task_info:
+                        await kill_windows(["Chrome"])
+                        await kill_process(pid)  # ensure the process is killed
+                    elif "work_path" in task_info:
+                        await kill_windows(["Chrome", "cmd", "npm", "projectapp", "Edge"])
+                        await kill_process(pid)  # ensure the process is killed
 
-                # 4. Output results to Excel (if case_excel_path is provided)
-                if case_excel_path:
-                    logger.info("Start generating result spreadsheet...")
-                    mini_list_to_excel(self.rc.json_file, case_excel_path)
+            # 4. Output results to Excel (if case_excel_path is provided)
+            if case_excel_path:
+                logger.info("Start generating result spreadsheet...")
+                mini_list_to_excel(self.rc.json_file, case_excel_path)
 
-                # 5. Update project Excel with iteration counts
-                logger.info("Updating project Excel with iteration counts...")
-                update_project_excel_iters(project_excel_path, self.rc.json_file)
+            # 5. Update project Excel with iteration counts
+            logger.info("Updating project Excel with iteration counts...")
+            update_project_excel_iters(project_excel_path, self.rc.json_file)
 
-                logger.info("Test process completed")
+            logger.info("Test process completed")
 
         except Exception as e:
             logger.error(f"Error occurred during test execution: {str(e)}")
             raise
     
-    async def run_api(self, task_name: str, test_cases: dict, start_func: str, log_dir: str) -> dict:
+    async def run_api(self, task_name: str, test_cases: dict, start_func: str, log_dir: str) -> tuple[dict, bool]:
         """Run API testing
 
         Execute automated testing with provided test cases and custom start function.
@@ -422,7 +429,7 @@ class AppEvalRole(Role):
             start_func: Function to start the test environment
 
         Returns:
-            dict: Test results
+            tuple[dict, bool]: Test results and executability
         """
         try:
             # Set up logging directory
@@ -463,7 +470,7 @@ class AppEvalRole(Role):
         user_requirement: str,
         json_path: str = "data/temp.json",
         use_json_only: bool = False,
-    ) -> dict:
+    ) -> tuple[dict, bool]:
         """Execute single test case
 
         Args:
@@ -474,7 +481,7 @@ class AppEvalRole(Role):
             json_path (str, optional): Output JSON file path
             use_json_only (bool, optional): Whether to only use JSON files
         Returns:
-            dict: Test result dictionary
+            tuple[dict, bool]: Tuple containing test result dictionary and executability flag
         """
         try:
             if not use_json_only:
@@ -491,6 +498,7 @@ class AppEvalRole(Role):
             self.rc.json_file = json_path
 
             test_cases = read_json_file(self.rc.json_file)
+            result_dict = None
 
             for task_id, task_info in test_cases.items():
                 if "test_cases" in task_info:
@@ -512,9 +520,13 @@ class AppEvalRole(Role):
 
             # 4. Read results
             result = read_json_file(self.rc.json_file)
+            
+            # 5. Generate executability check
+            image = self.osagent.output_image_path
+            executability = await self.test_generator.generate_executability(result, image)
 
             logger.info(f"Test process completed for case '{case_name}'")
-            return result
+            return result, executability
 
         except Exception as e:
             logger.error(f"Test process execution failed: {str(e)}")
@@ -542,7 +554,7 @@ class AppEvalRole(Role):
         try:
             if kwargs.get("case_name") and kwargs.get("user_requirement"):
                 # Single test scenario
-                result = await self.run_single(
+                result_dict, executability = await self.run_single(
                     case_name=kwargs["case_name"],
                     url=kwargs.get("url", ""),
                     work_path=kwargs.get("work_path", ""),
@@ -550,11 +562,15 @@ class AppEvalRole(Role):
                     json_path=kwargs.get("json_path", "data/temp.json"),
                     use_json_only=kwargs.get("use_json_only", False),
                 )
-                return Message(content=json.dumps(result), cause_by=Action)
+                return result_dict, executability
             else:
                 # Batch test scenario
-                await self.run_batch(kwargs.get("project_excel_path"), kwargs.get("case_excel_path"))
-                return Message(content=json.dumps("Test execution completed"), cause_by=Action)
+                result_dict = await self.run_batch(
+                    kwargs.get("project_excel_path"), 
+                    kwargs.get("case_excel_path")
+                )
+                return result_dict
+            
         except Exception as e:
             logger.error(f"Test execution failed: {str(e)}")
             logger.exception("Detailed error information")
