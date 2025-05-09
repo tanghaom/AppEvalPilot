@@ -32,9 +32,8 @@ async def run_batch_test():
 
         # Execute batch test
         # result = await appeval.run_batch(project_excel_path=project_excel, case_excel_path=case_excel)
-        result = await appeval.run_mini_batch(project_excel_path=project_excel, case_excel_path=case_excel, generate_case_only=False)
-        result = json.loads(result.content)
-        logger.info(f"Batch test execution result: {result}")
+        case_result = await appeval.run_mini_batch(project_excel_path=project_excel, case_excel_path=case_excel, generate_case_only=False)
+        logger.info(f"Batch test execution result: {case_result}")
 
     except Exception as e:
         logger.error(f"Batch test execution failed: {str(e)}")

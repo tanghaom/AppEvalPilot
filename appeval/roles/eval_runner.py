@@ -8,7 +8,7 @@
 """
 import asyncio
 import json
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Union
 
 from appeval.actions.case_generator import CaseGenerator, OperationType
 from appeval.prompts.osagent import case_batch_check_system_prompt
@@ -25,7 +25,6 @@ from appeval.utils.window_utils import kill_process, kill_windows, start_windows
 from loguru import logger
 from metagpt.actions import Action
 from metagpt.roles.role import Role, RoleContext
-from metagpt.schema import Message
 from metagpt.utils.common import read_json_file, write_json_file
 from pydantic import ConfigDict, Field
 
@@ -281,7 +280,7 @@ class AppEvalRole(Role):
             logger.error(f"Failed to write verification results: {str(e)}")
             raise
 
-    async def run_batch(self, project_excel_path: str = None, case_excel_path: str = None) -> dict:
+    async def run_batch(self, project_excel_path: str = None, case_excel_path: str = None) -> tuple[dict, bool]:
         """Run batch testing
 
         Complete testing process includes:
@@ -295,7 +294,7 @@ class AppEvalRole(Role):
             case_excel_path: Case level Excel file path (optional)
             
         Returns:
-            dict: test result dictionary
+            tuple[dict, bool]: test result dictionary and executability
         """
         try:
             if project_excel_path:
@@ -313,7 +312,7 @@ class AppEvalRole(Role):
             logger.info("Start executing automated testing...")
             test_cases = read_json_file(self.rc.json_file)
             result_dict = {}
-
+            executability = None
             for task_id, task_info in test_cases.items():
                 self.osagent.log_dirs = f"work_dirs/{task_id}"
 
@@ -343,7 +342,7 @@ class AppEvalRole(Role):
             update_project_excel_iters(project_excel_path, self.rc.json_file)
 
             logger.info("Test process completed")
-            return result_dict
+            return result_dict, executability
 
         except Exception as e:
             logger.error(f"Error occurred during test execution: {str(e)}")
@@ -373,10 +372,10 @@ class AppEvalRole(Role):
 
                 # 2. Convert to JSON format
                 logger.info("Start converting to JSON format...")
-                result = mini_list_to_json(project_excel_path, self.rc.json_file)
+                case_result = mini_list_to_json(project_excel_path, self.rc.json_file)
                 
                 if generate_case_only:
-                    return result
+                    return case_result
             else:
                 raise ValueError("project_excel_path must be provided for batch run if not using existing json file.")
                 
@@ -532,7 +531,7 @@ class AppEvalRole(Role):
             logger.error(f"Test process execution failed: {str(e)}")
             raise
 
-    async def run(self, **kwargs) -> Message:
+    async def run(self, **kwargs) -> Union[tuple[dict, bool], dict, Exception]:
         """Run automated testing
 
         Supports two calling methods:
@@ -565,15 +564,15 @@ class AppEvalRole(Role):
                 return result_dict, executability
             else:
                 # Batch test scenario
-                result_dict = await self.run_batch(
+                result_dict, executability = await self.run_batch(
                     kwargs.get("project_excel_path"), 
                     kwargs.get("case_excel_path")
                 )
-                return result_dict
+                return result_dict, executability
             
         except Exception as e:
             logger.error(f"Test execution failed: {str(e)}")
             logger.exception("Detailed error information")
-            return Message(content=json.dumps(f"Test execution failed: {str(e)}"), cause_by=Action)
+            return e
         
         
