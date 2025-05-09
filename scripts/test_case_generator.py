@@ -102,6 +102,27 @@ async def test_generate_results_dict():
         logger.error(f"Execution failed: {str(e)}")
         logger.exception("Detailed error info")
 
+async def test_catch_error():
+    try:
+        answer = "123,['1','2','3']"
+        # Convert string to list
+        start_idx = answer.find('[')
+        end_idx = answer.rfind(']')
+        
+        if start_idx == -1 or end_idx == -1 or start_idx >= end_idx:
+            logger.warning(f"Invalid answer format: {answer}")
+            return []
+            
+        # Extract content between brackets
+        content = answer[start_idx:end_idx+1]
+        print(content)
+        test_cases = eval(content)
+        print(test_cases)
+        return test_cases
 
+    except Exception as e:
+        logger.error(f"Error occurred while generating test cases: {str(e)}")
+        return []
 if __name__ == "__main__":
-    asyncio.run(test_generate_test_cases_and_name())
+    res = asyncio.run(test_catch_error())
+    print(res)

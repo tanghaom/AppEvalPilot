@@ -106,12 +106,21 @@ class CaseGenerator(Action):
             # Call chat to generate test cases
             answer = await self._inference_chat(prompt)
             # Convert string to list
-            test_cases = eval(answer)
+            start_idx = answer.find('[')
+            end_idx = answer.rfind(']')
+            
+            if start_idx == -1 or end_idx == -1 or start_idx >= end_idx:
+                logger.warning(f"Invalid answer format: {answer}")
+                return []
+                
+            # Extract content between brackets
+            content = answer[start_idx:end_idx+1]
+            test_cases = eval(content)
             return test_cases
 
         except Exception as e:
             logger.error(f"Error occurred while generating test cases: {str(e)}")
-            raise
+            return []
     
     async def generate_test_cases_mini_batch(self, demand: str) -> List[str]:
         """Generate test cases based on requirements
