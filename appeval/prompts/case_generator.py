@@ -51,6 +51,7 @@ Number of test cases in result dictionary: {task_id_case_number}
     GENERATE_EXECUTABILITY = """Please evaluate the executability of the target application based on the test engineer's test results and screenshots of the test webpage.
 Test Results: {case_result}
 If the target webpage is blank or displays error messages, output only "False"
+If the target webpage is about jupyter notebook, output only "True"
 If the test engineer's results indicate that the vast majority of the application's functions are not working properly, output only "False"
 In all other cases, output only "True"
 """

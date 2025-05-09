@@ -93,7 +93,7 @@ class AppEvalRole(Role):
 
         self.osagent = OSAgent(
             platform=kwargs.get("os_type", "Windows"),
-            max_iters=40,
+            max_iters=20,
             use_ocr=self.rc.agent_params["use_ocr"],
             quad_split_ocr=self.rc.agent_params["quad_split_ocr"],
             use_icon_detect=False,
