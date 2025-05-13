@@ -28,6 +28,7 @@ async def run_batch_test():
             use_reflection=True,
             use_chrome_debugger=False,
             extend_xml_infos=True,
+            max_iters=20,
         )
 
         # Execute batch test
@@ -51,7 +52,7 @@ async def run_api_test():
             use_reflection=True,
             use_chrome_debugger=False,
             extend_xml_infos=True,
-
+            max_iters=20,
         )
         # project_excel = r"data/test.xlsx"
         # case_excel = r"data/test_results.xlsx"
@@ -132,6 +133,7 @@ async def run_single_test(mode: str = "all"):
                 use_chrome_debugger=False,
                 extend_xml_infos=True,
                 log_dirs=f"work_dirs/{case_name}",
+                max_iters=20,
             )
 
             # Execute single test
@@ -199,6 +201,7 @@ async def run_single_test(mode: str = "all"):
                 use_chrome_debugger=False,
                 extend_xml_infos=True,
                 log_dirs=f"work_dirs/{task_name}",
+                max_iters=20,
             )
             result, executability = await appeval.run_api(task_name=task_name, test_cases=test_cases, start_func=url, log_dir=f"work_dirs/{task_name}")
             logger.info(f"Batch test execution result: {result}")
@@ -219,6 +222,7 @@ async def run_single_test(mode: str = "all"):
                 use_chrome_debugger=False,
                 extend_xml_infos=True,
                 log_dirs=f"work_dirs/{task_name}",
+                max_iters=20,
             )
             case_result = await appeval.run_mini_batch(project_excel_path=project_excel, case_excel_path=case_excel, generate_case_only=True)
             logger.info(f"Batch test execution result: {case_result}")

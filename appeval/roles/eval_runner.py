@@ -64,6 +64,7 @@ class AppEvalRole(Role):
             "use_chrome_debugger": kwargs.get("use_chrome_debugger", True),
             "extend_xml_infos": kwargs.get("extend_xml_infos", True),
             "log_dirs": kwargs.get("log_dirs", "work_dirs"),
+            "max_iters": kwargs.get("max_iters", 20),
         }
 
         # Initialize CaseGenerator Action
@@ -93,7 +94,7 @@ class AppEvalRole(Role):
 
         self.osagent = OSAgent(
             platform=kwargs.get("os_type", "Windows"),
-            max_iters=20,
+            max_iters=self.rc.agent_params["max_iters"],
             use_ocr=self.rc.agent_params["use_ocr"],
             quad_split_ocr=self.rc.agent_params["quad_split_ocr"],
             use_icon_detect=False,
