@@ -8,6 +8,7 @@
 """
 import asyncio
 import json
+import os
 from typing import Any, Dict, List, Optional, Union
 
 from appeval.actions.case_generator import CaseGenerator, OperationType
@@ -427,6 +428,7 @@ class AppEvalRole(Role):
             task_name: Name of the test task
             test_cases: Dictionary containing test cases
             start_func: Function to start the test environment
+            log_dir: Directory for saving log files
 
         Returns:
             tuple[dict, bool]: Test results and executability
@@ -445,18 +447,35 @@ class AppEvalRole(Role):
             # Execute test cases
             task_id_case_number = len(test_cases)
             result_dict = await self.execute_api_check(task_name, task_id_case_number, test_cases)
+            
+            # Merge results directly into test_cases
+            for key, value in result_dict.items():
+                if key in test_cases:
+                    test_cases[key]["result"] = value.get("result", "")
+                    test_cases[key]["evidence"] = value.get("evidence", "")
+            
+            # Save merged results to log directory
+            output_dir = os.path.join(f"work_dirs/{log_dir}", task_name)
+            os.makedirs(output_dir, exist_ok=True)
+            output_file = os.path.join(output_dir, f"{task_name}.json")
+            
+            # Save the updated test_cases
+            with open(output_file, 'w', encoding='utf-8') as f:
+                json.dump({"test_cases": test_cases}, f, indent=4, ensure_ascii=False)
+                
+            logger.info(f"Merged results saved to {output_file}")
+            
             # execute executability check
             image = self.osagent.output_image_path
             executability = await self.test_generator.generate_executability(result_dict, image)
             # Cleanup: kill windows and processes
-            if "url" in test_cases:
+            if start_func.startswith("http"):
                 await kill_windows(["Chrome"])
-            elif "work_path" in test_cases:
+            else:
                 await kill_windows(["Chrome", "cmd", "npm", "projectapp", "Edge"])
-            
             # Read and return results
             logger.info("Test process completed")
-            return result_dict, executability
+            return test_cases, executability
 
         except Exception as e:
             logger.error(f"Error occurred during test execution: {str(e)}")

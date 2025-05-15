@@ -58,7 +58,7 @@ async def run_api_test():
         # case_excel = r"data/test_results.xlsx"
         # case_result = await appeval.run_mini_batch(project_excel_path=project_excel, case_excel_path=case_excel, generate_case_only=True)
         # logger.info(f"Batch test execution result: {case_result}")
-        #其中url和work_path二者只存在一种
+        #其中url和work_path二者必须存在其中一个，清理环境需要这个信息，如果没传两个字段就不会清理环境
         case_result_example = {
             "1": {
                 "task_name": "Example Task",
