@@ -153,6 +153,7 @@ class AppEvalRole(Role):
                         )
                     except Exception as write_error:
                         logger.error(f"Failed to write error result to JSON: {str(write_error)}")
+
     async def execute_api_check(self, task_id: str, task_id_case_number: int, check_list: dict) -> None:
         """Execute single verification condition with retry mechanism"""
         logger.info(f"Start testing project {task_id}")
@@ -172,7 +173,7 @@ class AppEvalRole(Role):
                 memory = self.osagent.rc.memory
                 iter_num = self.osagent.rc.iter
                 result_dict = await self.process_api_res(
-                    task_id, task_id_case_number, action_history, task_list, memory, iter_num
+                    task_id, task_id_case_number, action_history, task_list, memory, iter_num, check_list
                 )
                 return result_dict
             except Exception as e:
@@ -250,6 +251,7 @@ class AppEvalRole(Role):
         task_list: str,
         memory: List[str],
         iter_num: str,
+        check_list: dict = None,
     ) -> None:
         """Write verification results to json file"""
         try:
@@ -274,7 +276,7 @@ class AppEvalRole(Role):
 
             if not results_dict or len(results_dict) != task_id_case_number:
                 results_dict = await self.test_generator.generate_results_dict(
-                    action_history, task_list, memory, task_id_case_number
+                    action_history, task_list, memory, task_id_case_number, check_list
                 )
             return results_dict
 

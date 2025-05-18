@@ -34,10 +34,12 @@ Please answer 'Yes','No','Uncertain'"""
 
     GENERATE_RESULTS = """You are a professional test engineer. Please generate a result in the specified format based on the following historical information.
 You need to comprehensively analyze all historical information to infer the final test results. Please note not to miss any possible test case results. For cases where you think no results are given, please use Uncertain as the result for that case.
+You need to answer the task list in the check_list.
 Action History: {action_history}
 Task List Information: {task_list}
 Memory History: {memory}
 Number of test cases in result dictionary: {task_id_case_number}
+The task list you need to answer: {check_list}
 **Return only the result string. Do not include any additional text, markdown formatting, or code blocks.**
 
 ### output example ###

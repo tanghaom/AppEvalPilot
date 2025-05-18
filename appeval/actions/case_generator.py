@@ -186,15 +186,16 @@ class CaseGenerator(Action):
         return answer.strip()
 
     async def generate_results_dict(
-        self, action_history: List[str], task_list: str, memory: List[str], task_id_case_number: int
+        self, action_history: List[str], task_list: str, memory: List[str], task_id_case_number: int, check_list: dict = None
     ) -> Dict:
         """Generate result dictionary based on historical information
 
         Args:
-            action_history: List of historical operation information
-            task_list: Task list information
-            memory: Memory history information
+            action_history: List of historical operation information from test agent
+            task_list: Task list information from test agent
+            memory: Memory history information from test agent
             task_id_case_number: Number of tasks
+            check_list: The task list you need to answer
 
         Returns:
             Dict: Result dictionary
@@ -205,6 +206,7 @@ class CaseGenerator(Action):
                 task_list=task_list,
                 memory=memory,
                 task_id_case_number=task_id_case_number,
+                check_list=check_list,
             )
             logger.info(f"History information length: {len(str(action_history))}")
             # Call chat to generate results
