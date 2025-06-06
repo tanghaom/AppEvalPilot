@@ -56,13 +56,11 @@ async def test_generate_results_dict():
             "Run (pyautogui.click(1827, 207); time.sleep(2))",
             "Run (pyautogui.click(1334, 207); time.sleep(2))",
             "Run (pyautogui.click(1334, 207); pyautogui.scroll(1000); time.sleep(2))",
-            'Tell ({"0": {"result": "Pass", "evidence": "Navigation bar remains fixed at top and visible during all scroll operations"}, "1": {"result": "Pass", "evidence": "All navigation links (Home, About, Portfolio, Blog, Contact) successfully navigate to correct sections"}, "2": {"result": "Pass", "evidence": "Navigation bar maintains fixed position at screen width > 1024px throughout testing"}, "3": {"result": "Pass", "evidence": "Profile section displays immediately on page load with proper formatting"}, "4": {"result": "Pass", "evidence": "Professional portrait photo loads and displays correctly with proper lighting and composition"}, "5": {"result": "Pass", "evidence": "Profile introduction displays correctly showing title \'Full Stack Developer & UI/UX Designer\' and background text"}, "6": {"result": "Pass", "evidence": "Project cards are visible and properly laid out in grid format"}, "7": {"result": "Pass", "evidence": "Project cards show complete details including title, technologies used, and preview images"}, "8": {"result": "Pass", "evidence": "Project cards maintain proper grid layout at screen width > 1024px"}, "17": {"result": "Pass", "evidence": "All sections maintain proper layout at 1025px screen width"}, "18": {"result": "Pass", "evidence": "All sections maintain proper layout at 1920px screen width"}})',
             "Run (pyautogui.scroll(-1000); time.sleep(2))",
             "Run (pyautogui.scroll(-1000); time.sleep(2))",
             'Tell ({"9": {"result": "Fail", "evidence": "After thoroughly scrolling through the entire page, no skills tag cloud section was found"}, "10": {"result": "Fail", "evidence": "Skills tags are not present on the page as the skills cloud section is not implemented"}, "11": {"result": "Fail", "evidence": "Cannot verify skills cloud layout as the section does not exist on the page"}, "12": {"result": "Pass", "evidence": "Social media links are visible in the footer section with GitHub, LinkedIn, and Twitter icons"}, "13": {"result": "Pass", "evidence": "Social media links are clickable and properly formatted to open respective platforms"}, "19": {"result": "Pass", "evidence": "Page loads within 2-3 seconds with all content and images rendering properly"}})',
-            "Run (pyautogui.click(2039, 207); time.sleep(3))",
-            'Tell ({"14": {"result": "Pass", "evidence": "Resume download button is visible in the navigation bar"}, "15": {"result": "Fail", "evidence": "Clicking the download button does not trigger any file download"}, "16": {"result": "Uncertain", "evidence": "Cannot verify PDF content as download functionality is not working"}})',
-        ]
+            "Run (pyautogui.click(2039, 207); time.sleep(3))"
+            ]
 
         task_list = [
             "Scrolling down the page to test navigation bar visibility and fixed position.",
@@ -95,13 +93,42 @@ async def test_generate_results_dict():
             "None",
             "None",
         ]
+        check_list = {
+                "2": "Click the 'About' link in the navigation bar",
+                "3": "Click the 'Portfolio' link in the navigation bar",
+                "4": "Click the 'Blog' link in the navigation bar",
+                "5": "Click the 'Contact' link in the navigation bar",
+                "6": "Click the 'Home' link in the navigation bar",
+                "7": "Click the 'Download Resume' button"
+        }
         task_id_case_number = 20
-        res = await case_generator.generate_results_dict(action_history, task_list, memory, task_id_case_number)
+        res = await case_generator.generate_results_dict(action_history, task_list, memory, task_id_case_number, check_list)
         logger.info(res)
     except Exception as e:
         logger.error(f"Execution failed: {str(e)}")
         logger.exception("Detailed error info")
 
+async def test_catch_error():
+    try:
+        answer = "123,['1','2','3']"
+        # Convert string to list
+        start_idx = answer.find('[')
+        end_idx = answer.rfind(']')
+        
+        if start_idx == -1 or end_idx == -1 or start_idx >= end_idx:
+            logger.warning(f"Invalid answer format: {answer}")
+            return []
+            
+        # Extract content between brackets
+        content = answer[start_idx:end_idx+1]
+        print(content)
+        test_cases = eval(content)
+        print(test_cases)
+        return test_cases
 
+    except Exception as e:
+        logger.error(f"Error occurred while generating test cases: {str(e)}")
+        return []
 if __name__ == "__main__":
-    asyncio.run(test_generate_test_cases_and_name())
+    res = asyncio.run(test_generate_results_dict())
+    print(res)

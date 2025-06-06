@@ -8,7 +8,8 @@
 """
 import asyncio
 import json
-from typing import Any, Dict, List, Optional
+import os
+from typing import Any, Dict, List, Optional, Union
 
 from appeval.actions.case_generator import CaseGenerator, OperationType
 from appeval.prompts.osagent import case_batch_check_system_prompt
@@ -26,7 +27,6 @@ from appeval.utils.hijack_osagent import OSAgentHijacker
 from loguru import logger
 from metagpt.actions import Action
 from metagpt.roles.role import Role, RoleContext
-from metagpt.schema import Message
 from metagpt.utils.common import read_json_file, write_json_file
 from pydantic import ConfigDict, Field
 
@@ -35,7 +35,7 @@ class AppEvalContext(RoleContext):
     """AppEval Runtime Context"""
 
     model_config = ConfigDict(arbitrary_types_allowed=True)
-    json_file: str = ""
+    json_file: str = "data/default_results.json"
     env_process: Optional[Any] = None
     agent_params: Dict = Field(default_factory=dict)
     test_generator: Optional[CaseGenerator] = None
@@ -54,7 +54,7 @@ class AppEvalRole(Role):
     osagent: Optional[OSAgent] = None
     hijacker: Optional[OSAgentHijacker] = None
 
-    def __init__(self, json_file: str, **kwargs):
+    def __init__(self, json_file: str = "data/default_results.json", **kwargs):
         super().__init__()
         self.rc.json_file = json_file
 
@@ -67,6 +67,7 @@ class AppEvalRole(Role):
             "use_chrome_debugger": kwargs.get("use_chrome_debugger", True),
             "extend_xml_infos": kwargs.get("extend_xml_infos", True),
             "log_dirs": kwargs.get("log_dirs", "work_dirs"),
+            "max_iters": kwargs.get("max_iters", 20),
         }
 
         # Initialize CaseGenerator Action
@@ -97,7 +98,7 @@ class AppEvalRole(Role):
         # Initialize OSAgent
         self.osagent = OSAgent(
             platform=kwargs.get("os_type", "Windows"),
-            max_iters=40,
+            max_iters=self.rc.agent_params["max_iters"],
             use_ocr=self.rc.agent_params["use_ocr"],
             quad_split_ocr=self.rc.agent_params["quad_split_ocr"],
             use_icon_detect=False,
@@ -173,6 +174,48 @@ class AppEvalRole(Role):
                     except Exception as cleanup_error:
                         logger.error(f"Failed to cleanup hijacker: {str(cleanup_error)}")
 
+    async def execute_api_check(self, task_id: str, task_id_case_number: int, check_list: dict) -> None:
+        """Execute single verification condition with retry mechanism"""
+        logger.info(f"Start testing project {task_id}")
+        logger.info(f"Setting log_dirs to: {self.osagent.log_dirs}")
+        instruction = (
+            "Please complete the following tasks，And after completion, use the Tell action to "
+            f"inform me of the results of all the test cases at once: {check_list}\n"
+        )
+        max_retries = 2
+        retry_count = 0
+        while retry_count <= max_retries:
+            try:
+                await self.osagent.run(instruction)
+                # Get action history
+                action_history = self.osagent.rc.action_history
+                task_list = self.osagent.rc.task_list
+                memory = self.osagent.rc.memory
+                iter_num = self.osagent.rc.iter
+                result_dict = await self.process_api_res(
+                    task_id, task_id_case_number, action_history, task_list, memory, iter_num, check_list
+                )
+                return result_dict
+            except Exception as e:
+                retry_count += 1
+                if retry_count <= max_retries:
+                    logger.warning(f"Attempt {retry_count} failed for task {task_id}, retrying... Error: {str(e)}")
+                    await asyncio.sleep(5)  # Wait a bit before retrying
+                else:
+                    logger.error(f"All {max_retries + 1} attempts failed for task {task_id}. Error: {str(e)}")
+                    # Write failed result to JSON
+                    try:
+                        await self.write_batch_res_to_json(
+                            task_id,
+                            task_id_case_number,
+                            ["Failed after all retries"],
+                            "Failed",
+                            [f"Error: {str(e)}"],
+                            "0",
+                        )
+                    except Exception as write_error:
+                        logger.error(f"Failed to write error result to JSON: {str(write_error)}")
+
     async def write_batch_res_to_json(
         self,
         task_id: str,
@@ -220,7 +263,48 @@ class AppEvalRole(Role):
             logger.error(f"Failed to write verification results: {str(e)}")
             raise
 
-    async def run_batch(self, project_excel_path: str = None, case_excel_path: str = None) -> None:
+    async def process_api_res(
+        self,
+        task_id: str,
+        task_id_case_number: int,
+        action_history: List[str],
+        task_list: str,
+        memory: List[str],
+        iter_num: str,
+        check_list: dict = None,
+    ) -> None:
+        """Write verification results to json file"""
+        try:
+            content = action_history[-1]
+            results_dict = None
+
+            if content.startswith("Tell ("):
+                start = content.find("(")
+                end = content.rfind(")")
+                if start != -1 and end != -1 and end > start:
+                    answer = content[start + 1 : end]
+                    try:
+                        results_dict = eval(answer)
+                    except Exception:
+                        start = answer.find("{")
+                        end = answer.rfind("}")
+                        if start != -1 and end != -1 and end > start:
+                            try:
+                                results_dict = eval(answer[start : end + 1])
+                            except Exception as e:
+                                logger.error(f"Result parsing failed: {str(e)}")
+
+            if not results_dict or len(results_dict) != task_id_case_number:
+                results_dict = await self.test_generator.generate_results_dict(
+                    action_history, task_list, memory, task_id_case_number, check_list
+                )
+            return results_dict
+
+        except Exception as e:
+            logger.error(f"Failed to write verification results: {str(e)}")
+            raise
+
+    async def run_batch(self, project_excel_path: str = None, case_excel_path: str = None) -> tuple[dict, bool]:
         """Run batch testing
 
         Complete testing process includes:
@@ -232,6 +316,9 @@ class AppEvalRole(Role):
         Args:
             project_excel_path: Project level Excel file path
             case_excel_path: Case level Excel file path (optional)
+            
+        Returns:
+            tuple[dict, bool]: test result dictionary and executability
         """
         try:
             if project_excel_path:
@@ -248,7 +335,8 @@ class AppEvalRole(Role):
             # 3. Execute automated testing
             logger.info("Start executing automated testing...")
             test_cases = read_json_file(self.rc.json_file)
-
+            result_dict = {}
+            executability = None
             for task_id, task_info in test_cases.items():
                 self.osagent.log_dirs = f"work_dirs/{task_id}"
 
@@ -278,12 +366,13 @@ class AppEvalRole(Role):
             update_project_excel_iters(project_excel_path, self.rc.json_file)
 
             logger.info("Test process completed")
+            return result_dict, executability
 
         except Exception as e:
             logger.error(f"Error occurred during test execution: {str(e)}")
             raise
 
-    async def run_mini_batch(self, project_excel_path: str = None, case_excel_path: str = None) -> None:
+    async def run_mini_batch(self, project_excel_path: str = None, case_excel_path: str = None, generate_case_only: bool = False) -> None:
         """Run batch testing
 
         Complete testing process includes:
@@ -291,10 +380,11 @@ class AppEvalRole(Role):
         2. Convert to JSON format
         3. Execute automated testing
         4. (Optional) Output results to Excel
-
+        5. (Optional) Only generate test cases
         Args:
             project_excel_path: Project level Excel file path
             case_excel_path: Case level Excel file path (optional)
+            generate_case_only: Whether to only generate test cases
         """
         try:
             if project_excel_path:
@@ -306,10 +396,13 @@ class AppEvalRole(Role):
 
                 # 2. Convert to JSON format
                 logger.info("Start converting to JSON format...")
-                mini_list_to_json(project_excel_path, self.rc.json_file)
+                case_result = mini_list_to_json(project_excel_path, self.rc.json_file)
+                
+                if generate_case_only:
+                    return case_result
             else:
                 raise ValueError("project_excel_path must be provided for batch run if not using existing json file.")
-
+                
             # 3. Execute automated testing
             logger.info("Start executing automated testing...")
             test_cases = read_json_file(self.rc.json_file)
@@ -347,6 +440,68 @@ class AppEvalRole(Role):
         except Exception as e:
             logger.error(f"Error occurred during test execution: {str(e)}")
             raise
+    
+    async def run_api(self, task_name: str, test_cases: dict, start_func: str, log_dir: str) -> tuple[dict, bool]:
+        """Run API testing
+
+        Execute automated testing with provided test cases and custom start function.
+
+        Args:
+            task_name: Name of the test task
+            test_cases: Dictionary containing test cases
+            start_func: Function to start the test environment
+            log_dir: Directory for saving log files
+
+        Returns:
+            tuple[dict, bool]: Test results and executability
+        """
+        try:
+            # Set up logging directory
+            self.osagent.log_dirs = f"work_dirs/{log_dir}/{task_name}"
+            if start_func.startswith("http"):
+                await start_windows(target_url=start_func)
+            else:
+                await start_windows(work_path=start_func)
+            await asyncio.sleep(30)
+            # Execute automated testing
+            logger.info("Start executing automated testing...")
+            
+            # Execute test cases
+            task_id_case_number = len(test_cases)
+            result_dict = await self.execute_api_check(task_name, task_id_case_number, test_cases)
+            
+            # Merge results directly into test_cases
+            for key, value in result_dict.items():
+                if key in test_cases:
+                    test_cases[key]["result"] = value.get("result", "")
+                    test_cases[key]["evidence"] = value.get("evidence", "")
+            
+            # Save merged results to log directory
+            output_dir = os.path.join(f"work_dirs/{log_dir}", task_name)
+            os.makedirs(output_dir, exist_ok=True)
+            output_file = os.path.join(output_dir, f"{task_name}.json")
+            
+            # Save the updated test_cases
+            with open(output_file, 'w', encoding='utf-8') as f:
+                json.dump({"test_cases": test_cases}, f, indent=4, ensure_ascii=False)
+                
+            logger.info(f"Merged results saved to {output_file}")
+            
+            # execute executability check
+            image = self.osagent.output_image_path
+            executability = await self.test_generator.generate_executability(result_dict, image)
+            # Cleanup: kill windows and processes
+            if start_func.startswith("http"):
+                await kill_windows(["Chrome"])
+            else:
+                await kill_windows(["Chrome", "cmd", "npm", "projectapp", "Edge"])
+            # Read and return results
+            logger.info("Test process completed")
+            return test_cases, executability
+
+        except Exception as e:
+            logger.error(f"Error occurred during test execution: {str(e)}")
+            raise
 
     async def run_single(
         self,
@@ -356,7 +511,7 @@ class AppEvalRole(Role):
         user_requirement: str,
         json_path: str = "data/temp.json",
         use_json_only: bool = False,
-    ) -> dict:
+    ) -> tuple[dict, bool]:
         """Execute single test case
 
         Args:
@@ -367,7 +522,7 @@ class AppEvalRole(Role):
             json_path (str, optional): Output JSON file path
             use_json_only (bool, optional): Whether to only use JSON files
         Returns:
-            dict: Test result dictionary
+            tuple[dict, bool]: Tuple containing test result dictionary and executability flag
         """
         try:
             if not use_json_only:
@@ -384,6 +539,7 @@ class AppEvalRole(Role):
             self.rc.json_file = json_path
 
             test_cases = read_json_file(self.rc.json_file)
+            result_dict = None
 
             for task_id, task_info in test_cases.items():
                 if "test_cases" in task_info:
@@ -405,15 +561,19 @@ class AppEvalRole(Role):
 
             # 4. Read results
             result = read_json_file(self.rc.json_file)
+            
+            # 5. Generate executability check
+            image = self.osagent.output_image_path
+            executability = await self.test_generator.generate_executability(result, image)
 
             logger.info(f"Test process completed for case '{case_name}'")
-            return result
+            return result, executability
 
         except Exception as e:
             logger.error(f"Test process execution failed: {str(e)}")
             raise
 
-    async def run(self, **kwargs) -> Message:
+    async def run(self, **kwargs) -> Union[tuple[dict, bool], dict, Exception]:
         """Run automated testing
 
         Supports two calling methods:
@@ -435,7 +595,7 @@ class AppEvalRole(Role):
         try:
             if kwargs.get("case_name") and kwargs.get("user_requirement"):
                 # Single test scenario
-                result = await self.run_single(
+                result_dict, executability = await self.run_single(
                     case_name=kwargs["case_name"],
                     url=kwargs.get("url", ""),
                     work_path=kwargs.get("work_path", ""),
@@ -443,12 +603,18 @@ class AppEvalRole(Role):
                     json_path=kwargs.get("json_path", "data/temp.json"),
                     use_json_only=kwargs.get("use_json_only", False),
                 )
-                return Message(content=json.dumps(result), cause_by=Action)
+                return result_dict, executability
             else:
                 # Batch test scenario
-                await self.run_batch(kwargs.get("project_excel_path"), kwargs.get("case_excel_path"))
-                return Message(content=json.dumps("Test execution completed"), cause_by=Action)
+                result_dict, executability = await self.run_batch(
+                    kwargs.get("project_excel_path"), 
+                    kwargs.get("case_excel_path")
+                )
+                return result_dict, executability
+            
         except Exception as e:
             logger.error(f"Test execution failed: {str(e)}")
             logger.exception("Detailed error information")
-            return Message(content=json.dumps(f"Test execution failed: {str(e)}"), cause_by=Action)
+            return e
+        
+        
