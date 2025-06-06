@@ -34,10 +34,12 @@ Please answer 'Yes','No','Uncertain'"""
 
     GENERATE_RESULTS = """You are a professional test engineer. Please generate a result in the specified format based on the following historical information.
 You need to comprehensively analyze all historical information to infer the final test results. Please note not to miss any possible test case results. For cases where you think no results are given, please use Uncertain as the result for that case.
+You need to answer the task list in the check_list.
 Action History: {action_history}
 Task List Information: {task_list}
 Memory History: {memory}
 Number of test cases in result dictionary: {task_id_case_number}
+The task list you need to answer: {check_list}
 **Return only the result string. Do not include any additional text, markdown formatting, or code blocks.**
 
 ### output example ###
@@ -47,3 +49,12 @@ Number of test cases in result dictionary: {task_id_case_number}
     "2": {{"result": "Fail", "evidence": "After fully browsing and exploring the web page, I did not find the message board."}}
 }}
 """
+
+    GENERATE_EXECUTABILITY = """Please evaluate the executability of the target application based on the test engineer's test results and screenshots of the test webpage.
+Test Results: {case_result}
+If the target webpage is blank or displays error messages, output only "False"
+If the target webpage is about jupyter notebook, output only "True"
+If the test engineer's results indicate that the vast majority of the application's functions are not working properly, output only "False"
+In all other cases, output only "True"
+"""
+

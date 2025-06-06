@@ -16,6 +16,7 @@ from metagpt.config2 import Config
 from metagpt.llm import LLM
 from metagpt.logs import logger
 from tenacity import retry, retry_if_exception_type, stop_after_attempt, wait_fixed
+from metagpt.utils.common import encode_image
 
 from appeval.prompts.case_generator import CasePrompts
 
@@ -25,6 +26,7 @@ class OperationType(Enum):
     MAKE_CASE_NAME = "make_case_name"
     CHECK_RESULTS = "check_results"
     GENERATE_CASES_MINI_BATCH = "generate_cases_mini_batch"
+    GENERATE_EXECUTABILITY = "generate_executability"
 
 class CaseGenerator(Action):
     name: str = "CaseGenerator"
@@ -68,6 +70,26 @@ class CaseGenerator(Action):
         except Exception as e:
             logger.error(f"LLM call failed: {str(e)}")
             raise
+    
+    async def _inference_chat_with_image(self, content: str, image: str) -> str:
+        """Use MetaGPT's aask method for chat inference with image
+
+        Args:
+            content: Input content
+            image: Image path
+        """
+        try:
+            response = await self.llm.aask(
+                content,
+                system_msgs=[CasePrompts.SYSTEM_MESSAGE],
+                images=[encode_image(image)],
+                stream=False,
+            )
+            return response
+        except Exception as e:
+            logger.error(f"LLM call failed: {str(e)}")
+            raise
+
 
     async def generate_test_cases(self, demand: str) -> List[str]:
         """Generate test cases based on requirements
@@ -84,12 +106,21 @@ class CaseGenerator(Action):
             # Call chat to generate test cases
             answer = await self._inference_chat(prompt)
             # Convert string to list
-            test_cases = eval(answer)
+            start_idx = answer.find('[')
+            end_idx = answer.rfind(']')
+            
+            if start_idx == -1 or end_idx == -1 or start_idx >= end_idx:
+                logger.warning(f"Invalid answer format: {answer}")
+                return []
+                
+            # Extract content between brackets
+            content = answer[start_idx:end_idx+1]
+            test_cases = eval(content)
             return test_cases
 
         except Exception as e:
             logger.error(f"Error occurred while generating test cases: {str(e)}")
-            raise
+            return []
     
     async def generate_test_cases_mini_batch(self, demand: str) -> List[str]:
         """Generate test cases based on requirements
@@ -105,8 +136,16 @@ class CaseGenerator(Action):
             logger.info(f"Original requirement: {demand}")
             # Call chat to generate test cases
             answer = await self._inference_chat(prompt)
-            # Convert string to list
-            test_cases = eval(answer)
+            start_idx = answer.find('[')
+            end_idx = answer.rfind(']')
+            
+            if start_idx == -1 or end_idx == -1 or start_idx >= end_idx:
+                logger.warning(f"Invalid answer format: {answer}")
+                return []
+                
+            # Extract content between brackets
+            content = answer[start_idx:end_idx+1]
+            test_cases = eval(content)
             return test_cases
 
         except Exception as e:
@@ -147,15 +186,16 @@ class CaseGenerator(Action):
         return answer.strip()
 
     async def generate_results_dict(
-        self, action_history: List[str], task_list: str, memory: List[str], task_id_case_number: int
+        self, action_history: List[str], task_list: str, memory: List[str], task_id_case_number: int, check_list: dict = None
     ) -> Dict:
         """Generate result dictionary based on historical information
 
         Args:
-            action_history: List of historical operation information
-            task_list: Task list information
-            memory: Memory history information
+            action_history: List of historical operation information from test agent
+            task_list: Task list information from test agent
+            memory: Memory history information from test agent
             task_id_case_number: Number of tasks
+            check_list: The task list you need to answer
 
         Returns:
             Dict: Result dictionary
@@ -166,6 +206,7 @@ class CaseGenerator(Action):
                 task_list=task_list,
                 memory=memory,
                 task_id_case_number=task_id_case_number,
+                check_list=check_list,
             )
             logger.info(f"History information length: {len(str(action_history))}")
             # Call chat to generate results
@@ -177,6 +218,28 @@ class CaseGenerator(Action):
 
         except Exception as e:
             logger.error(f"Error occurred while generating result dictionary: {str(e)}")
+            raise
+
+    async def generate_executability(self, case_result: Dict, image: str) -> bool:
+        """Evaluate the executability of the target application based on test results
+
+        Args:
+            case_result: Dictionary containing test results
+            image: Image path
+        Returns:
+            bool: True if the application is executable, False otherwise
+        """
+        try:
+            prompt = CasePrompts.GENERATE_EXECUTABILITY.format(case_result=case_result)
+            logger.info(f"Evaluating executability based on test results")
+            # Call chat to evaluate executability
+            answer = await self._inference_chat_with_image(prompt, image)
+            logger.info(f"Executability result: {answer}")
+            # Convert string to boolean
+            return answer.strip() == "True"
+
+        except Exception as e:
+            logger.error(f"Error occurred while evaluating executability: {str(e)}")
             raise
 
     async def process_excel_file(
@@ -242,6 +305,25 @@ class CaseGenerator(Action):
                 result = await self.check_result(task_desc, model_output)
                 df.at[index, "Auto Function Detection"] = result
                 df.to_excel(excel_path, index=False)
+
+        elif operation == OperationType.GENERATE_EXECUTABILITY:
+            # Evaluate executability for each test result set
+            for index, row in df.iterrows():
+                # Get test results from the row
+                case_result = str(row["test_results"])
+                if not case_result:
+                    continue
+                
+                # Convert string to dictionary
+                try:
+                    case_result_dict = eval(case_result)
+                    is_executable = await self.gen_executability(case_result_dict)
+                    df.at[index, "Executability"] = str(is_executable)
+                    df.to_excel(excel_path, index=False)
+                except Exception as e:
+                    logger.error(f"Error processing executability for row {index}: {str(e)}")
+                    df.at[index, "Executability"] = "Error"
+                    df.to_excel(excel_path, index=False)
 
         else:
             raise ValueError(f"Unsupported operation type: {operation}")

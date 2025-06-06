@@ -668,7 +668,7 @@ class OSAgent(Role):
             f"\n\n######################## output_action:\n{output_action}\n\n######################## output_action end\n\n\n\n"
         )
 
-        if "Stop" in self.rc.action:
+        if self.rc.action.startswith("Stop"):
             return False
         else:
             return True

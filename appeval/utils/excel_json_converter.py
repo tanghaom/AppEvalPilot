@@ -97,7 +97,7 @@ def list_to_json(excel_file: str, json_file: str) -> None:
     write_json_file(json_file, output_data, indent=4)
 
 
-def mini_list_to_json(excel_file: str, json_file: str) -> None:
+def mini_list_to_json(excel_file: str, json_file: str) -> dict:
     """
     Convert data from Excel file to JSON format and save to JSON file.\n
     Input: app_name in Excel table, Auto Generated Test Cases, prod_url, work_path\n
@@ -105,10 +105,15 @@ def mini_list_to_json(excel_file: str, json_file: str) -> None:
     Args:
         excel_file (str): Path to Excel file.
         json_file (str): Path to output JSON file.
+    Returns:
+        dict: The output data dictionary in API format
     """
     xls = pd.ExcelFile(excel_file)
     sheet_names = xls.sheet_names
     output_data = {}
+    api_format_data = {}
+    
+    case_counter = 0
 
     for sheet_name in sheet_names:
         df = pd.read_excel(excel_file, sheet_name=sheet_name)
@@ -134,19 +139,30 @@ def mini_list_to_json(excel_file: str, json_file: str) -> None:
                 category_app_name = f"{app_name}_{i}"
                 # Initialize app entry with empty dict
                 sheet_data[category_app_name] = {"test_cases": {}}
-
+                
+                # Add category to api_format_data
+                api_format_data[str(case_counter)] = {
+                    "task_name": app_name,
+                    "tag": str(i),
+                    "requirement": f"{row['requirement']}",
+                    "test_cases": {}
+                }
+                
                 # Check and add prod_url if available
                 if "prod_url" in row and not pd.isna(row["prod_url"]):
                     sheet_data[category_app_name]["url"] = f"{row['prod_url']}"
-
+                    api_format_data[str(case_counter)]["url"] = f"{row['prod_url']}"
+                
                 # Check and add work_path if available
                 if "work_path" in row and not pd.isna(row["work_path"]):
                     sheet_data[category_app_name]["work_path"] = f"{row['work_path']}"
-
+                    api_format_data[str(case_counter)]["work_path"] = f"{row['work_path']}"
+                
                 # Ensure at least one of url or work_path is available
                 if not ("url" in sheet_data[category_app_name] or "work_path" in sheet_data[category_app_name]):
                     # Add empty url as fallback if neither field is present
                     sheet_data[category_app_name]["url"] = ""
+                    api_format_data[str(case_counter)]["url"] = ""
 
                 # Add test cases for this category
                 for j, task_desc in enumerate(category_tasks):
@@ -155,11 +171,20 @@ def mini_list_to_json(excel_file: str, json_file: str) -> None:
                         "result": "",
                         "evidence": "",
                     }
-
+                    
+                    # Add to api_format_data
+                    api_format_data[str(case_counter)]["test_cases"][str(j)] = {
+                        "case_desc": task_desc,
+                        "result": "",
+                        "evidence": ""
+                    }
+                
+                case_counter += 1
+    
         output_data.update(sheet_data)
 
     write_json_file(json_file, output_data, indent=4)
-
+    return api_format_data
 
 def mini_list_to_excel(json_file: str, excel_file: str) -> None:
     """
