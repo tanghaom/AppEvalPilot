@@ -301,12 +301,14 @@ class PC_prompt(BasePrompt):
         super().__init__("PC")
 
         # PC-specific hints
-        self.hints += """
+        self.hints += r"""
 If Tell action was used in the previous round, it cannot be used again this time.
 To fully view webpage content, you must use the 'pagedown' key to scroll. Note that you can only advance one page at a time.
 If you need to change the size of the webpage, you can do so by simultaneously pressing the ctrl and + or - keys.
 The webpage you need to test is already displayed in front of you, so you don't need to open a browser.
-If the target application requires uploading an image for testing, please upload the image located in "C:/Users/admin/Pictures".
+If the target application requires uploading an image for testing, please upload the image located in "C:\test_data".
+If the target application needs to upload a video for testing, please upload the video located in "C:\test_data".
+If the target application needs to upload other files, please use the files in the "C:\test_data" directory as the main source.
 If the target application requires entering a password, please first register an account and then use the account to log in.
 """
 
