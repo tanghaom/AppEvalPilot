@@ -159,8 +159,7 @@ class AndroidController(BaseController):
                     continue
 
                 if clickable == "true" or (
-                    focusable == "true"
-                    and (elem_class == "android.widget.EditText" or elem_class == "android.widget.TextView")
+                    focusable == "true" and (elem_class == "android.widget.EditText" or elem_class == "android.widget.TextView")
                 ):
                     center_x = int((bounds[0] + bounds[2]) / 2)
                     center_y = int((bounds[1] + bounds[3]) / 2)
@@ -259,6 +258,7 @@ class PCController(BaseController):
         search_keys: Tuple[str, str] = ("win", "s"),
         ctrl_key: str = "ctrl",
         pc_type: str = "windows",
+        max_tokens: int = 1000,
     ):
         """Initialize PC controller
 
@@ -266,11 +266,13 @@ class PCController(BaseController):
             search_keys: Search shortcut keys
             ctrl_key: Control key
             pc_type: Operating system type
+            max_tokens: Maximum token count for UI element text, defaults to 1000 tokens
         """
         try:
             self.search_keys = search_keys
             self.ctrl_key = ctrl_key
             self.pc_type = pc_type.lower()
+            self.max_tokens = max_tokens
         except Exception as e:
             logger.error(f"Failed to initialize PC controller: {str(e)}")
             raise
@@ -314,11 +316,7 @@ class PCController(BaseController):
         t1 = time.time()
         try:
             # Get all visible non-taskbar windows
-            windows = [
-                w
-                for w in Desktop(backend="uia").windows()
-                if w.is_visible() and w.texts() and w.texts()[0] not in ["任务栏", "Taskbar", ""]
-            ]
+            windows = [w for w in Desktop(backend="uia").windows() if w.is_visible() and w.texts() and w.texts()[0] not in ["任务栏", "Taskbar", ""]]
 
             if not windows:
                 logger.warning("No active window found")
@@ -328,7 +326,7 @@ class PCController(BaseController):
             visible_rect = active_window.rectangle()
             t2 = time.time()
             logger.info(f"Time taken to get screen element info: {t2 - t1} seconds")
-            processor = WindowsElementProcessor(visible_rect, location_info)
+            processor = WindowsElementProcessor(visible_rect, location_info, self.max_tokens)
             return processor.process_element(active_window)
 
         except Exception as e:
@@ -348,16 +346,160 @@ class WindowsElementProcessor:
     Used for analyzing and processing UI elements in Windows windows.
     """
 
-    def __init__(self, visible_rect: RECT, location_info: str = "center"):
+    def __init__(self, visible_rect: RECT, location_info: str = "center", max_tokens: int = 50):
         """Initialize Windows element processor
 
         Args:
             visible_rect (RECT): Visible area rectangle
             location_info (str): Location information format, can be 'center' or 'bbox'
+            max_tokens (int): Maximum token count for text, defaults to 50 tokens
         """
         self.visible_rect = visible_rect
         self.location_info = location_info
+        self.max_tokens = max_tokens
         self.SPECIAL_CONTROL_TYPES = {"Hyperlink", "TabItem", "Button", "ComboBox", "ScrollBar", "Edit", "ToolBar"}
+
+    def _contains_chinese(self, text: str) -> bool:
+        """Check if text contains Chinese characters
+
+        Args:
+            text: Text to check
+
+        Returns:
+            bool: Whether text contains Chinese characters
+        """
+        return any("\u4e00" <= char <= "\u9fff" for char in text)
+
+    def _truncate_text(self, text: str) -> str:
+        """Truncate text based on estimated token count
+
+        Args:
+            text (str): Original text
+
+        Returns:
+            str: Truncated text with ellipsis if too long
+        """
+        if not text:
+            return text
+
+        # Estimate token count: for English, roughly 1 word = 1 token
+        # For Chinese, roughly 1 character = 1 token
+        estimated_tokens = self._estimate_token_count(text)
+
+        if estimated_tokens <= self.max_tokens:
+            return text
+
+        # Smart truncation for mixed Chinese-English text
+        return self._smart_truncate(text)
+
+    def _smart_truncate(self, text: str) -> str:
+        """Smart truncation for mixed Chinese-English text
+
+        Args:
+            text (str): Input text to truncate
+
+        Returns:
+            str: Truncated text with proper handling of mixed content
+        """
+        # Split text into proper tokens (separate Chinese and English)
+        tokens = self._tokenize_mixed_text(text)
+
+        result_tokens = []
+        current_token_count = 0
+
+        for token in tokens:
+            if token.isspace():
+                # Always keep spaces if we haven't exceeded limit
+                if current_token_count < self.max_tokens:
+                    result_tokens.append(token)
+                continue
+
+            # Calculate tokens for this token
+            token_count = self._calculate_token_count_for_unit(token)
+
+            if current_token_count + token_count <= self.max_tokens:
+                # Can fit the whole token
+                result_tokens.append(token)
+                current_token_count += token_count
+            else:
+                # Need to truncate this token
+                remaining_tokens = self.max_tokens - current_token_count
+                if remaining_tokens > 0:
+                    truncated_token = self._truncate_token(token, remaining_tokens)
+                    if truncated_token:
+                        result_tokens.append(truncated_token)
+                break
+
+        result = "".join(result_tokens).rstrip()
+        return result + "..." if result != text else result
+
+    def _tokenize_mixed_text(self, text: str) -> list:
+        """Tokenize mixed Chinese-English text properly
+
+        Args:
+            text (str): Input text to tokenize
+
+        Returns:
+            list: List of tokens where Chinese chars and English words are separated
+        """
+        import re
+
+        # Pattern to match: Chinese characters, English words, or whitespace
+        pattern = r"[\u4e00-\u9fff]|[a-zA-Z0-9]+|[^\u4e00-\u9fff\w\s]|\s+"
+        tokens = re.findall(pattern, text)
+        return tokens
+
+    def _calculate_token_count_for_unit(self, token: str) -> int:
+        """Calculate token count for a single unit (should always be 1 after proper tokenization)
+
+        Args:
+            token (str): Single token unit
+
+        Returns:
+            int: Token count (should be 1 for properly tokenized units)
+        """
+        if token.isspace():
+            return 0  # Spaces don't count as tokens
+        return 1  # Each properly tokenized unit counts as 1 token
+
+    def _truncate_token(self, token: str, max_tokens: int) -> str:
+        """Truncate a single token
+
+        Args:
+            token (str): Token to truncate
+            max_tokens (int): Maximum tokens allowed
+
+        Returns:
+            str: Truncated token
+        """
+        if max_tokens <= 0:
+            return ""
+
+        if max_tokens >= 1:
+            return token  # Single tokens are either kept whole or not at all
+        else:
+            return ""
+
+    def _estimate_token_count(self, text: str) -> int:
+        """Estimate token count for given text
+
+        Args:
+            text (str): Input text
+
+        Returns:
+            int: Estimated token count
+        """
+        if not text:
+            return 0
+
+        # Use same tokenization logic as smart truncation for consistency
+        tokens = self._tokenize_mixed_text(text)
+
+        total_tokens = 0
+        for token in tokens:
+            total_tokens += self._calculate_token_count_for_unit(token)
+
+        return total_tokens
 
     def process_element(self, element: UIAWrapper, depth: int = 0) -> List[Dict[str, Union[Tuple[int, ...], str]]]:
         """Process UI element
@@ -382,8 +524,13 @@ class WindowsElementProcessor:
             if element.is_enabled():
                 coordinates = self._calculate_coordinates(rect)
                 rect_str = f"({rect.left}, {rect.top}, {rect.right}, {rect.bottom})"
+                # Truncate text to avoid overly long content affecting LLM inference
+                truncated_text = self._truncate_text(text)
                 current_elements_info.append(
-                    {"coordinates": coordinates, "text": f"text:{text}; control_type:{control_type}; rect: {rect_str}"}
+                    {
+                        "coordinates": coordinates,
+                        "text": f"text:{truncated_text}; control_type:{control_type}; rect: {rect_str}",
+                    }
                 )
 
         for child in element.children():
