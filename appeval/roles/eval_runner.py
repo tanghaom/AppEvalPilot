@@ -25,7 +25,6 @@ from appeval.utils.excel_json_converter import (
 from appeval.utils.window_utils import kill_process, kill_windows, start_windows
 from appeval.utils.hijack_osagent import OSAgentHijacker
 from loguru import logger
-from metagpt.actions import Action
 from metagpt.roles.role import Role, RoleContext
 from metagpt.utils.common import read_json_file, write_json_file
 from pydantic import ConfigDict, Field
@@ -143,9 +142,7 @@ class AppEvalRole(Role):
                 task_list = self.osagent.rc.task_list
                 memory = self.osagent.rc.memory
                 iter_num = self.osagent.rc.iter
-                await self.write_batch_res_to_json(
-                    task_id, task_id_case_number, action_history, task_list, memory, iter_num
-                )
+                await self.write_batch_res_to_json(task_id, task_id_case_number, action_history, task_list, memory, iter_num)
                 break  # If successful, break the retry loop
             except Exception as e:
                 retry_count += 1
@@ -192,9 +189,7 @@ class AppEvalRole(Role):
                 task_list = self.osagent.rc.task_list
                 memory = self.osagent.rc.memory
                 iter_num = self.osagent.rc.iter
-                result_dict = await self.process_api_res(
-                    task_id, task_id_case_number, action_history, task_list, memory, iter_num, check_list
-                )
+                result_dict = await self.process_api_res(task_id, task_id_case_number, action_history, task_list, memory, iter_num, check_list)
                 return result_dict
             except Exception as e:
                 retry_count += 1
@@ -247,16 +242,12 @@ class AppEvalRole(Role):
                                 logger.error(f"Result parsing failed: {str(e)}")
 
             if not results_dict or len(results_dict) != task_id_case_number:
-                results_dict = await self.test_generator.generate_results_dict(
-                    action_history, task_list, memory, task_id_case_number
-                )
+                results_dict = await self.test_generator.generate_results_dict(action_history, task_list, memory, task_id_case_number)
 
             data = read_json_file(self.rc.json_file)
             data[task_id]["iters"] = iter_num
             for key, value in results_dict.items():
-                data[task_id]["test_cases"][key].update(
-                    {"result": value.get("result", ""), "evidence": value.get("evidence", "")}
-                )
+                data[task_id]["test_cases"][key].update({"result": value.get("result", ""), "evidence": value.get("evidence", "")})
                 write_json_file(self.rc.json_file, data, indent=4)
 
         except Exception as e:
@@ -295,9 +286,7 @@ class AppEvalRole(Role):
                                 logger.error(f"Result parsing failed: {str(e)}")
 
             if not results_dict or len(results_dict) != task_id_case_number:
-                results_dict = await self.test_generator.generate_results_dict(
-                    action_history, task_list, memory, task_id_case_number, check_list
-                )
+                results_dict = await self.test_generator.generate_results_dict(action_history, task_list, memory, task_id_case_number, check_list)
             return results_dict
 
         except Exception as e:
@@ -316,7 +305,7 @@ class AppEvalRole(Role):
         Args:
             project_excel_path: Project level Excel file path
             case_excel_path: Case level Excel file path (optional)
-            
+
         Returns:
             tuple[dict, bool]: test result dictionary and executability
         """
@@ -370,6 +359,7 @@ class AppEvalRole(Role):
 
         except Exception as e:
             logger.error(f"Error occurred during test execution: {str(e)}")
+            await kill_windows(["Chrome", "cmd", "npm", "projectapp", "Edge"])
             raise
 
     async def run_mini_batch(self, project_excel_path: str = None, case_excel_path: str = None, generate_case_only: bool = False) -> None:
@@ -390,19 +380,17 @@ class AppEvalRole(Role):
             if project_excel_path:
                 # 1. Generate automated test cases
                 logger.info("Start generating automated test cases...")
-                await self.test_generator.process_excel_file(
-                    project_excel_path, OperationType.GENERATE_CASES_MINI_BATCH
-                )
+                await self.test_generator.process_excel_file(project_excel_path, OperationType.GENERATE_CASES_MINI_BATCH)
 
                 # 2. Convert to JSON format
                 logger.info("Start converting to JSON format...")
                 case_result = mini_list_to_json(project_excel_path, self.rc.json_file)
-                
+
                 if generate_case_only:
                     return case_result
             else:
                 raise ValueError("project_excel_path must be provided for batch run if not using existing json file.")
-                
+
             # 3. Execute automated testing
             logger.info("Start executing automated testing...")
             test_cases = read_json_file(self.rc.json_file)
@@ -439,8 +427,9 @@ class AppEvalRole(Role):
 
         except Exception as e:
             logger.error(f"Error occurred during test execution: {str(e)}")
+            await kill_windows(["Chrome", "cmd", "npm", "projectapp", "Edge"])
             raise
-    
+
     async def run_api(self, task_name: str, test_cases: dict, start_func: str, log_dir: str) -> tuple[dict, bool]:
         """Run API testing
 
@@ -465,28 +454,28 @@ class AppEvalRole(Role):
             await asyncio.sleep(30)
             # Execute automated testing
             logger.info("Start executing automated testing...")
-            
+
             # Execute test cases
             task_id_case_number = len(test_cases)
             result_dict = await self.execute_api_check(task_name, task_id_case_number, test_cases)
-            
+
             # Merge results directly into test_cases
             for key, value in result_dict.items():
                 if key in test_cases:
                     test_cases[key]["result"] = value.get("result", "")
                     test_cases[key]["evidence"] = value.get("evidence", "")
-            
+
             # Save merged results to log directory
             output_dir = os.path.join(f"work_dirs/{log_dir}", task_name)
             os.makedirs(output_dir, exist_ok=True)
-            output_file = os.path.join(output_dir, f"{task_name}.json")
-            
+            output_file = os.path.join(output_dir, f"{os.path.basename(task_name)}.json")
+
             # Save the updated test_cases
-            with open(output_file, 'w', encoding='utf-8') as f:
+            with open(output_file, "w", encoding="utf-8") as f:
                 json.dump({"test_cases": test_cases}, f, indent=4, ensure_ascii=False)
-                
+
             logger.info(f"Merged results saved to {output_file}")
-            
+
             # execute executability check
             image = self.osagent.output_image_path
             executability = await self.test_generator.generate_executability(result_dict, image)
@@ -501,6 +490,7 @@ class AppEvalRole(Role):
 
         except Exception as e:
             logger.error(f"Error occurred during test execution: {str(e)}")
+            await kill_windows(["Chrome", "cmd", "npm", "projectapp", "Edge"])
             raise
 
     async def run_single(
@@ -539,7 +529,6 @@ class AppEvalRole(Role):
             self.rc.json_file = json_path
 
             test_cases = read_json_file(self.rc.json_file)
-            result_dict = None
 
             for task_id, task_info in test_cases.items():
                 if "test_cases" in task_info:
@@ -561,7 +550,7 @@ class AppEvalRole(Role):
 
             # 4. Read results
             result = read_json_file(self.rc.json_file)
-            
+
             # 5. Generate executability check
             image = self.osagent.output_image_path
             executability = await self.test_generator.generate_executability(result, image)
@@ -606,15 +595,10 @@ class AppEvalRole(Role):
                 return result_dict, executability
             else:
                 # Batch test scenario
-                result_dict, executability = await self.run_batch(
-                    kwargs.get("project_excel_path"), 
-                    kwargs.get("case_excel_path")
-                )
+                result_dict, executability = await self.run_batch(kwargs.get("project_excel_path"), kwargs.get("case_excel_path"))
                 return result_dict, executability
-            
+
         except Exception as e:
             logger.error(f"Test execution failed: {str(e)}")
             logger.exception("Detailed error information")
             return e
-        
-        
