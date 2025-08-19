@@ -98,7 +98,11 @@ Before reaching this page, some operations have been completed. You need to refe
 
         # Base output format template
         self.output_format = """
-Your output consists of the following four parts. Please note that only one set of content should be output at a time, and do not repeat the output.
+Your output consists of the following six parts. Please note that only one set of content should be output at a time, and do not repeat the output.
+### Image Description ###
+Provide a concise description of the current screenshot using only observable information. If multiple screenshots are provided, summarize notable changes between the latest image and previous images.
+### Reflection Thought ###
+Analyze whether the screen content and state match the expected outcome based on the last operation and context. If multiple screenshots are provided, compare them to support your analysis.
 ### Thought ###
 This is your thinking about how to proceed the next operation, please output the thoughts about the history operations explicitly.
 ### Action ###

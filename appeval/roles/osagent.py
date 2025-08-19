@@ -51,6 +51,7 @@ class OSAgentContext(RoleContext):
     reflection_thought_history: List[str] = Field(default_factory=list)  # Historical reflection records list
     reflection_thought: str = ""  # Current reflection content
     summary: str = ""  # Current operation summary
+    image_description: str = ""  # Current image description extracted during thinking
     action: str = ""  # Current executed action
     task_list: str = ""  # Task list
     completed_requirements: str = ""  # Completed requirements
@@ -111,6 +112,7 @@ class OSAgent(Role):
         use_som: bool = False,
         extend_xml_infos: bool = True,
         use_chrome_debugger: bool = False,
+        think_history_images: int = 3,
         # Display and layout parameters
         location_info: str = "center",
         draw_text_box: bool = False,
@@ -144,6 +146,7 @@ class OSAgent(Role):
             knowledge_base_path (str): Preset knowledge base file directory path
             system_prompt (str): System prompt
             add_info (str): Additional information to add to the prompt
+            think_history_images (int): Max number of screenshots (latest-first) to include during think
         """
         super().__init__(**kwargs)
 
@@ -315,9 +318,7 @@ class OSAgent(Role):
 
         logger.info(f"Initialized logging, log file: {self.save_info}")
 
-    def _draw_bounding_boxes(
-        self, image_path: str, coordinates: List[List[int]], output_path: str, font_path: str
-    ) -> None:
+    def _draw_bounding_boxes(self, image_path: str, coordinates: List[List[int]], output_path: str, font_path: str) -> None:
         """Draw numbered coordinate boxes on the image.
 
         Args:
@@ -408,9 +409,7 @@ class OSAgent(Role):
             return None
         return app_info.get(package_name, None)
 
-    async def _get_perception_infos(
-        self, screenshot_file: str, screenshot_som_file: str
-    ) -> Tuple[List[Dict[str, Any]], int, int, str]:
+    async def _get_perception_infos(self, screenshot_file: str, screenshot_som_file: str) -> Tuple[List[Dict[str, Any]], int, int, str]:
         """Get perception information, including OCR and icon detection.
         Args:
             screenshot_file (str): Screenshot file path.
@@ -439,9 +438,7 @@ class OSAgent(Role):
             rec_list = text_coordinates + icon_coordinates
             self._draw_bounding_boxes(screenshot_file, copy.deepcopy(rec_list), screenshot_som_file, self.font_path)
         elif self.use_icon_detect:
-            self._draw_bounding_boxes(
-                screenshot_file, copy.deepcopy(icon_coordinates), screenshot_som_file, self.font_path
-            )
+            self._draw_bounding_boxes(screenshot_file, copy.deepcopy(icon_coordinates), screenshot_som_file, self.font_path)
         else:
             output_image_path = screenshot_file
 
@@ -538,9 +535,7 @@ class OSAgent(Role):
         """
         outputs = []
         # Use zip to pair corresponding elements of three historical lists and use enumerate to get index
-        for i, (thought, summary, action) in enumerate(
-            zip(self.rc.thought_history, self.rc.summary_history, self.rc.action_history)
-        ):
+        for i, (thought, summary, action) in enumerate(zip(self.rc.thought_history, self.rc.summary_history, self.rc.action_history)):
             output = {
                 "thought": thought,
                 "summary": summary,
@@ -626,14 +621,33 @@ class OSAgent(Role):
         )
 
         prompt_action = self.prompt_utils.get_action_prompt(ctx)
-        logger.info(
-            f"\n\n######################## prompt_action:\n{prompt_action}\n\n######################## prompt_action end\n\n\n\n"
-        )
+        logger.info(f"\n\n######################## prompt_action:\n{prompt_action}\n\n######################## prompt_action end\n\n\n\n")
 
-        # Call LLM to generate decision
-        images = [encode_image(self.screenshot_file)]
+        # Call LLM to generate decision with history images
+        images = []
+        # include latest image (with/without SOM)
+        images.append(encode_image(self.screenshot_file))
         if self.use_som:
             images.append(encode_image(self.screenshot_som_file))
+        # include previous frames up to think_history_images - 1 using saved origin/draw files
+        try:
+            if isinstance(self.think_history_images, int) and self.think_history_images > 1:
+                # Skip the immediate previous frame because it is identical to current screenshot at the start of a new iteration
+                # Start from two steps back to avoid duplication
+                max_available = max(0, self.rc.iter - 2)
+                max_frames = min(max_available, self.think_history_images - 1)
+                for k in range(2, 2 + max_frames):
+                    frame_num = self.rc.iter - k
+                    if frame_num <= 0:
+                        break
+                    origin_path = Path(self.save_img) / f"origin_{frame_num}.jpg"
+                    draw_path = Path(self.save_img) / f"draw_{frame_num}.jpg"
+                    if origin_path.exists():
+                        images.append(encode_image(str(origin_path)))
+                    if self.use_som and draw_path.exists():
+                        images.append(encode_image(str(draw_path)))
+        except Exception:
+            pass
 
         # Use custom system prompt or default prompt
         system_msg = (
@@ -650,23 +664,26 @@ class OSAgent(Role):
         )
 
         # Parse output
+        self.rc.image_description = (
+            output_action.split("### Image Description ###")[-1].split("### Reflection Thought ###")[0].strip()
+            if "### Image Description ###" in output_action
+            else ""
+        )
+
+        self.rc.reflection_thought = (
+            output_action.split("### Reflection Thought ###")[-1].split("### Thought ###")[0].strip()
+            if "### Reflection Thought ###" in output_action
+            else ""
+        )
+
         self.rc.thought = (
-            output_action.split("### Thought ###")[-1]
-            .split("### Action ###")[0]
-            .replace("\n", " ")
-            .replace(":", "")
-            .replace("  ", " ")
-            .strip()
+            output_action.split("### Thought ###")[-1].split("### Action ###")[0].replace("\n", " ").replace(":", "").replace("  ", " ").strip()
         )
         self.rc.action = output_action.split("### Action ###")[-1].split("### Operation ###")[0].strip()
-        self.rc.summary = (
-            output_action.split("### Operation ###")[-1].split("### Task List ###")[0].strip().replace("\n", "\\n")
-        )
+        self.rc.summary = output_action.split("### Operation ###")[-1].split("### Task List ###")[0].strip().replace("\n", "\\n")
         self.rc.task_list = output_action.split("### Task List ###")[-1].strip()
 
-        logger.info(
-            f"\n\n######################## output_action:\n{output_action}\n\n######################## output_action end\n\n\n\n"
-        )
+        logger.info(f"\n\n######################## output_action:\n{output_action}\n\n######################## output_action end\n\n\n\n")
 
         if self.rc.action.startswith("Stop"):
             return False
@@ -753,15 +770,11 @@ class OSAgent(Role):
             logger.warning(f"{map_path} file does not exist, using default empty mapping")
 
         # Get package name
-        prompt_package_name = self.prompt_utils.get_package_name_prompt(
-            app_name=app_name, app_mapping=app_mapping, package_list=package_list
-        )
+        prompt_package_name = self.prompt_utils.get_package_name_prompt(app_name=app_name, app_mapping=app_mapping, package_list=package_list)
 
         package_name = await self.llm.aask(
             prompt_package_name,
-            system_msgs=[
-                f"You are a helpful AI {'mobile phone' if self.platform=='Android' else 'PC'} operating assistant."
-            ],
+            system_msgs=[f"You are a helpful AI {'mobile phone' if self.platform=='Android' else 'PC'} operating assistant."],
             stream=False,
         )
 
@@ -845,13 +858,11 @@ class OSAgent(Role):
         self.rc.action_history.append(self.rc.action)
 
         if self.run_action_failed:
-            self.rc.reflection_thought_history.append(
-                f"ERROR(run action code filed): {self.run_action_failed_exception}\\n "
-            )
+            self.rc.reflection_thought_history.append(f"ERROR(run action code filed): {self.run_action_failed_exception}\\n ")
             self.rc.error_flag = True
 
         elif self.use_reflection:
-            # Execute reflection
+            # Use independent reflection flow when enabled
             reflect, self.rc.reflection_thought = await self._reflection(
                 self.instruction,
                 self.rc.last_perception_infos,
@@ -869,20 +880,27 @@ class OSAgent(Role):
                 self.rc.error_flag = False
             elif reflect == "ERROR":
                 self.rc.error_flag = True
+        else:
+            # Without independent reflection, persist the reflection thought from think
+            self.rc.reflection_thought_history.append(self.rc.reflection_thought)
 
         # Clean up screenshots
         Path(self.last_screenshot_som_file if self.use_som else self.last_screenshot_file).unlink()
 
-        # Wait for memory task to complete and save results
-        if memory_task:
-            memory_content = await memory_task
-            self.rc.memory.append(memory_content)
+        # Save memory based on strategy
+        # - If memory is enabled, use the async memory extraction result
+        # - If memory is disabled, use the image description from think
+        if self.use_memory:
+            mem = ""
+            if memory_task:
+                mem = await memory_task or ""
+            self.rc.memory.append(mem)
+        else:
+            self.rc.memory.append(getattr(self.rc, "image_description", "") or "")
 
         return AIMessage(content=self.rc.action, cause_by=Action)
 
-    async def _generate_initial_task_list(
-        self, instruction: str, screenshot_file: str, screenshot_som_file: str = None
-    ) -> str:
+    async def _generate_initial_task_list(self, instruction: str, screenshot_file: str, screenshot_som_file: str = None) -> str:
         """Generate initial task list for the first iteration.
 
         Args:
@@ -931,9 +949,7 @@ class OSAgent(Role):
         )
 
         task_list = initial_task_list.strip()
-        logger.info(
-            f"\n\n######################## Initial Task List:\n{task_list}\n\n######################## End of Initial Task List\n\n\n\n"
-        )
+        logger.info(f"\n\n######################## Initial Task List:\n{task_list}\n\n######################## End of Initial Task List\n\n\n\n")
 
         return task_list
 

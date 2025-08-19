@@ -210,9 +210,7 @@ class OSAgentHijacker:
             d.mkdir(exist_ok=True, parents=True)
 
         logger.info(f"已创建日志目录: {self.session_dir}")
-        logger.info(
-            f"配置: save_full_state={self.save_full_state}, save_images={self.save_images}, perf_stats_interval={self.perf_stats_interval}"
-        )
+        logger.info(f"配置: save_full_state={self.save_full_state}, save_images={self.save_images}, perf_stats_interval={self.perf_stats_interval}")
 
     @async_error_handler
     async def save_json_async(self, file_path, data):
@@ -516,6 +514,8 @@ class OSAgentHijacker:
                         "timestamp": time.strftime("%Y-%m-%d %H:%M:%S"),
                         "parsed_output": {
                             "thought": getattr(agent.rc, "thought", ""),
+                            "image_description": getattr(agent.rc, "image_description", ""),
+                            "reflection_thought": getattr(agent.rc, "reflection_thought", ""),
                             "action": getattr(agent.rc, "action", ""),
                             "summary": getattr(agent.rc, "summary", ""),
                             "task_list": getattr(agent.rc, "task_list", ""),
@@ -618,9 +618,7 @@ class OSAgentHijacker:
                     # 保存提示词和系统消息为JSON格式，与aask格式对齐
                     system_msg = f"You are a helpful AI {'mobile phone' if agent.platform=='Android' else 'PC'} operating assistant."
                     prompt_data = {"prompt": prompt, "system_msgs": system_msg, "has_images": True}  # 反思总是包含图片
-                    await self.save_json_async(
-                        self.reflection_prompts_dir / f"reflection_prompt_iter_{iteration}.json", prompt_data
-                    )
+                    await self.save_json_async(self.reflection_prompts_dir / f"reflection_prompt_iter_{iteration}.json", prompt_data)
 
                 else:
                     # 如果无法找到get_reflection_prompt方法，记录错误
@@ -667,16 +665,12 @@ class OSAgentHijacker:
                     "timestamp": time.strftime("%Y-%m-%d %H:%M:%S"),
                 }
 
-                await self.save_json_async(
-                    self.reflection_outputs_dir / f"output_meta_iter_{iteration}.json", output_data
-                )
+                await self.save_json_async(self.reflection_outputs_dir / f"output_meta_iter_{iteration}.json", output_data)
 
                 # 保存反思完整输出
                 # 根据reflection_thought和reflect重建原始LLM输出
                 reconstructed_output = f"### Thought ###\n{reflection_thought}\n\n### Answer ###\n{reflect}"
-                await self.save_text_async(
-                    self.reflection_outputs_dir / f"llm_raw_output_iter_{iteration}.txt", reconstructed_output
-                )
+                await self.save_text_async(self.reflection_outputs_dir / f"llm_raw_output_iter_{iteration}.txt", reconstructed_output)
 
                 # 如果启用性能统计并达到指定间隔，则保存性能统计
                 if self.perf_stats_interval > 0 and iteration % self.perf_stats_interval == 0:
