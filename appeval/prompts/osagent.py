@@ -62,7 +62,9 @@ class BasePrompt:
 """
 
         # Base background information template
-        self.background_template = """The {image_desc} width is {width} pixels and its height is {height} pixels. The user's instruction is: {instruction}."""
+        self.background_template = (
+            """The {image_desc} width is {width} pixels and its height is {height} pixels. The user's instruction is: {instruction}."""
+        )
 
         # Base screenshot information template
         self.screenshot_info_template = """
@@ -206,9 +208,7 @@ You must choose one of the actions below:
             if ctx.use_som
             else "image is a phone screenshot."
         )
-        background = self.background_template.format(
-            image_desc=image_desc, width=ctx.width, height=ctx.height, instruction=ctx.instruction
-        )
+        background = self.background_template.format(image_desc=image_desc, width=ctx.width, height=ctx.height, instruction=ctx.instruction)
 
         # Build location format information
         location_format = {
@@ -242,13 +242,9 @@ You must choose one of the actions below:
         if len(ctx.action_history) > 0:
             history_details = ""
             for i in range(len(ctx.action_history)):
-                history_details += (
-                    f"Step-{i+1}:\n\tOperation: {ctx.summary_history[i]}\n\tAction: {ctx.action_history[i]}\n"
-                )
+                history_details += f"Step-{i+1}:\n\tOperation: {ctx.summary_history[i]}\n\tAction: {ctx.action_history[i]}\n"
                 history_details += f"\tReflection_thought: {ctx.reflection_thought_history[i] if len(ctx.reflection_thought_history) == len(ctx.action_history) else 'None'}\n"
-                history_details += (
-                    f"\tMemory: {ctx.memory[i] if len(ctx.memory) == len(ctx.action_history) else 'None'}\n"
-                )
+                history_details += f"\tMemory: {ctx.memory[i] if len(ctx.memory) == len(ctx.action_history) else 'None'}\n"
             history_operations = self.history_template.format(memory_timing="after", history_details=history_details)
 
         # Build task list information
@@ -265,9 +261,7 @@ You must choose one of the actions below:
 
         # Build reflection information
         reflection_thought = (
-            f"### The reflection thought of the last operation ###\n{ctx.reflection_thought}"
-            if ctx.error_flag and ctx.reflection_thought
-            else ""
+            f"### The reflection thought of the last operation ###\n{ctx.reflection_thought}" if ctx.error_flag and ctx.reflection_thought else ""
         )
 
         # Use main template to build final prompt
@@ -291,9 +285,7 @@ You must choose one of the actions below:
         mapping_info = self.mapping_info_template.format(app_mapping=app_mapping) if app_mapping else ""
 
         # Use main template to build prompt
-        return self.package_name_template.format(
-            app_name=app_name, platform=self.platform, mapping_info=mapping_info, package_list=package_list
-        )
+        return self.package_name_template.format(app_name=app_name, platform=self.platform, mapping_info=mapping_info, package_list=package_list)
 
 
 class PC_prompt(BasePrompt):
@@ -306,9 +298,9 @@ If Tell action was used in the previous round, it cannot be used again this time
 To fully view webpage content, you must use the 'pagedown' key to scroll. Note that you can only advance one page at a time.
 If you need to change the size of the webpage, you can do so by simultaneously pressing the ctrl and + or - keys.
 The webpage you need to test is already displayed in front of you, so you don't need to open a browser.
-If the target application requires uploading an image for testing, please upload the image located in "C:\test_data".
-If the target application needs to upload a video for testing, please upload the video located in "C:\test_data".
-If the target application needs to upload other files, please use the files in the "C:\test_data" directory as the main source.
+If the target application requires uploading an image for testing, please upload the image located in "C:/test_data".
+If the target application needs to upload a video for testing, please upload the video located in "C:/test_data".
+If the target application needs to upload other files, please use the files in the "C:/test_data" directory as the main source.
 If the target application requires entering a password, please first register an account and then use the account to log in.
 """
 
@@ -361,9 +353,7 @@ You must choose one of the actions below:
             if ctx.use_som == 1
             else "image is a computer screenshot."
         )
-        background = self.background_template.format(
-            image_desc=image_desc, width=ctx.width, height=ctx.height, instruction=ctx.instruction
-        )
+        background = self.background_template.format(image_desc=image_desc, width=ctx.width, height=ctx.height, instruction=ctx.instruction)
 
         # Build location format information
         location_format = {
@@ -397,13 +387,9 @@ You must choose one of the actions below:
         if len(ctx.action_history) > 0:
             history_details = ""
             for i in range(len(ctx.action_history)):
-                history_details += (
-                    f"Step-{i+1}:\n\tOperation: {ctx.summary_history[i]}\n\tAction: {ctx.action_history[i]}\n"
-                )
+                history_details += f"Step-{i+1}:\n\tOperation: {ctx.summary_history[i]}\n\tAction: {ctx.action_history[i]}\n"
                 history_details += f"\tReflection_thought: {ctx.reflection_thought_history[i] if len(ctx.reflection_thought_history) == len(ctx.action_history) else 'None'}\n"
-                history_details += (
-                    f"\tMemory: {ctx.memory[i] if len(ctx.memory) == len(ctx.action_history) else 'None'}\n"
-                )
+                history_details += f"\tMemory: {ctx.memory[i] if len(ctx.memory) == len(ctx.action_history) else 'None'}\n"
             history_operations = self.history_template.format(memory_timing="before", history_details=history_details)
 
         # Build task list information
@@ -420,9 +406,7 @@ You must choose one of the actions below:
 
         # Build reflection information
         reflection_thought = (
-            f"### The reflection thought of the last operation ###\n{ctx.reflection_thought}"
-            if ctx.error_flag and ctx.reflection_thought
-            else ""
+            f"### The reflection thought of the last operation ###\n{ctx.reflection_thought}" if ctx.error_flag and ctx.reflection_thought else ""
         )
 
         # Use main template to build final prompt
@@ -446,9 +430,7 @@ You must choose one of the actions below:
         mapping_info = self.mapping_info_template.format(app_mapping=app_mapping) if app_mapping else ""
 
         # Use main template to build prompt
-        return self.package_name_template.format(
-            app_name=app_name, platform=self.platform, mapping_info=mapping_info, package_list=package_list
-        )
+        return self.package_name_template.format(app_name=app_name, platform=self.platform, mapping_info=mapping_info, package_list=package_list)
 
 
 case_batch_check_system_prompt = """
