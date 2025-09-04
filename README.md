@@ -33,11 +33,14 @@ conda activate appeval
 git clone https://github.com/tanghaom/AppEvalPilot.git
 cd AppEvalPilot
 
-# Install appeval
-pip install -e .
+# Install dependencies
+pip install uv
+uv pip install -r requirements.txt
 
+# Install appeval
+uv pip install -e .
 # Optional: Install enhanced version with OCR and icon detection capabilities
-pip install -e .[ultra]
+uv pip install -e .[ultra]
 ```
 
 ### LLM Configuration

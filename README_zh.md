@@ -33,10 +33,14 @@ conda activate appeval
 git clone https://github.com/tanghaom/AppEvalPilot.git
 cd AppEvalPilot
 
+# 安装依赖
+pip install uv
+uv pip install -r requirements.txt
+
 # 安装appeval
-pip install -e .
+uv pip install -e .
 # 可选：带ocr和目标检测的增强版Appeval
-pip install -e .[ultra]
+uv pip install -e .[ultra]
 ```
 
 ### LLM配置
