@@ -174,7 +174,7 @@ async def run_single_test(case_name: str, url: str, requirement: str, test_cases
                 )
 
         if should_generate:
-            test_cases = await current_appeval.rc.test_generator.generate_test_cases(requirement)
+            test_cases = await current_appeval.test_generator.generate_test_cases(requirement)
             logger.info(f"Generated test cases: {test_cases}")
             current_appeval.rc.test_cases = test_cases
             make_json_single(case_name, url, test_cases, json_path)
@@ -189,7 +189,7 @@ async def run_single_test(case_name: str, url: str, requirement: str, test_cases
             )
 
         output_result = await current_test_task
-        result_json = json.loads(output_result.content)
+        result_json = output_result[0]
         formatted_result = json.dumps(result_json, indent=2)
         logger.info(f"Single test execution result: {result_json}")
 
