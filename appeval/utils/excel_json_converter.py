@@ -252,16 +252,18 @@ def convert_json_to_excel(json_file_path: str, excel_file_path: str) -> None:
     df.to_excel(excel_file_path, index=False)
 
 
-def make_json_single(case_name: str, url: str, test_cases: List[str], json_path: str, work_path: str) -> None:
+def make_json_single(case_name: str, url: str, test_cases: List[str], json_path: str, work_path: str = None) -> None:
     """
-    Convert a single test case to JSON format and save it
+    Convert a single test case to JSON format and save it.
 
     Args:
         case_name: Test case name
-        url: Test URL
+        url: Test URL (optional)
         test_cases: Test case list
         json_path: Path to output JSON file
-        work_path: Test case work path
+        work_path: Test case work path (optional)
+    Raises:
+        ValueError: If both url and work_path are None or empty.
     """
     # Ensure the directory exists
     os.makedirs(os.path.dirname(json_path), exist_ok=True)
@@ -269,8 +271,10 @@ def make_json_single(case_name: str, url: str, test_cases: List[str], json_path:
     data = {}
     if url:
         data[case_name] = {"url": url, "iters": "", "test_cases": {}}
-    else:
+    elif work_path:
         data[case_name] = {"work_path": work_path, "iters": "", "test_cases": {}}
+    else:
+        raise ValueError("Either url or work_path must be provided.")
     for i, task_desc in enumerate(test_cases):
         data[case_name]["test_cases"][str(i)] = {"case_desc": task_desc, "result": "", "evidence": ""}
     write_json_file(json_path, data, indent=4)
