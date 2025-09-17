@@ -1,5 +1,10 @@
 # AppEvalPilot
 
+[![Paper](https://img.shields.io/badge/arXiv-2508.14104-b31b1b.svg)](https://arxiv.org/abs/2508.14104)
+[![Dataset](https://img.shields.io/badge/Dataset-HuggingFace-yellow)](https://huggingface.co/datasets/stellaHsr-mm/RealDevBench)
+[![Agent](https://img.shields.io/badge/Agent-AppEvalPilot-green.svg)](https://github.com/tanghaom/AppEvalPilot)
+
+
 ## 介绍
 
 欢迎来到 AppEvalPilot 项目，这是一个前沿的自动化评估框架，旨在全面评估跨多种平台上的软件应用功能。本框架针对通用性而设计，能够熟练处理桌面、移动和基于 Web 的应用程序的评估，采用统一的方法。
