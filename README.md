@@ -1,5 +1,10 @@
 # AppEvalPilot
 
+[![Paper](https://img.shields.io/badge/arXiv-2508.14104-b31b1b.svg)](https://arxiv.org/abs/2508.14104)
+[![Dataset](https://img.shields.io/badge/Dataset-HuggingFace-yellow)](https://huggingface.co/datasets/stellaHsr-mm/RealDevBench)
+[![Agent](https://img.shields.io/badge/Agent-AppEvalPilot-green.svg)](https://github.com/tanghaom/AppEvalPilot)
+
+
 ## Introduction
 
 Welcome to the AppEvalPilot project, a cutting-edge automated evaluation framework designed to comprehensively assess software application functionalities across an array of platforms. Tailored for versatility, this framework adeptly handles the evaluation of desktop, mobile, and web-based applications under a unified methodology. 
