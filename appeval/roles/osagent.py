@@ -126,7 +126,7 @@ class OSAgent(Role):
         """Initialize OSAgent.
 
         Args:
-            platform (str): Operating system type (Windows, Mac, or Android).
+            platform (str): Operating system type (Windows, Linux, Mac, or Android).
             max_iters (int): Maximum number of iterations.
             use_ocr (bool): Whether to use OCR.
             quad_split_ocr (bool): Whether to split image into four parts for OCR recognition.
@@ -169,7 +169,7 @@ class OSAgent(Role):
 
     def _get_default_add_info(self) -> str:
         """Get default additional prompt information"""
-        if self.platform == "Windows":
+        if self.platform == "Windows" or self.platform == "Linux":
             return (
                 "If you need to interact with elements outside of a web popup, such as calendar or time selection "
                 "popups, make sure to close the popup first. If the content in a text box is entered incorrectly, "
@@ -249,6 +249,15 @@ class OSAgent(Role):
                 },
                 "prompt_class": PC_prompt,
             },
+            "Linux": {
+                "controller_args": {
+                    "platform": "Linux",
+                    "search_keys": ["win", "s"],
+                    "ctrl_key": "ctrl",
+                    "pc_type": "Linux",
+                },
+                "prompt_class": PC_prompt,
+            },
             "Mac": {
                 "controller_args": {
                     "platform": "Mac",
@@ -315,9 +324,7 @@ class OSAgent(Role):
 
         logger.info(f"Initialized logging, log file: {self.save_info}")
 
-    def _draw_bounding_boxes(
-        self, image_path: str, coordinates: List[List[int]], output_path: str, font_path: str
-    ) -> None:
+    def _draw_bounding_boxes(self, image_path: str, coordinates: List[List[int]], output_path: str, font_path: str) -> None:
         """Draw numbered coordinate boxes on the image.
 
         Args:
@@ -408,9 +415,7 @@ class OSAgent(Role):
             return None
         return app_info.get(package_name, None)
 
-    async def _get_perception_infos(
-        self, screenshot_file: str, screenshot_som_file: str
-    ) -> Tuple[List[Dict[str, Any]], int, int, str]:
+    async def _get_perception_infos(self, screenshot_file: str, screenshot_som_file: str) -> Tuple[List[Dict[str, Any]], int, int, str]:
         """Get perception information, including OCR and icon detection.
         Args:
             screenshot_file (str): Screenshot file path.
@@ -439,9 +444,7 @@ class OSAgent(Role):
             rec_list = text_coordinates + icon_coordinates
             self._draw_bounding_boxes(screenshot_file, copy.deepcopy(rec_list), screenshot_som_file, self.font_path)
         elif self.use_icon_detect:
-            self._draw_bounding_boxes(
-                screenshot_file, copy.deepcopy(icon_coordinates), screenshot_som_file, self.font_path
-            )
+            self._draw_bounding_boxes(screenshot_file, copy.deepcopy(icon_coordinates), screenshot_som_file, self.font_path)
         else:
             output_image_path = screenshot_file
 
@@ -496,7 +499,7 @@ class OSAgent(Role):
                     perception_infos[i]["coordinates"] = [int((x1 + x2) / 2), int((y1 + y2) / 2)]
 
         # If extend_xml_infos is enabled, then get XML information
-        if self.extend_xml_infos and self.platform in ["Android", "Windows"]:
+        if self.extend_xml_infos and self.platform in ["Android", "Windows", "Linux"]:
             xml_results = self.controller.get_screen_xml(self.location_info)
             logger.debug(xml_results)
             perception_infos.extend(xml_results)
@@ -538,9 +541,7 @@ class OSAgent(Role):
         """
         outputs = []
         # Use zip to pair corresponding elements of three historical lists and use enumerate to get index
-        for i, (thought, summary, action) in enumerate(
-            zip(self.rc.thought_history, self.rc.summary_history, self.rc.action_history)
-        ):
+        for i, (thought, summary, action) in enumerate(zip(self.rc.thought_history, self.rc.summary_history, self.rc.action_history)):
             output = {
                 "thought": thought,
                 "summary": summary,
@@ -626,9 +627,7 @@ class OSAgent(Role):
         )
 
         prompt_action = self.prompt_utils.get_action_prompt(ctx)
-        logger.info(
-            f"\n\n######################## prompt_action:\n{prompt_action}\n\n######################## prompt_action end\n\n\n\n"
-        )
+        logger.info(f"\n\n######################## prompt_action:\n{prompt_action}\n\n######################## prompt_action end\n\n\n\n")
 
         # Call LLM to generate decision
         images = [encode_image(self.screenshot_file)]
@@ -651,22 +650,13 @@ class OSAgent(Role):
 
         # Parse output
         self.rc.thought = (
-            output_action.split("### Thought ###")[-1]
-            .split("### Action ###")[0]
-            .replace("\n", " ")
-            .replace(":", "")
-            .replace("  ", " ")
-            .strip()
+            output_action.split("### Thought ###")[-1].split("### Action ###")[0].replace("\n", " ").replace(":", "").replace("  ", " ").strip()
         )
         self.rc.action = output_action.split("### Action ###")[-1].split("### Operation ###")[0].strip()
-        self.rc.summary = (
-            output_action.split("### Operation ###")[-1].split("### Task List ###")[0].strip().replace("\n", "\\n")
-        )
+        self.rc.summary = output_action.split("### Operation ###")[-1].split("### Task List ###")[0].strip().replace("\n", "\\n")
         self.rc.task_list = output_action.split("### Task List ###")[-1].strip()
 
-        logger.info(
-            f"\n\n######################## output_action:\n{output_action}\n\n######################## output_action end\n\n\n\n"
-        )
+        logger.info(f"\n\n######################## output_action:\n{output_action}\n\n######################## output_action end\n\n\n\n")
 
         if self.rc.action.startswith("Stop"):
             return False
@@ -753,15 +743,11 @@ class OSAgent(Role):
             logger.warning(f"{map_path} file does not exist, using default empty mapping")
 
         # Get package name
-        prompt_package_name = self.prompt_utils.get_package_name_prompt(
-            app_name=app_name, app_mapping=app_mapping, package_list=package_list
-        )
+        prompt_package_name = self.prompt_utils.get_package_name_prompt(app_name=app_name, app_mapping=app_mapping, package_list=package_list)
 
         package_name = await self.llm.aask(
             prompt_package_name,
-            system_msgs=[
-                f"You are a helpful AI {'mobile phone' if self.platform=='Android' else 'PC'} operating assistant."
-            ],
+            system_msgs=[f"You are a helpful AI {'mobile phone' if self.platform=='Android' else 'PC'} operating assistant."],
             stream=False,
         )
 
@@ -781,9 +767,9 @@ class OSAgent(Role):
             else:
                 time.sleep(10)
 
-        elif self.platform == "Windows":
+        elif self.platform in ["Windows", "Linux"]:
             app_name = self.rc.action.split("(")[-1].split(")")[0]
-            logger.debug(f"Opening Windows app: {app_name}")
+            logger.debug(f"Opening {self.platform} app: {app_name}")
             self.controller.open_app(app_name)
             time.sleep(10)
         else:
@@ -807,10 +793,10 @@ class OSAgent(Role):
         else:
             # Execute other actions
             try:
-                if self.platform in ["Android", "Windows"]:
+                if self.platform in ["Android", "Windows", "Linux"]:
                     self.controller.run_action(self.rc.action)
                 else:
-                    logger.error("Currently only supports Android and Windows")
+                    logger.error("Currently only supports Android, Windows and Linux")
             except Exception as e:
                 # For direct exit when using tell in automg
                 if isinstance(e, SystemExit) and e.code == 0:
@@ -845,9 +831,7 @@ class OSAgent(Role):
         self.rc.action_history.append(self.rc.action)
 
         if self.run_action_failed:
-            self.rc.reflection_thought_history.append(
-                f"ERROR(run action code filed): {self.run_action_failed_exception}\\n "
-            )
+            self.rc.reflection_thought_history.append(f"ERROR(run action code filed): {self.run_action_failed_exception}\\n ")
             self.rc.error_flag = True
 
         elif self.use_reflection:
@@ -880,9 +864,7 @@ class OSAgent(Role):
 
         return AIMessage(content=self.rc.action, cause_by=Action)
 
-    async def _generate_initial_task_list(
-        self, instruction: str, screenshot_file: str, screenshot_som_file: str = None
-    ) -> str:
+    async def _generate_initial_task_list(self, instruction: str, screenshot_file: str, screenshot_som_file: str = None) -> str:
         """Generate initial task list for the first iteration.
 
         Args:
@@ -931,9 +913,7 @@ class OSAgent(Role):
         )
 
         task_list = initial_task_list.strip()
-        logger.info(
-            f"\n\n######################## Initial Task List:\n{task_list}\n\n######################## End of Initial Task List\n\n\n\n"
-        )
+        logger.info(f"\n\n######################## Initial Task List:\n{task_list}\n\n######################## End of Initial Task List\n\n\n\n")
 
         return task_list
 

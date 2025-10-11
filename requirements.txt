@@ -1,5 +1,5 @@
 # MetaGPT
-git+https://github.com/geekan/MetaGPT.git
+git+https://github.com/tanghaom/MetaGPT.git
 
 # Computer Vision
 opencv-python

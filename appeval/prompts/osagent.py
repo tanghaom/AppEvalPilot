@@ -212,8 +212,8 @@ You must choose one of the actions below:
 
         # Build location format information
         location_format = {
-            "center": "The format of the coordinates is [x, y], x is the pixel from left to right and y is the pixel from top to bottom;",
-            "bbox": "The format of the coordinates is [x1, y1, x2, y2], x is the pixel from left to right and y is the pixel from top to bottom. (x1, y1) is the coordinates of the upper-left corner, (x2, y2) is the coordinates of the bottom-right corner;",
+            "center": "The format of the coordinates is [x, y], which represents the center point of the element. x is the pixel from left to right and y is the pixel from top to bottom. These coordinates are precise and directly usable - use this exact center coordinate when you need to tap on the element (e.g., self.device.click(x, y)). Do NOT adjust or recalculate the coordinates;",
+            "bbox": "The format of the coordinates is [x1, y1, x2, y2], x is the pixel from left to right and y is the pixel from top to bottom. (x1, y1) is the coordinates of the upper-left corner, (x2, y2) is the coordinates of the bottom-right corner. To tap the element, calculate and use the center point: ((x1+x2)//2, (y1+y2)//2);",
         }[ctx.location_info]
 
         # Build content format information
@@ -357,8 +357,8 @@ You must choose one of the actions below:
 
         # Build location format information
         location_format = {
-            "center": "The format of the coordinates is [x, y], x is the pixel from left to right and y is the pixel from top to bottom;",
-            "bbox": "The format of the coordinates is [x1, y1, x2, y2], x is the pixel from left to right and y is the pixel from top to bottom. (x1, y1) is the coordinates of the upper-left corner, (x2, y2) is the coordinates of the bottom-right corner;",
+            "center": "The format of the coordinates is [x, y], which represents the center point of the element. x is the pixel from left to right and y is the pixel from top to bottom. These coordinates are precise and directly usable - use this exact center coordinate when you need to click on the element (e.g., pyautogui.click(x, y)). Do NOT adjust or recalculate the coordinates;",
+            "bbox": "The format of the coordinates is [x1, y1, x2, y2], x is the pixel from left to right and y is the pixel from top to bottom. (x1, y1) is the coordinates of the upper-left corner, (x2, y2) is the coordinates of the bottom-right corner. To click the element, calculate and use the center point: ((x1+x2)//2, (y1+y2)//2);",
         }[ctx.location_info]
 
         # Build content format information

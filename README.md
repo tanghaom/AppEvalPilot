@@ -27,7 +27,7 @@ https://github.com/user-attachments/assets/27c791ef-096b-4dd0-b5a5-8319a80b2748
 
 ## Installation
 
-### From Scratch
+### Windows Setup
 
 ```bash
 # Create a conda environment
@@ -43,6 +43,33 @@ pip install uv
 uv pip install -r requirements.txt
 
 # Install appeval
+uv pip install -e .
+# Optional: Install enhanced version with OCR and icon detection capabilities
+uv pip install -e .[ultra]
+```
+
+### Linux (Ubuntu 22.04) Setup
+
+Only Ubuntu 22.04 with the system-provided Python 3.10 is supported. Use the following commands:
+
+```bash
+# System dependencies
+sudo apt update
+sudo apt install -y python3 python3-dev python3-tk python3-pip python3-venv python3-pyatspi git gnome-screenshot xclip
+
+# Clone the repository
+git clone https://github.com/tanghaom/AppEvalPilot.git
+cd AppEvalPilot
+
+# Create and activate virtual environment (with system site packages enabled)
+python3 -m venv venv --system-site-packages
+source venv/bin/activate
+
+# Install Python dependencies
+pip install uv
+uv pip install -r requirements.txt
+
+# Install appeval (editable)
 uv pip install -e .
 # Optional: Install enhanced version with OCR and icon detection capabilities
 uv pip install -e .[ultra]

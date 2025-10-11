@@ -8,6 +8,9 @@
 """
 
 import re
+import shlex
+import shutil
+import subprocess
 import time
 import xml.etree.ElementTree as ET
 from pathlib import Path
@@ -16,10 +19,33 @@ from typing import Dict, List, Tuple, Union
 import pyautogui
 import pyperclip
 import uiautomator2 as u2
-from metagpt.logs import logger
-from pywinauto import Desktop
-from pywinauto.controls.uiawrapper import UIAWrapper
-from pywinauto.win32structures import RECT
+
+# from metagpt.logs import logger
+from loguru import logger
+
+# Windows-only imports guarded to allow Linux/Ubuntu usage
+try:
+    from pywinauto import Desktop
+    from pywinauto.controls.uiawrapper import UIAWrapper
+    from pywinauto.win32structures import RECT
+
+    _HAS_PYWINAUTO = True
+except Exception:  # pragma: no cover - absence on non-Windows
+    Desktop = None  # type: ignore
+    UIAWrapper = object  # type: ignore
+
+    class RECT:  # type: ignore
+        pass
+
+    _HAS_PYWINAUTO = False
+
+# Linux-only imports (AT-SPI) guarded to allow Windows usage
+try:
+    import pyatspi  # type: ignore
+
+    _HAS_PYATSPI = True
+except Exception:  # pragma: no cover - absence on non-Linux
+    _HAS_PYATSPI = False
 
 
 class BaseController:
@@ -289,6 +315,11 @@ class PCController(BaseController):
             name: Application name
         """
         logger.info(f"Opening application: {name}")
+        if self.pc_type in ("linux", "ubuntu"):
+            self._open_app_linux(name)
+            return
+
+        # Default to Windows behavior
         pyautogui.hotkey(*self.search_keys)
         time.sleep(0.5)
 
@@ -313,8 +344,25 @@ class PCController(BaseController):
         if self.pc_type == "mac":
             logger.warning("Mac OS not supported yet")
             return []
+        if self.pc_type in ("linux", "ubuntu"):
+            if not _HAS_PYATSPI:
+                logger.error("pyatspi is not available; please install 'at-spi2-core' and 'python3-pyatspi'.")
+                return []
+            t1 = time.time()
+            try:
+                processor = LinuxElementProcessor(location_info, self.max_tokens)
+                elements = processor.collect_elements()
+                t2 = time.time()
+                logger.info(f"Time taken to get Linux screen element info: {t2 - t1} seconds")
+                return elements
+            except Exception as e:
+                logger.error(f"Linux AT-SPI processing failed: {e}")
+                return []
         t1 = time.time()
         try:
+            if not _HAS_PYWINAUTO:
+                logger.error("pywinauto is not available; Windows UI inspection is unavailable on this platform.")
+                return []
             # Get all visible non-taskbar windows
             windows = [w for w in Desktop(backend="uia").windows() if w.is_visible() and w.texts() and w.texts()[0] not in ["任务栏", "Taskbar", ""]]
 
@@ -338,6 +386,683 @@ class PCController(BaseController):
         code = self._extract_code(action)
         logger.info(f"Executing code: {code}")
         exec(code)
+
+    # -------------------- Linux/Ubuntu helpers --------------------
+    def _open_app_linux(self, name: str) -> None:
+        """Open application on Linux/Ubuntu.
+
+        Notes:
+            - Prefer passing an executable command (e.g., "firefox", "nautilus").
+            - If the command is not found, we try "gtk-launch" as a best-effort.
+        """
+        try:
+            cmd_list = shlex.split(name) if name and name.strip() else []
+            if not cmd_list:
+                logger.error("Empty application name provided for Linux open_app.")
+                return
+
+            executable = shutil.which(cmd_list[0])
+            if executable:
+                subprocess.Popen(cmd_list)
+                return
+
+            # Try gtk-launch with desktop id (may succeed for common apps)
+            if shutil.which("gtk-launch"):
+                try:
+                    subprocess.Popen(["gtk-launch", cmd_list[0]])
+                    return
+                except Exception:
+                    pass
+
+            # Fallback: try xdg-open (works for URLs/files; limited for app names)
+            if shutil.which("xdg-open"):
+                try:
+                    subprocess.Popen(["xdg-open", name])
+                    return
+                except Exception:
+                    pass
+
+            logger.error(f"Failed to open '{name}'. Ensure the command exists in PATH or provide a valid desktop id.")
+        except Exception as e:
+            logger.error(f"Linux open_app failed: {e}")
+
+
+class LinuxElementProcessor:
+    """Linux UI element processor based on AT-SPI (pyatspi).
+
+    Traverse accessible tree and extract visible elements with geometry.
+    """
+
+    def __init__(self, location_info: str = "center", max_tokens: int = 1000):
+        """Initialize Linux element processor.
+
+        Args:
+            location_info: 'center' to return center point, 'bbox' to return bounding box
+            max_tokens: maximum token count for element text
+        """
+        self.location_info = location_info
+        self.max_tokens = max_tokens
+        self.max_nodes = 3000  # safety cap to avoid excessive traversal
+        # Blacklist system UI applications (e.g., GNOME Shell) to avoid status bar dropdowns
+        self.system_app_blacklist = {"gnome-shell", "gnome shell"}
+        # Roles that are typically useful for interaction
+        self.interactive_roles = {
+            # Common UI controls
+            "button",
+            "push button",
+            "toggle button",
+            "menu item",
+            "menu",
+            "combo box",
+            "check box",
+            "radio button",
+            "entry",
+            "text",
+            "password text",
+            "scroll bar",
+            "slider",
+            "spin button",
+            "tab",
+            "page tab",
+            "toolbar",
+            # Web/document elements (important for Firefox)
+            "link",
+            "hyperlink",
+            "heading",
+            "paragraph",
+            "section",
+            "article",
+            "document web",
+            "document frame",
+            "embedded",
+            "internal frame",
+            # Lists and tables
+            "list item",
+            "list",
+            "tree item",
+            "tree",
+            "table",
+            "table cell",
+            "cell",
+            "row",
+            "column header",
+            # Additional interactive elements
+            "image",
+            "canvas",
+            "label",
+            "icon",
+            "form",
+            "panel",
+            "layered pane",
+        }
+
+    def collect_elements(self) -> List[Dict]:
+        """Collect elements from the active (foreground) window only.
+
+        Returns:
+            List of dicts with 'coordinates' and 'text'
+        """
+        elements: List[Dict] = []
+        try:
+            desktop = pyatspi.Registry.getDesktop(0)
+        except Exception as e:
+            logger.error(f"Failed to get desktop from AT-SPI: {e}")
+            return elements
+
+        # Get all available windows
+        all_frames = list(self._iter_top_level_frames(desktop))
+
+        # Select active window or fallback to browser/first valid window
+        root = None
+        active_frame = self._get_active_frame(desktop)
+        if active_frame is not None and self._is_valid_root(active_frame):
+            root = active_frame
+            logger.info(f"Using active window: '{self._get_window_title(root)}'")
+        else:
+            # First try browser windows, then any valid window
+            browser_apps = {"firefox", "chrome", "chromium", "brave", "edge", "safari", "opera"}
+            for frame in all_frames:
+                if self._is_valid_root_fallback(frame):
+                    app_name = self._get_application_name(frame).lower()
+                    if any(browser in app_name for browser in browser_apps):
+                        root = frame
+                        logger.info(f"No active window, using browser: '{self._get_window_title(root)}' ({app_name})")
+                        break
+
+            if root is None:
+                for frame in all_frames:
+                    if self._is_valid_root_fallback(frame):
+                        root = frame
+                        logger.info(f"No active window, using fallback: '{self._get_window_title(root)}'")
+                        break
+
+        if root is None:
+            logger.error("No valid window found to extract elements from")
+            logger.warning("Tip: Some applications require an accessibility client (like Orca) to be running")
+            logger.warning("Start Orca with: orca &")
+            return elements
+
+        visible_bounds = self._get_extents_bounds(root)
+        elements.extend(self._process_accessible(root, visible_bounds, 0))
+        logger.info(f"Collected {len(elements)} elements from active window")
+        return elements
+
+    # ---------------- Internal helpers ----------------
+    def _iter_top_level_frames(self, desktop) -> List[object]:
+        """Iterate over all top-level window frames from all applications."""
+        for i in range(desktop.childCount):
+            app = desktop.getChildAtIndex(i)
+            if app is None:
+                continue
+            for j in range(getattr(app, "childCount", 0)):
+                win = app.getChildAtIndex(j)
+                try:
+                    if win:
+                        role = win.getRoleName().lower()
+                        if role in ("frame", "window"):
+                            yield win
+                except Exception:
+                    continue
+
+    def _get_active_frame(self, desktop):
+        """Get the currently active/focused window frame.
+
+        Tries multiple strategies to find the foreground window:
+        1. Follow focus to find parent frame
+        2. Find frame with ACTIVE state
+        3. Find frame with FOCUSED state
+
+        Returns the first valid match found.
+        """
+        # Try direct focus API first
+        try:
+            if hasattr(desktop, "focus"):
+                focused = desktop.focus
+            elif hasattr(desktop, "get_focus"):
+                focused = desktop.get_focus()
+            else:
+                focused = None
+
+            if focused is not None:
+                # Walk up to the top-level frame
+                acc = focused
+                for _ in range(10):
+                    try:
+                        role = acc.getRoleName().lower()
+                    except Exception:
+                        break
+                    if role in ("frame", "window"):
+                        # Use only if the frame is a valid, visible, non-minimized, non-system UI window
+                        if self._is_valid_root(acc):
+                            return acc
+                        break
+                    parent = getattr(acc, "parent", None)
+                    if parent is None or parent is acc:
+                        break
+                    acc = parent
+        except Exception:
+            pass
+
+        # Fallback 1: find frame with ACTIVE state (most reliable for active window)
+        for frame in self._iter_top_level_frames(desktop):
+            try:
+                states = self._get_state_set_safe(frame)
+                if self._state_contains(states, "STATE_ACTIVE") and self._is_valid_root(frame):
+                    return frame
+            except Exception:
+                continue
+
+        # Fallback 2: find frame with FOCUSED state
+        for frame in self._iter_top_level_frames(desktop):
+            try:
+                states = self._get_state_set_safe(frame)
+                if self._state_contains(states, "STATE_FOCUSED") and self._is_valid_root(frame):
+                    return frame
+            except Exception:
+                continue
+
+        logger.warning("Could not find active frame")
+        return None
+
+    def _get_window_title(self, acc) -> str:
+        """Get window title for debugging purposes."""
+        try:
+            return acc.name or "(untitled)"
+        except Exception:
+            return "(unknown)"
+
+    # ------ root/window filtering helpers ------
+    def _is_valid_root(self, acc) -> bool:
+        """Check if accessible is a valid top-level window to traverse.
+
+        Criteria:
+        - Role is 'frame' or 'window'
+        - Not minimized/iconified and not offscreen
+        - Visible/showing
+        - Not part of system UI applications (e.g., GNOME Shell)
+        """
+        try:
+            role = (acc.getRoleName() or "").lower()
+        except Exception:
+            role = ""
+        if role not in ("frame", "window"):
+            return False
+
+        states = self._get_state_set_safe(acc)
+
+        # If we have state info, check it
+        if states is not None:
+            # Must not be minimized
+            if self._state_contains(states, "STATE_ICONIFIED"):
+                return False
+            # Prefer showing/visible, but don't strictly require it (some apps don't set these)
+            self._state_contains(states, "STATE_SHOWING")
+            self._state_contains(states, "STATE_VISIBLE")
+            # If neither showing nor visible, it might still be valid if no state info is reliable
+            # So we don't filter it out here
+
+        # Exclude system UI windows (e.g., GNOME Shell popups/status menus)
+        if self._is_system_ui(acc):
+            return False
+
+        return True
+
+    def _is_valid_root_fallback(self, acc) -> bool:
+        """Relaxed root validation for fallback selection.
+
+        Criteria:
+        - Role is 'frame' or 'window'
+        - Not minimized/iconified
+        - Not a system UI window
+        - Prefer showing/visible if state info is available (but not strictly required)
+        """
+        try:
+            role = (acc.getRoleName() or "").lower()
+        except Exception:
+            role = ""
+        if role not in ("frame", "window"):
+            return False
+
+        if self._is_system_ui(acc):
+            return False
+
+        states = self._get_state_set_safe(acc)
+
+        if states is not None:
+            if self._state_contains(states, "STATE_ICONIFIED"):
+                return False
+            # If it is showing/visible that's great; otherwise still allow as fallback
+        return True
+
+    def _is_system_ui(self, acc) -> bool:
+        """Return True if the accessible belongs to a system UI application (e.g., GNOME Shell)."""
+        app_name = self._get_application_name(acc)
+        name_l = (app_name or "").lower()
+        # Match common forms: 'gnome-shell' and 'GNOME Shell'
+        return ("gnome-shell" in name_l) or (name_l.strip() in self.system_app_blacklist)
+
+    def _is_system_application(self, app) -> bool:
+        """Return True if given application accessible is a system UI (e.g., GNOME Shell)."""
+        try:
+            name = (app.name or "").lower()
+        except Exception:
+            name = ""
+        return ("gnome-shell" in name) or (name.strip() in self.system_app_blacklist)
+
+    def _get_application_name(self, acc) -> str:
+        """Best-effort to retrieve application name for an accessible node."""
+        # Try direct API
+        try:
+            app = acc.getApplication()
+            if app is not None:
+                try:
+                    return app.name or ""
+                except Exception:
+                    pass
+        except Exception:
+            pass
+        # Fallback: walk up to 'application' role
+        try:
+            ancestor = acc
+            for _ in range(20):
+                if ancestor is None:
+                    break
+                try:
+                    role = (ancestor.getRoleName() or "").lower()
+                except Exception:
+                    role = ""
+                if role == "application":
+                    try:
+                        return ancestor.name or ""
+                    except Exception:
+                        return ""
+                ancestor = getattr(ancestor, "parent", None)
+        except Exception:
+            pass
+        return ""
+
+    def _process_accessible(self, acc, visible_bounds, depth: int = 0) -> List[Dict]:
+        """Depth-first traversal limited to the active window's visible bounds.
+
+        - Desktop coordinates only; nodes without valid geometry are skipped.
+        - Only include elements that are actually SHOWING and VISIBLE (stricter filtering).
+        - System UI windows are already filtered at root.
+        - For browsers: skip inactive tab pages to avoid element mixing.
+
+        Args:
+            acc: Accessible object to process
+            visible_bounds: Bounding box of visible area
+            depth: Current recursion depth
+        """
+        results: List[Dict] = []
+        if acc is None:
+            return results
+
+        # Safety depth/limit
+        if depth > 30 or len(results) >= self.max_nodes:
+            return results
+
+        states = self._get_state_set_safe(acc)
+
+        # Geometry (desktop coords only)
+        rect = self._get_extents_bounds(acc)
+        has_valid_rect = False
+        coordinates = None
+        rect_str = "(unknown)"
+
+        try:
+            role = acc.getRoleName()
+        except Exception:
+            role = "Unknown"
+        try:
+            name = acc.name or ""
+        except Exception:
+            name = ""
+
+        if rect is not None:
+            left, top, right, bottom = rect
+            width = max(0, right - left)
+            height = max(0, bottom - top)
+            if width > 0 and height > 0 and self._is_within_bounds(rect, visible_bounds):
+                has_valid_rect = True
+                coordinates = (left + width // 2, top + height // 2) if self.location_info == "center" else (left, top, right, bottom)
+                rect_str = f"({left}, {top}, {right}, {bottom})"
+
+        # Inclusion criteria for visible window elements:
+        # 1. Must have valid rect within bounds
+        # 2. Must not be explicitly offscreen
+        # 3. Should be showing/visible if state info is available
+        # 4. Must be interactive role OR have meaningful name
+        include_node = False
+        role_l = (role or "").lower()
+
+        # More balanced state check: filter out obviously invisible elements
+        state_ok = False
+        if states is None:
+            # If no state info available, accept by default (trust geometry check)
+            state_ok = True
+        else:
+            # Check visibility states
+            is_showing = self._state_contains(states, "STATE_SHOWING")
+            is_visible = self._state_contains(states, "STATE_VISIBLE")
+            is_offscreen = self._state_contains(states, "STATE_OFFSCREEN")
+
+            # Element should be showing OR visible (at least one)
+            # Only filter out if explicitly offscreen
+            if is_offscreen:
+                state_ok = False
+            elif is_showing or is_visible:
+                # Explicitly showing or visible - accept
+                state_ok = True
+            else:
+                # No explicit visibility state - check if it's at least sensitive/enabled
+                # This handles cases where Firefox or other apps don't set SHOWING/VISIBLE
+                is_enabled = self._state_contains(states, "STATE_ENABLED")
+                is_sensitive = self._state_contains(states, "STATE_SENSITIVE")
+                is_focusable = self._state_contains(states, "STATE_FOCUSABLE")
+                state_ok = is_enabled or is_sensitive or is_focusable
+
+        if has_valid_rect and state_ok and (role_l in self.interactive_roles or bool(name)):
+            include_node = True
+
+        if include_node and coordinates is not None:
+            truncated = self._truncate_text(name)
+
+            # Skip elements without text unless they are truly interactive controls
+            # Layout containers (section, panel) without text are useless for automation
+            always_useful_roles = {
+                "button",
+                "push button",
+                "toggle button",
+                "link",
+                "hyperlink",
+                "entry",
+                "text",
+                "password text",
+                "check box",
+                "radio button",
+                "combo box",
+                "list",
+                "list item",
+                "menu item",
+                "menu",
+                "tab",
+                "page tab",
+            }
+
+            # Skip if: no text AND not in always-useful roles
+            if not truncated and role_l not in always_useful_roles:
+                # Skip layout containers and decorative elements without text
+                pass
+            else:
+                results.append(
+                    {
+                        "coordinates": coordinates,
+                        "text": f"text:{truncated}; control_type:{role}; rect: {rect_str}",
+                    }
+                )
+
+        # Recurse into children
+        try:
+            child_count = getattr(acc, "childCount", 0)
+            for i in range(child_count):
+                child = acc.getChildAtIndex(i)
+
+                # Skip inactive browser tabs/documents to avoid element mixing
+                if child is not None and self._should_skip_inactive_tab(child):
+                    continue
+
+                results.extend(self._process_accessible(child, visible_bounds, depth + 1))
+                if len(results) >= self.max_nodes:
+                    break
+        except Exception:
+            pass
+
+        return results
+
+    def _should_skip_inactive_tab(self, acc) -> bool:
+        """Check if this accessible is an inactive browser tab/document that should be skipped.
+
+        In browsers (Firefox, Chrome, etc.), each tab is represented as a document.
+        Only the active tab's document should be SHOWING/VISIBLE.
+        This prevents mixing elements from multiple tabs.
+
+        Args:
+            acc: Accessible object to check
+
+        Returns:
+            True if this is an inactive tab that should be skipped
+        """
+        try:
+            role = acc.getRoleName().lower()
+        except Exception:
+            role = ""
+
+        try:
+            getattr(acc, "name", None) or "(unnamed)"
+        except Exception:
+            pass
+
+        # Check if this is a browser document/tab container
+        # Common roles: "document web", "document frame", "page tab", "panel" (in some browsers)
+        is_document_container = role in (
+            "document web",
+            "document frame",
+            "page tab",
+            "page tab list",  # Tab container in some browsers
+            "panel",  # Some browsers use panel for tab content
+        )
+
+        if not is_document_container:
+            return False
+
+        # For document containers, check if they are actually visible
+        states = self._get_state_set_safe(acc)
+        if states is None:
+            return False
+
+        # Check visibility states
+        is_showing = self._state_contains(states, "STATE_SHOWING")
+        is_offscreen = self._state_contains(states, "STATE_OFFSCREEN")
+
+        # Skip inactive browser tabs based on role-specific logic
+        if role in ("document web", "document frame"):
+            # For document containers: only SHOWING documents are active tabs
+            should_skip = not is_showing or is_offscreen
+        elif role == "panel":
+            # Panels are used for various UI elements in browsers
+            should_skip = not is_showing or is_offscreen
+        elif role in ("page tab", "page tab list"):
+            # Tab UI elements - don't skip
+            should_skip = False
+        else:
+            # Other document containers
+            is_visible = self._state_contains(states, "STATE_VISIBLE")
+            should_skip = is_offscreen or (not is_showing and not is_visible)
+
+        return should_skip
+
+    def _get_extents_bounds(self, acc):
+        """Return bounds in desktop coordinates. No Wayland/window fallback."""
+        try:
+            comp = acc.queryComponent()
+            try:
+                x, y, w, h = comp.getExtents(pyatspi.DESKTOP_COORDS)
+            except TypeError:
+                e = comp.getExtents(pyatspi.DESKTOP_COORDS)
+                x, y, w, h = int(getattr(e, "x", 0)), int(getattr(e, "y", 0)), int(getattr(e, "width", 0)), int(getattr(e, "height", 0))
+            if int(w) <= 0 or int(h) <= 0:
+                return None
+            return (int(x), int(y), int(x + w), int(y + h))
+        except Exception:
+            return None
+
+    def _is_within_bounds(self, rect, bounds) -> bool:
+        """Check if rect is within bounds.
+
+        Args:
+            rect: Element rectangle (left, top, right, bottom)
+            bounds: Window bounds (left, top, right, bottom)
+
+        Returns:
+            True if rect is within or overlaps with bounds, False otherwise
+        """
+        if rect is None:
+            return False  # No valid rect means not visible
+        if bounds is None:
+            return True  # No bounds constraint means accept all
+        l, t, r, b = rect
+        L, T, R, B = bounds
+        # Check if rectangles overlap (element is at least partially visible)
+        return not (r <= L or l >= R or b <= T or t >= B)
+
+    def _get_state_set_safe(self, acc):
+        """Safely get state set from accessible object.
+
+        Args:
+            acc: Accessible object
+
+        Returns:
+            StateSet object or None if failed
+        """
+        if acc is None:
+            return None
+        try:
+            # pyatspi uses get_state_set() method (note the underscore)
+            if hasattr(acc, "get_state_set"):
+                state_set = acc.get_state_set()
+                # state_set should be an Atspi.StateSet object
+                return state_set
+            elif hasattr(acc, "getState"):
+                return acc.getState()
+            else:
+                # No state method available
+                return None
+        except Exception as e:
+            logger.debug(f"Failed to get state set: {e}")
+            return None
+
+    def _state_contains(self, state_set, state_name: str) -> bool:
+        """Check if state set contains a specific state.
+
+        Args:
+            state_set: StateSet object (can be None)
+            state_name: State name like 'STATE_ACTIVE'
+
+        Returns:
+            True if state is contained, False otherwise
+        """
+        if state_set is None:
+            return False
+        try:
+            # Get state constant from pyatspi (e.g., pyatspi.STATE_ACTIVE)
+            state = getattr(pyatspi, state_name, None)
+            if state is None:
+                return False
+            # StateSet.contains() method checks if state is in the set
+            if hasattr(state_set, "contains"):
+                return state_set.contains(state)
+            else:
+                # Fallback: check if state is in the state_set directly
+                return state in state_set
+        except Exception as e:
+            logger.debug(f"Failed to check state {state_name}: {e}")
+            return False
+
+    # ---- text truncation for Linux ----
+    def _truncate_text(self, text: str) -> str:
+        if not text:
+            return text
+        if self._estimate_token_count(text) <= self.max_tokens:
+            return text
+        return self._smart_truncate(text)
+
+    def _smart_truncate(self, text: str) -> str:
+        tokens = self._tokenize_mixed_text(text)
+        result_tokens: List[str] = []
+        current = 0
+        for token in tokens:
+            if token.isspace():
+                if current < self.max_tokens:
+                    result_tokens.append(token)
+                continue
+            cost = 0 if token.isspace() else 1
+            if current + cost <= self.max_tokens:
+                result_tokens.append(token)
+                current += cost
+            else:
+                break
+        out = "".join(result_tokens).rstrip()
+        return out + "..." if out != text else out
+
+    def _tokenize_mixed_text(self, text: str) -> list:
+        import re as _re
+
+        pattern = r"[\u4e00-\u9fff]|[a-zA-Z0-9]+|[^\u4e00-\u9fff\w\s]|\s+"
+        return _re.findall(pattern, text)
+
+    def _estimate_token_count(self, text: str) -> int:
+        return sum(0 if t.isspace() else 1 for t in self._tokenize_mixed_text(text))
 
 
 class WindowsElementProcessor:
@@ -579,7 +1304,20 @@ class ControllerTool:
     """
 
     def __init__(self, platform: str = "Android", **kwargs):
-        self.controller = AndroidController() if platform == "Android" else PCController(**kwargs)
+        """Create controller by platform.
+
+        Supported platforms: "Android", "Windows", "Linux", "Ubuntu".
+        """
+        if platform == "Android":
+            self.controller = AndroidController()
+        elif platform == "Windows":
+            kwargs["pc_type"] = "windows"
+            self.controller = PCController(**kwargs)
+        elif platform in ("Linux", "Ubuntu"):
+            kwargs["pc_type"] = "linux"
+            self.controller = PCController(**kwargs)
+        else:
+            raise ValueError(f"Unsupported device type: {platform}")
 
     def __getattr__(self, name):
         """Proxy all method calls to specific controller"""
@@ -599,6 +1337,6 @@ def create_controller(platform: str = "Android", **kwargs) -> ControllerTool:
     Raises:
         ValueError: Raised when device type is invalid
     """
-    if platform not in ["Android", "Windows"]:
+    if platform not in ["Android", "Windows", "Linux", "Ubuntu"]:
         raise ValueError(f"Unsupported device type: {platform}")
     return ControllerTool(platform, **kwargs)

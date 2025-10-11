@@ -27,7 +27,7 @@ https://github.com/user-attachments/assets/27c791ef-096b-4dd0-b5a5-8319a80b2748
 
 ## 安装
 
-### 从零开始
+### Windows 环境配置
 
 ```bash
 # 创建conda环境
@@ -45,6 +45,33 @@ uv pip install -r requirements.txt
 # 安装appeval
 uv pip install -e .
 # 可选：带ocr和目标检测的增强版Appeval
+uv pip install -e .[ultra]
+```
+
+### Linux（Ubuntu 22.04）环境配置
+
+仅支持 Ubuntu 22.04 以及其自带的 Python 3.10。请执行以下命令：
+
+```bash
+# 系统依赖
+sudo apt update
+sudo apt install -y python3 python3-dev python3-tk python3-pip python3-venv python3-pyatspi git gnome-screenshot xclip
+
+# 克隆仓库
+git clone https://github.com/tanghaom/AppEvalPilot.git
+cd AppEvalPilot
+
+# 创建并激活虚拟环境（启用系统站点包）
+python3 -m venv venv --system-site-packages
+source venv/bin/activate
+
+# 安装 Python 依赖
+pip install uv
+uv pip install -r requirements.txt
+
+# 以开发模式安装 appeval
+uv pip install -e .
+# 可选：安装包含 OCR 和图标检测能力的增强版本
 uv pip install -e .[ultra]
 ```
 
