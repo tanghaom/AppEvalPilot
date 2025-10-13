@@ -364,7 +364,7 @@ class PCController(BaseController):
                 logger.error("pywinauto is not available; Windows UI inspection is unavailable on this platform.")
                 return []
             # Get all visible non-taskbar windows
-            windows = [w for w in Desktop(backend="uia").windows() if w.is_visible() and w.texts() and w.texts()[0] not in ["Taskbar", "Taskbar", ""]]
+            windows = [w for w in Desktop(backend="uia").windows() if w.is_visible() and w.texts() and w.texts()[0] not in ["任务栏", "Taskbar", ""]]
 
             if not windows:
                 logger.warning("No active window found")
