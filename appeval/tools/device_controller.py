@@ -364,7 +364,7 @@ class PCController(BaseController):
                 logger.error("pywinauto is not available; Windows UI inspection is unavailable on this platform.")
                 return []
             # Get all visible non-taskbar windows
-            windows = [w for w in Desktop(backend="uia").windows() if w.is_visible() and w.texts() and w.texts()[0] not in ["任务栏", "Taskbar", ""]]
+            windows = [w for w in Desktop(backend="uia").windows() if w.is_visible() and w.texts() and w.texts()[0] not in ["Taskbar", "Taskbar", ""]]
 
             if not windows:
                 logger.warning("No active window found")
@@ -443,8 +443,34 @@ class LinuxElementProcessor:
         self.location_info = location_info
         self.max_tokens = max_tokens
         self.max_nodes = 3000  # safety cap to avoid excessive traversal
-        # Blacklist system UI applications (e.g., GNOME Shell) to avoid status bar dropdowns
-        self.system_app_blacklist = {"gnome-shell", "gnome shell"}
+        # Blacklist system UI applications and window managers to avoid desktop components
+        self.system_app_blacklist = {
+            # Desktop shells
+            "gnome-shell",
+            "gnome shell",
+            # Window managers
+            "xfwm4",  # Xfce window manager
+            "xfdesktop",  # Xfce desktop manager
+            "kwin",
+            "kwin_x11",
+            "kwin_wayland",  # KDE window manager
+            "mutter",  # GNOME 3+ window manager
+            "openbox",  # Openbox window manager
+            "i3",  # i3 window manager
+            "awesome",  # Awesome window manager
+            "bspwm",  # bspwm window manager
+            "compiz",  # Compiz window manager
+            "marco",  # MATE window manager
+            "metacity",  # Old GNOME window manager
+            "fluxbox",  # Fluxbox window manager
+            "enlightenment",  # Enlightenment window manager
+            # Desktop panels and system UI
+            "xfce4-panel",  # Xfce panel
+            "plasma-desktop",  # KDE desktop
+            "plasmashell",  # KDE shell
+            "lxpanel",  # LXDE panel
+            "mate-panel",  # MATE panel
+        }
         # Roles that are typically useful for interaction
         self.interactive_roles = {
             # Common UI controls
@@ -512,28 +538,76 @@ class LinuxElementProcessor:
         # Get all available windows
         all_frames = list(self._iter_top_level_frames(desktop))
 
+        # Print debug information: show all available windows
+        logger.info("=== Window Debug Information ===")
+        logger.info(f"Found {len(all_frames)} top-level windows")
+        for idx, frame in enumerate(all_frames, 1):
+            try:
+                title = self._get_window_title(frame)
+                app_name = self._get_application_name(frame)
+                role = frame.getRoleName()
+                states = self._get_state_set_safe(frame)
+
+                # Collect state information
+                state_info = []
+                if states is not None:
+                    if self._state_contains(states, "STATE_ACTIVE"):
+                        state_info.append("ACTIVE")
+                    if self._state_contains(states, "STATE_FOCUSED"):
+                        state_info.append("FOCUSED")
+                    if self._state_contains(states, "STATE_SHOWING"):
+                        state_info.append("SHOWING")
+                    if self._state_contains(states, "STATE_VISIBLE"):
+                        state_info.append("VISIBLE")
+                    if self._state_contains(states, "STATE_ICONIFIED"):
+                        state_info.append("ICONIFIED")
+
+                is_valid = self._is_valid_root(frame)
+                is_valid_fallback = self._is_valid_root_fallback(frame)
+                is_system = self._is_system_ui(frame)
+
+                logger.info(f"  [{idx}] Title='{title}' | App='{app_name}' | Role={role}")
+                logger.info(
+                    f"       State=[{', '.join(state_info) if state_info else 'None'}] | "
+                    f"Valid={is_valid} | Fallback={is_valid_fallback} | SystemUI={is_system}"
+                )
+            except Exception as e:
+                logger.warning(f"  [{idx}] Unable to get window information: {e}")
+        logger.info("===================")
+
         # Select active window or fallback to browser/first valid window
         root = None
         active_frame = self._get_active_frame(desktop)
+
+        # Print active window detection results
+        if active_frame is not None:
+            logger.info(f"Active window detected: '{self._get_window_title(active_frame)}' (App: {self._get_application_name(active_frame)})")
+            logger.info(f"  Is active window valid: {self._is_valid_root(active_frame)}")
+        else:
+            logger.warning("No active window detected, using fallback strategy")
+
         if active_frame is not None and self._is_valid_root(active_frame):
             root = active_frame
-            logger.info(f"Using active window: '{self._get_window_title(root)}'")
+            logger.info(f"✓ Using active window: '{self._get_window_title(root)}'")
         else:
             # First try browser windows, then any valid window
             browser_apps = {"firefox", "chrome", "chromium", "brave", "edge", "safari", "opera"}
+            logger.info("Trying to find browser windows...")
             for frame in all_frames:
                 if self._is_valid_root_fallback(frame):
                     app_name = self._get_application_name(frame).lower()
+                    logger.debug(f"  Checking window: '{self._get_window_title(frame)}' (App: {app_name})")
                     if any(browser in app_name for browser in browser_apps):
                         root = frame
-                        logger.info(f"No active window, using browser: '{self._get_window_title(root)}' ({app_name})")
+                        logger.info(f"✓ Found browser window: '{self._get_window_title(root)}' (App: {app_name})")
                         break
 
             if root is None:
+                logger.info("No browser window found, using first valid window...")
                 for frame in all_frames:
                     if self._is_valid_root_fallback(frame):
                         root = frame
-                        logger.info(f"No active window, using fallback: '{self._get_window_title(root)}'")
+                        logger.info(f"✓ Using fallback window: '{self._get_window_title(root)}' (App: {self._get_application_name(root)})")
                         break
 
         if root is None:
@@ -695,19 +769,33 @@ class LinuxElementProcessor:
         return True
 
     def _is_system_ui(self, acc) -> bool:
-        """Return True if the accessible belongs to a system UI application (e.g., GNOME Shell)."""
+        """Return True if the accessible belongs to a system UI application or window manager.
+
+        This includes desktop shells, window managers, panels, and other desktop environment components.
+        """
         app_name = self._get_application_name(acc)
-        name_l = (app_name or "").lower()
-        # Match common forms: 'gnome-shell' and 'GNOME Shell'
-        return ("gnome-shell" in name_l) or (name_l.strip() in self.system_app_blacklist)
+        name_l = (app_name or "").lower().strip()
+
+        # Check against blacklist (exact match or substring)
+        for blacklisted in self.system_app_blacklist:
+            if blacklisted in name_l or name_l == blacklisted:
+                return True
+
+        return False
 
     def _is_system_application(self, app) -> bool:
-        """Return True if given application accessible is a system UI (e.g., GNOME Shell)."""
+        """Return True if given application accessible is a system UI or window manager."""
         try:
-            name = (app.name or "").lower()
+            name = (app.name or "").lower().strip()
         except Exception:
             name = ""
-        return ("gnome-shell" in name) or (name.strip() in self.system_app_blacklist)
+
+        # Check against blacklist (exact match or substring)
+        for blacklisted in self.system_app_blacklist:
+            if blacklisted in name or name == blacklisted:
+                return True
+
+        return False
 
     def _get_application_name(self, acc) -> str:
         """Best-effort to retrieve application name for an accessible node."""
