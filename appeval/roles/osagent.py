@@ -6,7 +6,6 @@
 @File    : osagent.py
 @Desc    : Operating System Operation Assistant
 """
-import asyncio
 import copy
 import json
 import random
@@ -27,8 +26,6 @@ from PIL import Image, ImageDraw, ImageFont
 from pydantic import ConfigDict, Field
 from tenacity import retry, retry_if_exception_type, stop_after_attempt, wait_fixed
 
-from appeval.actions.reflection import Reflection
-from appeval.actions.screen_info_extractor import ScreenInfoExtractor
 from appeval.prompts.osagent import ActionPromptContext, Android_prompt, PC_prompt
 from appeval.tools.chrome_debugger import ChromeDebugger
 from appeval.tools.device_controller import ControllerTool
@@ -57,6 +54,7 @@ class OSAgentContext(RoleContext):
     completed_requirements: str = ""  # Completed requirements
     memory: List[str] = Field(default_factory=list)  # Important content memory list
     error_flag: bool = False  # Error flag
+    error_message: str = ""  # Error message when action execution fails
     iter: int = 0  # Current iteration count
     perception_infos: List[Dict] = Field(default_factory=list)  # Current perception information list
     last_perception_infos: List[Dict] = Field(default_factory=list)  # Previous perception information list
@@ -78,6 +76,7 @@ class OSAgentContext(RoleContext):
         self.completed_requirements = ""
         self.memory = []
         self.error_flag = False
+        self.error_message = ""
         self.iter = 0
         self.perception_infos = []
         self.last_perception_infos = []
@@ -107,8 +106,6 @@ class OSAgent(Role):
         quad_split_ocr: bool = False,
         use_icon_detect: bool = False,
         use_icon_caption: bool = False,
-        use_memory: bool = False,
-        use_reflection: bool = False,
         use_som: bool = False,
         extend_xml_infos: bool = True,
         use_chrome_debugger: bool = False,
@@ -134,8 +131,6 @@ class OSAgent(Role):
             quad_split_ocr (bool): Whether to split image into four parts for OCR recognition.
             use_icon_detect (bool): Whether to use icon detection.
             use_icon_caption (bool): Whether to use icon caption.
-            use_memory (bool): Whether to enable important content memory.
-            use_reflection (bool): Whether to perform reflection.
             use_som (bool): Whether to draw visualization boxes on screenshots.
             extend_xml_infos (bool): Whether to add XML element information.
             use_chrome_debugger (bool): Whether to record browser console output.
@@ -202,12 +197,6 @@ class OSAgent(Role):
 
     def _init_tools(self) -> None:
         """Initialize tool components"""
-        # Initialize information extractor
-        self.info_extractor = ScreenInfoExtractor(platform=self.platform)
-
-        # Initialize reflection tool
-        self.reflection_action = Reflection(platform=self.platform)
-
         # Initialize icon detection/caption tool
         if self.use_icon_detect or self.use_icon_caption:
             self.icon_tool = IconDetectTool(self.llm)
@@ -527,52 +516,23 @@ class OSAgent(Role):
 
     def get_action_history(self) -> List[Dict[str, Any]]:
         """
-        Get action history, including thoughts, summaries, actions, optional memories and reflections.
+        Get action history, including thoughts, summaries, actions, memories and reflections.
         Returns:
             list: A list of dictionaries, each dictionary represents a historical record of an action step.
-                  Each dictionary contains "thought", "summary", "action",
-                  and optional "memory" and "reflection".
+                  Each dictionary contains "thought", "summary", "action", "memory" and "reflection".
         """
         outputs = []
-        # Use zip to pair corresponding elements of three historical lists and use enumerate to get index
+        # Use zip to pair corresponding elements of historical lists
         for i, (thought, summary, action) in enumerate(zip(self.rc.thought_history, self.rc.summary_history, self.rc.action_history)):
             output = {
                 "thought": thought,
                 "summary": summary,
                 "action": action,
-            }  # Current step thought  # Current step summary  # Current step action
-            # If memory switch is enabled, add memory information
-            if self.use_memory:
-                output["memory"] = self.rc.memory[i]
-            # If reflection switch is enabled, add reflection information
-            if self.use_reflection:
-                output["reflection"] = self.rc.reflection_thought_history[i]
-            outputs.append(output)  # Add current step information to output list
+                "memory": self.rc.memory[i] if i < len(self.rc.memory) else "",
+                "reflection": self.rc.reflection_thought_history[i] if i < len(self.rc.reflection_thought_history) else "",
+            }
+            outputs.append(output)
         return outputs
-
-    @retry(
-        stop=stop_after_attempt(10),
-        wait=wait_fixed(3),
-        retry=retry_if_exception_type(Exception),
-        before_sleep=lambda retry_state: logger.warning(
-            f"Information extraction failed, {retry_state.attempt_number}th retry: {str(retry_state.outcome.exception())}"
-        ),
-        reraise=True,
-    )
-    async def _async_memory_task(self, insight: str, screenshot_file: str) -> str:
-        """Execute information extraction task asynchronously
-
-        Args:
-            insight (str): Content/task description to focus on
-            screenshot_file (str): Screenshot file path
-
-        Returns:
-            str: Extracted important content
-        """
-        if not self.use_memory:
-            return ""
-
-        return await self.info_extractor.run(insight, screenshot_file)
 
     @retry(
         stop=stop_after_attempt(10),
@@ -613,6 +573,7 @@ class OSAgent(Role):
             reflection_thought=self.rc.reflection_thought,
             add_info=add_info,
             error_flag=self.rc.error_flag,
+            error_message=self.rc.error_message,
             completed_content=self.rc.completed_requirements,
             memory=self.rc.memory,
             task_list=self.rc.task_list,
@@ -689,66 +650,6 @@ class OSAgent(Role):
             return False
         else:
             return True
-
-    @retry(
-        stop=stop_after_attempt(10),
-        wait=wait_fixed(3),
-        retry=retry_if_exception_type(Exception),
-        before_sleep=lambda retry_state: logger.warning(
-            f"Reflection execution failed, {retry_state.attempt_number}th retry: {str(retry_state.outcome.exception())}"
-        ),
-        reraise=True,
-    )
-    async def _reflection(
-        self,
-        instruction: str,
-        last_perception_infos: list,
-        perception_infos: list,
-        width: int,
-        height: int,
-        summary: str,
-        action: str,
-        add_info: str,
-        last_screenshot_file: str,
-        screenshot_file: str,
-    ) -> Tuple[str, str]:
-        """Execute reflection task
-
-        Args:
-            instruction (str): User instruction
-            last_perception_infos (list): Previous perception information
-            perception_infos (list): Current perception information
-            width (int): Screenshot width
-            height (int): Screenshot height
-            summary (str): Operation summary
-            action (str): Executed action
-            add_info (str): Additional information
-            last_screenshot_file (str): Previous screenshot path
-            screenshot_file (str): Current screenshot path
-
-        Returns:
-            tuple: (reflection result, reflection content)
-        """
-        if not self.use_reflection:
-            return "", ""
-
-        if "Tell" in action or "Wait" in action:
-            return "", "When using the Tell or Wait action, there is no need to do reflection."
-
-        reflect, reflection_thought = await self.reflection_action.run(
-            instruction,
-            last_perception_infos,
-            perception_infos,
-            width,
-            height,
-            summary,
-            action,
-            add_info,
-            last_screenshot_file,
-            screenshot_file,
-        )
-
-        return reflect, reflection_thought
 
     async def _get_app_package_name(self, app_name: str) -> str:
         """Get application package name
@@ -847,56 +748,28 @@ class OSAgent(Role):
         # Save images
         self._save_iteration_images(self.rc.iter)
 
-        # Execute memory task asynchronously
-        memory_task = None
-        if self.use_memory:
-            memory_task = asyncio.create_task(self._async_memory_task(self.instruction, self.screenshot_file))
-
         # Update history records
         self.rc.thought_history.append(self.rc.thought)
         self.rc.summary_history.append(self.rc.summary)
         self.rc.action_history.append(self.rc.action)
 
-        if self.run_action_failed:
-            self.rc.reflection_thought_history.append(f"ERROR(run action code filed): {self.run_action_failed_exception}\\n ")
-            self.rc.error_flag = True
+        # Save memory: use image_description from think (merged request mode)
+        self.rc.memory.append(getattr(self.rc, "image_description", "") or "")
 
-        elif self.use_reflection:
-            # Use independent reflection flow when enabled
-            reflect, self.rc.reflection_thought = await self._reflection(
-                self.instruction,
-                self.rc.last_perception_infos,
-                self.rc.perception_infos,
-                self.width,
-                self.height,
-                self.rc.summary,
-                self.rc.action,
-                self.add_info,
-                self.last_screenshot_file,
-                self.screenshot_file,
-            )
-            self.rc.reflection_thought_history.append(self.rc.reflection_thought)
-            if reflect == "CORRECT":
-                self.rc.error_flag = False
-            elif reflect == "ERROR":
-                self.rc.error_flag = True
+        # Handle reflection: always persist the reflection from think (reflects on previous step)
+        self.rc.reflection_thought_history.append(self.rc.reflection_thought)
+
+        # Handle execution errors separately
+        if self.run_action_failed:
+            # Store error message for next iteration's prompt
+            self.rc.error_message = f"ERROR(run action code filed): {self.run_action_failed_exception}\\n"
+            self.rc.error_flag = True
         else:
-            # Without independent reflection, persist the reflection thought from think
-            self.rc.reflection_thought_history.append(self.rc.reflection_thought)
+            # Clear error message on successful execution
+            self.rc.error_message = ""
 
         # Clean up screenshots
         Path(self.last_screenshot_som_file if self.use_som else self.last_screenshot_file).unlink()
-
-        # Save memory based on strategy
-        # - If memory is enabled, use the async memory extraction result
-        # - If memory is disabled, use the image description from think
-        if self.use_memory:
-            mem = ""
-            if memory_task:
-                mem = await memory_task or ""
-            self.rc.memory.append(mem)
-        else:
-            self.rc.memory.append(getattr(self.rc, "image_description", "") or "")
 
         return AIMessage(content=self.rc.action, cause_by=Action)
 

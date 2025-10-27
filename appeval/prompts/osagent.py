@@ -19,6 +19,7 @@ class ActionPromptContext(BaseModel):
     reflection_thought: str  # Current reflection content
     add_info: str  # Additional information
     error_flag: bool  # Error flag
+    error_message: str  # Error message when action execution fails
     completed_content: str  # Completed content
     memory: List[str]  # Memory list
     task_list: str  # Task list
@@ -52,8 +53,6 @@ class BasePrompt:
 
 {last_operation}
 
-{reflection_thought}
-
 ### Task requirements ###
 {task_requirements}
 
@@ -79,36 +78,68 @@ Please note that this information is not necessarily accurate. You need to combi
         # Base hints template
         self.hints = """
 There are hints to help you complete the user's instructions. The hints are as follow:
-When there is no direct element counterpart, you should guess the possible elements based on the task and its coordinates.
-Sometimes both shortcuts and clicking can accomplish the same action; in such cases, prioritize using shortcuts.
-Do not make a location estimate, if it does not pop up, please wait.
-You should not assume the position of an element you cannot see.
-Perform only one click at a time, Do not skip steps, please wait for the previous click action to finish.
-Pay attention to the history to verify that it has been completed and avoid duplicate operations."""
+
+**Critical Rules:**
+- **NEVER repeat a failed action**: If an operation failed in the previous step, you MUST try a different approach. Repeating the same action will likely fail again.
+- **Check for patterns**: If you see the same operation attempted 2+ times in history without success, stop and try a completely different strategy (e.g., use keyboard shortcuts instead of clicking, try a different element, or break down the task differently).
+- **When stuck**: If multiple attempts fail, consider whether the current goal is achievable with available elements, or if you need to take prerequisite steps first.
+
+**Element Interaction:**
+- When there is no direct element counterpart, you should guess the possible elements based on the task and its coordinates.
+- Sometimes both shortcuts and clicking can accomplish the same action; in such cases, prioritize using shortcuts.
+- Do not make a location estimate, if it does not pop up, please wait.
+- You should not assume the position of an element you cannot see.
+- Perform only one click at a time, Do not skip steps, please wait for the previous click action to finish.
+- Pay attention to the history to verify that it has been completed and avoid duplicate operations."""
 
         # Base history operations template
         self.history_template = """
 ### History operations ###
 Before reaching this page, some operations have been completed. You need to refer to the completed operations to decide the next operation. These history records include the following components:
-- Operation: A textual description of the intended action.
+- Memory: A concise description of the screen state at this step. This describes what was observed before deciding what to do.
+- Operation: A textual description of the intended action, based on the observed screen state.
 - Action: The action that was executed.
-- Reflection_thought: Reflections made after executing the action. It's not necessarily correct, you should make your own judgment.
-- Memory: Potentially useful content extracted from screenshots {memory_timing} the action was performed.
+- Reflection_thought: Analysis of the screen state and outcome after this action was executed. It evaluates whether this step achieved its expected result. It's not necessarily correct, you should make your own judgment.
+
+**IMPORTANT**: Carefully review the history to identify:
+1. Which operations succeeded and which failed
+2. Any repeated attempts with the same approach that didn't work
+3. Patterns that suggest the current strategy needs to change
 {history_details}"""
 
         # Base output format template
         self.output_format = """
 Your output consists of the following six parts. Please note that only one set of content should be output at a time, and do not repeat the output.
+
+**IMPORTANT**: Each section title must be wrapped with `###` on both sides (e.g., `### Title ###`). Follow this exact format:
+
 ### Image Description ###
 Provide a concise description of the current screenshot using only observable information. If multiple screenshots are provided, summarize notable changes between the latest image and previous images.
+
 ### Reflection Thought ###
-Analyze whether the screen content and state match the expected outcome based on the last operation and context. If multiple screenshots are provided, compare them to support your analysis.
+Write a comprehensive analysis of the last operation's outcome in one paragraph. Your analysis must include:
+- **What was expected vs. what actually happened**: Compare the intended outcome with actual screen state
+- **Success evaluation**: Clearly state if the operation succeeded, partially succeeded, or failed, with specific evidence from the screenshot
+- **Failure analysis** (if applicable): Explain the root cause (e.g., wrong coordinates, element not clickable, timing issue, incorrect approach, element not available)
+- **Important observations**: Note any UI changes, error messages, warnings, or unexpected behaviors
+
+Be thorough and specific. This reflection will guide future decisions and help avoid repeating failed approaches.
+
 ### Thought ###
-This is your thinking about how to proceed the next operation, please output the thoughts about the history operations explicitly.
+Based on the reflection and history, plan your next action in one paragraph. Your thought process must include:
+- **History review**: Check recent operations for any patterns of repeated failures with the same approach
+- **Strategy validation**: If the last operation failed and you're considering a similar approach, you MUST explain why this time will be different, OR choose a completely different strategy
+- **Approach viability**: Assess whether the current method can achieve the goal, or if you need to try a fundamentally different approach
+- **Clear reasoning**: State your logic before deciding on the next action
+
+If you see the same operation attempted multiple times without success, you MUST try a different method.
+
 ### Action ###
 {action_options}
+
 ### Operation ###
 This is a one sentence summary of this operation.
+
 ### Task List ###
 * **[Completed Tasks]:** (List the tasks that have been successfully completed so far)
     * <Task 1 Description>
@@ -146,11 +177,102 @@ Don't output the purpose of any operation. If there is one, output it as "packag
 The following is the correspondence between some common application names and their package names, which may be helpful for you to complete the task. It's not necessarily correct, you should make your own judgment.
 {app_mapping}"""
 
+    def _build_background(self, ctx: ActionPromptContext, device_type: str) -> str:
+        """Build background information section"""
+        image_desc = (
+            f"first image is a clean {device_type} screenshot. And the second image is the annotated version of it, where icons are marked with numbers."
+            if ctx.use_som
+            else f"image is a {device_type} screenshot."
+        )
+        return self.background_template.format(image_desc=image_desc, width=ctx.width, height=ctx.height, instruction=ctx.instruction)
+
+    def _build_screenshot_info(self, ctx: ActionPromptContext, source_desc: str) -> str:
+        """Build screenshot information section"""
+        # Build location format information
+        location_format = {
+            "center": "The format of the coordinates is [x, y], x is the pixel from left to right and y is the pixel from top to bottom;",
+            "bbox": "The format of the coordinates is [x1, y1, x2, y2], x is the pixel from left to right and y is the pixel from top to bottom. (x1, y1) is the coordinates of the upper-left corner, (x2, y2) is the coordinates of the bottom-right corner;",
+        }[ctx.location_info]
+
+        # Build content format information
+        content_format = """the content can be one of three types:
+1. text from OCR
+2. icon description or 'icon'
+3. element information from device tree, which contains element attributes like type, text content, identifiers, accessibility descriptions and position information"""
+
+        # Build clickable information
+        clickable_info = "\n".join(
+            f"{info['coordinates']}; {info['text']}"
+            for info in ctx.clickable_infos
+            if info["text"] != "" and info["text"] != "icon: None" and info["coordinates"] != (0, 0)
+        )
+
+        return self.screenshot_info_template.format(
+            source_desc=source_desc,
+            location_format=location_format,
+            content_format=content_format,
+            clickable_info=clickable_info,
+        )
+
+    def _build_history_operations(self, ctx: ActionPromptContext) -> str:
+        """Build history operations section"""
+        if len(ctx.action_history) == 0:
+            return ""
+
+        history_details = ""
+        for i in range(len(ctx.action_history)):
+            # Remove newlines from each field to avoid format disruption
+            memory = (ctx.memory[i] if len(ctx.memory) > i else "None").replace("\n", " ").replace("\r", " ")
+            operation = ctx.summary_history[i].replace("\n", " ").replace("\r", " ")
+            action = ctx.action_history[i].replace("\n", " ").replace("\r", " ")
+
+            history_details += f"Step-{i+1}:\n\tMemory: {memory}\n"
+            history_details += f"\tOperation: {operation}\n"
+            history_details += f"\tAction: {action}\n"
+            # Reflection from next step (reflects on this step's outcome)
+            reflection_idx = i + 1
+            if reflection_idx < len(ctx.reflection_thought_history):
+                reflection = ctx.reflection_thought_history[reflection_idx].replace("\n", " ").replace("\r", " ")
+                history_details += f"\tReflection_thought: {reflection}\n"
+
+        return self.history_template.format(history_details=history_details)
+
+    def _build_task_list(self, ctx: ActionPromptContext) -> str:
+        """Build task list section"""
+        if not ctx.task_list:
+            return ""
+
+        return (
+            f"### Last Task List ###\nHere is the task list generated in the previous step. Please use this information to update the task list in the current step. Specifically, you should:\n"
+            f"1. Identify and move any completed tasks to the `[Completed Tasks]` section.\n"
+            f"2. Determine the current task and place it in the `[Current Task]` section.\n"
+            f"3. Plan the next immediate operation and detail its steps in the `[Next Operation]` section.\n"
+            f"4. List the remaining tasks (excluding the current and next operation) in the `[Remaining Tasks]` section. Adjust or refine these tasks as needed based on the current context.\n"
+            f"{ctx.task_list}"
+        )
+
+    def _build_last_operation(self, ctx: ActionPromptContext) -> str:
+        """Build last operation section"""
+        if not ctx.error_flag:
+            return ""
+
+        error_details = f"\n\nError details: {ctx.error_message}" if ctx.error_message else ""
+        return (
+            f'### Last operation ###\nYou previously wanted to perform the operation "{ctx.last_summary}" on this page '
+            f'and executed the Action "{ctx.last_action}". However, the operation failed or did not meet your expectation.'
+            f"{error_details}\n\nPlease analyze the error details above carefully and fix the issue in your next operation."
+        )
+
     def get_action_prompt(self, ctx: ActionPromptContext) -> str:
         raise NotImplementedError
 
     def get_package_name_prompt(self, app_name: str, app_mapping: str, package_list: List[str]) -> str:
-        raise NotImplementedError
+        """Build package name prompt (common implementation for all platforms)"""
+        # Build mapping information
+        mapping_info = self.mapping_info_template.format(app_mapping=app_mapping) if app_mapping else ""
+
+        # Use template to build prompt
+        return self.package_name_template.format(app_name=app_name, platform=self.platform, mapping_info=mapping_info, package_list=package_list)
 
 
 class Android_prompt(BasePrompt):
@@ -206,67 +328,12 @@ You must choose one of the actions below:
     If you think all the requirements of user's instruction have been completed and no further operation is required, you can choose this action to terminate the operation process."""
 
     def get_action_prompt(self, ctx: ActionPromptContext) -> str:
-        # Build background information
-        image_desc = (
-            "first image is a clean phone screenshot. And the second image is the annotated version of it, where icons are marked with numbers."
-            if ctx.use_som
-            else "image is a phone screenshot."
-        )
-        background = self.background_template.format(image_desc=image_desc, width=ctx.width, height=ctx.height, instruction=ctx.instruction)
-
-        # Build location format information
-        location_format = {
-            "center": "The format of the coordinates is [x, y], x is the pixel from left to right and y is the pixel from top to bottom;",
-            "bbox": "The format of the coordinates is [x1, y1, x2, y2], x is the pixel from left to right and y is the pixel from top to bottom. (x1, y1) is the coordinates of the upper-left corner, (x2, y2) is the coordinates of the bottom-right corner;",
-        }[ctx.location_info]
-
-        # Build content format information
-        content_format = """the content can be one of three types:
-1. text from OCR
-2. icon description or 'icon'
-3. element information from device tree, which contains element attributes like type, text content, identifiers, accessibility descriptions and position information"""
-
-        # Build clickable information
-        clickable_info = "\n".join(
-            f"{info['coordinates']}; {info['text']}"
-            for info in ctx.clickable_infos
-            if info["text"] != "" and info["text"] != "icon: None" and info["coordinates"] != (0, 0)
-        )
-
-        # Build screenshot information
-        screenshot_info = self.screenshot_info_template.format(
-            source_desc="on the current screenshot through system files",
-            location_format=location_format,
-            content_format=content_format,
-            clickable_info=clickable_info,
-        )
-
-        # Build history operations information
-        history_operations = ""
-        if len(ctx.action_history) > 0:
-            history_details = ""
-            for i in range(len(ctx.action_history)):
-                history_details += f"Step-{i+1}:\n\tOperation: {ctx.summary_history[i]}\n\tAction: {ctx.action_history[i]}\n"
-                history_details += f"\tReflection_thought: {ctx.reflection_thought_history[i] if len(ctx.reflection_thought_history) == len(ctx.action_history) else 'None'}\n"
-                history_details += f"\tMemory: {ctx.memory[i] if len(ctx.memory) == len(ctx.action_history) else 'None'}\n"
-            history_operations = self.history_template.format(memory_timing="after", history_details=history_details)
-
-        # Build task list information
-        task_list = (
-            f"### Last Task List ###\nHere is the task list generated in the previous step. Please use this information to update the task list in the current step. Specifically, you should:\n1. Identify and move any completed tasks to the `[Completed Tasks]` section.\n2. Determine the current task and place it in the `[Current Task]` section.\n3. Plan the next immediate operation and detail its steps in the `[Next Operation]` section.\n4. List the remaining tasks (excluding the current and next operation) in the `[Remaining Tasks]` section. Adjust or refine these tasks as needed based on the current context.\n{ctx.task_list}"
-            if ctx.task_list
-            else ""
-        )
-
-        # Build last operation information
-        last_operation = ""
-        if ctx.error_flag:
-            last_operation = f'### Last operation ###\nYou previously wanted to perform the operation "{ctx.last_summary}" on this page and executed the Action "{ctx.last_action}". But you find that this operation does not meet your expectation.There are two possible situations that may cause the above problem: 1. Your action is incorrect, possibly due to incorrect operation coordinates, etc. 2. The target you are operating has not been implemented. You need additional operations to confirm which situation the problem is. You need to reflect and revise your operation this time.'
-
-        # Build reflection information
-        reflection_thought = (
-            f"### The reflection thought of the last operation ###\n{ctx.reflection_thought}" if ctx.error_flag and ctx.reflection_thought else ""
-        )
+        # Build all sections using base class methods
+        background = self._build_background(ctx, "phone")
+        screenshot_info = self._build_screenshot_info(ctx, "on the current screenshot through system files")
+        history_operations = self._build_history_operations(ctx)
+        task_list = self._build_task_list(ctx)
+        last_operation = self._build_last_operation(ctx)
 
         # Use main template to build final prompt
         return self.prompt_template.format(
@@ -277,19 +344,11 @@ You must choose one of the actions below:
             history_operations=history_operations,
             task_list=task_list,
             last_operation=last_operation,
-            reflection_thought=reflection_thought,
             task_requirements=self.task_requirements,
             output_format=self.output_format.format(
                 action_options="Open app () or Run () or Wait or Stop. Only one action can be output at one time."
             ),
         )
-
-    def get_package_name_prompt(self, app_name: str, app_mapping: str, package_list: List[str]) -> str:
-        # Build mapping information
-        mapping_info = self.mapping_info_template.format(app_mapping=app_mapping) if app_mapping else ""
-
-        # Use main template to build prompt
-        return self.package_name_template.format(app_name=app_name, platform=self.platform, mapping_info=mapping_info, package_list=package_list)
 
 
 class PC_prompt(BasePrompt):
@@ -351,67 +410,12 @@ You must choose one of the actions below:
     If all the operations to meet the user's requirements have been completed in ### History operation ###, use this operation to stop the whole process."""
 
     def get_action_prompt(self, ctx: ActionPromptContext) -> str:
-        # Build background information
-        image_desc = (
-            "first image is a clean computer screenshot. And the second image is the annotated version of it, where icons are marked with numbers."
-            if ctx.use_som == 1
-            else "image is a computer screenshot."
-        )
-        background = self.background_template.format(image_desc=image_desc, width=ctx.width, height=ctx.height, instruction=ctx.instruction)
-
-        # Build location format information
-        location_format = {
-            "center": "The format of the coordinates is [x, y], x is the pixel from left to right and y is the pixel from top to bottom;",
-            "bbox": "The format of the coordinates is [x1, y1, x2, y2], x is the pixel from left to right and y is the pixel from top to bottom. (x1, y1) is the coordinates of the upper-left corner, (x2, y2) is the coordinates of the bottom-right corner;",
-        }[ctx.location_info]
-
-        # Build content format information
-        content_format = """the content can be one of three types:
-1. text from OCR
-2. icon description or 'icon'
-3. element information from device tree, which contains element attributes like type, text content, identifiers, accessibility descriptions and position information"""
-
-        # Build clickable information
-        clickable_info = "\n".join(
-            f"{info['coordinates']}; {info['text']}"
-            for info in ctx.clickable_infos
-            if info["text"] != "" and info["text"] != "icon: None" and info["coordinates"] != (0, 0)
-        )
-
-        # Build screenshot information
-        screenshot_info = self.screenshot_info_template.format(
-            source_desc="of the current screenshot",
-            location_format=location_format,
-            content_format=content_format,
-            clickable_info=clickable_info,
-        )
-
-        # Build history operations information
-        history_operations = ""
-        if len(ctx.action_history) > 0:
-            history_details = ""
-            for i in range(len(ctx.action_history)):
-                history_details += f"Step-{i+1}:\n\tOperation: {ctx.summary_history[i]}\n\tAction: {ctx.action_history[i]}\n"
-                history_details += f"\tReflection_thought: {ctx.reflection_thought_history[i] if len(ctx.reflection_thought_history) == len(ctx.action_history) else 'None'}\n"
-                history_details += f"\tMemory: {ctx.memory[i] if len(ctx.memory) == len(ctx.action_history) else 'None'}\n"
-            history_operations = self.history_template.format(memory_timing="before", history_details=history_details)
-
-        # Build task list information
-        task_list = (
-            f"### Last Task List ###\nHere is the task list generated in the previous step. Please use this information to update the task list in the current step. Specifically, you should:\n1. Identify and move any completed tasks to the `[Completed Tasks]` section.\n2. Determine the current task and place it in the `[Current Task]` section.\n3. Plan the next immediate operation and detail its steps in the `[Next Operation]` section.\n4. List the remaining tasks (excluding the current and next operation) in the `[Remaining Tasks]` section. Adjust or refine these tasks as needed based on the current context.\n{ctx.task_list}"
-            if ctx.task_list
-            else ""
-        )
-
-        # Build last operation information
-        last_operation = ""
-        if ctx.error_flag:
-            last_operation = f'### Last operation ###\nYou previously wanted to perform the operation "{ctx.last_summary}" on this page and executed the Action "{ctx.last_action}". But you find that this operation does not meet your expectation. You need to reflect and revise your operation this time.'
-
-        # Build reflection information
-        reflection_thought = (
-            f"### The reflection thought of the last operation ###\n{ctx.reflection_thought}" if ctx.error_flag and ctx.reflection_thought else ""
-        )
+        # Build all sections using base class methods
+        background = self._build_background(ctx, "computer")
+        screenshot_info = self._build_screenshot_info(ctx, "of the current screenshot")
+        history_operations = self._build_history_operations(ctx)
+        task_list = self._build_task_list(ctx)
+        last_operation = self._build_last_operation(ctx)
 
         # Use main template to build final prompt
         return self.prompt_template.format(
@@ -422,19 +426,11 @@ You must choose one of the actions below:
             history_operations=history_operations,
             task_list=task_list,
             last_operation=last_operation,
-            reflection_thought=reflection_thought,
             task_requirements=self.task_requirements,
             output_format=self.output_format.format(
                 action_options="Open App () or Run () or Tell () or Stop. Only one action can be output at one time."
             ),
         )
-
-    def get_package_name_prompt(self, app_name: str, app_mapping: str, package_list: List[str]) -> str:
-        # Build mapping information
-        mapping_info = self.mapping_info_template.format(app_mapping=app_mapping) if app_mapping else ""
-
-        # Use main template to build prompt
-        return self.package_name_template.format(app_name=app_name, platform=self.platform, mapping_info=mapping_info, package_list=package_list)
 
 
 case_batch_check_system_prompt = """
