@@ -78,20 +78,14 @@ class AppEvalRole(Role):
     def _init_osagent(self, **kwargs) -> None:
         """Initialize OSAgent"""
         add_info = (
-            "If you need to interact with elements outside of a web popup, such as calendar or time "
-            "selection popups, make sure to close the popup first. If the content in a text box is "
-            "entered incorrectly, use the select all and delete actions to clear it, then re-enter "
-            "the correct information. To open a folder in File Explorer, please use a double-click. "
-            "If there is a problem with opening the web page, please do not keep trying to refresh "
-            "the page or click repeatedly. After an attempt, please proceed directly to the remaining "
-            "tasks. Pay attention not to use shortcut keys to change the window size when testing "
-            "on the web page. If it involves the display effect of a web page on mobile devices, "
-            "you can open the developer mode of the web page by pressing F12, and then use the "
-            "shortcut key Ctrl+Shift+M to switch to the mobile view. When testing game-related "
-            "content, please pay close attention to judge whether the game functions are abnormal. "
-            "If you find that no expected changes occur after certain operations, directly exit "
-            "and mark this feature as negative. Please use the Tell action to report the results "
-            "of all test cases before executing Stop"
+            """Before interacting with any web page, first browse the page completely from top to bottom by pressing Page Down to page through the content, so you get an overall understanding and can locate the required elements. If after a full scan you still cannot find the element, press Ctrl+F to search by visible keywords such as labels, button text, or field names. Clear the search and continue once the element is located.
+If you need to interact with elements outside of a web popup, such as calendar or time selection popups, make sure to close the popup first. If the content in a text box is entered incorrectly, use the select all and delete actions to clear it, then re-enter the correct information.
+To open a folder in File Explorer, please use a double-click.
+If there is a problem with opening the web page, please do not keep trying to refresh the page or click repeatedly. After an attempt, please proceed directly to the remaining tasks.
+Pay attention not to use shortcut keys to change the window size when testing on the web page.
+If it involves the display effect of a web page on mobile devices, you can open the developer mode of the web page by pressing F12, and then use the shortcut key Ctrl+Shift+M to switch to the mobile view.
+When testing game-related content, please pay close attention to judge whether the game functions are abnormal. If you find that no expected changes occur after certain operations, directly exit and mark this feature as negative.
+Please use the Tell action to report the results of all test cases before executing Stop"""
         )
 
         # Initialize OSAgent
