@@ -441,7 +441,8 @@ Please use the Tell action to report the results of all test cases before execut
         try:
             # Set up logging directory
             self.osagent.log_dirs = f"work_dirs/{log_dir}/{task_name}"
-            if start_func.startswith("http"):
+            # Determine if start_func is a URL (has protocol) or a local path
+            if "://" in start_func:
                 await start_windows(target_url=start_func)
             else:
                 await start_windows(work_path=start_func)
@@ -474,7 +475,7 @@ Please use the Tell action to report the results of all test cases before execut
             image = self.osagent.output_image_path
             executability = await self.test_generator.generate_executability(result_dict, image)
             # Cleanup: kill windows and processes
-            if start_func.startswith("http"):
+            if "://" in start_func:
                 await kill_windows(["Chrome"])
             else:
                 await kill_windows(["Chrome", "cmd", "npm", "projectapp", "Edge"])
