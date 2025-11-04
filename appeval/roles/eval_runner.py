@@ -116,7 +116,7 @@ Please use the Tell action to report the results of all test cases before execut
             log_level="INFO",
             perf_stats_interval=5
         )
-        self.osagent = self.hijacker.hijack(self.osagent)
+        # self.osagent = self.hijacker.hijack(self.osagent)
 
     async def execute_batch_check(self, task_id: str, task_id_case_number: int, check_list: dict) -> None:
         """Execute single verification condition with retry mechanism"""
