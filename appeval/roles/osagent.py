@@ -625,24 +625,33 @@ class OSAgent(Role):
         )
 
         # Parse output
-        self.rc.image_description = (
-            output_action.split("### Image Description ###")[-1].split("### Reflection Thought ###")[0].strip()
-            if "### Image Description ###" in output_action
-            else ""
-        )
+        # Safely parse LLM output sections. If any required marker is missing, return empty to avoid mis-parsing.
+        def _extract_between(text, start, end=None, normalize=False, escape_newlines=False):
+            if start not in text:
+                return ""
+            start_idx = text.find(start) + len(start)
+            if end is not None:
+                end_idx = text.find(end, start_idx)
+                if end_idx == -1:
+                    return ""
+                content = text[start_idx:end_idx]
+            else:
+                content = text[start_idx:]
+            content = content.strip()
+            if escape_newlines:
+                content = content.replace("\n", "\\n")
+            if normalize:
+                content = content.replace(":", "")
+                # collapse multiple spaces
+                content = re.sub(r"\s{2,}", " ", content)
+            return content.strip()
 
-        self.rc.reflection_thought = (
-            output_action.split("### Reflection Thought ###")[-1].split("### Thought ###")[0].strip()
-            if "### Reflection Thought ###" in output_action
-            else ""
-        )
-
-        self.rc.thought = (
-            output_action.split("### Thought ###")[-1].split("### Action ###")[0].replace("\n", " ").replace(":", "").replace("  ", " ").strip()
-        )
-        self.rc.action = output_action.split("### Action ###")[-1].split("### Operation ###")[0].strip()
-        self.rc.summary = output_action.split("### Operation ###")[-1].split("### Task List ###")[0].strip().replace("\n", "\\n")
-        self.rc.task_list = output_action.split("### Task List ###")[-1].strip()
+        self.rc.image_description = _extract_between(output_action, "### Image Description ###", "### Reflection Thought ###", escape_newlines=True)
+        self.rc.reflection_thought = _extract_between(output_action, "### Reflection Thought ###", "### Thought ###", escape_newlines=True)
+        self.rc.thought = _extract_between(output_action, "### Thought ###", "### Action ###", normalize=True)
+        self.rc.action = _extract_between(output_action, "### Action ###", "### Operation ###")
+        self.rc.summary = _extract_between(output_action, "### Operation ###", "### Task List ###", escape_newlines=True)
+        self.rc.task_list = _extract_between(output_action, "### Task List ###")
 
         logger.info(f"\n\n######################## output_action:\n{output_action}\n\n######################## output_action end\n\n\n\n")
 

@@ -61,13 +61,14 @@ class BasePrompt:
 """
 
         # Base background information template
-        self.background_template = (
-            """The {image_desc} width is {width} pixels and its height is {height} pixels. The user's instruction is: {instruction}."""
-        )
+        self.background_template = """The {image_desc} width is {width} pixels and its height is {height} pixels. The user's instruction is: {instruction}.
+
+If multiple screenshots are provided, the LATEST screenshot is the authoritative reference for perception and actions. Earlier screenshots are ONLY for understanding changes. You may compare the latest screenshot with the immediately previous screenshot, but DO NOT reference or rely on screenshots older than that."""
 
         # Base screenshot information template
         self.screenshot_info_template = """
 In order to help you better perceive the content in this screenshot, we extract some information {source_desc}.
+This information pertains ONLY to the latest screenshot.
 This information consists of two parts: coordinates; content. 
 {location_format}
 {content_format}
@@ -90,7 +91,14 @@ There are hints to help you complete the user's instructions. The hints are as f
 - Do not make a location estimate, if it does not pop up, please wait.
 - You should not assume the position of an element you cannot see.
 - Perform only one click at a time, Do not skip steps, please wait for the previous click action to finish.
-- Pay attention to the history to verify that it has been completed and avoid duplicate operations."""
+- Pay attention to the history to verify that it has been completed and avoid duplicate operations.
+
+**Multi-image handling:**
+- Always ground your perception and actions to the latest screenshot (the current step).
+- History screenshots are only for understanding changes; do not describe or rely on elements not visible in the latest screenshot.
+- When comparing images, compare only the latest screenshot vs. the immediately previous screenshot; do not reference or mix observations from older screenshots.
+- If an element is not visible in the latest screenshot, explicitly state that it is not visible instead of inferring from memory or earlier screenshots.
+"""
 
         # Base history operations template
         self.history_template = """
@@ -114,7 +122,7 @@ Your output consists of the following six parts. Please note that only one set o
 **IMPORTANT**: Each section title must be wrapped with `###` on both sides (e.g., `### Title ###`). Follow this exact format:
 
 ### Image Description ###
-Provide a concise description of the current screenshot using only observable information. If multiple screenshots are provided, summarize notable changes between the latest image and previous images.
+Provide a concise description of the latest screenshot ONLY (the current step), using only observable information. Do NOT describe any earlier screenshots. If multiple screenshots are provided, you may add a one-sentence summary of changes between the latest screenshot and the immediately previous screenshot. Never reference screenshots older than the immediately previous one.
 
 ### Reflection Thought ###
 Write a comprehensive analysis of the last operation's outcome in one paragraph. Your analysis must include:
