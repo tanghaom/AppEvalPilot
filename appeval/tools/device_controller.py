@@ -11,7 +11,7 @@ import re
 import time
 import xml.etree.ElementTree as ET
 from pathlib import Path
-from typing import Dict, List, Tuple, Union
+from typing import Dict, List, Optional, Set, Tuple, Union
 
 import pyautogui
 import pyperclip
@@ -346,18 +346,25 @@ class WindowsElementProcessor:
     Used for analyzing and processing UI elements in Windows windows.
     """
 
-    def __init__(self, visible_rect: RECT, location_info: str = "center", max_tokens: int = 50):
+    def __init__(self, visible_rect: RECT, location_info: str = "center", max_tokens: int = 50, max_depth: int = 30, max_nodes: int = 5000):
         """Initialize Windows element processor
 
         Args:
             visible_rect (RECT): Visible area rectangle
             location_info (str): Location information format, can be 'center' or 'bbox'
             max_tokens (int): Maximum token count for text, defaults to 50 tokens
+            max_depth (int): Maximum recursion depth to protect against extremely deep UI trees
+            max_nodes (int): Maximum number of nodes to process to avoid huge traversals
         """
         self.visible_rect = visible_rect
         self.location_info = location_info
         self.max_tokens = max_tokens
         self.SPECIAL_CONTROL_TYPES = {"Hyperlink", "TabItem", "Button", "ComboBox", "ScrollBar", "Edit", "ToolBar"}
+        # Guards to avoid excessive recursion / traversal
+        self.max_depth = max_depth
+        self.max_nodes = max_nodes
+        self._visited: Set[Tuple[int, ...]] = set()
+        self._processed_nodes: int = 0
 
     def _contains_chinese(self, text: str) -> bool:
         """Check if text contains Chinese characters
@@ -501,44 +508,114 @@ class WindowsElementProcessor:
 
         return total_tokens
 
-    def process_element(self, element: UIAWrapper, depth: int = 0) -> List[Dict[str, Union[Tuple[int, ...], str]]]:
-        """Process UI element
+    def _get_runtime_id(self, element: UIAWrapper) -> Optional[Tuple[int, ...]]:
+        """Safely get a stable runtime_id for visited detection.
 
-        Args:
-            element (UIAWrapper): UI element to process
-            depth (int): Recursion depth, defaults to 0
-
-        Returns:
-            List[Dict[str, Union[Tuple[int, ...], str]]]: List of element information, each containing coordinates and text
+        Returns a tuple so it is hashable. May return None if not available.
         """
-        current_elements_info = []
-        rect = element.rectangle()
+        try:
+            runtime_id = getattr(element.element_info, "runtime_id", None)
+            if runtime_id is None:
+                return None
+            # Some backends return list-like runtime ids
+            return tuple(runtime_id)  # type: ignore[arg-type]
+        except Exception:
+            return None
 
-        if element.friendly_class_name() == "TitleBar":
-            return current_elements_info
+    def process_element(self, element: UIAWrapper, depth: int = 0) -> List[Dict[str, Union[Tuple[int, ...], str]]]:
+        """Process UI element with guards against deep/huge trees.
 
-        control_type = element.element_info.control_type
-        text = element.window_text()
+        - Applies depth limit and total node budget.
+        - Uses a visited set keyed by runtime_id to avoid cycles / duplicates.
+        - Wraps UIA calls in try/except to tolerate flaky elements.
+        """
+        results: List[Dict[str, Union[Tuple[int, ...], str]]] = []
 
-        if rect.width() > 0 and rect.height() > 0 and self._is_element_visible(rect):
-            if element.is_enabled():
+        # Depth guard
+        if depth > self.max_depth:
+            return results
+
+        # Node budget guard
+        if self._processed_nodes >= self.max_nodes:
+            return results
+
+        # Visited guard (if runtime_id is available)
+        rid = self._get_runtime_id(element)
+        if rid is not None:
+            if rid in self._visited:
+                return results
+            self._visited.add(rid)
+
+        # Count this node toward the budget as soon as we visit it
+        self._processed_nodes += 1
+        if self._processed_nodes > self.max_nodes:
+            return results
+
+        # Read basic properties safely
+        try:
+            friendly = element.friendly_class_name()
+        except Exception:
+            friendly = ""
+
+        if friendly == "TitleBar":
+            return results
+
+        # Getting rectangle can be expensive; try/except to avoid hard failures
+        try:
+            rect = element.rectangle()
+        except Exception:
+            rect = None  # type: ignore[assignment]
+
+        try:
+            control_type = element.element_info.control_type
+        except Exception:
+            control_type = ""
+
+        try:
+            text = element.window_text()
+        except Exception:
+            text = ""
+
+        try:
+            if rect is not None and rect.width() > 0 and rect.height() > 0 and self._is_element_visible(rect) and element.is_enabled():
                 coordinates = self._calculate_coordinates(rect)
                 rect_str = f"({rect.left}, {rect.top}, {rect.right}, {rect.bottom})"
-                # Truncate text to avoid overly long content affecting LLM inference
                 truncated_text = self._truncate_text(text)
-                current_elements_info.append(
+                results.append(
                     {
                         "coordinates": coordinates,
                         "text": f"text:{truncated_text}; control_type:{control_type}; rect: {rect_str}",
                     }
                 )
+        except Exception:
+            # Ignore elements that may throw due to UIA quirks
+            pass
 
-        for child in element.children():
-            child_text = child.window_text()
-            if not (child.element_info.control_type == "Edit" and child_text and child_text == text):
-                current_elements_info.extend(self.process_element(child, depth + 1))
+        # Recurse into children with protection
+        try:
+            for child in element.children():
+                # Optional: filter duplicated Edit with same text as parent
+                try:
+                    child_text = child.window_text()
+                    if child.element_info.control_type == "Edit" and child_text and child_text == text:
+                        continue
+                except Exception:
+                    pass
 
-        return current_elements_info
+                if self._processed_nodes >= self.max_nodes:
+                    break
+
+                child_results = self.process_element(child, depth + 1)
+                if child_results:
+                    results.extend(child_results)
+
+                if self._processed_nodes >= self.max_nodes:
+                    break
+        except Exception:
+            # If children() fails, skip this branch
+            pass
+
+        return results
 
     def _is_element_visible(self, element_rect: RECT) -> bool:
         """Check if element is visible

@@ -586,29 +586,29 @@ class OSAgent(Role):
 
         # Call LLM to generate decision with history images
         images = []
+        # include previous frames up to think_history_images - 1 using saved origin/draw files
+        try:
+            if isinstance(self.think_history_images, int) and self.think_history_images > 1:
+                # Skip the immediate previous frame (iter-1). Select up to (think_history_images - 1) most recent frames
+                # from iter-2 backward, then append them in chronological order (old -> new).
+                max_hist_frames = self.think_history_images - 1
+                end = self.rc.iter - 2
+                if end >= 0:
+                    start = max(0, end - (max_hist_frames - 1))
+                    for frame_num in range(start, end + 1):  # ascending: old -> new
+                        origin_path = Path(self.save_img) / f"origin_{frame_num}.jpg"
+                        draw_path = Path(self.save_img) / f"draw_{frame_num}.jpg"
+                        if origin_path.exists():
+                            images.append(encode_image(str(origin_path)))
+                            # If SOM is enabled and annotated image exists, also include it for the same frame
+                            if self.use_som and draw_path.exists():
+                                images.append(encode_image(str(draw_path)))
+        except Exception:
+            pass
         # include latest image (with/without SOM)
         images.append(encode_image(self.screenshot_file))
         if self.use_som:
             images.append(encode_image(self.screenshot_som_file))
-        # include previous frames up to think_history_images - 1 using saved origin/draw files
-        try:
-            if isinstance(self.think_history_images, int) and self.think_history_images > 1:
-                # Skip the immediate previous frame because it is identical to current screenshot at the start of a new iteration
-                # Start from two steps back to avoid duplication
-                max_available = max(0, self.rc.iter - 2)
-                max_frames = min(max_available, self.think_history_images - 1)
-                for k in range(2, 2 + max_frames):
-                    frame_num = self.rc.iter - k
-                    if frame_num <= 0:
-                        break
-                    origin_path = Path(self.save_img) / f"origin_{frame_num}.jpg"
-                    draw_path = Path(self.save_img) / f"draw_{frame_num}.jpg"
-                    if origin_path.exists():
-                        images.append(encode_image(str(origin_path)))
-                    if self.use_som and draw_path.exists():
-                        images.append(encode_image(str(draw_path)))
-        except Exception:
-            pass
 
         # Use custom system prompt or default prompt
         system_msg = (
@@ -852,8 +852,8 @@ class OSAgent(Role):
                     self.output_image_path,
                 ) = await self._get_perception_infos(self.screenshot_file, self.screenshot_som_file)
 
-                # Save images
-                self._save_iteration_images(self.rc.iter)
+                # Save images (use 0 for the very first snapshot to avoid being overwritten after think/act)
+                self._save_iteration_images(0)
 
                 # Generate initial task list
                 self.rc.task_list = await self._generate_initial_task_list(

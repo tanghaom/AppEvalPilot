@@ -63,7 +63,7 @@ class BasePrompt:
         # Base background information template
         self.background_template = """The {image_desc} width is {width} pixels and its height is {height} pixels. The user's instruction is: {instruction}.
 
-If multiple screenshots are provided, the LATEST screenshot is the authoritative reference for perception and actions. Earlier screenshots are ONLY for understanding changes. You may compare the latest screenshot with the immediately previous screenshot, but DO NOT reference or rely on screenshots older than that."""
+If multiple screenshots are provided, they are ordered from OLDEST to NEWEST, and the LATEST screenshot (current step) is shown LAST. Always ground your perception and actions on the latest screenshot. Earlier screenshots are ONLY for understanding changes. You may compare the latest screenshot with the immediately previous screenshot, but DO NOT reference or rely on screenshots older than that."""
 
         # Base screenshot information template
         self.screenshot_info_template = """
@@ -94,6 +94,7 @@ There are hints to help you complete the user's instructions. The hints are as f
 - Pay attention to the history to verify that it has been completed and avoid duplicate operations.
 
 **Multi-image handling:**
+- The latest screenshot is the LAST image in the sequence; history images appear BEFORE it, ordered from oldest to newest.
 - Always ground your perception and actions to the latest screenshot (the current step).
 - History screenshots are only for understanding changes; do not describe or rely on elements not visible in the latest screenshot.
 - When comparing images, compare only the latest screenshot vs. the immediately previous screenshot; do not reference or mix observations from older screenshots.
@@ -188,7 +189,7 @@ The following is the correspondence between some common application names and th
     def _build_background(self, ctx: ActionPromptContext, device_type: str) -> str:
         """Build background information section"""
         image_desc = (
-            f"first image is a clean {device_type} screenshot. And the second image is the annotated version of it, where icons are marked with numbers."
+            f"screenshots include both a clean {device_type} screenshot and an annotated version where icons are marked with numbers."
             if ctx.use_som
             else f"image is a {device_type} screenshot."
         )
