@@ -55,6 +55,8 @@ async def start_windows(
     Returns:
         int: Process ID (PID) of the started process
     """
+    # clean up the chrome windows
+    await kill_windows(["Chrome"])
     if target_url:
         app_path = Path(app_path)
         if not app_path.exists():
