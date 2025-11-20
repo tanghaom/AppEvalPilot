@@ -26,6 +26,7 @@ class ActionPromptContext(BaseModel):
     use_som: bool  # Whether to use SOM
     location_info: str = "center"  # Location format, defaults to center coordinates
     icon_caption: bool = True  # Whether to use icon descriptions
+    screenshot_comparison: str = ""  # Screenshot comparison result between previous and current screenshots
 
 
 class BasePrompt:
@@ -52,6 +53,8 @@ class BasePrompt:
 {task_list}
 
 {last_operation}
+
+{screenshot_comparison}
 
 ### Task requirements ###
 {task_requirements}
@@ -343,11 +346,19 @@ You must choose one of the actions below:
         history_operations = self._build_history_operations(ctx)
         task_list = self._build_task_list(ctx)
         last_operation = self._build_last_operation(ctx)
+        
+        # Build screenshot comparison information
+        screenshot_comparison = (
+            f"### Screenshot Comparison ###\nThe following is a comparison of changes between the previous screenshot and the current screenshot after the last operation:\n{ctx.screenshot_comparison}\n"
+            if ctx.screenshot_comparison
+            else ""
+        )
 
         # Use main template to build final prompt
         return self.prompt_template.format(
             background=background,
             screenshot_info=screenshot_info,
+            screenshot_comparison=screenshot_comparison,
             hints=self.hints,
             additional_info=ctx.add_info,
             history_operations=history_operations,
@@ -425,11 +436,19 @@ You must choose one of the actions below:
         history_operations = self._build_history_operations(ctx)
         task_list = self._build_task_list(ctx)
         last_operation = self._build_last_operation(ctx)
+        
+        # Build screenshot comparison information
+        screenshot_comparison = (
+            f"### Screenshot Comparison ###\nThe following is a comparison of changes between the previous screenshot and the current screenshot after the last operation:\n{ctx.screenshot_comparison}\n"
+            if ctx.screenshot_comparison
+            else ""
+        )
 
         # Use main template to build final prompt
         return self.prompt_template.format(
             background=background,
             screenshot_info=screenshot_info,
+            screenshot_comparison=screenshot_comparison,
             hints=self.hints,
             additional_info=ctx.add_info,
             history_operations=history_operations,

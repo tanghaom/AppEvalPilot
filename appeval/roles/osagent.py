@@ -26,6 +26,9 @@ from PIL import Image, ImageDraw, ImageFont
 from pydantic import ConfigDict, Field
 from tenacity import retry, retry_if_exception_type, stop_after_attempt, wait_fixed
 
+from appeval.actions.reflection import Reflection
+from appeval.actions.screen_info_extractor import ScreenInfoExtractor
+from appeval.prompts.comparison import COMPARISON_PROMPT_TEMPLATE
 from appeval.prompts.osagent import ActionPromptContext, Android_prompt, PC_prompt
 from appeval.tools.chrome_debugger import ChromeDebugger
 from appeval.tools.device_controller import ControllerTool
@@ -534,6 +537,57 @@ class OSAgent(Role):
             outputs.append(output)
         return outputs
 
+    async def _compare_screenshots(
+        self, before_screenshot: str, after_screenshot: str, instruction: str, operation_thought: str, action: str
+    ) -> str:
+        """Compare two screenshots and return a description of changes.
+        
+        Args:
+            before_screenshot: Path to the screenshot before the operation
+            after_screenshot: Path to the screenshot after the operation
+            instruction: User instruction
+            operation_thought: Operation thought
+            action: Executed action
+            
+        Returns:
+            str: Description of changes between the two screenshots
+        """
+        
+        
+        prompt = COMPARISON_PROMPT_TEMPLATE.format(
+            instruction=instruction,
+            operation_thought=operation_thought,
+            action=action,
+        )
+        
+        # Encode images
+        before_image = encode_image(before_screenshot)
+        after_image = encode_image(after_screenshot)
+        
+        # Build message content with images
+        content = [{"type": "text", "text": prompt}]
+        for image in [before_image, after_image]:
+            url = f"data:image/jpeg;base64,{image}"
+            content.append({"type": "image_url", "image_url": {"url": url}})
+        
+        user_message = {"role": "user", "content": content}
+        
+        # Build messages list
+        messages = []
+        system_msg = (
+            self.system_prompt
+            if self.system_prompt
+            else f"You are a helpful AI assistant specialized in analyzing UI changes and action impacts."
+        )
+        if self.llm.use_system_prompt:
+            messages.append(self.llm._system_msg(system_msg))
+        messages.append(user_message)
+        
+        # Call LLM to get comparison result
+        output = await self.llm.acompletion_text(messages, stream=False)
+        
+        return output.strip()
+
     @retry(
         stop=stop_after_attempt(10),
         wait=wait_fixed(3),
@@ -558,6 +612,26 @@ class OSAgent(Role):
         else:
             logger.info("Knowledge base currently only implemented for Android")
 
+        # Compare screenshots if previous screenshot exists
+        screenshot_comparison = ""
+        if self.rc.iter > 1 and Path(self.last_screenshot_file).exists() and Path(self.screenshot_file).exists():
+            try:
+                # Get last operation context for comparison
+                last_thought = self.rc.thought_history[-1] if self.rc.thought_history else ""
+                last_action = self.rc.action_history[-1] if self.rc.action_history else ""
+                
+                screenshot_comparison = await self._compare_screenshots(
+                    before_screenshot=self.last_screenshot_file,
+                    after_screenshot=self.screenshot_file,
+                    instruction=self.instruction,
+                    operation_thought=last_thought,
+                    action=last_action,
+                )
+                logger.info(f"\n\n######################## Screenshot Comparison:\n{screenshot_comparison}\n\n######################## End of Screenshot Comparison\n\n\n\n")
+            except Exception as e:
+                logger.warning(f"Failed to compare screenshots: {e}")
+                screenshot_comparison = ""
+
         # Generate action
         ctx = ActionPromptContext(
             instruction=self.instruction,
@@ -579,6 +653,7 @@ class OSAgent(Role):
             task_list=self.rc.task_list,
             use_som=self.use_som,
             location_info=self.location_info,
+            screenshot_comparison=screenshot_comparison,
         )
 
         prompt_action = self.prompt_utils.get_action_prompt(ctx)
