@@ -28,6 +28,7 @@ from tenacity import retry, retry_if_exception_type, stop_after_attempt, wait_fi
 
 from appeval.prompts.osagent import ActionPromptContext, Android_prompt, PC_prompt
 from appeval.tools.chrome_debugger import ChromeDebugger
+from appeval.tools.comparison import ComparisonTool
 from appeval.tools.device_controller import ControllerTool
 from appeval.tools.icon_detect import IconDetectTool
 from appeval.tools.ocr import OCRTool
@@ -42,25 +43,33 @@ class OSAgentContext(RoleContext):
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
     thought: str = ""  # Current thinking content
-    thought_history: List[str] = Field(default_factory=list)  # Historical thinking records list
-    summary_history: List[str] = Field(default_factory=list)  # Historical operation summary list
-    action_history: List[str] = Field(default_factory=list)  # Historical executed action list
-    reflection_thought_history: List[str] = Field(default_factory=list)  # Historical reflection records list
+    # Historical thinking records list
+    thought_history: List[str] = Field(default_factory=list)
+    # Historical operation summary list
+    summary_history: List[str] = Field(default_factory=list)
+    # Historical executed action list
+    action_history: List[str] = Field(default_factory=list)
+    reflection_thought_history: List[str] = Field(
+        default_factory=list)  # Historical reflection records list
     reflection_thought: str = ""  # Current reflection content
     summary: str = ""  # Current operation summary
     image_description: str = ""  # Current image description extracted during thinking
     action: str = ""  # Current executed action
     task_list: str = ""  # Task list
     completed_requirements: str = ""  # Completed requirements
-    memory: List[str] = Field(default_factory=list)  # Important content memory list
+    # Important content memory list
+    memory: List[str] = Field(default_factory=list)
     error_flag: bool = False  # Error flag
     error_message: str = ""  # Error message when action execution fails
     iter: int = 0  # Current iteration count
-    perception_infos: List[Dict] = Field(default_factory=list)  # Current perception information list
-    last_perception_infos: List[Dict] = Field(default_factory=list)  # Previous perception information list
+    # Current perception information list
+    perception_infos: List[Dict] = Field(default_factory=list)
+    last_perception_infos: List[Dict] = Field(
+        default_factory=list)  # Previous perception information list
     width: int = 0  # Screen width
     height: int = 0  # Screen height
-    webbrowser_console_logs: List[Any] = Field(default_factory=list)  # Browser console log list
+    webbrowser_console_logs: List[Any] = Field(
+        default_factory=list)  # Browser console log list
 
     def reset(self) -> None:
         """Reset all states to initial values"""
@@ -157,7 +166,8 @@ class OSAgent(Role):
     def _init_config(self, params: dict) -> None:
         """Initialize configuration parameters"""
         # Filter out self and kwargs
-        config_params = {k: v for k, v in params.items() if k not in ["self", "kwargs"]}
+        config_params = {k: v for k, v in params.items() if k not in [
+            "self", "kwargs"]}
         for key, value in config_params.items():
             setattr(self, key, value)
 
@@ -209,6 +219,9 @@ class OSAgent(Role):
         if self.use_chrome_debugger:
             self.chrome_debugger = ChromeDebugger()
 
+        # Initialize comparison tool
+        self.comparison_tool = ComparisonTool()
+
     def _get_timestamped_paths(self) -> None:
         """Update file paths with timestamps"""
         current_time = time.strftime("%Y%m%d%H%M")
@@ -221,9 +234,12 @@ class OSAgent(Role):
         # Screenshot related paths
         self.screenshot_dir = log_dir / "screenshot"
         self.screenshot_file = str(self.screenshot_dir / "screenshot.jpg")
-        self.screenshot_som_file = str(self.screenshot_dir / "screenshot_som.png")
-        self.last_screenshot_file = str(self.screenshot_dir / "last_screenshot.jpg")
-        self.last_screenshot_som_file = str(self.screenshot_dir / "last_screenshot_som.png")
+        self.screenshot_som_file = str(
+            self.screenshot_dir / "screenshot_som.png")
+        self.last_screenshot_file = str(
+            self.screenshot_dir / "last_screenshot.jpg")
+        self.last_screenshot_som_file = str(
+            self.screenshot_dir / "last_screenshot_som.png")
 
     def _init_os_env(self) -> None:
         """Initialize operating system environment.
@@ -303,7 +319,8 @@ class OSAgent(Role):
         )
 
         # Add console log handler
-        logger.add(sys.stdout, level="DEBUG", format=log_format, colorize=True, enqueue=True)
+        logger.add(sys.stdout, level="DEBUG", format=log_format,
+                   colorize=True, enqueue=True)
 
         logger.info(f"Initialized logging, log file: {self.save_info}")
 
@@ -327,7 +344,8 @@ class OSAgent(Role):
         text_offset_y = int(height * 0.013)
 
         # Generate random colors for each bounding box
-        colors = [tuple(random.randint(0, 255) for _ in range(3)) for _ in range(len(coordinates))]
+        colors = [tuple(random.randint(0, 255) for _ in range(3))
+                  for _ in range(len(coordinates))]
 
         # Draw bounding boxes and numbers
         draw = ImageDraw.Draw(image)
@@ -414,7 +432,8 @@ class OSAgent(Role):
         # OCR processing
         text, text_coordinates = [], []
         if self.use_ocr:
-            text, text_coordinates = self.ocr_tool.ocr(screenshot_file, split=self.quad_split_ocr)
+            text, text_coordinates = self.ocr_tool.ocr(
+                screenshot_file, split=self.quad_split_ocr)
 
         # Icon detection
         icon_coordinates = []
@@ -425,9 +444,11 @@ class OSAgent(Role):
         output_image_path = screenshot_som_file
         if self.use_ocr and self.use_icon_detect and self.draw_text_box:
             rec_list = text_coordinates + icon_coordinates
-            self._draw_bounding_boxes(screenshot_file, copy.deepcopy(rec_list), screenshot_som_file, self.font_path)
+            self._draw_bounding_boxes(screenshot_file, copy.deepcopy(
+                rec_list), screenshot_som_file, self.font_path)
         elif self.use_icon_detect:
-            self._draw_bounding_boxes(screenshot_file, copy.deepcopy(icon_coordinates), screenshot_som_file, self.font_path)
+            self._draw_bounding_boxes(screenshot_file, copy.deepcopy(
+                icon_coordinates), screenshot_som_file, self.font_path)
         else:
             output_image_path = screenshot_file
 
@@ -445,7 +466,8 @@ class OSAgent(Role):
                         "coordinates": text_coordinates[i],
                     }
                 else:
-                    perception_info = {"text": f"text: {text[i]}", "coordinates": text_coordinates[i]}
+                    perception_info = {
+                        "text": f"text: {text[i]}", "coordinates": text_coordinates[i]}
                 perception_infos.append(perception_info)
 
         # Add icon information
@@ -453,33 +475,40 @@ class OSAgent(Role):
             for i in range(len(icon_coordinates)):
                 mark_number += 1
                 if self.use_som:
-                    perception_info = {"text": f"mark number: {mark_number} icon", "coordinates": icon_coordinates[i]}
+                    perception_info = {
+                        "text": f"mark number: {mark_number} icon", "coordinates": icon_coordinates[i]}
                 else:
-                    perception_info = {"text": "icon", "coordinates": icon_coordinates[i]}
+                    perception_info = {"text": "icon",
+                                       "coordinates": icon_coordinates[i]}
                 perception_infos.append(perception_info)
 
         # Icon description
         if self.use_icon_detect and self.use_icon_caption:
-            icon_indices = [i for i in range(len(perception_infos)) if "icon" in perception_infos[i]["text"]]
+            icon_indices = [i for i in range(
+                len(perception_infos)) if "icon" in perception_infos[i]["text"]]
             if icon_indices:
-                icon_boxes = [perception_infos[i]["coordinates"] for i in icon_indices]
+                icon_boxes = [perception_infos[i]["coordinates"]
+                              for i in icon_indices]
                 descriptions = await self.icon_tool.caption(screenshot_file, icon_boxes, platform=self.platform)
 
                 # Add description to perception information
                 for idx, desc_idx in enumerate(icon_indices):
                     if descriptions.get(idx + 1):
-                        perception_infos[desc_idx]["text"] += ": " + descriptions[idx + 1].replace("\n", " ")
+                        perception_infos[desc_idx]["text"] += ": " + \
+                            descriptions[idx + 1].replace("\n", " ")
 
         # According to parameter modify coordinate information
         if self.location_info == "center":
             for i in range(len(perception_infos)):
                 x1, y1, x2, y2 = perception_infos[i]["coordinates"]
-                perception_infos[i]["coordinates"] = [int((x1 + x2) / 2), int((y1 + y2) / 2)]
+                perception_infos[i]["coordinates"] = [
+                    int((x1 + x2) / 2), int((y1 + y2) / 2)]
         elif self.location_info == "icon_center":
             for i in range(len(perception_infos)):
                 if "icon" in perception_infos[i]["text"]:
                     x1, y1, x2, y2 = perception_infos[i]["coordinates"]
-                    perception_infos[i]["coordinates"] = [int((x1 + x2) / 2), int((y1 + y2) / 2)]
+                    perception_infos[i]["coordinates"] = [
+                        int((x1 + x2) / 2), int((y1 + y2) / 2)]
 
         # If extend_xml_infos is enabled, then get XML information
         if self.extend_xml_infos and self.platform in ["Android", "Windows"]:
@@ -504,7 +533,8 @@ class OSAgent(Role):
         if not self.rc.webbrowser_console_logs:
             return []  # If there is no log, directly return empty list
         if expand:
-            return [log for log in self.rc.webbrowser_console_logs[-steps:] if log]  # Filter empty list
+            # Filter empty list
+            return [log for log in self.rc.webbrowser_console_logs[-steps:] if log]
         else:
             # Use zip to pair operation history and log
             outputs = [
@@ -556,7 +586,33 @@ class OSAgent(Role):
                 info = "No add_info"
             logger.info(f"\n\n\n\n\n\n#### add_info:{info}\n\n")
         else:
-            logger.info("Knowledge base currently only implemented for Android")
+            logger.info(
+                "Knowledge base currently only implemented for Android")
+
+        # Compare screenshots if previous screenshot exists
+        comparison_result = ""
+        if self.rc.iter > 1:
+            # Check if last screenshot exists
+            last_screenshot = Path(self.last_screenshot_file)
+            current_screenshot = Path(self.screenshot_file)
+
+            if last_screenshot.exists() and current_screenshot.exists():
+                try:
+                    comparison_result = await self.comparison_tool.compare_screenshots(
+                        before_screenshot=str(last_screenshot),
+                        after_screenshot=str(current_screenshot),
+                        instruction=self.instruction,
+                        operation_thought=self.rc.thought_history[-1] if self.rc.thought_history else "",
+                        action=self.rc.action_history[-1] if self.rc.action_history else "",
+                    )
+                    logger.info(
+                        f"\n\n#### Comparison Result:\n{comparison_result}\n\n")
+                except Exception as e:
+                    logger.error(f"Failed to compare screenshots: {str(e)}")
+                    comparison_result = f"Comparison analysis failed: {str(e)}"
+            else:
+                logger.debug(
+                    "Previous screenshot not available for comparison")
 
         # Generate action
         ctx = ActionPromptContext(
@@ -579,10 +635,12 @@ class OSAgent(Role):
             task_list=self.rc.task_list,
             use_som=self.use_som,
             location_info=self.location_info,
+            comparison_result=comparison_result,
         )
 
         prompt_action = self.prompt_utils.get_action_prompt(ctx)
-        logger.info(f"\n\n######################## prompt_action:\n{prompt_action}\n\n######################## prompt_action end\n\n\n\n")
+        logger.info(
+            f"\n\n######################## prompt_action:\n{prompt_action}\n\n######################## prompt_action end\n\n\n\n")
 
         # Call LLM to generate decision with history images
         images = []
@@ -596,8 +654,10 @@ class OSAgent(Role):
                 if end >= 0:
                     start = max(0, end - (max_hist_frames - 1))
                     for frame_num in range(start, end + 1):  # ascending: old -> new
-                        origin_path = Path(self.save_img) / f"origin_{frame_num}.jpg"
-                        draw_path = Path(self.save_img) / f"draw_{frame_num}.jpg"
+                        origin_path = Path(self.save_img) / \
+                            f"origin_{frame_num}.jpg"
+                        draw_path = Path(self.save_img) / \
+                            f"draw_{frame_num}.jpg"
                         if origin_path.exists():
                             images.append(encode_image(str(origin_path)))
                             # If SOM is enabled and annotated image exists, also include it for the same frame
@@ -646,14 +706,21 @@ class OSAgent(Role):
                 content = re.sub(r"\s{2,}", " ", content)
             return content.strip()
 
-        self.rc.image_description = _extract_between(output_action, "### Image Description ###", "### Reflection Thought ###", escape_newlines=True)
-        self.rc.reflection_thought = _extract_between(output_action, "### Reflection Thought ###", "### Thought ###", escape_newlines=True)
-        self.rc.thought = _extract_between(output_action, "### Thought ###", "### Action ###", normalize=True)
-        self.rc.action = _extract_between(output_action, "### Action ###", "### Operation ###")
-        self.rc.summary = _extract_between(output_action, "### Operation ###", "### Task List ###", escape_newlines=True)
-        self.rc.task_list = _extract_between(output_action, "### Task List ###")
+        self.rc.image_description = _extract_between(
+            output_action, "### Image Description ###", "### Reflection Thought ###", escape_newlines=True)
+        self.rc.reflection_thought = _extract_between(
+            output_action, "### Reflection Thought ###", "### Thought ###", escape_newlines=True)
+        self.rc.thought = _extract_between(
+            output_action, "### Thought ###", "### Action ###", normalize=True)
+        self.rc.action = _extract_between(
+            output_action, "### Action ###", "### Operation ###")
+        self.rc.summary = _extract_between(
+            output_action, "### Operation ###", "### Task List ###", escape_newlines=True)
+        self.rc.task_list = _extract_between(
+            output_action, "### Task List ###")
 
-        logger.info(f"\n\n######################## output_action:\n{output_action}\n\n######################## output_action end\n\n\n\n")
+        logger.info(
+            f"\n\n######################## output_action:\n{output_action}\n\n######################## output_action end\n\n\n\n")
 
         if self.rc.action.startswith("Stop"):
             return False
@@ -677,14 +744,17 @@ class OSAgent(Role):
         if map_path.exists():
             app_mapping = map_path.read_text(encoding="utf-8").strip()
         else:
-            logger.warning(f"{map_path} file does not exist, using default empty mapping")
+            logger.warning(
+                f"{map_path} file does not exist, using default empty mapping")
 
         # Get package name
-        prompt_package_name = self.prompt_utils.get_package_name_prompt(app_name=app_name, app_mapping=app_mapping, package_list=package_list)
+        prompt_package_name = self.prompt_utils.get_package_name_prompt(
+            app_name=app_name, app_mapping=app_mapping, package_list=package_list)
 
         package_name = await self.llm.aask(
             prompt_package_name,
-            system_msgs=[f"You are a helpful AI {'mobile phone' if self.platform=='Android' else 'PC'} operating assistant."],
+            system_msgs=[
+                f"You are a helpful AI {'mobile phone' if self.platform=='Android' else 'PC'} operating assistant."],
             stream=False,
         )
 
@@ -710,13 +780,15 @@ class OSAgent(Role):
             self.controller.open_app(app_name)
             time.sleep(10)
         else:
-            logger.error(f"Platform {self.platform} not supported for opening apps")
+            logger.error(
+                f"Platform {self.platform} not supported for opening apps")
 
     async def _act(self) -> Message:
         """Execute action step"""
         if self.use_chrome_debugger:
             # Store browser logs from before action execution in previous action log. Note: Need a log for step 0 here since mgx web testing is not started by osagent
-            self.rc.webbrowser_console_logs.append(self.chrome_debugger.get_new_messages())
+            self.rc.webbrowser_console_logs.append(
+                self.chrome_debugger.get_new_messages())
 
         self.run_action_failed = False
         self.run_action_failed_exception = ""
@@ -831,13 +903,15 @@ class OSAgent(Role):
         )
 
         task_list = initial_task_list.strip()
-        logger.info(f"\n\n######################## Initial Task List:\n{task_list}\n\n######################## End of Initial Task List\n\n\n\n")
+        logger.info(
+            f"\n\n######################## Initial Task List:\n{task_list}\n\n######################## End of Initial Task List\n\n\n\n")
 
         return task_list
 
     async def _react(self) -> Message:
         self.rc.iter = 0
-        rsp = AIMessage(content="No actions taken yet", cause_by=Action)  # will be overwritten after Role _act
+        # will be overwritten after Role _act
+        rsp = AIMessage(content="No actions taken yet", cause_by=Action)
         while self.rc.iter < self.max_iters and not self._check_last_three_start_with_wait(self.rc.action_history):
             self.rc.iter += 1
 
@@ -863,10 +937,12 @@ class OSAgent(Role):
             # think
             has_todo = await self._think()
             if not has_todo:
-                rsp = AIMessage(content="OS Agent has finished all tasks", cause_by=Action)
+                rsp = AIMessage(
+                    content="OS Agent has finished all tasks", cause_by=Action)
                 break
             # act
-            logger.debug(f"{self._setting}: {self.rc.state=}, will do {self.rc.todo}")
+            logger.debug(
+                f"{self._setting}: {self.rc.state=}, will do {self.rc.todo}")
             rsp = await self._act()
 
         if self.use_chrome_debugger:
