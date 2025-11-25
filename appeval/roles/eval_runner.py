@@ -239,8 +239,15 @@ Please use the Tell action to report the results of all test cases before execut
             task_id, task_id_case_number, action_history, task_list, memory, iter_num, check_list, return_dict=True
         )
 
-    async def _execute_task_batch(self, test_cases: dict, max_retry_uncertain: int = 1) -> None:
-        """Execute batch of test tasks with retry mechanism"""
+    async def _execute_task_batch(self, test_cases: dict, max_retry_uncertain: int = 1, sequential_mode: bool = False) -> None:
+        """Execute batch of test tasks with retry mechanism
+
+        Args:
+            test_cases: Dictionary of test cases to execute
+            max_retry_uncertain: Maximum retries for uncertain cases
+            sequential_mode: If True, execute test cases one by one without browser cleanup between cases,
+                           only reset osagent state. If False, execute all test cases at once (default).
+        """
         for task_id, task_info in test_cases.items():
             if "test_cases" not in task_info:
                 continue
@@ -260,6 +267,7 @@ Please use the Tell action to report the results of all test cases before execut
                     log_dir="batch",
                     max_retry_uncertain=max_retry_uncertain,
                     save_to_file=False,
+                    sequential_mode=sequential_mode,
                 )
                 task_info["test_cases"] = final_test_cases
 
@@ -450,23 +458,75 @@ Please use the Tell action to report the results of all test cases before execut
             await self._cleanup_environment(is_web, pid)
 
     async def _run_test_with_retry(
-        self, task_name: str, test_cases: dict, start_func: str, log_dir: str, max_retry_uncertain: int, save_to_file: bool = True
+        self,
+        task_name: str,
+        test_cases: dict,
+        start_func: str,
+        log_dir: str,
+        max_retry_uncertain: int,
+        save_to_file: bool = True,
+        sequential_mode: bool = False,
     ) -> tuple[dict, bool]:
-        """Core test execution logic with retry mechanism"""
+        """Core test execution logic with retry mechanism
+
+        Args:
+            task_name: Task identifier
+            test_cases: Dictionary of test cases to execute
+            start_func: URL or work path to start the environment
+            log_dir: Directory for logs
+            max_retry_uncertain: Maximum retries for uncertain cases
+            save_to_file: Whether to save results to file
+            sequential_mode: If True, execute test cases one by one without browser cleanup between cases,
+                           only reset osagent state. If False, execute all test cases at once (default).
+        """
         self.osagent.log_dirs = f"work_dirs/{log_dir}/{task_name}"
         is_web = start_func.startswith("http://") or start_func.startswith("https://")
 
-        # Start environment and execute initial tests
+        # Start environment
         await self._start_environment(url=start_func if is_web else None, work_path=start_func if not is_web else None)
         await asyncio.sleep(SLEEP_BEFORE_EXECUTE)
 
-        logger.info("Start executing automated testing...")
-        result_dict = await self.execute_api_check(task_name, len(test_cases), test_cases)
+        if sequential_mode:
+            # Sequential mode: execute test cases one by one
+            logger.info(f"Start executing automated testing in sequential mode ({len(test_cases)} cases)...")
+            all_results = {}
+            base_log_dir = self.osagent.log_dirs
 
-        # Merge results
-        for key, value in result_dict.items():
-            if key in test_cases:
-                test_cases[key].update({"result": value.get("result", ""), "evidence": value.get("evidence", "")})
+            for idx, (case_id, case_info) in enumerate(test_cases.items(), 1):
+                logger.info(f"Executing test case {idx}/{len(test_cases)}: {case_id}")
+
+                # Set case-specific log directory to avoid overwriting
+                self.osagent.log_dirs = f"{base_log_dir}/{case_id}"
+
+                # Create single case dict for execution
+                single_case = {case_id: case_info}
+
+                # Execute single test case
+                result_dict = await self.execute_api_check(task_name, 1, single_case)
+
+                # Merge result
+                if case_id in result_dict:
+                    all_results[case_id] = result_dict[case_id]
+                    test_cases[case_id].update(
+                        {"result": result_dict[case_id].get("result", ""), "evidence": result_dict[case_id].get("evidence", "")}
+                    )
+
+                # Reset osagent state for next case (no browser cleanup)
+                if idx < len(test_cases):
+                    logger.info("Resetting osagent state for next case...")
+                    self.osagent.rc.reset()
+
+            # Restore base log directory
+            self.osagent.log_dirs = base_log_dir
+        else:
+            # Batch mode: execute all test cases at once (original behavior)
+            logger.info("Start executing automated testing...")
+            result_dict = await self.execute_api_check(task_name, len(test_cases), test_cases)
+
+            # Merge results
+            for key, value in result_dict.items():
+                if key in test_cases:
+                    test_cases[key].update({"result": value.get("result", ""), "evidence": value.get("evidence", "")})
 
         result = {task_name: {"test_cases": test_cases}}
 
@@ -501,8 +561,19 @@ Please use the Tell action to report the results of all test cases before execut
         start_func: str,
         log_dir: str,
         max_retry_uncertain: int = 1,
+        sequential_mode: bool = False,
     ) -> tuple[dict, bool]:
-        """Run API testing with retry mechanism for uncertain results"""
+        """Run API testing with retry mechanism for uncertain results
+
+        Args:
+            task_name: Task identifier
+            test_cases: Dictionary of test cases to execute
+            start_func: URL or work path to start the environment
+            log_dir: Directory for logs
+            max_retry_uncertain: Maximum retries for uncertain cases
+            sequential_mode: If True, execute test cases one by one without browser cleanup between cases,
+                           only reset osagent state. If False, execute all test cases at once (default).
+        """
         try:
             final_test_cases, executability = await self._run_test_with_retry(
                 task_name=task_name,
@@ -511,6 +582,7 @@ Please use the Tell action to report the results of all test cases before execut
                 log_dir=log_dir,
                 max_retry_uncertain=max_retry_uncertain,
                 save_to_file=True,
+                sequential_mode=sequential_mode,
             )
             logger.info("Test process completed")
             return final_test_cases, executability
@@ -528,8 +600,21 @@ Please use the Tell action to report the results of all test cases before execut
         json_path: str = "data/temp.json",
         use_json_only: bool = False,
         max_retry_uncertain: int = 1,
+        sequential_mode: bool = False,
     ) -> tuple[dict, bool]:
-        """Execute single test case with retry mechanism for uncertain results"""
+        """Execute single test case with retry mechanism for uncertain results
+
+        Args:
+            case_name: Test case name
+            url: Test target URL
+            work_path: Work path for local application
+            user_requirement: Requirement description
+            json_path: Output JSON file path
+            use_json_only: Whether to only use JSON files
+            max_retry_uncertain: Maximum retries for uncertain cases
+            sequential_mode: If True, execute test cases one by one without browser cleanup between cases,
+                           only reset osagent state. If False, execute all test cases at once (default).
+        """
         # Generate test cases if needed
         if not use_json_only:
             logger.info(f"Start generating automated test cases for '{case_name}'...")
@@ -560,6 +645,7 @@ Please use the Tell action to report the results of all test cases before execut
             log_dir=f"single/{Path(json_path).stem}",
             max_retry_uncertain=max_retry_uncertain,
             save_to_file=False,
+            sequential_mode=sequential_mode,
         )
 
         # Update and save results
@@ -577,6 +663,7 @@ Please use the Tell action to report the results of all test cases before execut
         batch_mode: str = "standard",
         generate_case_only: bool = False,
         max_retry_uncertain: int = 1,
+        sequential_mode: bool = False,
     ) -> Union[tuple[dict, bool], Any, None]:
         """Run batch testing (unified for both standard and mini modes)
 
@@ -594,6 +681,8 @@ Please use the Tell action to report the results of all test cases before execut
             batch_mode: Batch mode - "standard" or "mini" (default: "standard")
             generate_case_only: Whether to only generate test cases (only for mini mode)
             max_retry_uncertain: Maximum retry times for uncertain cases (default: 1)
+            sequential_mode: If True, execute test cases one by one without browser cleanup between cases,
+                           only reset osagent state. If False, execute all test cases at once (default).
 
         Returns:
             - For standard mode: tuple[dict, bool] (result dict and executability)
@@ -619,7 +708,7 @@ Please use the Tell action to report the results of all test cases before execut
             # Execute tests with retry support
             logger.info("Start executing automated testing...")
             test_cases = read_json_file(self.rc.json_file)
-            await self._execute_task_batch(test_cases, max_retry_uncertain=max_retry_uncertain)
+            await self._execute_task_batch(test_cases, max_retry_uncertain=max_retry_uncertain, sequential_mode=sequential_mode)
             write_json_file(self.rc.json_file, test_cases, indent=4)
 
             # Output results to Excel
@@ -640,7 +729,12 @@ Please use the Tell action to report the results of all test cases before execut
             raise
 
     async def run_mini_batch(
-        self, project_excel_path: str = None, case_excel_path: str = None, generate_case_only: bool = False, max_retry_uncertain: int = 1
+        self,
+        project_excel_path: str = None,
+        case_excel_path: str = None,
+        generate_case_only: bool = False,
+        max_retry_uncertain: int = 1,
+        sequential_mode: bool = False,
     ) -> Optional[Any]:
         """Deprecated: Use run_batch(batch_mode='mini') instead"""
         return await self.run_batch(
@@ -649,6 +743,7 @@ Please use the Tell action to report the results of all test cases before execut
             batch_mode="mini",
             generate_case_only=generate_case_only,
             max_retry_uncertain=max_retry_uncertain,
+            sequential_mode=sequential_mode,
         )
 
     async def run(self, **kwargs) -> Union[tuple[dict, bool], dict, Exception]:
@@ -664,11 +759,13 @@ Please use the Tell action to report the results of all test cases before execut
                     - project_excel_path: Project level Excel file path
                     - case_excel_path: Case level Excel file path (optional)
                     - use_json_only: Whether to only use JSON files (optional)
+                    - sequential_mode: If True, execute test cases one by one (optional)
                 Single test:
                     - case_name: Test case name
                     - url: Test target URL
                     - user_requirement: Requirement description
                     - json_path: Output JSON file path (optional)
+                    - sequential_mode: If True, execute test cases one by one (optional)
         """
         try:
             if kwargs.get("case_name") and kwargs.get("user_requirement"):
@@ -680,10 +777,15 @@ Please use the Tell action to report the results of all test cases before execut
                     user_requirement=kwargs["user_requirement"],
                     json_path=kwargs.get("json_path", "data/temp.json"),
                     use_json_only=kwargs.get("use_json_only", False),
+                    sequential_mode=kwargs.get("sequential_mode", False),
                 )
             else:
                 # Batch test scenario
-                return await self.run_batch(kwargs.get("project_excel_path"), kwargs.get("case_excel_path"))
+                return await self.run_batch(
+                    kwargs.get("project_excel_path"),
+                    kwargs.get("case_excel_path"),
+                    sequential_mode=kwargs.get("sequential_mode", False),
+                )
         except Exception as e:
             logger.error(f"Test execution failed: {str(e)}")
             logger.exception("Detailed error information")

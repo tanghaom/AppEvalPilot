@@ -5,6 +5,8 @@
 @File    : case_generator.py
 @Desc    : Action for generating and validating test cases
 """
+import json
+import re
 from enum import Enum
 from pathlib import Path
 from typing import Dict, List
@@ -15,8 +17,8 @@ from metagpt.actions.action import Action
 from metagpt.config2 import Config
 from metagpt.llm import LLM
 from metagpt.logs import logger
-from tenacity import retry, retry_if_exception_type, stop_after_attempt, wait_fixed
 from metagpt.utils.common import encode_image
+from tenacity import retry, retry_if_exception_type, stop_after_attempt, wait_fixed
 
 from appeval.prompts.case_generator import CasePrompts
 
@@ -27,6 +29,7 @@ class OperationType(Enum):
     CHECK_RESULTS = "check_results"
     GENERATE_CASES_MINI_BATCH = "generate_cases_mini_batch"
     GENERATE_EXECUTABILITY = "generate_executability"
+
 
 class CaseGenerator(Action):
     name: str = "CaseGenerator"
@@ -70,7 +73,7 @@ class CaseGenerator(Action):
         except Exception as e:
             logger.error(f"LLM call failed: {str(e)}")
             raise
-    
+
     async def _inference_chat_with_image(self, content: str, image: str) -> str:
         """Use MetaGPT's aask method for chat inference with image
 
@@ -90,7 +93,6 @@ class CaseGenerator(Action):
             logger.error(f"LLM call failed: {str(e)}")
             raise
 
-
     async def generate_test_cases(self, demand: str) -> List[str]:
         """Generate test cases based on requirements
 
@@ -106,22 +108,22 @@ class CaseGenerator(Action):
             # Call chat to generate test cases
             answer = await self._inference_chat(prompt)
             # Convert string to list
-            start_idx = answer.find('[')
-            end_idx = answer.rfind(']')
-            
+            start_idx = answer.find("[")
+            end_idx = answer.rfind("]")
+
             if start_idx == -1 or end_idx == -1 or start_idx >= end_idx:
                 logger.warning(f"Invalid answer format: {answer}")
                 return []
-                
+
             # Extract content between brackets
-            content = answer[start_idx:end_idx+1]
+            content = answer[start_idx : end_idx + 1]
             test_cases = eval(content)
             return test_cases
 
         except Exception as e:
             logger.error(f"Error occurred while generating test cases: {str(e)}")
             return []
-    
+
     async def generate_test_cases_mini_batch(self, demand: str) -> List[str]:
         """Generate test cases based on requirements
 
@@ -136,15 +138,15 @@ class CaseGenerator(Action):
             logger.info(f"Original requirement: {demand}")
             # Call chat to generate test cases
             answer = await self._inference_chat(prompt)
-            start_idx = answer.find('[')
-            end_idx = answer.rfind(']')
-            
+            start_idx = answer.find("[")
+            end_idx = answer.rfind("]")
+
             if start_idx == -1 or end_idx == -1 or start_idx >= end_idx:
                 logger.warning(f"Invalid answer format: {answer}")
                 return []
-                
+
             # Extract content between brackets
-            content = answer[start_idx:end_idx+1]
+            content = answer[start_idx : end_idx + 1]
             test_cases = eval(content)
             return test_cases
 
@@ -212,8 +214,12 @@ class CaseGenerator(Action):
             # Call chat to generate results
             answer = await self._inference_chat(prompt)
             logger.info(f"answer: {answer}")
+            # Remove markdown code block markers if present
+            answer = answer.strip()
+            answer = re.sub(r"^```(?:json)?\s*\n?", "", answer)
+            answer = re.sub(r"\n?```\s*$", "", answer)
             # Convert string to dictionary
-            results = eval(answer)
+            results = json.loads(answer)
             return results
 
         except Exception as e:
@@ -231,7 +237,7 @@ class CaseGenerator(Action):
         """
         try:
             prompt = CasePrompts.GENERATE_EXECUTABILITY.format(case_result=case_result)
-            logger.info(f"Evaluating executability based on test results")
+            logger.info("Evaluating executability based on test results")
             # Call chat to evaluate executability
             answer = await self._inference_chat_with_image(prompt, image)
             logger.info(f"Executability result: {answer}")
@@ -242,9 +248,7 @@ class CaseGenerator(Action):
             logger.error(f"Error occurred while evaluating executability: {str(e)}")
             raise
 
-    async def process_excel_file(
-        self, excel_path: str, operation: OperationType = OperationType.GENERATE_CASES
-    ) -> None:
+    async def process_excel_file(self, excel_path: str, operation: OperationType = OperationType.GENERATE_CASES) -> None:
         """Process Excel file
 
         Args:
@@ -313,7 +317,7 @@ class CaseGenerator(Action):
                 case_result = str(row["test_results"])
                 if not case_result:
                     continue
-                
+
                 # Convert string to dictionary
                 try:
                     case_result_dict = eval(case_result)
