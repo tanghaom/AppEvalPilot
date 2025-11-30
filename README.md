@@ -160,10 +160,12 @@ Contributions to AppEvalPilot are welcomed by the research community. For inquir
 ## Citation
 If you find AppEvalPilot useful, please consider citing our work:
 ```
-@article{bian2025you,
+@inproceedings{bian2025you,
   title={You Don't Know Until You Click: Automated GUI Testing for Production-Ready Software Evaluation},
   author={Bian, Yutong and Lin, Xianhao and Xie, Yupeng and Liu, Tianyang and Zhuge, Mingchen and Lu, Siyuan and Tang, Haoming and Wang, Jinlin and Zhang, Jiayi and Chen, Jiaqi and others},
-  journal={arXiv preprint arXiv:2508.14104},
+  booktitle={The 39th Conference on Neural Information Processing Systems (NeurIPS 2025)},  
+  series = {Scaling Environments for Agents (SEA)},
+  url={https://sea-workshop.github.io},
   year={2025}
 }
 ```
