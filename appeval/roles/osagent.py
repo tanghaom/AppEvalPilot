@@ -14,6 +14,7 @@ import shutil
 import sys
 import time
 import warnings
+from collections import Counter
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
@@ -42,9 +43,12 @@ class OSAgentContext(RoleContext):
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
     thought: str = ""  # Current thinking content
-    thought_history: List[str] = Field(default_factory=list)  # Historical thinking records list
-    summary_history: List[str] = Field(default_factory=list)  # Historical operation summary list
-    action_history: List[str] = Field(default_factory=list)  # Historical executed action list
+    # Historical thinking records list
+    thought_history: List[str] = Field(default_factory=list)
+    # Historical operation summary list
+    summary_history: List[str] = Field(default_factory=list)
+    # Historical executed action list
+    action_history: List[str] = Field(default_factory=list)
     reflection_thought_history: List[str] = Field(default_factory=list)  # Historical reflection records list
     reflection_thought: str = ""  # Current reflection content
     summary: str = ""  # Current operation summary
@@ -52,11 +56,13 @@ class OSAgentContext(RoleContext):
     action: str = ""  # Current executed action
     task_list: str = ""  # Task list
     completed_requirements: str = ""  # Completed requirements
-    memory: List[str] = Field(default_factory=list)  # Important content memory list
+    # Important content memory list
+    memory: List[str] = Field(default_factory=list)
     error_flag: bool = False  # Error flag
     error_message: str = ""  # Error message when action execution fails
     iter: int = 0  # Current iteration count
-    perception_infos: List[Dict] = Field(default_factory=list)  # Current perception information list
+    # Current perception information list
+    perception_infos: List[Dict] = Field(default_factory=list)
     last_perception_infos: List[Dict] = Field(default_factory=list)  # Previous perception information list
     width: int = 0  # Screen width
     height: int = 0  # Screen height
@@ -504,7 +510,8 @@ class OSAgent(Role):
         if not self.rc.webbrowser_console_logs:
             return []  # If there is no log, directly return empty list
         if expand:
-            return [log for log in self.rc.webbrowser_console_logs[-steps:] if log]  # Filter empty list
+            # Filter empty list
+            return [log for log in self.rc.webbrowser_console_logs[-steps:] if log]
         else:
             # Use zip to pair operation history and log
             outputs = [
@@ -533,6 +540,114 @@ class OSAgent(Role):
             }
             outputs.append(output)
         return outputs
+
+    def _get_token_usage(self, prompt: str, system_msgs: List[str] = None, images: List = None, response: str = "") -> Dict[str, int]:
+        """Get token usage for LLM call.
+
+        Args:
+            prompt: Input prompt text
+            system_msgs: System messages list
+            images: List of encoded images
+            response: LLM response text
+
+        Returns:
+            Dict with 'input_tokens', 'output_tokens', 'total_tokens'
+        """
+        try:
+            # Try to get usage from LLM object if available
+            if hasattr(self.llm, "usage") and self.llm.usage:
+                usage = self.llm.usage
+                if isinstance(usage, dict):
+                    return {
+                        "input_tokens": usage.get("prompt_tokens", usage.get("input_tokens", 0)),
+                        "output_tokens": usage.get("completion_tokens", usage.get("output_tokens", 0)),
+                        "total_tokens": usage.get("total_tokens", 0),
+                    }
+        except Exception:
+            pass
+
+        # Fallback: estimate tokens using simple approximation (1 token ≈ 4 characters for English)
+        # This is a rough estimate, actual tokenization may vary
+        input_text = prompt
+        if system_msgs:
+            input_text += " " + " ".join(system_msgs)
+        # For images, add estimated tokens (typically ~85 tokens per image for base64 encoded images)
+        image_tokens = 0
+        if images:
+            image_tokens = len(images) * 85
+
+        input_tokens = max(1, len(input_text) // 4) + image_tokens
+        output_tokens = max(1, len(response) // 4) if response else 0
+        total_tokens = input_tokens + output_tokens
+
+        return {"input_tokens": input_tokens, "output_tokens": output_tokens, "total_tokens": total_tokens}
+
+    async def _llm_vote_action(self, actions: List[str]) -> Tuple[int, Dict[str, int]]:
+        """Use LLM to analyze actions and select the most common one.
+
+        Even if actions have different formats, LLM can identify semantically
+        similar actions and determine which one appears most frequently.
+
+        Args:
+            actions: List of action strings to analyze
+
+        Returns:
+            Tuple of (index of the most common action (0-based), token usage dict)
+        """
+        empty_usage = {"input_tokens": 0, "output_tokens": 0, "total_tokens": 0}
+        if len(actions) == 1:
+            return 0, empty_usage
+
+        # Construct prompt for LLM to analyze actions
+        actions_text = "\n".join([f"Action {i+1}: {action}" for i, action in enumerate(actions)])
+        prompt = f"""You are analyzing multiple action outputs from an AI agent. Even though these actions may have different formats or wording, they might represent the same semantic operation.
+
+Please analyze the following actions and determine which one appears most frequently (considering semantic similarity, not just exact string matching):
+
+{actions_text}
+
+Your task:
+1. Group actions that are semantically similar (even if formatted differently)
+2. Identify which action (or group of similar actions) appears most frequently
+3. Return ONLY the index number (1-based) of the most common action
+
+If there's a tie, choose the first one in the list.
+
+Return format: Just a single number (e.g., "1" or "2" or "3"), nothing else."""
+
+        system_msg = "You are a helpful assistant that analyzes and compares action outputs to find the most common one."
+        try:
+            response = await self.llm.aask(
+                prompt,
+                system_msgs=[system_msg],
+                stream=False,
+            )
+
+            # Get token usage
+            token_usage = self._get_token_usage(prompt, system_msgs=[system_msg], images=None, response=response)
+
+            # Extract index from response (handle various formats)
+            response = response.strip()
+            # Try to extract a number from the response
+            match = re.search(r"\d+", response)
+            if match:
+                index = int(match.group()) - 1  # Convert to 0-based index
+                # Ensure index is valid
+                if 0 <= index < len(actions):
+                    logger.info(f"LLM voted for action index {index}: {actions[index]}")
+                    return index, token_usage
+                else:
+                    logger.warning(f"LLM returned invalid index {index+1}, falling back to first action")
+                    return 0, token_usage
+            else:
+                logger.warning(f"Could not parse index from LLM response: {response}, falling back to first action")
+                return 0, token_usage
+        except Exception as e:
+            logger.warning(f"LLM voting failed: {e}, falling back to simple counter method")
+            # Fallback to simple counter method
+            action_counts = Counter(actions)
+            voted_action = action_counts.most_common(1)[0][0]
+            return actions.index(voted_action), empty_usage
 
     @retry(
         stop=stop_after_attempt(10),
@@ -617,12 +732,26 @@ class OSAgent(Role):
             else f"You are a helpful AI {'mobile phone' if self.platform=='Android' else 'PC'} operating assistant. You need to help me operate the device to complete the user's instruction."
         )
 
-        output_action = await self.llm.aask(
-            prompt_action,
-            system_msgs=[system_msg],
-            images=images,
-            stream=False,
-        )
+        # Call LLM three times for voting
+        output_actions = []
+        # Track token usage for extra 2 calls (index 1 and 2)
+        extra_token_usage = []
+        for i in range(3):
+            output_action = await self.llm.aask(
+                prompt_action,
+                system_msgs=[system_msg],
+                images=images,
+                stream=False,
+            )
+            output_actions.append(output_action)
+            logger.info(
+                f"\n\n######################## output_action_{i+1}:\n{output_action}\n\n######################## output_action_{i+1} end\n\n\n\n"
+            )
+
+            # Track token usage for extra calls (2nd and 3rd call, i.e., i=1 and i=2)
+            if i >= 1:  # Extra calls beyond the first one
+                usage = self._get_token_usage(prompt_action, system_msgs=[system_msg], images=images, response=output_action)
+                extra_token_usage.append(usage)
 
         # Parse output
         # Safely parse LLM output sections. If any required marker is missing, return empty to avoid mis-parsing.
@@ -646,14 +775,69 @@ class OSAgent(Role):
                 content = re.sub(r"\s{2,}", " ", content)
             return content.strip()
 
-        self.rc.image_description = _extract_between(output_action, "### Image Description ###", "### Reflection Thought ###", escape_newlines=True)
-        self.rc.reflection_thought = _extract_between(output_action, "### Reflection Thought ###", "### Thought ###", escape_newlines=True)
-        self.rc.thought = _extract_between(output_action, "### Thought ###", "### Action ###", normalize=True)
-        self.rc.action = _extract_between(output_action, "### Action ###", "### Operation ###")
-        self.rc.summary = _extract_between(output_action, "### Operation ###", "### Task List ###", escape_newlines=True)
-        self.rc.task_list = _extract_between(output_action, "### Task List ###")
+        # Extract actions from all three outputs
+        actions = []
+        parsed_outputs = []
+        for output_action in output_actions:
+            parsed_output = {
+                "image_description": _extract_between(output_action, "### Image Description ###", "### Reflection Thought ###", escape_newlines=True),
+                "reflection_thought": _extract_between(output_action, "### Reflection Thought ###", "### Thought ###", escape_newlines=True),
+                "thought": _extract_between(output_action, "### Thought ###", "### Action ###", normalize=True),
+                "action": _extract_between(output_action, "### Action ###", "### Operation ###"),
+                "summary": _extract_between(output_action, "### Operation ###", "### Task List ###", escape_newlines=True),
+                "task_list": _extract_between(output_action, "### Task List ###"),
+            }
+            parsed_outputs.append(parsed_output)
+            logger.info(
+                f"\n\n######################## parsed_output:\n{parsed_output['action']}\n\n######################## parsed_output end\n\n\n\n"
+            )
+            actions.append(parsed_output["action"])
 
-        logger.info(f"\n\n######################## output_action:\n{output_action}\n\n######################## output_action end\n\n\n\n")
+        # Voting: use LLM to analyze and select the most common action
+        # Even if actions have different formats, LLM can identify semantically similar ones
+        voted_index, voting_token_usage = await self._llm_vote_action(actions)
+        voted_action = actions[voted_index]
+
+        # Use the parsed output corresponding to the voted action
+        voted_output = parsed_outputs[voted_index]
+
+        self.rc.image_description = voted_output["image_description"]
+        self.rc.reflection_thought = voted_output["reflection_thought"]
+        self.rc.thought = voted_output["thought"]
+        self.rc.action = voted_output["action"]
+        self.rc.summary = voted_output["summary"]
+        self.rc.task_list = voted_output["task_list"]
+
+        # Calculate action counts for logging
+        action_counts = Counter(actions)
+        logger.info(
+            f"\n\n######################## Voting Results:\nActions: {actions}\nVoted Action Index: {voted_index}\nVoted Action: {voted_action}\nAction Counts (exact match): {dict(action_counts)}\n######################## Voting Results end\n\n\n\n"
+        )
+
+        # Calculate and output token usage for extra aask calls and voting
+        extra_input_tokens = sum(usage["input_tokens"] for usage in extra_token_usage)
+        extra_output_tokens = sum(usage["output_tokens"] for usage in extra_token_usage)
+        extra_total_tokens = sum(usage["total_tokens"] for usage in extra_token_usage)
+
+        voting_input_tokens = voting_token_usage.get("input_tokens", 0)
+        voting_output_tokens = voting_token_usage.get("output_tokens", 0)
+        voting_total_tokens = voting_token_usage.get("total_tokens", 0)
+
+        total_extra_tokens = extra_total_tokens + voting_total_tokens
+
+        logger.info(
+            f"\n\n######################## Token Usage for Extra Calls:\n"
+            f"Extra 2 aask calls (2nd and 3rd):\n"
+            f"  - Input tokens: {extra_input_tokens}\n"
+            f"  - Output tokens: {extra_output_tokens}\n"
+            f"  - Total tokens: {extra_total_tokens}\n"
+            f"Voting aask call:\n"
+            f"  - Input tokens: {voting_input_tokens}\n"
+            f"  - Output tokens: {voting_output_tokens}\n"
+            f"  - Total tokens: {voting_total_tokens}\n"
+            f"Total extra token consumption: {total_extra_tokens}\n"
+            f"######################## Token Usage end\n\n\n\n"
+        )
 
         if self.rc.action.startswith("Stop"):
             return False
@@ -837,7 +1021,8 @@ class OSAgent(Role):
 
     async def _react(self) -> Message:
         self.rc.iter = 0
-        rsp = AIMessage(content="No actions taken yet", cause_by=Action)  # will be overwritten after Role _act
+        # will be overwritten after Role _act
+        rsp = AIMessage(content="No actions taken yet", cause_by=Action)
         while self.rc.iter < self.max_iters and not self._check_last_three_start_with_wait(self.rc.action_history):
             self.rc.iter += 1
 
