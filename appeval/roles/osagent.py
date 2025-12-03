@@ -14,7 +14,6 @@ import shutil
 import sys
 import time
 import warnings
-from collections import Counter
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
@@ -763,7 +762,14 @@ Return format: Just a single number (e.g., "1" or "2" or "3"), nothing else."""
             else f"You are a helpful AI {'mobile phone' if self.platform=='Android' else 'PC'} operating assistant. You need to help me operate the device to complete the user's instruction."
         )
 
-        # Parse output helper function
+        output_action = await self.llm.aask(
+            prompt_action,
+            system_msgs=[system_msg],
+            images=images,
+            stream=False,
+        )
+
+        # Parse output
         # Safely parse LLM output sections. If any required marker is missing, return empty to avoid mis-parsing.
         def _extract_between(text, start, end=None, normalize=False, escape_newlines=False):
             if start not in text:
@@ -810,8 +816,8 @@ Return format: Just a single number (e.g., "1" or "2" or "3"), nothing else."""
         logger.info(
             f"\n\n######################## parsed_output_1:\n{first_action}\n\n######################## parsed_output_1 end\n\n\n\n")
 
-        # Only do additional calls and voting if action starts with "Stop"
-        if first_action.startswith("Stop"):
+        # Only do additional calls and voting if action starts with "Tell"
+        if first_action.startswith("Tell"):
             # Call LLM two more times for voting
             output_actions = [first_output_action]
             # Track token usage for extra 2 calls (index 1 and 2)
@@ -874,35 +880,6 @@ Return format: Just a single number (e.g., "1" or "2" or "3"), nothing else."""
                 f"\n\n######################## Voting Results:\nActions: {actions}\nVoted Action Index: {voted_index}\nVoted Action: {voted_action}\nAction Counts (exact match): {dict(action_counts)}\n######################## Voting Results end\n\n\n\n"
             )
 
-            # Calculate and output token usage for extra aask calls and voting
-            extra_input_tokens = sum(usage["input_tokens"]
-                                     for usage in extra_token_usage)
-            extra_output_tokens = sum(usage["output_tokens"]
-                                      for usage in extra_token_usage)
-            extra_total_tokens = sum(usage["total_tokens"]
-                                     for usage in extra_token_usage)
-
-            voting_input_tokens = voting_token_usage.get("input_tokens", 0)
-            voting_output_tokens = voting_token_usage.get("output_tokens", 0)
-            voting_total_tokens = voting_token_usage.get("total_tokens", 0)
-
-            total_extra_tokens = extra_total_tokens + voting_total_tokens
-
-            logger.info(
-                f"\n\n######################## Token Usage for Extra Calls:\n"
-                f"Extra 2 aask calls (2nd and 3rd):\n"
-                f"  - Input tokens: {extra_input_tokens}\n"
-                f"  - Output tokens: {extra_output_tokens}\n"
-                f"  - Total tokens: {extra_total_tokens}\n"
-                f"Voting aask call:\n"
-                f"  - Input tokens: {voting_input_tokens}\n"
-                f"  - Output tokens: {voting_output_tokens}\n"
-                f"  - Total tokens: {voting_total_tokens}\n"
-                f"Total extra Input tokens consumption: {extra_input_tokens + voting_input_tokens}\n"
-                f"Total extra Output tokens consumption: {extra_output_tokens + voting_output_tokens}\n"
-                f"Total extra Total tokens consumption: {extra_total_tokens + voting_total_tokens}\n"
-                f"######################## Token Usage end\n\n\n\n"
-            )
         else:
             # Use first output directly without voting
             self.rc.image_description = first_parsed_output["image_description"]
