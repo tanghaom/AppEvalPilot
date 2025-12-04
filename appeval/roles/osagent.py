@@ -14,6 +14,7 @@ import shutil
 import sys
 import time
 import warnings
+from collections import Counter
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
@@ -672,8 +673,9 @@ Return format: Just a single number (e.g., "1" or "2" or "3"), nothing else."""
                 f"LLM voting failed: {e}, falling back to simple counter method")
             # Fallback to simple counter method
             action_counts = Counter(actions)
-            voted_action = action_counts.most_common(1)[0][0]
-            return actions.index(voted_action), empty_usage
+            most_common_action = action_counts.most_common(1)[0][0]
+            index = actions.index(most_common_action)
+            return index, empty_usage
 
     @retry(
         stop=stop_after_attempt(10),
