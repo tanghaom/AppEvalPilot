@@ -65,9 +65,7 @@ def main():
     parser = argparse.ArgumentParser(description="Test OSAgent")
 
     # Basic configuration parameters
-    parser.add_argument(
-        "--platform", type=str, default="Windows", help="Operating system type (Windows, Mac, or Android)"
-    )
+    parser.add_argument("--platform", type=str, default="Windows", help="Operating system type (Windows, Mac, or Android)")
     parser.add_argument("--max_iters", type=int, default=5, help="Maximum number of iterations")
     parser.add_argument("--instruction", type=str, default="在携程进入旅游页面，返回内容", help="User instruction")
 
@@ -83,13 +81,9 @@ def main():
     parser.add_argument("--enable_route", type=int, default=1, help="Whether to enable route navigation feature")
     parser.add_argument("--route_project", type=str, default="xiecheng", help="Route project name")
     # Display and layout parameters
-    parser.add_argument(
-        "--location_info", type=str, default="center", help="Location information type (center or bbox)"
-    )
+    parser.add_argument("--location_info", type=str, default="center", help="Location information type (center or bbox)")
     parser.add_argument("--draw_text_box", type=int, default=0, help="Whether to draw text boxes in visualization")
-    parser.add_argument(
-        "--quad_split_ocr", type=int, default=0, help="Whether to split image into four parts for OCR recognition"
-    )
+    parser.add_argument("--quad_split_ocr", type=int, default=0, help="Whether to split image into four parts for OCR recognition")
     # Path related parameters
     parser.add_argument("--log_dirs", type=str, default="workspace", help="Log directory")
     parser.add_argument(
