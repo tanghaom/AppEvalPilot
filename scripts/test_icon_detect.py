@@ -52,9 +52,7 @@ async def main(image_path=None, platform="Android"):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Test icon detection and description")
     parser.add_argument("--image", type=str, help="Path to the image file")
-    parser.add_argument(
-        "--platform", type=str, default="Android", choices=["Android", "PC"], help="Device platform (Android or PC)"
-    )
+    parser.add_argument("--platform", type=str, default="Android", choices=["Android", "PC"], help="Device platform (Android or PC)")
 
     args = parser.parse_args()
 

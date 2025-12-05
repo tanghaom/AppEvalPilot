@@ -57,4 +57,3 @@ If the target webpage is about jupyter notebook, output only "True"
 If the test engineer's results indicate that the vast majority of the application's functions are not working properly, output only "False"
 In all other cases, output only "True"
 """
-

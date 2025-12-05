@@ -1,6 +1,4 @@
 import asyncio
-import json
-from pathlib import Path
 
 from loguru import logger
 
@@ -39,6 +37,7 @@ async def run_batch_test():
     except Exception as e:
         logger.error(f"Batch test execution failed: {str(e)}")
 
+
 async def run_api_test():
     """Run batch test example"""
     try:
@@ -58,7 +57,7 @@ async def run_api_test():
         # case_excel = r"data/test_results.xlsx"
         # case_result = await appeval.run_mini_batch(project_excel_path=project_excel, case_excel_path=case_excel, generate_case_only=True)
         # logger.info(f"Batch test execution result: {case_result}")
-        #其中url和work_path二者必须存在其中一个，清理环境需要这个信息，如果没传两个字段就不会清理环境
+        # 其中url和work_path二者必须存在其中一个，清理环境需要这个信息，如果没传两个字段就不会清理环境
         case_result_example = {
             "1": {
                 "task_name": "Example Task",
@@ -66,41 +65,19 @@ async def run_api_test():
                 "requirement": "Create a login page with username and password fields",
                 "tag": "1",
                 "test_cases": {
-                    "0": {
-                        "case_desc": "Verify successful login with valid username and password",
-                        "result": "",
-                        "evidence": ""
-                    },
-                    "1": {
-                        "case_desc": "Verify login fails with invalid username and valid password",
-                        "result": "",
-                        "evidence": ""
-                    },
-                    "2": {
-                        "case_desc": "Verify login fails with valid username and invalid password",
-                        "result": "",
-                        "evidence": ""
-                    },
-                    "3": {
-                        "case_desc": "Verify login fails with empty username and valid password",
-                        "result": "",
-                        "evidence": ""
-                    },
-                    "4": {
-                        "case_desc": "Verify login fails with valid username and empty password",
-                        "result": "",
-                        "evidence": ""
-                    },
-                    "5": {
-                        "case_desc": "Verify login fails with empty username and empty password",
-                        "result": "",
-                        "evidence": ""
-                    }
-                }
+                    "0": {"case_desc": "Verify successful login with valid username and password", "result": "", "evidence": ""},
+                    "1": {"case_desc": "Verify login fails with invalid username and valid password", "result": "", "evidence": ""},
+                    "2": {"case_desc": "Verify login fails with valid username and invalid password", "result": "", "evidence": ""},
+                    "3": {"case_desc": "Verify login fails with empty username and valid password", "result": "", "evidence": ""},
+                    "4": {"case_desc": "Verify login fails with valid username and empty password", "result": "", "evidence": ""},
+                    "5": {"case_desc": "Verify login fails with empty username and empty password", "result": "", "evidence": ""},
+                },
             }
         }
         test_cases = case_result_example["1"]["test_cases"]
-        result, executability = await appeval.run_api(task_name="MGX", test_cases=test_cases, start_func="http://localhost:7687", log_dir="work_dirs/MGX")
+        result, executability = await appeval.run_api(
+            task_name="MGX", test_cases=test_cases, start_func="http://localhost:7687", log_dir="work_dirs/MGX"
+        )
         # eval output format
         # {'0': {'result': 'Pass', 'evidence': 'All required login page UI elements are present and properly displayed: username/email input field at (1414, 750), password input field at (1414, 840), and sign in button at (1413, 984). The elements are clearly visible and positioned appropriately on the login form.'}, '1': {'result': 'Pass', 'evidence': "Successfully entered alphanumeric string 'Test123User' into the username field. The field accepted and displayed the input correctly without any restrictions or errors."}, '2': {'result': 'Pass', 'evidence': "The password field successfully masks input characters - when 'testpass123' was entered, it displays as bullet points/dots (•••••••••••) instead of plain text, providing proper password security."}, '3': {'result': 'Uncertain', 'evidence': 'Unable to verify special character acceptance in password field due to connection error with accounts.google.com (ERR_CONNECTION_CLOSED)'}}
         logger.info(f"Batch test execution result: {result}")
@@ -154,37 +131,13 @@ async def run_single_test(mode: str = "all"):
                     "requirement": "Create a login page with username and password fields",
                     "tag": "1",
                     "test_cases": {
-                        "0": {
-                            "case_desc": "Verify successful login with valid username and password",
-                            "result": "",
-                            "evidence": ""
-                        },
-                        "1": {
-                            "case_desc": "Verify login fails with invalid username and valid password",
-                            "result": "",
-                            "evidence": ""
-                        },
-                        "2": {
-                            "case_desc": "Verify login fails with valid username and invalid password",
-                            "result": "",
-                            "evidence": ""
-                        },
-                        "3": {
-                            "case_desc": "Verify login fails with empty username and valid password",
-                            "result": "",
-                            "evidence": ""
-                        },
-                        "4": {
-                            "case_desc": "Verify login fails with valid username and empty password",
-                            "result": "",
-                            "evidence": ""
-                        },
-                        "5": {
-                            "case_desc": "Verify login fails with empty username and empty password",
-                            "result": "",
-                            "evidence": ""
-                        }
-                    }
+                        "0": {"case_desc": "Verify successful login with valid username and password", "result": "", "evidence": ""},
+                        "1": {"case_desc": "Verify login fails with invalid username and valid password", "result": "", "evidence": ""},
+                        "2": {"case_desc": "Verify login fails with valid username and invalid password", "result": "", "evidence": ""},
+                        "3": {"case_desc": "Verify login fails with empty username and valid password", "result": "", "evidence": ""},
+                        "4": {"case_desc": "Verify login fails with valid username and empty password", "result": "", "evidence": ""},
+                        "5": {"case_desc": "Verify login fails with empty username and empty password", "result": "", "evidence": ""},
+                    },
                 }
             }
             test_cases = case_result_example["1"]["test_cases"]
@@ -203,7 +156,9 @@ async def run_single_test(mode: str = "all"):
                 log_dirs=f"work_dirs/{task_name}",
                 max_iters=20,
             )
-            result, executability = await appeval.run_api(task_name=task_name, test_cases=test_cases, start_func=url, log_dir=f"work_dirs/{task_name}")
+            result, executability = await appeval.run_api(
+                task_name=task_name, test_cases=test_cases, start_func=url, log_dir=f"work_dirs/{task_name}"
+            )
             logger.info(f"Batch test execution result: {result}")
             logger.info(f"Executability: {executability}")
         except Exception as e:
@@ -229,6 +184,7 @@ async def run_single_test(mode: str = "all"):
         except Exception as e:
             logger.error(f"Single test execution failed: {str(e)}")
             logger.exception("Detailed error information")
+
 
 async def main():
     """Main function"""

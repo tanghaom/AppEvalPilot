@@ -112,7 +112,7 @@ def mini_list_to_json(excel_file: str, json_file: str) -> dict:
     sheet_names = xls.sheet_names
     output_data = {}
     api_format_data = {}
-    
+
     case_counter = 0
 
     for sheet_name in sheet_names:
@@ -139,25 +139,20 @@ def mini_list_to_json(excel_file: str, json_file: str) -> dict:
                 category_app_name = f"{app_name}_{i}"
                 # Initialize app entry with empty dict
                 sheet_data[category_app_name] = {"test_cases": {}}
-                
+
                 # Add category to api_format_data
-                api_format_data[str(case_counter)] = {
-                    "task_name": app_name,
-                    "tag": str(i),
-                    "requirement": f"{row['requirement']}",
-                    "test_cases": {}
-                }
-                
+                api_format_data[str(case_counter)] = {"task_name": app_name, "tag": str(i), "requirement": f"{row['requirement']}", "test_cases": {}}
+
                 # Check and add prod_url if available
                 if "prod_url" in row and not pd.isna(row["prod_url"]):
                     sheet_data[category_app_name]["url"] = f"{row['prod_url']}"
                     api_format_data[str(case_counter)]["url"] = f"{row['prod_url']}"
-                
+
                 # Check and add work_path if available
                 if "work_path" in row and not pd.isna(row["work_path"]):
                     sheet_data[category_app_name]["work_path"] = f"{row['work_path']}"
                     api_format_data[str(case_counter)]["work_path"] = f"{row['work_path']}"
-                
+
                 # Ensure at least one of url or work_path is available
                 if not ("url" in sheet_data[category_app_name] or "work_path" in sheet_data[category_app_name]):
                     # Add empty url as fallback if neither field is present
@@ -171,20 +166,17 @@ def mini_list_to_json(excel_file: str, json_file: str) -> dict:
                         "result": "",
                         "evidence": "",
                     }
-                    
+
                     # Add to api_format_data
-                    api_format_data[str(case_counter)]["test_cases"][str(j)] = {
-                        "case_desc": task_desc,
-                        "result": "",
-                        "evidence": ""
-                    }
-                
+                    api_format_data[str(case_counter)]["test_cases"][str(j)] = {"case_desc": task_desc, "result": "", "evidence": ""}
+
                 case_counter += 1
-    
+
         output_data.update(sheet_data)
 
     write_json_file(json_file, output_data, indent=4)
     return api_format_data
+
 
 def mini_list_to_excel(json_file: str, excel_file: str) -> None:
     """

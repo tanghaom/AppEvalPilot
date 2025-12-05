@@ -122,9 +122,7 @@ class IconDetector:
 
         return intersection / union if union > 0 else 0.0
 
-    def _filter_boxes(
-        self, boxes: Coordinates, image_size: Tuple[int, int], iou_threshold: float = 0.5, area_threshold: float = 0.05
-    ) -> Coordinates:
+    def _filter_boxes(self, boxes: Coordinates, image_size: Tuple[int, int], iou_threshold: float = 0.5, area_threshold: float = 0.05) -> Coordinates:
         """Filter and merge overlapping bounding boxes
 
         Args:
@@ -153,20 +151,13 @@ class IconDetector:
 
         return filtered_boxes
 
-    def detect(
-        self, image_path: Union[str, Path], conf_threshold: float = 0.25, iou_threshold: float = 0.3
-    ) -> Coordinates:
+    def detect(self, image_path: Union[str, Path], conf_threshold: float = 0.25, iou_threshold: float = 0.3) -> Coordinates:
         if not _check_ultralytics():
             return []
 
         try:
             image = Image.open(image_path)
-            predictions = (
-                self.model.predict(source=image, conf=conf_threshold, iou=iou_threshold)[0]
-                .boxes.xyxy.cpu()
-                .int()
-                .tolist()
-            )
+            predictions = self.model.predict(source=image, conf=conf_threshold, iou=iou_threshold)[0].boxes.xyxy.cpu().int().tolist()
 
             return self._filter_boxes(predictions, image.size)
         except Exception as e:
@@ -252,9 +243,7 @@ Requirements:
         )
         return idx, description
 
-    async def caption(
-        self, image_path: Union[str, Path], coordinates: Coordinates, platform: str = "Android"
-    ) -> Dict[int, str]:
+    async def caption(self, image_path: Union[str, Path], coordinates: Coordinates, platform: str = "Android") -> Dict[int, str]:
         """Generate descriptions for detected icons
 
         Args:
@@ -324,9 +313,7 @@ def detect_icons(image_path: Union[str, Path], llm: BaseLLM = None) -> Coordinat
     return detector.detect(image_path)
 
 
-async def caption_icons(
-    image_path: Union[str, Path], coordinates: Coordinates, llm: BaseLLM = None, platform: str = "Android"
-) -> Dict[int, str]:
+async def caption_icons(image_path: Union[str, Path], coordinates: Coordinates, llm: BaseLLM = None, platform: str = "Android") -> Dict[int, str]:
     """Icon description shortcut function
 
     Args:

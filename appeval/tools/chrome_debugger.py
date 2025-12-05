@@ -60,6 +60,23 @@ class ChromeDebugger:
                 return page["webSocketDebuggerUrl"]
         raise Exception("No suitable page found")
 
+    def get_current_url(self) -> str:
+        """Get current page URL.
+        Retrieves the URL of the current active page via Chrome DevTools Protocol /json endpoint.
+        Returns:
+            str: Current page URL, or empty string if retrieval fails.
+        """
+        try:
+            pages = self.get_pages()
+            for page in pages:
+                # Filter out devtools pages
+                if page.get("type") == "page" and not page.get("url", "").startswith("devtools://"):
+                    return page.get("url", "")
+            return ""
+        except Exception as e:
+            logger.error(f"Failed to get current URL: {e}")
+            return ""
+
     async def connect(self):
         """Establish WebSocket connection"""
         while self._running:  # Add loop to try connecting

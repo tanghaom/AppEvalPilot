@@ -26,6 +26,9 @@ class ActionPromptContext(BaseModel):
     use_som: bool  # Whether to use SOM
     location_info: str = "center"  # Location format, defaults to center coordinates
     icon_caption: bool = True  # Whether to use icon descriptions
+    # Route related fields
+    enable_route: bool = False  # Whether route feature is enabled
+    all_routes_info: str = ""  # All available routes information for agent to choose from
 
 
 class BasePrompt:
@@ -376,8 +379,8 @@ If the target application needs to upload other files, please use the files in t
 If the target application requires entering a password, please first register an account and then use the account to log in.
 """
 
-        # PC-specific task requirements
-        self.task_requirements = """
+        # PC-specific task requirements (base part without route info)
+        self.task_requirements_base = """
 In order to meet the user's requirements, you need to select one of the following operations to operate on the current screen:
 For certain items that require selection, such as font and font size, direct input is more efficient than scrolling through choices.
 You must choose one of the actions below:
@@ -409,7 +412,22 @@ You must choose one of the actions below:
     You need to determine the appropriate duration based on the context.
 
     Example: Run (pyperclip.copy(\"\"\"hi\"\"\"); time.sleep(0.5); pyautogui.hotkey('ctrl', 'v'); time.sleep(1))
+"""
 
+        # Route-specific task requirements (only added when enable_route=True)
+        self.task_requirements_route = """
+    For URL navigation (when route information suggests a shortcut):
+    If you determine that navigating directly to a URL would be faster than clicking through pages,
+    use the address bar to navigate:
+    ```python
+    pyautogui.hotkey('ctrl', 'l'); time.sleep(0.3); pyautogui.hotkey('ctrl', 'a'); pyperclip.copy(\"\"\"TARGET_URL\"\"\"); pyautogui.hotkey('ctrl', 'v'); time.sleep(0.3); pyautogui.press('enter'); time.sleep(10)
+    ```
+    Replace TARGET_URL with the full URL from route information.
+    Note: Allow sufficient time (10+ seconds) for the page to fully load before proceeding.
+"""
+
+        # Common ending part of task requirements
+        self.task_requirements_end = """
     Limit the execution to no more than 8 steps at a time to avoid errors.
 
 - Tell (your answer)
@@ -417,6 +435,37 @@ You must choose one of the actions below:
 
 - Stop
     If all the operations to meet the user's requirements have been completed in ### History operation ###, use this operation to stop the whole process."""
+
+    def _get_task_requirements(self, enable_route: bool) -> str:
+        """Build task requirements based on enable_route setting."""
+        if enable_route:
+            return self.task_requirements_base + self.task_requirements_route + self.task_requirements_end
+        else:
+            return self.task_requirements_base + self.task_requirements_end
+
+    def _build_route_info(self, ctx: ActionPromptContext) -> str:
+        """Build route information section for prompt."""
+        if not ctx.enable_route:
+            return ""
+
+        # Show all available routes for agent to choose from
+        if not ctx.all_routes_info:
+            return ""
+
+        route_section = f"""
+### Route Information ###
+Below are available shortcut routes that can help you navigate directly to the target page.
+
+{ctx.all_routes_info}
+
+**IMPORTANT: Choose the MOST SPECIFIC route that matches your task goal.**
+- Avoid using general homepages when a more specific route is available
+- This saves steps and gets you directly to the right page
+
+To use a route:
+- Use address bar: Ctrl+L → paste the URL → Enter
+"""
+        return route_section
 
     def get_action_prompt(self, ctx: ActionPromptContext) -> str:
         # Build all sections using base class methods
@@ -426,16 +475,27 @@ You must choose one of the actions below:
         task_list = self._build_task_list(ctx)
         last_operation = self._build_last_operation(ctx)
 
+        # Build route information if enabled
+        route_info = self._build_route_info(ctx)
+
+        # Combine additional info with route info
+        additional_info = ctx.add_info
+        if route_info:
+            additional_info = additional_info + "\n" + route_info if additional_info else route_info
+
+        # Build task requirements based on enable_route setting
+        task_requirements = self._get_task_requirements(ctx.enable_route)
+
         # Use main template to build final prompt
         return self.prompt_template.format(
             background=background,
             screenshot_info=screenshot_info,
             hints=self.hints,
-            additional_info=ctx.add_info,
+            additional_info=additional_info,
             history_operations=history_operations,
             task_list=task_list,
             last_operation=last_operation,
-            task_requirements=self.task_requirements,
+            task_requirements=task_requirements,
             output_format=self.output_format.format(
                 action_options="Open App () or Run () or Tell () or Stop. Only one action can be output at one time."
             ),

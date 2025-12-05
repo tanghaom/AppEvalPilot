@@ -41,9 +41,7 @@ def match_name(window_name: List[str], patterns: List[str]) -> bool:
         return any(pattern.lower() in name.lower() for pattern in patterns)
 
 
-async def start_windows(
-    target_url: str = "", app_path: str = "C:/Program Files/Google/Chrome/Application/chrome.exe", work_path: str = ""
-) -> int:
+async def start_windows(target_url: str = "", app_path: str = "C:/Program Files/Google/Chrome/Application/chrome.exe", work_path: str = "") -> int:
     """
     Start browser with accessibility and remote debugging enabled or launch a batch file.
 
@@ -62,9 +60,7 @@ async def start_windows(
         if not app_path.exists():
             raise FileNotFoundError(f"Browser executable not found at: {app_path}")
 
-        cmd = (
-            f'"{app_path}" --force-renderer-accessibility --remote-debugging-port=9222 --start-fullscreen {target_url}'
-        )
+        cmd = f'"{app_path}" --force-renderer-accessibility --remote-debugging-port=9222 --start-fullscreen {target_url}'
     elif work_path:
         work_path = Path(work_path)
         if not work_path.exists():
@@ -173,9 +169,7 @@ async def kill_process(pid: int) -> bool:
         else:  # Linux/Unix system
             # First try to send SIGTERM signal
             cmd = f"kill -15 {pid}"
-            process = await asyncio.create_subprocess_shell(
-                cmd, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE
-            )
+            process = await asyncio.create_subprocess_shell(cmd, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE)
             await process.communicate()
 
             # Give the process some time to respond to SIGTERM
@@ -185,9 +179,7 @@ async def kill_process(pid: int) -> bool:
             if psutil.pid_exists(pid):
                 # If the process still exists, send SIGKILL
                 cmd = f"kill -9 {pid}"
-                process = await asyncio.create_subprocess_shell(
-                    cmd, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE
-                )
+                process = await asyncio.create_subprocess_shell(cmd, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE)
                 await process.communicate()
 
         logger.info(f"Process {pid} terminated")

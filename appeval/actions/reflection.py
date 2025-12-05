@@ -81,15 +81,9 @@ ERROR: If the operation failed or produced unexpected results
             str: Reflection prompt
         """
         # Process perception information
-        before_info = "\n".join(
-            f"{info['coordinates']}; {info['text']}"
-            for info in last_perception_infos
-            if self._is_valid_perception(info)
-        )
+        before_info = "\n".join(f"{info['coordinates']}; {info['text']}" for info in last_perception_infos if self._is_valid_perception(info))
 
-        after_info = "\n".join(
-            f"{info['coordinates']}; {info['text']}" for info in perception_infos if self._is_valid_perception(info)
-        )
+        after_info = "\n".join(f"{info['coordinates']}; {info['text']}" for info in perception_infos if self._is_valid_perception(info))
 
         # Process additional information
         additional_info = f"You also need to note the following requirements: {add_info}." if add_info else ""
@@ -141,25 +135,17 @@ ERROR: If the operation failed or produced unexpected results
         Returns:
             Tuple[str, str]: (Reflection result, Reflection thought)
         """
-        prompt = self.get_reflection_prompt(
-            instruction, last_perception_infos, perception_infos, width, height, summary, action, add_info
-        )
-        logger.info(
-            f"\n\n######################## reflection_prompt:\n{prompt}\n\n######################## reflection_prompt end\n\n\n\n"
-        )
+        prompt = self.get_reflection_prompt(instruction, last_perception_infos, perception_infos, width, height, summary, action, add_info)
+        logger.info(f"\n\n######################## reflection_prompt:\n{prompt}\n\n######################## reflection_prompt end\n\n\n\n")
 
         output = await self.llm.aask(
             prompt,
-            system_msgs=[
-                f"You are a helpful AI {'mobile phone' if self.platform=='Android' else 'PC'} operating assistant."
-            ],
+            system_msgs=[f"You are a helpful AI {'mobile phone' if self.platform=='Android' else 'PC'} operating assistant."],
             images=[encode_image(last_screenshot), encode_image(current_screenshot)],
             stream=False,
         )
 
-        logger.info(
-            f"\n\n######################## reflection_output:\n{output}\n\n######################## reflection_output end\n\n\n\n"
-        )
+        logger.info(f"\n\n######################## reflection_output:\n{output}\n\n######################## reflection_output end\n\n\n\n")
 
         reflection_thought = output.split("### Thought ###")[-1].split("### Answer ###")[0].replace("\n", " ").strip()
         reflect = output.split("### Answer ###")[-1].strip()

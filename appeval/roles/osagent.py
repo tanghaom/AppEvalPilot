@@ -6,6 +6,7 @@
 @File    : osagent.py
 @Desc    : Operating System Operation Assistant
 """
+import asyncio
 import copy
 import json
 import random
@@ -31,6 +32,7 @@ from appeval.tools.chrome_debugger import ChromeDebugger
 from appeval.tools.device_controller import ControllerTool
 from appeval.tools.icon_detect import IconDetectTool
 from appeval.tools.ocr import OCRTool
+from appeval.tools.route_manager import RouteManager
 
 # 忽略所有警告
 warnings.filterwarnings("ignore")
@@ -61,6 +63,12 @@ class OSAgentContext(RoleContext):
     width: int = 0  # Screen width
     height: int = 0  # Screen height
     webbrowser_console_logs: List[Any] = Field(default_factory=list)  # Browser console log list
+    # Route related fields
+    current_url: str = ""  # Current page URL
+    last_url: str = ""  # Last page URL
+    all_routes_info: str = ""  # All available routes information for agent to choose from
+    route_save_info: Dict = Field(default_factory=dict)
+    pending_urls: List[str] = Field(default_factory=list)  # URLs pending for route analysis
 
     def reset(self) -> None:
         """Reset all states to initial values"""
@@ -83,6 +91,12 @@ class OSAgentContext(RoleContext):
         self.width = 0
         self.height = 0
         self.webbrowser_console_logs = []
+        # Route related fields
+        self.current_url = ""
+        self.last_url = ""
+        self.all_routes_info = ""
+        self.route_save_info = {}
+        self.pending_urls = []
 
 
 class OSAgent(Role):
@@ -120,6 +134,10 @@ class OSAgent(Role):
         # Other optional parameters
         system_prompt: str = "",
         add_info: str = "",
+        # Route related parameters
+        enable_route: bool = False,
+        route_project: str = "",
+        routes_dir: str = "routes",
         **kwargs,
     ) -> None:
         """Initialize OSAgent.
@@ -142,6 +160,9 @@ class OSAgent(Role):
             system_prompt (str): System prompt
             add_info (str): Additional information to add to the prompt
             think_history_images (int): Max number of screenshots (latest-first) to include during think
+            enable_route (bool): Whether to enable route navigation feature
+            route_project (str): Project name for route storage
+            routes_dir (str): Directory to store route files
         """
         super().__init__(**kwargs)
 
@@ -154,12 +175,20 @@ class OSAgent(Role):
         # Initialize tools
         self._init_tools()
 
+        # Initialize route manager
+        self._init_route_manager()
+
     def _init_config(self, params: dict) -> None:
         """Initialize configuration parameters"""
         # Filter out self and kwargs
         config_params = {k: v for k, v in params.items() if k not in ["self", "kwargs"]}
         for key, value in config_params.items():
             setattr(self, key, value)
+
+        # Route feature requires chrome_debugger to get current URL
+        if self.enable_route and not self.use_chrome_debugger:
+            logger.info("[Config] enable_route=True requires chrome_debugger, auto-enabling use_chrome_debugger")
+            self.use_chrome_debugger = True
 
         # Set default additional prompt information
         if not self.add_info:
@@ -208,6 +237,130 @@ class OSAgent(Role):
         # Initialize browser debugger
         if self.use_chrome_debugger:
             self.chrome_debugger = ChromeDebugger()
+
+    def _init_route_manager(self) -> None:
+        """Initialize route manager."""
+        if self.enable_route:
+            self.route_manager = RouteManager(routes_dir=self.routes_dir)
+            if self.route_project:
+                self.route_manager.load_routes(self.route_project)
+        else:
+            self.route_manager = None
+
+    def _get_current_url(self) -> str:
+        """Get current page URL from Chrome debugger.
+
+        Returns:
+            str: Current page URL, or empty string if not available.
+        """
+        if self.use_chrome_debugger:
+            return self.chrome_debugger.get_current_url()
+        return ""
+
+    async def _analyze_route_save(self, url: str, instruction: str) -> dict:
+        """Use LLM to analyze if a single URL should be saved as a route.
+
+        Args:
+            url: URL to analyze
+            instruction: User instruction for context
+
+        Returns:
+            dict: Route save decision with keys 'save_route', 'route_url', 'route_name'
+        """
+        prompt = f"""Analyze if the current page should be saved as a route for future quick access.
+
+Current URL: {url}
+User Instruction Context: {instruction}
+
+Save Criteria (save if met):
+- Static entry points: pages with fixed URLs that serve as common starting points or destinations and don't depend on user's specific input
+- Reusable functional pages: pages representing core features that users frequently navigate to
+
+Skip Criteria (skip if ANY met):
+- User-specific search results: pages showing results for THIS user's specific query (e.g., ?destination=xxx) - NOT reusable for different searches
+- Dynamic instance pages: URLs containing unique identifiers (numeric IDs, UUIDs, hashes) that point to specific items/records
+- Ephemeral pages: temporary states like redirects, loading screens, or one-time confirmations
+
+Output format:
+save_route: [save/skip]
+route_url: [the full URL to save if save, empty if skip]
+route_name: [descriptive short name for this page, empty if skip]
+reason: [brief explanation]
+"""
+        result = {"save_route": "skip", "route_url": url, "route_name": "", "reason": ""}
+
+        try:
+            response = await self.llm.aask(prompt, stream=False)
+
+            # Parse save_route
+            match = re.search(r"save_route:\s*\[?(save|skip)\]?", response, re.IGNORECASE)
+            if match:
+                result["save_route"] = match.group(1).lower()
+
+            if result["save_route"] == "save":
+                # Parse route_url
+                match = re.search(r"route_url:\s*\[?([^\]\n]+)\]?", response)
+                if match:
+                    result["route_url"] = match.group(1).strip()
+                if not result["route_url"]:
+                    result["route_url"] = url
+
+                # Parse route_name
+                match = re.search(r"route_name:\s*\[?([^\]\n]+)\]?", response)
+                if match:
+                    result["route_name"] = match.group(1).strip()
+
+            # Parse reason
+            match = re.search(r"reason:\s*\[?([^\]\n]+)\]?", response)
+            if match:
+                result["reason"] = match.group(1).strip()
+
+        except Exception as e:
+            logger.error(f"Failed to analyze route save for {url}: {e}")
+
+        return result
+
+    def _process_route(self) -> None:
+        """Process route logic before _think().
+
+        This method:
+        1. Gets current URL and checks if it changed
+        2. If URL changed, records it for later batch analysis (deferred to end of task)
+        3. Provides all available routes to agent for decision
+        """
+        if not self.enable_route or not self.route_manager:
+            return
+
+        # Get current URL
+        current_url = self._get_current_url()
+
+        # Update URL tracking
+        self.rc.last_url = self.rc.current_url
+        self.rc.current_url = current_url
+
+        # Provide all available routes to agent (agent will decide which to use with full context)
+        if self.route_manager.routes:
+            self.rc.all_routes_info = self.route_manager.get_routes_for_prompt()
+            logger.info(f"[Route] Providing {len(self.route_manager.routes)} routes to agent for decision")
+        else:
+            self.rc.all_routes_info = ""
+
+        # Check if URL changed (only for valid HTTP(S) URLs)
+        is_valid_url = self.rc.current_url.startswith("http://") or self.rc.current_url.startswith("https://")
+        url_changed = self.rc.current_url != self.rc.last_url and is_valid_url
+
+        if url_changed:
+            logger.info(f"[Route] URL changed: {self.rc.last_url} -> {self.rc.current_url}")
+
+            # Check if current URL is already in routes or pending list
+            if not self.route_manager.route_exists(self.rc.current_url) and self.rc.current_url not in self.rc.pending_urls:
+                # Record URL for later batch analysis (deferred processing)
+                self.rc.pending_urls.append(self.rc.current_url)
+                logger.info(f"[Route] Queued URL for analysis: {self.rc.current_url} (total pending: {len(self.rc.pending_urls)})")
+            elif self.route_manager.route_exists(self.rc.current_url):
+                # Route exists, record successful access
+                self.route_manager.record_access(self.rc.current_url, success=True)
+                logger.debug(f"[Route] Recorded access to existing route: {self.rc.current_url}")
 
     def _get_timestamped_paths(self) -> None:
         """Update file paths with timestamps"""
@@ -579,6 +732,9 @@ class OSAgent(Role):
             task_list=self.rc.task_list,
             use_som=self.use_som,
             location_info=self.location_info,
+            # Route related fields
+            enable_route=self.enable_route,
+            all_routes_info=self.rc.all_routes_info,
         )
 
         prompt_action = self.prompt_utils.get_action_prompt(ctx)
@@ -860,6 +1016,9 @@ class OSAgent(Role):
                     self.instruction, self.screenshot_file, self.screenshot_som_file if self.use_som else None
                 )
 
+            # Process route logic (record URL changes for later batch analysis)
+            self._process_route()
+
             # think
             has_todo = await self._think()
             if not has_todo:
@@ -874,6 +1033,54 @@ class OSAgent(Role):
 
         return rsp
 
+    async def _process_pending_routes(self) -> None:
+        """Process all pending URLs for route analysis using concurrent LLM calls.
+
+        This method is called at the end of task to analyze all recorded URLs
+        and save worthy routes. Uses asyncio.gather for parallel processing
+        to maintain accuracy while maximizing speed.
+        """
+        if not self.enable_route or not self.route_manager or not self.rc.pending_urls:
+            return
+
+        # Filter out URLs that are already saved
+        urls_to_analyze = [url for url in self.rc.pending_urls if not self.route_manager.route_exists(url)]
+
+        if not urls_to_analyze:
+            logger.info("[Route] No new URLs to analyze")
+            self.rc.pending_urls.clear()
+            return
+
+        logger.info(f"[Route] Analyzing {len(urls_to_analyze)} URLs concurrently...")
+
+        # Concurrent LLM calls - all requests sent in parallel
+        tasks = [self._analyze_route_save(url, self.instruction) for url in urls_to_analyze]
+        results = await asyncio.gather(*tasks, return_exceptions=True)
+
+        # Process results
+        saved_count = 0
+        for url, save_info in zip(urls_to_analyze, results):
+            # Handle exceptions from gather
+            if isinstance(save_info, Exception):
+                logger.error(f"[Route] Failed to analyze {url}: {save_info}")
+                continue
+
+            logger.debug(f"[Route] Analysis for {url}: {save_info}")
+
+            if save_info.get("save_route") == "save":
+                result = self.route_manager.process_agent_save_decision(
+                    save_decision=save_info["save_route"],
+                    route_url=save_info.get("route_url", url),
+                    route_name=save_info.get("route_name", ""),
+                    access_success=True,
+                )
+                logger.info(f"[Route] Saved: {result}")
+                saved_count += 1
+
+        # Clear pending list
+        self.rc.pending_urls.clear()
+        logger.info(f"[Route] Finished: analyzed {len(urls_to_analyze)} URLs, saved {saved_count} routes")
+
     async def run(self, instruction: str) -> Message:
         """Run main loop.
 
@@ -885,4 +1092,13 @@ class OSAgent(Role):
         self.instruction = instruction
 
         rsp = await self.react()
+
+        # Batch process pending URLs for route analysis (deferred from main loop)
+        await self._process_pending_routes()
+
+        # Save routes at the end of task
+        if self.enable_route and self.route_manager and self.route_project:
+            self.route_manager.save_routes(self.route_project)
+            logger.info(f"[Route] Saved routes for project: {self.route_project}")
+
         return rsp

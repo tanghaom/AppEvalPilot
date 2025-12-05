@@ -93,9 +93,7 @@ class TaskManager:
         self.tasks: Dict[str, dict] = {}
         self.task_queue: asyncio.Queue = asyncio.Queue()
         self.is_worker_running: bool = False
-        self.app = FastAPI(
-            title="Task Manager API", description="API service for managing and executing test tasks", version="1.0.0"
-        )
+        self.app = FastAPI(title="Task Manager API", description="API service for managing and executing test tasks", version="1.0.0")
         self.appeval = AppEvalRole(
             data_path="data/temp.json",
             planner_model="claude-3-5-sonnet-v2",
@@ -212,9 +210,7 @@ class TaskManager:
                 else:
                     cmd = f"nohup conda run -n {env_name} python {start_path} > service.log 2>&1 & echo $!"
 
-                process = await asyncio.create_subprocess_shell(
-                    cmd, cwd=work_dir, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE
-                )
+                process = await asyncio.create_subprocess_shell(cmd, cwd=work_dir, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE)
                 stdout, _ = await process.communicate()
                 pid = int(stdout.decode().strip())
                 return pid
@@ -283,9 +279,7 @@ class TaskManager:
                     await process.communicate()
                     logger.info(f"Conda environment {env_name} removed")
 
-                    self.tasks[task_id].update(
-                        {"status": TaskStatus.COMPLETED, "result": result, "end_time": datetime.now().isoformat()}
-                    )
+                    self.tasks[task_id].update({"status": TaskStatus.COMPLETED, "result": result, "end_time": datetime.now().isoformat()})
 
                 elif task["type"] == TaskType.URL:
                     # Create and run OSAgent
@@ -296,14 +290,10 @@ class TaskManager:
                     )
                     result = json.loads(result.content)
 
-                    self.tasks[task_id].update(
-                        {"status": TaskStatus.COMPLETED, "result": result, "end_time": datetime.now().isoformat()}
-                    )
+                    self.tasks[task_id].update({"status": TaskStatus.COMPLETED, "result": result, "end_time": datetime.now().isoformat()})
 
             except Exception as e:
-                self.tasks[task_id].update(
-                    {"status": TaskStatus.FAILED, "error": str(e), "end_time": datetime.now().isoformat()}
-                )
+                self.tasks[task_id].update({"status": TaskStatus.FAILED, "error": str(e), "end_time": datetime.now().isoformat()})
 
             finally:
                 try:

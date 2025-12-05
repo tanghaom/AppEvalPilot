@@ -36,9 +36,7 @@ class OCRTool:
 
         # Initialize text detection and recognition models
         self.detection_model = pipeline(Tasks.ocr_detection, model="iic/cv_resnet18_ocr-detection-db-line-level_damo")
-        self.recognition_model = pipeline(
-            Tasks.ocr_recognition, model="iic/cv_convnextTiny_ocr-recognition-document_damo"
-        )
+        self.recognition_model = pipeline(Tasks.ocr_recognition, model="iic/cv_convnextTiny_ocr-recognition-document_damo")
 
     @staticmethod
     def _order_point(coor: np.ndarray) -> np.ndarray:
@@ -254,9 +252,7 @@ class OCRTool:
             logger.error(f"Split OCR processing failed: {e}")
             return [], []
 
-    def _merge_boxes_and_texts(
-        self, texts: List[str], boxes: List[List[int]], iou_threshold: float = 0
-    ) -> Tuple[List[str], List[List[int]]]:
+    def _merge_boxes_and_texts(self, texts: List[str], boxes: List[List[int]], iou_threshold: float = 0) -> Tuple[List[str], List[List[int]]]:
         """Merge overlapping text boxes and their corresponding texts
 
         Args:

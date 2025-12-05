@@ -60,21 +60,15 @@ Respond with a single paragraph in plain text, without any special formatting or
             str: Extracted important content
         """
         prompt = self.get_extractor_prompt(task_content)
-        logger.info(
-            f"\n\n######################## extractor_prompt:\n{prompt}\n\n######################## extractor_prompt end\n\n\n\n"
-        )
+        logger.info(f"\n\n######################## extractor_prompt:\n{prompt}\n\n######################## extractor_prompt end\n\n\n\n")
 
         output = await self.llm.aask(
             prompt,
-            system_msgs=[
-                f"You are a helpful AI {'mobile phone' if self.platform=='Android' else 'PC'} operating assistant."
-            ],
+            system_msgs=[f"You are a helpful AI {'mobile phone' if self.platform=='Android' else 'PC'} operating assistant."],
             images=[encode_image(screenshot_file)],
             stream=False,
         )
 
-        logger.info(
-            f"\n\n######################## extractor_output:\n{output}\n\n######################## extractor_output end\n\n\n\n"
-        )
+        logger.info(f"\n\n######################## extractor_output:\n{output}\n\n######################## extractor_output end\n\n\n\n")
 
         return output.strip()

@@ -59,8 +59,8 @@ async def test_generate_results_dict():
             "Run (pyautogui.scroll(-1000); time.sleep(2))",
             "Run (pyautogui.scroll(-1000); time.sleep(2))",
             'Tell ({"9": {"result": "Fail", "evidence": "After thoroughly scrolling through the entire page, no skills tag cloud section was found"}, "10": {"result": "Fail", "evidence": "Skills tags are not present on the page as the skills cloud section is not implemented"}, "11": {"result": "Fail", "evidence": "Cannot verify skills cloud layout as the section does not exist on the page"}, "12": {"result": "Pass", "evidence": "Social media links are visible in the footer section with GitHub, LinkedIn, and Twitter icons"}, "13": {"result": "Pass", "evidence": "Social media links are clickable and properly formatted to open respective platforms"}, "19": {"result": "Pass", "evidence": "Page loads within 2-3 seconds with all content and images rendering properly"}})',
-            "Run (pyautogui.click(2039, 207); time.sleep(3))"
-            ]
+            "Run (pyautogui.click(2039, 207); time.sleep(3))",
+        ]
 
         task_list = [
             "Scrolling down the page to test navigation bar visibility and fixed position.",
@@ -94,12 +94,12 @@ async def test_generate_results_dict():
             "None",
         ]
         check_list = {
-                "2": "Click the 'About' link in the navigation bar",
-                "3": "Click the 'Portfolio' link in the navigation bar",
-                "4": "Click the 'Blog' link in the navigation bar",
-                "5": "Click the 'Contact' link in the navigation bar",
-                "6": "Click the 'Home' link in the navigation bar",
-                "7": "Click the 'Download Resume' button"
+            "2": "Click the 'About' link in the navigation bar",
+            "3": "Click the 'Portfolio' link in the navigation bar",
+            "4": "Click the 'Blog' link in the navigation bar",
+            "5": "Click the 'Contact' link in the navigation bar",
+            "6": "Click the 'Home' link in the navigation bar",
+            "7": "Click the 'Download Resume' button",
         }
         task_id_case_number = 20
         res = await case_generator.generate_results_dict(action_history, task_list, memory, task_id_case_number, check_list)
@@ -108,19 +108,20 @@ async def test_generate_results_dict():
         logger.error(f"Execution failed: {str(e)}")
         logger.exception("Detailed error info")
 
+
 async def test_catch_error():
     try:
         answer = "123,['1','2','3']"
         # Convert string to list
-        start_idx = answer.find('[')
-        end_idx = answer.rfind(']')
-        
+        start_idx = answer.find("[")
+        end_idx = answer.rfind("]")
+
         if start_idx == -1 or end_idx == -1 or start_idx >= end_idx:
             logger.warning(f"Invalid answer format: {answer}")
             return []
-            
+
         # Extract content between brackets
-        content = answer[start_idx:end_idx+1]
+        content = answer[start_idx : end_idx + 1]
         print(content)
         test_cases = eval(content)
         print(test_cases)
@@ -129,6 +130,8 @@ async def test_catch_error():
     except Exception as e:
         logger.error(f"Error occurred while generating test cases: {str(e)}")
         return []
+
+
 if __name__ == "__main__":
     res = asyncio.run(test_generate_results_dict())
     print(res)
