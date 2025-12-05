@@ -36,6 +36,9 @@ async def run_osagent(args):
         font_path=args.font_path,
         knowledge_base_path=args.knowledge_base_path,
         add_info=args.add_info,
+        # Route related parameters
+        enable_route=bool(args.enable_route),
+        route_project=args.route_project,
     )
 
     # Run the agent with the provided instruction
@@ -66,7 +69,7 @@ def main():
         "--platform", type=str, default="Windows", help="Operating system type (Windows, Mac, or Android)"
     )
     parser.add_argument("--max_iters", type=int, default=5, help="Maximum number of iterations")
-    parser.add_argument("--instruction", type=str, default="Search Xiamen weather tomorrow", help="User instruction")
+    parser.add_argument("--instruction", type=str, default="在携程进入旅游页面，返回内容", help="User instruction")
 
     # Feature switch parameters
     parser.add_argument("--use_ocr", type=int, default=0, help="Whether to use OCR")
@@ -77,7 +80,8 @@ def main():
     parser.add_argument("--use_som", type=int, default=0, help="Whether to draw visualization boxes on screenshots")
     parser.add_argument("--extend_xml_infos", type=int, default=1, help="Whether to get XML element information")
     parser.add_argument("--use_chrome_debugger", type=int, default=0, help="Whether to record browser console output")
-
+    parser.add_argument("--enable_route", type=int, default=1, help="Whether to enable route navigation feature")
+    parser.add_argument("--route_project", type=str, default="xiecheng", help="Route project name")
     # Display and layout parameters
     parser.add_argument(
         "--location_info", type=str, default="center", help="Location information type (center or bbox)"
@@ -86,7 +90,6 @@ def main():
     parser.add_argument(
         "--quad_split_ocr", type=int, default=0, help="Whether to split image into four parts for OCR recognition"
     )
-
     # Path related parameters
     parser.add_argument("--log_dirs", type=str, default="workspace", help="Log directory")
     parser.add_argument(
