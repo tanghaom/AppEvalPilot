@@ -127,7 +127,7 @@ class OSAgent(Role):
         system_prompt: str = "",
         add_info: str = "",
         # Evidence collection parameters (for online learning)
-        enable_evidence_collection: bool = False,
+        enable_evidence_collection: bool = True,
         evidence_output_dir: str = None,
         evidence_fallback_to_mllm: bool = False,
         **kwargs,
