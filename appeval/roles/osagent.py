@@ -129,8 +129,6 @@ class OSAgent(Role):
         # Evidence collection parameters (for online learning)
         enable_evidence_collection: bool = False,
         evidence_output_dir: str = None,
-        evidence_mllm_api_key: str = None,
-        evidence_mllm_base_url: str = None,
         evidence_fallback_to_mllm: bool = False,
         **kwargs,
     ) -> None:
@@ -156,8 +154,6 @@ class OSAgent(Role):
             think_history_images (int): Max number of screenshots (latest-first) to include during think
             enable_evidence_collection (bool): Whether to enable evidence collection for online learning.
             evidence_output_dir (str): Output directory for evidence files. If None, uses log_dirs/evidence.
-            evidence_mllm_api_key (str): MLLM API key for evidence analysis (optional).
-            evidence_mllm_base_url (str): MLLM API base URL for evidence analysis (optional).
             evidence_fallback_to_mllm (bool): Whether to fallback to MLLM when element tree matching fails.
         """
         super().__init__(**kwargs)
@@ -233,8 +229,7 @@ class OSAgent(Role):
             self.evidence_collector = OnlineEvidenceCollector(
                 output_dir=evidence_dir,
                 enable_coordinate_analysis=True,
-                mllm_api_key=self.evidence_mllm_api_key,
-                mllm_base_url=self.evidence_mllm_base_url,
+                llm=self.llm,
                 fallback_to_mllm=self.evidence_fallback_to_mllm,
                 project_name=self.name,
             )
