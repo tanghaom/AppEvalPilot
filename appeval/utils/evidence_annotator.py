@@ -77,7 +77,7 @@ Task:
 Decide if an action succeeded based only on the Reflection text below. If the Reflection is empty, whitespace-only, or contains no meaningful information, the outcome is failure.
 
 Input:
-{reflection_thought}
+{evidence}
 
 Decision rules (strict):
 - Success (output Yes): The Reflection clearly and explicitly states that the intended UI change or functional effect occurred, e.g.:
