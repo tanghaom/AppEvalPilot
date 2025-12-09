@@ -49,6 +49,10 @@ class Evidence:
     error_flag: bool = False  # 是否发生错误
     error_message: Optional[str] = None  # 错误信息
 
+    # Tell 动作相关字段（用于 EM 模型）
+    tell_evidence: Optional[str] = None  # 从 Tell 动作中提取的 evidence
+    agent_noresp: Optional[int] = None  # agent 无响应/异常判断：1=有问题, 0=正常, None=未分析
+
     def to_dict(self) -> Dict:
         """转换为字典，用于序列化"""
         return asdict(self)
@@ -66,6 +70,44 @@ class Evidence:
 class OnlineEvidenceCollector:
     """在线证据收集器，用于实时收集每步操作的证据"""
 
+    # 用于判断 agent_noresp 的 prompt 模板
+    AGENT_NORESP_PROMPT = """You are a "precise GUI test adjudicator."
+
+Task:
+Decide if an action succeeded based only on the Reflection text below. If the Reflection is empty, whitespace-only, or contains no meaningful information, the outcome is failure.
+
+Input:
+{reflection_thought}
+
+Decision rules (strict):
+- Success (output Yes): The Reflection clearly and explicitly states that the intended UI change or functional effect occurred, e.g.:
+  - "Search results updated/refreshed"
+  - "Modal opened/closed"
+  - "Button became enabled/disabled"
+  - "Status 200 and content refreshed/list updated"
+  - "Navigated to target page / expected element is visible"
+- Failure (output No): Any of the following:
+  - Page unresponsive, stuck, or loading never completes (e.g., "no change," "spinner keeps spinning," "timeout," "no results returned")
+  - Result not as expected (e.g., "navigated to wrong page," "content differs from expectation," "button still disabled," "filter did not apply," "still old data/same page")
+  - Errors/exceptions/stack traces/not implemented (e.g., "4xx/5xx error," "threw exception," "not implemented")
+  - Only browser default behavior is triggered (e.g., "right-click shows browser menu only")
+  - Ambiguous, contradictory, or unverifiable statements (be conservative: treat as failure)
+- Negative examples (always failure): "No visible change," "not sure if it worked," "might have succeeded," "seems updated but no new data," "loading not finished."
+
+Output format:
+Return exactly one line of JSON with no extra keys:
+
+```json
+{{ "result" : "Yes" }}
+```
+
+or
+
+```json
+{{ "result" : "No" }}
+```}}
+"""
+
     def __init__(
         self,
         output_dir: str = "evidence",
@@ -73,6 +115,7 @@ class OnlineEvidenceCollector:
         llm=None,  # 直接使用OSAgent的llm实例
         fallback_to_mllm: bool = False,  # 默认不使用MLLM回退，加快处理速度
         project_name: str = "default",
+        enable_tell_analysis: bool = True,  # 是否启用 Tell 动作分析
     ):
         """
         初始化在线证据收集器
@@ -83,12 +126,14 @@ class OnlineEvidenceCollector:
             llm: LLM实例，直接使用OSAgent的llm
             fallback_to_mllm: 当元素树匹配失败时是否回退到MLLM
             project_name: 项目名称
+            enable_tell_analysis: 是否启用 Tell 动作分析
         """
         self.output_dir = output_dir
         self.enable_coordinate_analysis = enable_coordinate_analysis
         self.llm = llm
         self.fallback_to_mllm = fallback_to_mllm
         self.project_name = project_name
+        self.enable_tell_analysis = enable_tell_analysis
 
         # 存储收集的证据
         self.evidences: List[Evidence] = []
@@ -101,8 +146,7 @@ class OnlineEvidenceCollector:
         self.logger.setLevel(logging.INFO)
         if not self.logger.handlers:
             handler = logging.StreamHandler()
-            formatter = logging.Formatter(
-                "%(asctime)s - %(name)s - %(levelname)s - %(message)s")
+            formatter = logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
             handler.setFormatter(formatter)
             self.logger.addHandler(handler)
 
@@ -167,22 +211,127 @@ class OnlineEvidenceCollector:
 
         # 处理UI元素信息
         if perception_infos:
-            ui_elements = self._convert_perception_to_elements(
-                perception_infos)
+            ui_elements = self._convert_perception_to_elements(perception_infos)
             evidence.ui_elements = ui_elements
 
             # 如果有点击坐标，进行坐标分析
             if click_coords and self.enable_coordinate_analysis:
-                self._analyze_coordinate(
-                    evidence, click_coords, ui_elements, screenshot_path, operation_desc or action_content or "")
+                self._analyze_coordinate(evidence, click_coords, ui_elements, screenshot_path, operation_desc or action_content or "")
+
+        # 处理 Tell 动作：提取 evidence 内容
+        if action_content and self.enable_tell_analysis:
+            tell_evidence = self._extract_evidence_from_tell(action_content)
+            if tell_evidence:
+                evidence.tell_evidence = tell_evidence
+                self.logger.info(f"检测到 Tell 动作，提取到 evidence: {tell_evidence[:100]}...")
 
         # 存储证据
         self.evidences.append(evidence)
 
-        self.logger.info(
-            f"收集到第 {iter_num} 步证据, 坐标匹配: {evidence.coordinate_match}")
+        self.logger.info(f"收集到第 {iter_num} 步证据, 坐标匹配: {evidence.coordinate_match}")
 
         return evidence
+
+    def _extract_evidence_from_tell(self, action_content: str) -> Optional[str]:
+        """
+        从 Tell ({"0": {"result": "Pass", "evidence": "..."}}) 格式中提取 evidence
+
+        Args:
+            action_content: 动作内容
+
+        Returns:
+            提取的 evidence 字符串，如果不是 Tell 动作则返回 None
+        """
+        if action_content is None or "Tell (" not in action_content:
+            return None
+
+        try:
+            # 定位 Tell ( 后面的 JSON 对象
+            if '"evidence":' in action_content or '"evidence": ' in action_content:
+                # 尝试提取 evidence 字段的值
+                evidence = action_content.split('"evidence":')[1] if '"evidence":' in action_content else action_content.split('"evidence": ')[1]
+                # 清理提取的内容
+                evidence = evidence.strip()
+                if evidence.startswith('"'):
+                    # 找到匹配的结束引号
+                    end_idx = evidence.find('"', 1)
+                    if end_idx != -1:
+                        evidence = evidence[1:end_idx]
+                return evidence
+            return None
+        except Exception as e:
+            self.logger.error(f"提取 Tell evidence 失败: {e}")
+            return None
+
+    async def analyze_tell_action(self, evidence: Evidence) -> Optional[int]:
+        """
+        分析 Tell 动作，判断 agent 是否给出了实质性响应
+
+        Args:
+            evidence: 证据对象，需要包含 tell_evidence 字段
+
+        Returns:
+            agent_noresp 结果：1=有问题（无响应/异常），0=正常，None=无法分析
+        """
+        if not evidence.tell_evidence:
+            return None
+
+        if not self.llm:
+            self.logger.warning("LLM 未配置，无法分析 Tell 动作")
+            return None
+
+        try:
+            prompt = self.AGENT_NORESP_PROMPT.format(evidence=evidence.tell_evidence)
+
+            response = await self.llm.aask(
+                prompt,
+                stream=False,
+            )
+
+            # 解析响应
+            result = self._parse_agent_noresp_response(response)
+            evidence.agent_noresp = result
+
+            self.logger.info(f"Tell 动作分析完成: agent_noresp={result}")
+            return result
+
+        except Exception as e:
+            self.logger.error(f"分析 Tell 动作失败: {e}")
+            return None
+
+    def _parse_agent_noresp_response(self, response: str) -> int:
+        """
+        解析 LLM 对 agent_noresp 的判断响应
+
+        Args:
+            response: LLM 的响应
+
+        Returns:
+            1 表示有问题，0 表示正常
+        """
+        # 去除 markdown 代码块标记
+        result = response.strip()
+        if result.startswith("```json"):
+            result = result[7:]
+        elif result.startswith("```"):
+            result = result[3:]
+        if result.endswith("```"):
+            result = result[:-3]
+        result = result.strip()
+
+        try:
+            import json
+
+            parsed = json.loads(result)
+            if parsed.get("result") == "Yes":
+                return 1  # 有问题
+            else:
+                return 0  # 正常
+        except:
+            # 如果解析失败，尝试简单匹配
+            if "Yes" in response:
+                return 1
+            return 0
 
     def _convert_perception_to_elements(self, perception_infos: List[Dict]) -> List[Dict]:
         """将感知信息转换为元素列表格式"""
@@ -214,8 +363,7 @@ class OnlineEvidenceCollector:
                 # 中心点格式 [x, y]，需要估算bbox
                 center_x, center_y = coords
                 # 估算一个默认大小
-                bbox = [center_x - 20, center_y -
-                        10, center_x + 20, center_y + 10]
+                bbox = [center_x - 20, center_y - 10, center_x + 20, center_y + 10]
             elif len(coords) == 4:
                 # bbox格式 [x1, y1, x2, y2]
                 bbox = coords
@@ -224,14 +372,11 @@ class OnlineEvidenceCollector:
 
             # 从rect字段提取精确bbox
             if "rect:" in text:
-                rect_match = re.search(
-                    r"rect:\s*\((\d+),\s*(\d+),\s*(\d+),\s*(\d+)\)", text)
+                rect_match = re.search(r"rect:\s*\((\d+),\s*(\d+),\s*(\d+),\s*(\d+)\)", text)
                 if rect_match:
-                    bbox = [int(rect_match.group(1)), int(rect_match.group(2)), int(
-                        rect_match.group(3)), int(rect_match.group(4))]
+                    bbox = [int(rect_match.group(1)), int(rect_match.group(2)), int(rect_match.group(3)), int(rect_match.group(4))]
 
-            element = {"id": f"element_{idx}", "ui_name": ui_name,
-                       "control_type": control_type, "bbox": bbox, "raw_text": text}
+            element = {"id": f"element_{idx}", "ui_name": ui_name, "control_type": control_type, "bbox": bbox, "raw_text": text}
             elements.append(element)
 
         return elements
@@ -257,8 +402,7 @@ class OnlineEvidenceCollector:
             area = (x2 - x1) * (y2 - y1)
             is_inside = x1 <= x <= x2 and y1 <= y <= y2
 
-            element_info = {**element, "distance": distance,
-                            "area": area, "is_inside": is_inside}
+            element_info = {**element, "distance": distance, "area": area, "is_inside": is_inside}
             elements_with_distance.append(element_info)
 
             if is_inside:
@@ -287,8 +431,7 @@ class OnlineEvidenceCollector:
     def _draw_annotated_screenshot(self, evidence: Evidence, screenshot_path: str, coords: Tuple[int, int]):
         """在截图上绘制标注"""
         try:
-            clean_project_name = re.sub(
-                r'[<>:"/\\|?*]', "_", self.project_name)
+            clean_project_name = re.sub(r'[<>:"/\\|?*]', "_", self.project_name)
 
             status = "success" if evidence.coordinate_match == 1 else "fail"
             output_filename = f"{clean_project_name}_iter_{evidence.iter_num}_coords_{coords[0]}_{coords[1]}_{status}.jpg"
@@ -300,8 +443,7 @@ class OnlineEvidenceCollector:
                 # 绘制红点
                 x, y = coords
                 radius = 4
-                draw.ellipse([x - radius, y - radius, x + radius,
-                             y + radius], fill="red", outline="darkred", width=2)
+                draw.ellipse([x - radius, y - radius, x + radius, y + radius], fill="red", outline="darkred", width=2)
 
                 # 如果匹配到元素，绘制元素边框
                 if evidence.matched_element:
@@ -345,10 +487,8 @@ class OnlineEvidenceCollector:
     def get_summary_stats(self) -> Dict:
         """获取证据统计摘要"""
         total = len(self.evidences)
-        coord_analyzed = sum(
-            1 for e in self.evidences if e.coordinate_match is not None)
-        coord_matched = sum(
-            1 for e in self.evidences if e.coordinate_match == 1)
+        coord_analyzed = sum(1 for e in self.evidences if e.coordinate_match is not None)
+        coord_matched = sum(1 for e in self.evidences if e.coordinate_match == 1)
         errors = sum(1 for e in self.evidences if e.error_flag)
 
         return {
@@ -402,8 +542,7 @@ class AutoAnnotationTool:
             self.coordinate_analysis_dir = results_dir
         else:
             # 使用项目内的文件夹（向后兼容）
-            self.coordinate_analysis_dir = os.path.join(
-                material_dir, "coordinate_analysis")
+            self.coordinate_analysis_dir = os.path.join(material_dir, "coordinate_analysis")
 
         os.makedirs(self.coordinate_analysis_dir, exist_ok=True)
 
@@ -414,8 +553,7 @@ class AutoAnnotationTool:
         # 创建日志处理器（如果还没有的话）
         if not self.logger.handlers:
             handler = logging.StreamHandler()
-            formatter = logging.Formatter(
-                "%(asctime)s - %(name)s - %(levelname)s - %(message)s")
+            formatter = logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
             handler.setFormatter(formatter)
             self.logger.addHandler(handler)
 
@@ -456,11 +594,9 @@ class AutoAnnotationTool:
             # 如果是最后一个iter，提取History operations内容
             history_operations_content = ""
             if i == len(iter_matches) - 1:  # 最后一个iter
-                history_operations_content = self.extract_history_operations_content(
-                    content)
+                history_operations_content = self.extract_history_operations_content(content)
 
-            iter_blocks.append({"iter_num": iter_num, "content": iter_content,
-                               "history_operations": history_operations_content})
+            iter_blocks.append({"iter_num": iter_num, "content": iter_content, "history_operations": history_operations_content})
 
         return iter_blocks
 
@@ -468,8 +604,7 @@ class AutoAnnotationTool:
         """提取最后一个iter中History operations和Last Task List之间的内容"""
         # 查找最后一个iter中的History operations
         history_pattern = r"### History operations ###(.*?)(?=### Last Task List ###|$)"
-        history_matches = list(re.finditer(
-            history_pattern, content, re.DOTALL))
+        history_matches = list(re.finditer(history_pattern, content, re.DOTALL))
 
         if not history_matches:
             self.logger.warning("未找到History operations内容")
@@ -479,8 +614,7 @@ class AutoAnnotationTool:
         last_history_match = history_matches[-1]
         history_content = last_history_match.group(1).strip()
 
-        self.logger.info(
-            f"提取到History operations内容，长度: {len(history_content)} 字符")
+        self.logger.info(f"提取到History operations内容，长度: {len(history_content)} 字符")
         return history_content
 
     def extract_coordinates_from_history(self, history_content: str) -> List[Tuple[int, int, str]]:
@@ -528,8 +662,7 @@ class AutoAnnotationTool:
 
             # 查找Operation部分
             operation_pattern = r"Operation:\s*(.*?)(?=Action:|$)"
-            operation_match = re.search(
-                operation_pattern, step_content, re.DOTALL)
+            operation_match = re.search(operation_pattern, step_content, re.DOTALL)
 
             if operation_match:
                 operation_text = operation_match.group(1).strip()
@@ -558,8 +691,7 @@ class AutoAnnotationTool:
                 action_text = action_match.group(1).strip()
                 action_contents.append((action_text, f"Step-{step_num}"))
 
-        self.logger.info(
-            f"从History operations中提取到 {len(action_contents)} 个Action内容")
+        self.logger.info(f"从History operations中提取到 {len(action_contents)} 个Action内容")
         return action_contents
 
     def extract_reflection_thoughts_from_history(self, history_content: str) -> List[Tuple[str, str]]:
@@ -576,8 +708,7 @@ class AutoAnnotationTool:
 
             # 查找Reflection_thought部分 - 更精确的匹配，确保在Memory之前停止
             reflection_pattern = r"Reflection_thought:\s*(.*?)(?=\n\tMemory:|\nMemory:|$)"
-            reflection_match = re.search(
-                reflection_pattern, step_content, re.DOTALL)
+            reflection_match = re.search(reflection_pattern, step_content, re.DOTALL)
 
             if reflection_match:
                 reflection_text = reflection_match.group(1).strip()
@@ -591,11 +722,9 @@ class AutoAnnotationTool:
                 reflection_text = reflection_text.rstrip("\n\t ")
 
                 if reflection_text:  # 只有当文本不为空时才添加
-                    reflection_thoughts.append(
-                        (reflection_text, f"Step-{step_num}"))
+                    reflection_thoughts.append((reflection_text, f"Step-{step_num}"))
 
-        self.logger.info(
-            f"从History operations中提取到 {len(reflection_thoughts)} 个Reflection_thought")
+        self.logger.info(f"从History operations中提取到 {len(reflection_thoughts)} 个Reflection_thought")
         return reflection_thoughts
 
     def extract_all_history_data(self, history_content: str) -> Dict:
@@ -621,8 +750,7 @@ class AutoAnnotationTool:
 
         # 查找元素树信息块
         element_tree_pattern = r"### Screenshot information ###(.*?)### Hints ###"
-        element_tree_match = re.search(
-            element_tree_pattern, iter_content, re.DOTALL)
+        element_tree_match = re.search(element_tree_pattern, iter_content, re.DOTALL)
 
         if not element_tree_match:
             self.logger.debug("未找到元素树信息")
@@ -647,8 +775,7 @@ class AutoAnnotationTool:
                 continue
 
             # 解析元素信息格式: (x, y); text:content; control_type:type; rect: (x1, y1, x2, y2)
-            element_match = re.match(
-                r"\((\d+),\s*(\d+)\);\s*text:(.*?);\s*control_type:(.*?);\s*rect:\s*\((\d+),\s*(\d+),\s*(\d+),\s*(\d+)\)", line)
+            element_match = re.match(r"\((\d+),\s*(\d+)\);\s*text:(.*?);\s*control_type:(.*?);\s*rect:\s*\((\d+),\s*(\d+),\s*(\d+),\s*(\d+)\)", line)
 
             if element_match:
                 int(element_match.group(1))
@@ -663,8 +790,7 @@ class AutoAnnotationTool:
                 # bbox就是rect坐标 [x1, y1, x2, y2]
                 bbox = [rect_x1, rect_y1, rect_x2, rect_y2]
 
-                element = {"id": f"element_{idx}", "ui_name": ui_name,
-                           "control_type": control_type, "bbox": bbox}  # 添加唯一id
+                element = {"id": f"element_{idx}", "ui_name": ui_name, "control_type": control_type, "bbox": bbox}  # 添加唯一id
 
                 elements.append(element)
 
@@ -690,8 +816,7 @@ class AutoAnnotationTool:
 
             # 过滤掉Image类型的元素
             if control_type == "Image":
-                self.logger.debug(
-                    f"过滤掉Image类型元素: {element['ui_name'] or '无名称'} ({control_type})")
+                self.logger.debug(f"过滤掉Image类型元素: {element['ui_name'] or '无名称'} ({control_type})")
                 continue
 
             bbox_key = tuple(bbox)
@@ -745,8 +870,7 @@ class AutoAnnotationTool:
             # 首先检查是否是容器类型，直接过滤掉
             if element_a["control_type"] in ["Pane", "Window", "Document"]:
                 is_container = True
-                self.logger.debug(
-                    f"过滤掉容器类型元素: {element_a['ui_name'] or '无名称'} ({element_a['control_type']})")
+                self.logger.debug(f"过滤掉容器类型元素: {element_a['ui_name'] or '无名称'} ({element_a['control_type']})")
             else:
                 # 检查当前元素是否包含其他元素
                 for j, (element_b, area_b) in enumerate(elements_with_area):
@@ -955,8 +1079,7 @@ class AutoAnnotationTool:
         """提取反思结果标注"""
         # 查找 reflection_output 块
         reflection_pattern = r"######################## reflection_output:(.*?)######################## reflection_output end"
-        reflection_match = re.search(
-            reflection_pattern, iter_content, re.DOTALL)
+        reflection_match = re.search(reflection_pattern, iter_content, re.DOTALL)
 
         if not reflection_match:
             return None
@@ -1015,8 +1138,7 @@ class AutoAnnotationTool:
 
         # 查找 Operation 部分
         operation_pattern = r"### Operation ###\s*(.*?)(?=### Task List ###)"
-        operation_match = re.search(
-            operation_pattern, action_content, re.DOTALL)
+        operation_match = re.search(operation_pattern, action_content, re.DOTALL)
 
         if not operation_match:
             return None
@@ -1036,8 +1158,7 @@ class AutoAnnotationTool:
 
         # 查找 Action 和 Operation 之间的内容
         action_operation_pattern = r"### Action ###\s*(.*?)(?=### Operation ###)"
-        action_operation_match = re.search(
-            action_operation_pattern, action_content, re.DOTALL)
+        action_operation_match = re.search(action_operation_pattern, action_content, re.DOTALL)
 
         if not action_operation_match:
             return None
@@ -1064,8 +1185,7 @@ class AutoAnnotationTool:
         # 匹配 ### Reflection Thought ### 到下一个 ### Thought ### 或 ### Action ### 之间的内容
         # 使用更精确的模式，确保匹配到正确的结束标记
         reflection_thought_pattern = r"### Reflection Thought ###\s*\n(.*?)(?=\n### Thought ###|\n### Action ###|$)"
-        reflection_thought_matches = re.finditer(
-            reflection_thought_pattern, iter_content, re.DOTALL | re.MULTILINE)
+        reflection_thought_matches = re.finditer(reflection_thought_pattern, iter_content, re.DOTALL | re.MULTILINE)
 
         # 两种prompt模板的特征文本（应该被过滤）
         prompt_template_markers = [
@@ -1080,22 +1200,19 @@ class AutoAnnotationTool:
             reflection_thought_content = match.group(1).strip()
 
             # 检查是否是prompt模板文本（包含任何特征标记）
-            is_prompt_template = any(
-                marker in reflection_thought_content for marker in prompt_template_markers)
+            is_prompt_template = any(marker in reflection_thought_content for marker in prompt_template_markers)
 
             if is_prompt_template:
                 self.logger.debug("跳过prompt模板文本")
                 continue
 
             # 清理内容，移除多余的空白和换行
-            reflection_thought_content = re.sub(
-                r"\n\s*\n+", "\n", reflection_thought_content)
+            reflection_thought_content = re.sub(r"\n\s*\n+", "\n", reflection_thought_content)
             reflection_thought_content = reflection_thought_content.strip()
 
             # 返回第一个非模板的reflection内容
             if reflection_thought_content:
-                self.logger.debug(
-                    f"提取到Reflection Thought内容，长度: {len(reflection_thought_content)}")
+                self.logger.debug(f"提取到Reflection Thought内容，长度: {len(reflection_thought_content)}")
                 return reflection_thought_content
 
         return None
@@ -1111,8 +1228,7 @@ class AutoAnnotationTool:
                 # 绘制红点（缩小尺寸）
                 x, y = coordinates
                 radius = 4  # 从15缩小到5
-                draw.ellipse([x - radius, y - radius, x + radius,
-                             y + radius], fill="red", outline="darkred", width=2)
+                draw.ellipse([x - radius, y - radius, x + radius, y + radius], fill="red", outline="darkred", width=2)
 
                 # 移除坐标文本显示
                 # draw.text((x+20, y-10), f"({x},{y})", fill='red')
@@ -1171,16 +1287,14 @@ class AutoAnnotationTool:
         filename = os.path.basename(image_path)
         coord_match = re.search(r"coords_(\d+)_(\d+)", filename)
         if coord_match:
-            analysis_result["coordinates"] = (
-                int(coord_match.group(1)), int(coord_match.group(2)))
+            analysis_result["coordinates"] = (int(coord_match.group(1)), int(coord_match.group(2)))
 
         max_retries = 5
         start_time = time.time()
 
         self.logger.info(f"MLLM分析开始: {os.path.basename(image_path)}")
         self.logger.info(f"操作描述: {description[:100]}...")
-        self.logger.info(
-            f"图片尺寸: {analysis_result['image_size']}, 坐标: {analysis_result['coordinates']}")
+        self.logger.info(f"图片尺寸: {analysis_result['image_size']}, 坐标: {analysis_result['coordinates']}")
 
         # 构建与OSAgent相同格式的prompt
         prompt = f"""请分析这张截图中的红点坐标是否命中了目标元素。
@@ -1222,20 +1336,17 @@ class AutoAnnotationTool:
 
                     analysis_result["analysis_time"] = time.time() - start_time
 
-                    self.logger.info(
-                        f"MLLM分析完成: 结果={result}, 耗时={analysis_result['analysis_time']:.2f}s, 重试={attempt}次")
+                    self.logger.info(f"MLLM分析完成: 结果={result}, 耗时={analysis_result['analysis_time']:.2f}s, 重试={attempt}次")
                     return analysis_result
                 else:
                     error_msg = f"无效答案: '{answer}'"
                     analysis_result["api_errors"].append(error_msg)
-                    self.logger.warning(
-                        f"无效答案，重试... (尝试 {attempt + 1}/{max_retries})")
+                    self.logger.warning(f"无效答案，重试... (尝试 {attempt + 1}/{max_retries})")
 
             except Exception as e:
                 error_msg = f"API请求失败: {str(e)}"
                 analysis_result["api_errors"].append(error_msg)
-                self.logger.warning(
-                    f"MLLM分析失败，重试: {e} (尝试 {attempt + 1}/{max_retries})")
+                self.logger.warning(f"MLLM分析失败，重试: {e} (尝试 {attempt + 1}/{max_retries})")
                 if attempt == max_retries - 1:
                     self.logger.error("MLLM分析失败，使用默认值")
                     analysis_result["accuracy"] = 1  # 默认返回命中
@@ -1244,8 +1355,7 @@ class AutoAnnotationTool:
         analysis_result["analysis_time"] = time.time() - start_time
         analysis_result["accuracy"] = 1
 
-        self.logger.error(
-            f"MLLM分析最终失败，使用默认值。总耗时: {analysis_result['analysis_time']:.2f}s")
+        self.logger.error(f"MLLM分析最终失败，使用默认值。总耗时: {analysis_result['analysis_time']:.2f}s")
         return analysis_result
 
     def _is_valid_answer(self, answer: str) -> bool:
@@ -1325,13 +1435,11 @@ class AutoAnnotationTool:
         filename = os.path.basename(image_path)
         coord_match = re.search(r"coords_(\d+)_(\d+)", filename)
         if coord_match:
-            analysis_result["coordinates"] = (
-                int(coord_match.group(1)), int(coord_match.group(2)))
+            analysis_result["coordinates"] = (int(coord_match.group(1)), int(coord_match.group(2)))
 
         self.logger.info(f"简单分析: {os.path.basename(image_path)}")
         self.logger.info(f"操作描述: {description[:100]}...")
-        self.logger.info(
-            f"图片尺寸: {analysis_result['image_size']}, 坐标: {analysis_result['coordinates']}")
+        self.logger.info(f"图片尺寸: {analysis_result['image_size']}, 坐标: {analysis_result['coordinates']}")
 
         # 这里可以实现基于规则的简单分析
         # 比如检查红点是否在按钮区域内等
@@ -1387,8 +1495,7 @@ class AutoAnnotationTool:
 
             # 如果有坐标，计算元素距离排序
             if result["click_coords"]:
-                distance_sorted_elements = self.calculate_element_distances(
-                    result["click_coords"], elements)
+                distance_sorted_elements = self.calculate_element_distances(result["click_coords"], elements)
                 result["element_distance_sorting"] = distance_sorted_elements
 
         # 5. 根据条件决定是否进行坐标分析
@@ -1414,13 +1521,11 @@ class AutoAnnotationTool:
         image_path = os.path.join(self.material_dir, f"origin_{iter_num}.jpg")
         if os.path.exists(image_path):
             # 清理项目名，移除特殊字符，确保文件名合法
-            clean_project_name = re.sub(
-                r'[<>:"/\\|?*]', "_", self.project_name)
+            clean_project_name = re.sub(r'[<>:"/\\|?*]', "_", self.project_name)
 
             # 使用新的基于元素树的匹配逻辑
             if elements:
-                match_result = self.check_coordinate_in_elements(
-                    coordinates, elements)
+                match_result = self.check_coordinate_in_elements(coordinates, elements)
 
                 if match_result["matched"]:
                     # 坐标命中元素
@@ -1437,55 +1542,44 @@ class AutoAnnotationTool:
                     # 绘制坐标并重命名为fail
                     draw_filename = f"{clean_project_name}_iter_{iter_num}_coords_{coordinates[0]}_{coordinates[1]}_fail.jpg"
 
-                draw_path = os.path.join(
-                    self.coordinate_analysis_dir, draw_filename)
-                self.draw_coordinate_on_image(
-                    image_path, coordinates, draw_path)
+                draw_path = os.path.join(self.coordinate_analysis_dir, draw_filename)
+                self.draw_coordinate_on_image(image_path, coordinates, draw_path)
 
                 # 创建精简的分析结果
-                analysis_details = {
-                    "accuracy": accuracy, "method": "element_tree", "matched_element_id": element_id}
+                analysis_details = {"accuracy": accuracy, "method": "element_tree", "matched_element_id": element_id}
 
             else:
                 # 根据参数决定是否回退到MLLM逻辑
                 if self.fallback_to_mllm:
                     # 回退到原有MLLM逻辑
                     draw_filename = f"{clean_project_name}_iter_{iter_num}_coords_{coordinates[0]}_{coordinates[1]}.jpg"
-                    draw_path = os.path.join(
-                        self.coordinate_analysis_dir, draw_filename)
-                    self.draw_coordinate_on_image(
-                        image_path, coordinates, draw_path)
+                    draw_path = os.path.join(self.coordinate_analysis_dir, draw_filename)
+                    self.draw_coordinate_on_image(image_path, coordinates, draw_path)
 
                     if self.llm:
                         analysis_details = await self.analyze_coordinate_accuracy_with_mllm(draw_path, description)
                     else:
-                        analysis_details = self.analyze_coordinate_accuracy_simple(
-                            draw_path, description)
+                        analysis_details = self.analyze_coordinate_accuracy_simple(draw_path, description)
 
                     # 根据MLLM结果重命名文件
                     if analysis_details["accuracy"] == 1:
                         success_filename = f"{clean_project_name}_iter_{iter_num}_coords_{coordinates[0]}_{coordinates[1]}_success.jpg"
-                        success_path = os.path.join(
-                            self.coordinate_analysis_dir, success_filename)
+                        success_path = os.path.join(self.coordinate_analysis_dir, success_filename)
                         os.rename(draw_path, success_path)
                         self.logger.info(f"文件已重命名为: {success_filename}")
                     else:
                         fail_filename = f"{clean_project_name}_iter_{iter_num}_coords_{coordinates[0]}_{coordinates[1]}_fail.jpg"
-                        fail_path = os.path.join(
-                            self.coordinate_analysis_dir, fail_filename)
+                        fail_path = os.path.join(self.coordinate_analysis_dir, fail_filename)
                         os.rename(draw_path, fail_path)
                         self.logger.info(f"文件已重命名为: {fail_filename}")
                 else:
                     # 不回退到MLLM，直接标记为失败
                     self.logger.info("元素树解析失败且禁用MLLM回退，标记为失败")
                     draw_filename = f"{clean_project_name}_iter_{iter_num}_coords_{coordinates[0]}_{coordinates[1]}_fail.jpg"
-                    draw_path = os.path.join(
-                        self.coordinate_analysis_dir, draw_filename)
-                    self.draw_coordinate_on_image(
-                        image_path, coordinates, draw_path)
+                    draw_path = os.path.join(self.coordinate_analysis_dir, draw_filename)
+                    self.draw_coordinate_on_image(image_path, coordinates, draw_path)
 
-                    analysis_details = {
-                        "accuracy": 0, "method": "element_tree_failed", "matched_element_id": None}
+                    analysis_details = {"accuracy": 0, "method": "element_tree_failed", "matched_element_id": None}
 
             # 保存详细分析结果
             result["coordinate_analysis"] = analysis_details
@@ -1493,20 +1587,16 @@ class AutoAnnotationTool:
 
             # 详细日志记录
             self.logger.info(f"Iter {iter_num}: 坐标分析完成")
-            self.logger.info(
-                f"  结果: {analysis_details['accuracy']} ({'命中' if analysis_details['accuracy'] == 1 else '未命中'})")
+            self.logger.info(f"  结果: {analysis_details['accuracy']} ({'命中' if analysis_details['accuracy'] == 1 else '未命中'})")
             if "analysis_time" in analysis_details:
-                self.logger.info(
-                    f"  分析耗时: {analysis_details['analysis_time']:.2f}s")
+                self.logger.info(f"  分析耗时: {analysis_details['analysis_time']:.2f}s")
             if analysis_details.get("api_errors"):
-                self.logger.warning(
-                    f"  API错误: {len(analysis_details['api_errors'])} 个")
+                self.logger.warning(f"  API错误: {len(analysis_details['api_errors'])} 个")
                 for error in analysis_details["api_errors"]:
                     self.logger.warning(f"    - {error}")
         else:
             self.logger.warning(f"Iter {iter_num}: 未找到对应的图片文件 {image_path}")
-            result["coordinate_analysis"] = {
-                "accuracy": 0, "method": "no_image", "matched_element_id": None}
+            result["coordinate_analysis"] = {"accuracy": 0, "method": "no_image", "matched_element_id": None}
 
     async def run_annotation(self) -> List[Dict]:
         """运行完整的标注流程"""
@@ -1517,8 +1607,7 @@ class AutoAnnotationTool:
         history_data = None
         for iter_block in iter_blocks:
             if iter_block.get("history_operations"):
-                history_data = self.extract_all_history_data(
-                    iter_block["history_operations"])
+                history_data = self.extract_all_history_data(iter_block["history_operations"])
                 break
 
         results = []
@@ -1528,8 +1617,7 @@ class AutoAnnotationTool:
 
             # 如果有History operations数据，进行映射
             if history_data:
-                self._map_step_to_iter(
-                    result, iter_block["iter_num"], history_data)
+                self._map_step_to_iter(result, iter_block["iter_num"], history_data)
 
             results.append(result)
 
@@ -1593,8 +1681,7 @@ class AutoAnnotationTool:
 
         # 统计实际创建的坐标分析图片文件数量
         if os.path.exists(self.coordinate_analysis_dir):
-            coordinate_files = [f for f in os.listdir(
-                self.coordinate_analysis_dir) if f.endswith(".jpg")]
+            coordinate_files = [f for f in os.listdir(self.coordinate_analysis_dir) if f.endswith(".jpg")]
             summary["coordinate_files_created"] = len(coordinate_files)
 
         return summary
@@ -1602,17 +1689,12 @@ class AutoAnnotationTool:
     def print_summary(self):
         """打印详细的处理摘要"""
         total = len(self.results)
-        reflection_found = sum(
-            1 for r in self.results if r["reflection"] is not None)
+        reflection_found = sum(1 for r in self.results if r["reflection"] is not None)
         error_cases = sum(1 for r in self.results if r["reflection"] == 0)
-        coordinate_analyzed = sum(
-            1 for r in self.results if r["coordinate_match"] is not None)
-        action_found = sum(
-            1 for r in self.results if r["action_content"] is not None)
-        reflection_thought_found = sum(
-            1 for r in self.results if r["reflection_thought"] is not None)
-        element_tree_found = sum(
-            1 for r in self.results if r.get("element_distance_sorting"))
+        coordinate_analyzed = sum(1 for r in self.results if r["coordinate_match"] is not None)
+        action_found = sum(1 for r in self.results if r["action_content"] is not None)
+        reflection_thought_found = sum(1 for r in self.results if r["reflection_thought"] is not None)
+        element_tree_found = sum(1 for r in self.results if r.get("element_distance_sorting"))
 
         print("\n=== 处理摘要 ===")
         print(f"总 iter 数: {total}")
@@ -1629,10 +1711,8 @@ class AutoAnnotationTool:
             print("\n=== 坐标分析统计 ===")
             print(f"坐标分析文件夹: {coord_summary['coordinate_analysis_dir']}")
             print(f"创建的图片文件: {coord_summary['coordinate_files_created']} 个")
-            print(
-                f"成功分析案例: {coord_summary['successfully_analyzed']}/{coord_summary['total_coordinate_cases']}")
-            print(
-                f"元素树匹配案例: {coord_summary['element_tree_matched']}/{coord_summary['element_tree_cases']}")
+            print(f"成功分析案例: {coord_summary['successfully_analyzed']}/{coord_summary['total_coordinate_cases']}")
+            print(f"元素树匹配案例: {coord_summary['element_tree_matched']}/{coord_summary['element_tree_cases']}")
             print(f"MLLM分析案例: {coord_summary['mllm_cases']}")
 
         # 显示有坐标的案例详情
@@ -1646,13 +1726,11 @@ class AutoAnnotationTool:
                 if case.get("action_content"):
                     print(f"  Action: {case['action_content'][:50]}...")
                 if case.get("reflection_thought"):
-                    print(
-                        f"  Reflection_thought: {case['reflection_thought'][:50]}...")
+                    print(f"  Reflection_thought: {case['reflection_thought'][:50]}...")
 
                 # 显示距离排序信息
                 if case.get("element_distance_sorting"):
-                    print(
-                        f"  距离排序: {len(case['element_distance_sorting'])} 个元素")
+                    print(f"  距离排序: {len(case['element_distance_sorting'])} 个元素")
 
                 # 显示坐标分析结果
                 if case.get("coordinate_analysis"):
@@ -1664,21 +1742,18 @@ class AutoAnnotationTool:
                             analysis_time = analysis.get("analysis_time", 0.0)
                             method = analysis.get("method", "unknown")
 
-                            print(
-                                f"  {step_id}: 结果={accuracy} ({'命中' if accuracy == 1 else '未命中' if accuracy == 0 else 'N/A'})")
+                            print(f"  {step_id}: 结果={accuracy} ({'命中' if accuracy == 1 else '未命中' if accuracy == 0 else 'N/A'})")
                             print(f"    方法: {method}")
                             print(f"    耗时: {analysis_time:.2f}s")
                             if analysis.get("api_errors"):
-                                print(
-                                    f"    API错误: {len(analysis['api_errors'])} 个")
+                                print(f"    API错误: {len(analysis['api_errors'])} 个")
                     else:
                         # 向后兼容旧格式
                         accuracy = details.get("accuracy", "N/A")
                         analysis_time = details.get("analysis_time", 0.0)
                         method = details.get("method", "unknown")
 
-                        print(
-                            f"  分析结果: {accuracy} ({'命中' if accuracy == 1 else '未命中' if accuracy == 0 else 'N/A'})")
+                        print(f"  分析结果: {accuracy} ({'命中' if accuracy == 1 else '未命中' if accuracy == 0 else 'N/A'})")
                         print(f"  方法: {method}")
                         print(f"  耗时: {analysis_time:.2f}s")
                         if details.get("api_errors"):
@@ -1689,8 +1764,7 @@ class AutoAnnotationTool:
                             match_result = details["match_result"]
                             if match_result["matched"]:
                                 element = match_result["element"]
-                                print(
-                                    f"  匹配元素: {element['ui_name'] or '无名称'} ({element['control_type']})")
+                                print(f"  匹配元素: {element['ui_name'] or '无名称'} ({element['control_type']})")
                                 print(f"  元素bbox: {element['bbox']}")
                             else:
                                 print("  未匹配任何元素")

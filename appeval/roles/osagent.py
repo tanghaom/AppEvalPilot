@@ -815,14 +815,14 @@ class OSAgent(Role):
 
         # Collect evidence for online learning
         if self.evidence_collector:
-            self._collect_step_evidence()
+            await self._collect_step_evidence()
 
         # Clean up screenshots
         Path(self.last_screenshot_som_file if self.use_som else self.last_screenshot_file).unlink()
 
         return AIMessage(content=self.rc.action, cause_by=Action)
 
-    def _collect_step_evidence(self) -> None:
+    async def _collect_step_evidence(self) -> None:
         """Collect evidence for the current step for online learning"""
         if not self.evidence_collector:
             return
@@ -858,6 +858,11 @@ class OSAgent(Role):
         )
 
         logger.debug(f"Evidence collected for iter {self.rc.iter}: coordinate_match={evidence.coordinate_match}")
+
+        # 如果检测到 Tell 动作，分析 agent_noresp
+        if evidence.tell_evidence:
+            agent_noresp = await self.evidence_collector.analyze_tell_action(evidence)
+            logger.info(f"Tell action analyzed for iter {self.rc.iter}: agent_noresp={agent_noresp}")
 
     def get_evidences(self) -> List[Evidence]:
         """Get all collected evidences for online learning.
