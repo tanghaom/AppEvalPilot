@@ -31,6 +31,7 @@ from appeval.tools.chrome_debugger import ChromeDebugger
 from appeval.tools.device_controller import ControllerTool
 from appeval.tools.icon_detect import IconDetectTool
 from appeval.tools.ocr import OCRTool
+from appeval.utils.evidence_annotator import Evidence, OnlineEvidenceCollector
 
 # 忽略所有警告
 warnings.filterwarnings("ignore")
@@ -42,9 +43,12 @@ class OSAgentContext(RoleContext):
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
     thought: str = ""  # Current thinking content
-    thought_history: List[str] = Field(default_factory=list)  # Historical thinking records list
-    summary_history: List[str] = Field(default_factory=list)  # Historical operation summary list
-    action_history: List[str] = Field(default_factory=list)  # Historical executed action list
+    # Historical thinking records list
+    thought_history: List[str] = Field(default_factory=list)
+    # Historical operation summary list
+    summary_history: List[str] = Field(default_factory=list)
+    # Historical executed action list
+    action_history: List[str] = Field(default_factory=list)
     reflection_thought_history: List[str] = Field(default_factory=list)  # Historical reflection records list
     reflection_thought: str = ""  # Current reflection content
     summary: str = ""  # Current operation summary
@@ -52,11 +56,13 @@ class OSAgentContext(RoleContext):
     action: str = ""  # Current executed action
     task_list: str = ""  # Task list
     completed_requirements: str = ""  # Completed requirements
-    memory: List[str] = Field(default_factory=list)  # Important content memory list
+    # Important content memory list
+    memory: List[str] = Field(default_factory=list)
     error_flag: bool = False  # Error flag
     error_message: str = ""  # Error message when action execution fails
     iter: int = 0  # Current iteration count
-    perception_infos: List[Dict] = Field(default_factory=list)  # Current perception information list
+    # Current perception information list
+    perception_infos: List[Dict] = Field(default_factory=list)
     last_perception_infos: List[Dict] = Field(default_factory=list)  # Previous perception information list
     width: int = 0  # Screen width
     height: int = 0  # Screen height
@@ -120,6 +126,12 @@ class OSAgent(Role):
         # Other optional parameters
         system_prompt: str = "",
         add_info: str = "",
+        # Evidence collection parameters (for online learning)
+        enable_evidence_collection: bool = False,
+        evidence_output_dir: str = None,
+        evidence_mllm_api_key: str = None,
+        evidence_mllm_base_url: str = None,
+        evidence_fallback_to_mllm: bool = False,
         **kwargs,
     ) -> None:
         """Initialize OSAgent.
@@ -142,6 +154,11 @@ class OSAgent(Role):
             system_prompt (str): System prompt
             add_info (str): Additional information to add to the prompt
             think_history_images (int): Max number of screenshots (latest-first) to include during think
+            enable_evidence_collection (bool): Whether to enable evidence collection for online learning.
+            evidence_output_dir (str): Output directory for evidence files. If None, uses log_dirs/evidence.
+            evidence_mllm_api_key (str): MLLM API key for evidence analysis (optional).
+            evidence_mllm_base_url (str): MLLM API base URL for evidence analysis (optional).
+            evidence_fallback_to_mllm (bool): Whether to fallback to MLLM when element tree matching fails.
         """
         super().__init__(**kwargs)
 
@@ -209,6 +226,20 @@ class OSAgent(Role):
         if self.use_chrome_debugger:
             self.chrome_debugger = ChromeDebugger()
 
+        # Initialize evidence collector for online learning
+        self.evidence_collector = None
+        if self.enable_evidence_collection:
+            evidence_dir = self.evidence_output_dir or str(Path(self.log_dirs) / "evidence")
+            self.evidence_collector = OnlineEvidenceCollector(
+                output_dir=evidence_dir,
+                enable_coordinate_analysis=True,
+                mllm_api_key=self.evidence_mllm_api_key,
+                mllm_base_url=self.evidence_mllm_base_url,
+                fallback_to_mllm=self.evidence_fallback_to_mllm,
+                project_name=self.name,
+            )
+            logger.info(f"Evidence collector initialized, output dir: {evidence_dir}")
+
     def _get_timestamped_paths(self) -> None:
         """Update file paths with timestamps"""
         current_time = time.strftime("%Y%m%d%H%M")
@@ -274,6 +305,15 @@ class OSAgent(Role):
 
         if self.use_chrome_debugger:
             self.chrome_debugger.start_monitoring()
+
+        # Reset evidence collector
+        if self.evidence_collector:
+            # Update output directory with new timestamp
+            evidence_dir = self.evidence_output_dir or str(Path(self.log_dirs) / time.strftime("%Y%m%d%H%M") / "evidence")
+            self.evidence_collector.output_dir = evidence_dir
+            Path(evidence_dir).mkdir(parents=True, exist_ok=True)
+            self.evidence_collector.clear_evidences()
+            logger.info(f"Evidence collector reset, new output dir: {evidence_dir}")
 
         # Recreate screenshot directory
         if self.screenshot_dir.exists():
@@ -504,7 +544,8 @@ class OSAgent(Role):
         if not self.rc.webbrowser_console_logs:
             return []  # If there is no log, directly return empty list
         if expand:
-            return [log for log in self.rc.webbrowser_console_logs[-steps:] if log]  # Filter empty list
+            # Filter empty list
+            return [log for log in self.rc.webbrowser_console_logs[-steps:] if log]
         else:
             # Use zip to pair operation history and log
             outputs = [
@@ -777,10 +818,100 @@ class OSAgent(Role):
             # Clear error message on successful execution
             self.rc.error_message = ""
 
+        # Collect evidence for online learning
+        if self.evidence_collector:
+            self._collect_step_evidence()
+
         # Clean up screenshots
         Path(self.last_screenshot_som_file if self.use_som else self.last_screenshot_file).unlink()
 
         return AIMessage(content=self.rc.action, cause_by=Action)
+
+    def _collect_step_evidence(self) -> None:
+        """Collect evidence for the current step for online learning"""
+        if not self.evidence_collector:
+            return
+
+        # Extract click coordinates from action
+        click_coords = None
+        if self.rc.action:
+            click_match = re.search(r"pyautogui\.click\((\d+),\s*(\d+)\)", self.rc.action)
+            if click_match:
+                click_coords = (int(click_match.group(1)), int(click_match.group(2)))
+
+        # Get screenshot path for current iteration
+        screenshot_path = f"{self.save_img}/origin_{self.rc.iter}.jpg"
+        if not Path(screenshot_path).exists():
+            screenshot_path = self.screenshot_file
+
+        # Collect evidence
+        evidence = self.evidence_collector.collect_evidence(
+            iter_num=self.rc.iter,
+            action_content=self.rc.action,
+            operation_desc=self.rc.summary,
+            click_coords=click_coords,
+            thought=self.rc.thought,
+            reflection_thought=self.rc.reflection_thought,
+            perception_infos=self.rc.perception_infos,
+            screenshot_path=screenshot_path,
+            task_list=self.rc.task_list,
+            instruction=getattr(self, "instruction", None),
+            error_flag=self.rc.error_flag,
+            error_message=self.rc.error_message if self.rc.error_flag else None,
+            width=self.width,
+            height=self.height,
+        )
+
+        logger.debug(f"Evidence collected for iter {self.rc.iter}: coordinate_match={evidence.coordinate_match}")
+
+    def get_evidences(self) -> List[Evidence]:
+        """Get all collected evidences for online learning.
+
+        Returns:
+            List[Evidence]: List of evidence objects from all steps.
+        """
+        if self.evidence_collector:
+            return self.evidence_collector.get_all_evidences()
+        return []
+
+    def get_evidences_for_em(self) -> List[Dict]:
+        """Get evidences in dictionary format suitable for EM model.
+
+        Returns:
+            List[Dict]: List of evidence dictionaries ready for EM model training.
+        """
+        if self.evidence_collector:
+            return self.evidence_collector.get_evidences_for_em()
+        return []
+
+    def get_latest_evidence(self) -> Optional[Evidence]:
+        """Get the most recent evidence.
+
+        Returns:
+            Optional[Evidence]: The latest evidence object, or None if no evidence collected.
+        """
+        if self.evidence_collector:
+            return self.evidence_collector.get_latest_evidence()
+        return None
+
+    def save_evidences(self, output_file: str = None) -> None:
+        """Save all collected evidences to a JSONL file.
+
+        Args:
+            output_file: Output file path. If None, saves to default location.
+        """
+        if self.evidence_collector:
+            self.evidence_collector.save_evidences(output_file)
+
+    def get_evidence_summary(self) -> Dict:
+        """Get summary statistics of collected evidences.
+
+        Returns:
+            Dict: Summary statistics including total steps, coordinate accuracy, etc.
+        """
+        if self.evidence_collector:
+            return self.evidence_collector.get_summary_stats()
+        return {}
 
     async def _generate_initial_task_list(self, instruction: str, screenshot_file: str, screenshot_som_file: str = None) -> str:
         """Generate initial task list for the first iteration.
@@ -837,7 +968,8 @@ class OSAgent(Role):
 
     async def _react(self) -> Message:
         self.rc.iter = 0
-        rsp = AIMessage(content="No actions taken yet", cause_by=Action)  # will be overwritten after Role _act
+        # will be overwritten after Role _act
+        rsp = AIMessage(content="No actions taken yet", cause_by=Action)
         while self.rc.iter < self.max_iters and not self._check_last_three_start_with_wait(self.rc.action_history):
             self.rc.iter += 1
 
@@ -885,4 +1017,11 @@ class OSAgent(Role):
         self.instruction = instruction
 
         rsp = await self.react()
+
+        # Save evidences at the end of the run
+        if self.evidence_collector:
+            self.save_evidences()
+            summary = self.get_evidence_summary()
+            logger.info(f"Evidence collection complete: {summary}")
+
         return rsp
