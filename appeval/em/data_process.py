@@ -1,16 +1,17 @@
 """
-EM Data Process Module
+EM 数据处理模块
 
-此模块用于处理 OSAgent 收集的证据数据，将其转换为 EM 模型训练所需的格式。
-功能已集成到 OnlineEvidenceCollector 中，此模块提供数据转换和辅助功能。
+用于处理 OSAgent 收集的证据数据，将其转换为 EM 模型训练所需的格式。
 """
+
 import json
+import logging
 from typing import Dict, List, Optional
 
 import numpy as np
 import pandas as pd
 
-from appeval.utils.evidence_annotator import Evidence, OnlineEvidenceCollector
+from appeval.em.evidence import Evidence
 
 
 def get_gui_evidence_from_evidence(evidence: Evidence) -> int:
@@ -171,7 +172,7 @@ def convert_evidences_to_em_format(
 
 
 def process_osagent_evidences(
-    evidence_collector: OnlineEvidenceCollector,
+    evidence_collector,
     project_name: str = None,
     gt_label: Optional[int] = None,
 ) -> pd.DataFrame:
@@ -280,8 +281,10 @@ def merge_evidences_for_em(
         # 重命名列以符合 EM 格式
         gui_df = gui_evidence_df.copy()
         if "gui_evidence" in gui_df.columns:
-            gui_df["E1_gui"] = gui_df["gui_evidence"].apply(lambda x: 0 if x == -1 else x)
-            gui_df["M_gui"] = gui_df["gui_evidence"].apply(lambda x: 1 if x == -1 else 0)
+            gui_df["E1_gui"] = gui_df["gui_evidence"].apply(
+                lambda x: 0 if x == -1 else x)
+            gui_df["M_gui"] = gui_df["gui_evidence"].apply(
+                lambda x: 1 if x == -1 else 0)
         dfs.append(gui_df)
 
     if code_evidence_df is not None and not code_evidence_df.empty:
@@ -307,7 +310,8 @@ def merge_evidences_for_em(
         # 获取共同列（除了 merge_on）
         common_cols = set(merged_df.columns) & set(df.columns) - {merge_on}
         # 只保留需要合并的列
-        df_to_merge = df[[merge_on] + [c for c in df.columns if c not in common_cols or c == merge_on]]
+        df_to_merge = df[[
+            merge_on] + [c for c in df.columns if c not in common_cols or c == merge_on]]
         merged_df = pd.merge(merged_df, df_to_merge, on=merge_on, how="outer")
 
     # 填充缺失值和 mask
@@ -345,8 +349,6 @@ def load_code_evidence_from_jsonl(jsonl_path: str) -> pd.DataFrame:
         - test_case_zh: 测试用例描述
         - code_evidence: 1 表示代码已实现，0 表示未实现
     """
-    import logging
-
     logger = logging.getLogger(__name__)
 
     data_list = []
