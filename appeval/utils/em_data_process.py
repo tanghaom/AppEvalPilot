@@ -255,6 +255,161 @@ def load_gui_evidence_from_jsonl(jsonl_path: str) -> pd.DataFrame:
     return pd.DataFrame(gui_evidence)
 
 
+def merge_evidences_for_em(
+    gui_evidence_df: Optional[pd.DataFrame] = None,
+    reflection_evidence_df: Optional[pd.DataFrame] = None,
+    code_evidence_df: Optional[pd.DataFrame] = None,
+    merge_on: str = "test_case_id",
+) -> pd.DataFrame:
+    """
+    合并 GUI、反思、代码三种证据用于 EM 预测
+
+    Args:
+        gui_evidence_df: GUI 证据 DataFrame，需包含 test_case_id 和 gui_evidence 列
+        reflection_evidence_df: 反思证据 DataFrame，需包含 test_case_id 和 reflection_evidence 列
+        code_evidence_df: 代码证据 DataFrame，需包含 test_case_id 和 code_evidence 列
+        merge_on: 合并的键列名
+
+    Returns:
+        合并后的 DataFrame，包含 E1_gui, E2_code, E3_reflect 等 EM 所需的列
+    """
+    # 收集所有非空的 DataFrame
+    dfs = []
+
+    if gui_evidence_df is not None and not gui_evidence_df.empty:
+        # 重命名列以符合 EM 格式
+        gui_df = gui_evidence_df.copy()
+        if "gui_evidence" in gui_df.columns:
+            gui_df["E1_gui"] = gui_df["gui_evidence"].apply(lambda x: 0 if x == -1 else x)
+            gui_df["M_gui"] = gui_df["gui_evidence"].apply(lambda x: 1 if x == -1 else 0)
+        dfs.append(gui_df)
+
+    if code_evidence_df is not None and not code_evidence_df.empty:
+        code_df = code_evidence_df.copy()
+        if "code_evidence" in code_df.columns:
+            code_df["E2_code"] = code_df["code_evidence"]
+            code_df["M_code"] = 0  # 有 code evidence 时不 mask
+        dfs.append(code_df)
+
+    if reflection_evidence_df is not None and not reflection_evidence_df.empty:
+        reflect_df = reflection_evidence_df.copy()
+        if "reflection_evidence" in reflect_df.columns:
+            reflect_df["E3_reflect"] = reflect_df["reflection_evidence"]
+            reflect_df["M_reflect"] = 0
+        dfs.append(reflect_df)
+
+    if not dfs:
+        return pd.DataFrame()
+
+    # 合并所有 DataFrame
+    merged_df = dfs[0]
+    for df in dfs[1:]:
+        # 获取共同列（除了 merge_on）
+        common_cols = set(merged_df.columns) & set(df.columns) - {merge_on}
+        # 只保留需要合并的列
+        df_to_merge = df[[merge_on] + [c for c in df.columns if c not in common_cols or c == merge_on]]
+        merged_df = pd.merge(merged_df, df_to_merge, on=merge_on, how="outer")
+
+    # 填充缺失值和 mask
+    if "E1_gui" not in merged_df.columns:
+        merged_df["E1_gui"] = 0
+        merged_df["M_gui"] = 1
+    if "E2_code" not in merged_df.columns:
+        merged_df["E2_code"] = 0
+        merged_df["M_code"] = 1
+    if "E3_reflect" not in merged_df.columns:
+        merged_df["E3_reflect"] = np.nan
+        merged_df["M_reflect"] = 1
+
+    # 填充 NaN
+    merged_df["E1_gui"] = merged_df["E1_gui"].fillna(0)
+    merged_df["E2_code"] = merged_df["E2_code"].fillna(0)
+    merged_df["M_gui"] = merged_df["M_gui"].fillna(1)
+    merged_df["M_code"] = merged_df["M_code"].fillna(1)
+    merged_df["M_reflect"] = merged_df["M_reflect"].fillna(1)
+
+    return merged_df
+
+
+def load_code_evidence_from_jsonl(jsonl_path: str) -> pd.DataFrame:
+    """
+    从 JSONL 文件加载 code review 证据数据
+
+    Args:
+        jsonl_path: JSONL 文件路径（如 webdevjudge_with_code_review_concate.jsonl）
+
+    Returns:
+        包含 code evidence 的 DataFrame，格式：
+        - case_name: 网站ID（如 web_0）
+        - test_case_id: 测试用例ID（如 web_001）
+        - test_case_zh: 测试用例描述
+        - code_evidence: 1 表示代码已实现，0 表示未实现
+    """
+    import logging
+
+    logger = logging.getLogger(__name__)
+
+    data_list = []
+    count = 0
+
+    with open(jsonl_path, "r", encoding="utf-8") as f:
+        for line in f:
+            data = json.loads(line)
+            web_id = data.get("web_id", "default")
+            task_id = data.get("task_id", 0)
+            task = data.get("task", "")
+            code_review = data.get("code_review", {})
+
+            # 提取 is_implemented 字段
+            is_implemented = code_review.get("is_implemented", False)
+
+            # 生成 test_case_id：web_id + 格式化的 task_id
+            test_case_id = f"{web_id}_{task_id:02d}"
+
+            data_list.append(
+                {
+                    "case_name": web_id,
+                    "test_case_id": test_case_id,
+                    "test_case_zh": task,
+                    "code_evidence": 1 if is_implemented is True else 0,
+                }
+            )
+            count += 1
+
+    logger.info(f"Loaded {count} code evidence entries from {jsonl_path}")
+
+    return pd.DataFrame(data_list)
+
+
+def get_code_evidence_dict_from_jsonl(jsonl_path: str) -> Dict[str, Dict[str, int]]:
+    """
+    从 JSONL 文件加载 code evidence 为嵌套字典格式
+
+    Args:
+        jsonl_path: JSONL 文件路径
+
+    Returns:
+        嵌套字典: {web_id: {test_case_id: code_evidence}}
+    """
+    code_evidence = {}
+
+    with open(jsonl_path, "r", encoding="utf-8") as f:
+        for line in f:
+            data = json.loads(line)
+            web_id = data.get("web_id", "default")
+            task_id = data.get("task_id", 0)
+            code_review = data.get("code_review", {})
+
+            is_implemented = code_review.get("is_implemented", False)
+            test_case_id = f"{web_id}_{task_id:02d}"
+
+            if web_id not in code_evidence:
+                code_evidence[web_id] = {}
+            code_evidence[web_id][test_case_id] = 1 if is_implemented is True else 0
+
+    return code_evidence
+
+
 if __name__ == "__main__":
     # 示例用法
     pass

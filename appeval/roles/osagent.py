@@ -31,6 +31,7 @@ from appeval.tools.chrome_debugger import ChromeDebugger
 from appeval.tools.device_controller import ControllerTool
 from appeval.tools.icon_detect import IconDetectTool
 from appeval.tools.ocr import OCRTool
+from appeval.utils.em import EMManager
 from appeval.utils.evidence_annotator import Evidence, OnlineEvidenceCollector
 
 # 忽略所有警告
@@ -130,6 +131,11 @@ class OSAgent(Role):
         enable_evidence_collection: bool = True,
         evidence_output_dir: str = None,
         evidence_fallback_to_mllm: bool = False,
+        # EM model parameters (for prediction and correction)
+        enable_em_correction: bool = True,
+        em_params_path: str = None,
+        em_tau_agentfail: float = 0.7,
+        em_tau_envfail: float = 0.7,
         **kwargs,
     ) -> None:
         """Initialize OSAgent.
@@ -155,6 +161,10 @@ class OSAgent(Role):
             enable_evidence_collection (bool): Whether to enable evidence collection for online learning.
             evidence_output_dir (str): Output directory for evidence files. If None, uses log_dirs/evidence.
             evidence_fallback_to_mllm (bool): Whether to fallback to MLLM when element tree matching fails.
+            enable_em_correction (bool): Whether to enable EM model for prediction and correction when Tell action is detected.
+            em_params_path (str): Path to EM model parameters file. If None, uses default path.
+            em_tau_agentfail (float): Threshold for AgentFail in EM correction.
+            em_tau_envfail (float): Threshold for EnvFail in EM correction.
         """
         super().__init__(**kwargs)
 
@@ -235,6 +245,21 @@ class OSAgent(Role):
             )
             logger.info(f"Evidence collector initialized, output dir: {evidence_dir}")
 
+        # Initialize EM manager for prediction and correction
+        self.em_manager = None
+        self.em_correction_result = None  # Store the latest EM correction result
+        if self.enable_em_correction:
+            try:
+                self.em_manager = EMManager(
+                    params_path=self.em_params_path,
+                    enable_online_learning=True,
+                    tau_agentfail=self.em_tau_agentfail,
+                    tau_envfail=self.em_tau_envfail,
+                )
+                logger.info("EM manager initialized for prediction and correction")
+            except Exception as e:
+                logger.warning(f"Failed to initialize EM manager: {e}")
+
     def _get_timestamped_paths(self) -> None:
         """Update file paths with timestamps"""
         current_time = time.strftime("%Y%m%d%H%M")
@@ -309,6 +334,13 @@ class OSAgent(Role):
             Path(evidence_dir).mkdir(parents=True, exist_ok=True)
             self.evidence_collector.clear_evidences()
             logger.info(f"Evidence collector reset, new output dir: {evidence_dir}")
+
+        # Reset EM manager
+        if self.em_manager:
+            self.em_manager.clear_evidences()
+            self.em_manager.set_case_id(self.name)
+            self.em_correction_result = None
+            logger.info("EM manager reset")
 
         # Recreate screenshot directory
         if self.screenshot_dir.exists():
@@ -859,10 +891,165 @@ class OSAgent(Role):
 
         logger.debug(f"Evidence collected for iter {self.rc.iter}: coordinate_match={evidence.coordinate_match}")
 
-        # 如果检测到 Tell 动作，分析 agent_noresp
+        # 将证据添加到 EM 管理器
+        if self.em_manager:
+            self.em_manager.add_evidence(
+                gui_evidence=evidence.coordinate_match,
+                agent_noresp=evidence.agent_noresp,
+                test_case_id=self.evidence_collector.project_name if self.evidence_collector else self.name,
+                iter_num=self.rc.iter,
+            )
+
+        # 如果检测到 Tell 动作，分析 agent_noresp 并进行 EM 预测和纠正
         if evidence.tell_evidence:
             agent_noresp = await self.evidence_collector.analyze_tell_action(evidence)
             logger.info(f"Tell action analyzed for iter {self.rc.iter}: agent_noresp={agent_noresp}")
+
+            # 更新 EM 管理器中最新证据的 agent_noresp
+            if self.em_manager and self.em_manager._evidence_rows:
+                self.em_manager._evidence_rows[-1]["E4_noresp"] = agent_noresp if agent_noresp is not None else 0
+                self.em_manager._evidence_rows[-1]["M_noresp"] = 0 if agent_noresp is not None else 1
+
+            # 进行 EM 预测和纠正
+            await self._perform_em_correction(evidence)
+
+    async def _perform_em_correction(self, evidence: Evidence) -> None:
+        """
+        Perform EM prediction and correction when Tell action is detected.
+
+        Args:
+            evidence: The current evidence object containing Tell action info
+        """
+        if not self.em_manager:
+            logger.debug("EM manager not available, skipping correction")
+            return
+
+        try:
+            # Extract agent's original judgment from Tell action
+            # Tell action typically contains the agent's judgment result
+            agent_original = self._extract_agent_judgment(evidence.tell_evidence)
+
+            if agent_original is None:
+                logger.warning("Could not extract agent judgment from Tell evidence")
+                return
+
+            # Get EM prediction
+            prediction = self.em_manager.predict()
+            logger.info(
+                f"EM Prediction: P_EnvFail={prediction['P_EnvFail']:.3f}, "
+                f"P_AgentFail={prediction['P_AgentFail']:.3f} "
+                f"(Retry={prediction['P_AgentRetryFail']:.3f}, "
+                f"Reasoning={prediction['P_AgentReasoningFail']:.3f})"
+            )
+
+            # Perform correction
+            correction_result = self.em_manager.correct_judgment(agent_original=agent_original)
+            self.em_correction_result = correction_result
+
+            # Log the correction result
+            logger.info("EM Correction Result:")
+            logger.info(f"  - Agent Original: {agent_original} ({'PASS' if agent_original == 1 else 'FAIL'})")
+            logger.info(
+                f"  - Corrected Label: {correction_result['corrected_label']} " f"({'PASS' if correction_result['corrected_label'] == 1 else 'FAIL'})"
+            )
+            logger.info(f"  - Action: {correction_result['action']}")
+            logger.info(f"  - P(EnvFail): {correction_result['P_EnvFail']:.3f}")
+            logger.info(f"  - P(AgentFail): {correction_result['P_AgentFail']:.3f}")
+
+            # If correction differs from original, log prominently
+            if agent_original != correction_result["corrected_label"]:
+                logger.warning(f"⚠️ EM CORRECTION APPLIED: {agent_original} → {correction_result['corrected_label']}")
+                logger.warning(f"   Reason: {correction_result['action']}")
+
+        except Exception as e:
+            logger.error(f"Error performing EM correction: {e}")
+
+    def _extract_agent_judgment(self, tell_evidence: str) -> Optional[int]:
+        """
+        Extract agent's judgment (PASS=1/FAIL=0) from Tell evidence.
+
+        Args:
+            tell_evidence: The Tell action evidence string
+
+        Returns:
+            1 for PASS, 0 for FAIL, None if cannot extract
+        """
+        if not tell_evidence:
+            return None
+
+        tell_lower = tell_evidence.lower()
+
+        # Common patterns for PASS
+        pass_patterns = [
+            "pass",
+            "passed",
+            "success",
+            "successful",
+            "completed",
+            "done",
+            "finished",
+            "yes",
+            "correct",
+            "verified",
+            "requirement met",
+            "task completed",
+            "功能已实现",
+            "测试通过",
+            "已完成",
+        ]
+
+        # Common patterns for FAIL
+        fail_patterns = [
+            "fail",
+            "failed",
+            "error",
+            "not implemented",
+            "not found",
+            "missing",
+            "incorrect",
+            "wrong",
+            "no",
+            "unable",
+            "cannot",
+            "couldn't",
+            "requirement not met",
+            "功能未实现",
+            "测试失败",
+            "未完成",
+            "不正确",
+        ]
+
+        # Check for explicit pass/fail indicators
+        for pattern in pass_patterns:
+            if pattern in tell_lower:
+                return 1
+
+        for pattern in fail_patterns:
+            if pattern in tell_lower:
+                return 0
+
+        # Default: if we can't determine, return None
+        return None
+
+    def get_em_correction_result(self) -> Optional[Dict]:
+        """
+        Get the latest EM correction result.
+
+        Returns:
+            Dict containing correction result, or None if not available
+        """
+        return self.em_correction_result
+
+    def get_em_prediction(self) -> Optional[Dict]:
+        """
+        Get the current EM prediction.
+
+        Returns:
+            Dict containing prediction probabilities, or None if EM manager not available
+        """
+        if self.em_manager:
+            return self.em_manager.predict()
+        return None
 
     def get_evidences(self) -> List[Evidence]:
         """Get all collected evidences for online learning.
@@ -1023,5 +1210,16 @@ class OSAgent(Role):
             self.save_evidences()
             summary = self.get_evidence_summary()
             logger.info(f"Evidence collection complete: {summary}")
+
+        # Log final EM correction result if available
+        if self.em_correction_result:
+            logger.info("=" * 50)
+            logger.info("FINAL EM CORRECTION RESULT:")
+            logger.info(f"  Agent Original: {self.em_correction_result['agent_original']}")
+            logger.info(f"  Corrected Label: {self.em_correction_result['corrected_label']}")
+            logger.info(f"  Action: {self.em_correction_result['action']}")
+            logger.info(f"  P(EnvFail): {self.em_correction_result['P_EnvFail']:.3f}")
+            logger.info(f"  P(AgentFail): {self.em_correction_result['P_AgentFail']:.3f}")
+            logger.info("=" * 50)
 
         return rsp
