@@ -129,6 +129,31 @@ Please use the Tell action to report the results of all test cases before execut
         if pid:
             await kill_process(pid)
 
+    @staticmethod
+    def _find_matching_key(key: Any, target_dict: dict) -> Optional[Any]:
+        """Find matching key in target dict, handling both string and int key types.
+
+        Args:
+            key: The key to match (can be string or int)
+            target_dict: The dictionary to search in
+
+        Returns:
+            The matching key if found, None otherwise
+        """
+        if key in target_dict:
+            return key
+
+        str_key = str(key)
+        if str_key in target_dict:
+            return str_key
+
+        if str_key.isdigit():
+            int_key = int(str_key)
+            if int_key in target_dict:
+                return int_key
+
+        return None
+
     def _parse_results_from_tell(self, action_history: List[str]) -> Optional[dict]:
         """Parse test results from Tell action in action history"""
         if not action_history:
@@ -211,7 +236,9 @@ Please use the Tell action to report the results of all test cases before execut
         data = read_json_file(self.rc.json_file)
         data[task_id]["iters"] = iter_num
         for key, value in results_dict.items():
-            data[task_id]["test_cases"][key].update({"result": value.get("result", ""), "evidence": value.get("evidence", "")})
+            matched_key = self._find_matching_key(key, data[task_id]["test_cases"])
+            if matched_key is not None:
+                data[task_id]["test_cases"][matched_key].update({"result": value.get("result", ""), "evidence": value.get("evidence", "")})
         write_json_file(self.rc.json_file, data, indent=4)
         return None
 
@@ -399,9 +426,10 @@ Please use the Tell action to report the results of all test cases before execut
                 continue
 
             for case_id, case_info in task_info["test_cases"].items():
-                if case_id in merged_result[task_id]["test_cases"]:
-                    merged_result[task_id]["test_cases"][case_id]["result"] = case_info.get("result", "")
-                    merged_result[task_id]["test_cases"][case_id]["evidence"] = case_info.get("evidence", "")
+                matched_key = self._find_matching_key(case_id, merged_result[task_id]["test_cases"])
+                if matched_key is not None:
+                    merged_result[task_id]["test_cases"][matched_key]["result"] = case_info.get("result", "")
+                    merged_result[task_id]["test_cases"][matched_key]["evidence"] = case_info.get("evidence", "")
                     logger.info(f"Updated case {case_id} in task {task_id} with retry result: {case_info.get('result', '')}")
 
         return merged_result
@@ -505,10 +533,11 @@ Please use the Tell action to report the results of all test cases before execut
                 result_dict = await self.execute_api_check(task_name, 1, single_case)
 
                 # Merge result
-                if case_id in result_dict:
-                    all_results[case_id] = result_dict[case_id]
+                matched_key = self._find_matching_key(case_id, result_dict)
+                if matched_key is not None:
+                    all_results[case_id] = result_dict[matched_key]
                     test_cases[case_id].update(
-                        {"result": result_dict[case_id].get("result", ""), "evidence": result_dict[case_id].get("evidence", "")}
+                        {"result": result_dict[matched_key].get("result", ""), "evidence": result_dict[matched_key].get("evidence", "")}
                     )
 
                 # Reset osagent state for next case (no browser cleanup)
@@ -525,8 +554,9 @@ Please use the Tell action to report the results of all test cases before execut
 
             # Merge results
             for key, value in result_dict.items():
-                if key in test_cases:
-                    test_cases[key].update({"result": value.get("result", ""), "evidence": value.get("evidence", "")})
+                matched_key = self._find_matching_key(key, test_cases)
+                if matched_key is not None:
+                    test_cases[matched_key].update({"result": value.get("result", ""), "evidence": value.get("evidence", "")})
 
         result = {task_name: {"test_cases": test_cases}}
 
