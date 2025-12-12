@@ -12,8 +12,8 @@ from typing import Any, Dict, List, Optional
 import numpy as np
 import pandas as pd
 
-from appeval.em.model import SimpleEM4EvidenceH_Refine
 from appeval.em.analysis import correct_agent_judgment
+from appeval.em.model import SimpleEM4EvidenceH_Refine
 
 
 class EMManager:
@@ -104,10 +104,8 @@ class EMManager:
         # 尝试多个可能的路径
         possible_paths = [
             self.DEFAULT_PARAMS_PATH,
-            os.path.join(os.path.dirname(__file__),
-                         "..", "data", "em_params.json"),
-            os.path.join(os.path.dirname(__file__),
-                         "../../appeval/data/em_params.json"),
+            os.path.join(os.path.dirname(__file__), "..", "data", "em_params.json"),
+            os.path.join(os.path.dirname(__file__), "../../appeval/data/em_params.json"),
         ]
 
         for path in possible_paths:
@@ -264,8 +262,7 @@ class EMManager:
             evidences=evidences,
             project_name=project_name,
             code_evidence=code_evidence,
-            agent_judge={
-                project_name: agent_score} if agent_score is not None else None,
+            agent_judge={project_name: agent_score} if agent_score is not None else None,
         )
 
         # 添加到证据行
@@ -332,8 +329,7 @@ class EMManager:
         total_agent = avg_retry + avg_reasoning
         if total_agent > 0:
             P_AgentRetryFail = P_case_AgentFail * (avg_retry / total_agent)
-            P_AgentReasoningFail = P_case_AgentFail * \
-                (avg_reasoning / total_agent)
+            P_AgentReasoningFail = P_case_AgentFail * (avg_reasoning / total_agent)
         else:
             P_AgentRetryFail = P_case_AgentFail / 2
             P_AgentReasoningFail = P_case_AgentFail / 2
@@ -345,6 +341,53 @@ class EMManager:
             "P_AgentRetryFail": P_AgentRetryFail,
             "P_AgentReasoningFail": P_AgentReasoningFail,
             "P_AgentFail": P_case_AgentFail,  # 方便使用
+        }
+
+    def should_retry(
+        self,
+        case_id: Optional[str] = None,
+        tau_retry: float = 0.4,
+    ) -> Dict[str, Any]:
+        """
+        判断是否需要 retry（基于 AgentRetryFail 概率）
+
+        Args:
+            case_id: 测试用例 ID
+            tau_retry: retry 判断阈值，当 P_AgentRetryFail 超过此值时返回 True
+
+        Returns:
+            包含 retry 判断结果的字典:
+            - should_retry: bool，是否需要 retry
+            - P_AgentRetryFail: float，AgentRetryFail 概率
+            - P_AgentReasoningFail: float，AgentReasoningFail 概率
+            - P_EnvFail: float，EnvFail 概率
+            - reason: str，判断原因
+        """
+        prediction = self.predict(case_id)
+
+        P_AgentRetryFail = prediction["P_AgentRetryFail"]
+        P_AgentReasoningFail = prediction["P_AgentReasoningFail"]
+        P_EnvFail = prediction["P_EnvFail"]
+
+        should_retry = P_AgentRetryFail >= tau_retry
+
+        if should_retry:
+            reason = f"AgentRetryFail probability ({P_AgentRetryFail:.3f}) >= threshold ({tau_retry})"
+        else:
+            if P_EnvFail > P_AgentRetryFail and P_EnvFail > P_AgentReasoningFail:
+                reason = f"EnvFail is the most likely cause ({P_EnvFail:.3f})"
+            elif P_AgentReasoningFail > P_AgentRetryFail:
+                reason = f"AgentReasoningFail is more likely ({P_AgentReasoningFail:.3f}) than retry ({P_AgentRetryFail:.3f})"
+            else:
+                reason = f"AgentRetryFail probability ({P_AgentRetryFail:.3f}) < threshold ({tau_retry})"
+
+        return {
+            "should_retry": should_retry,
+            "P_AgentRetryFail": P_AgentRetryFail,
+            "P_AgentReasoningFail": P_AgentReasoningFail,
+            "P_EnvFail": P_EnvFail,
+            "P_AgentFail": prediction["P_AgentFail"],
+            "reason": reason,
         }
 
     def correct_judgment(

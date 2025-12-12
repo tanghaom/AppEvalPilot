@@ -26,12 +26,13 @@ from PIL import Image, ImageDraw, ImageFont
 from pydantic import ConfigDict, Field
 from tenacity import retry, retry_if_exception_type, stop_after_attempt, wait_fixed
 
+from appeval.em import EMManager, Evidence, OnlineEvidenceCollector
+from appeval.em.correction.generate_retry_action import generate_retry_action_online
 from appeval.prompts.osagent import ActionPromptContext, Android_prompt, PC_prompt
 from appeval.tools.chrome_debugger import ChromeDebugger
 from appeval.tools.device_controller import ControllerTool
 from appeval.tools.icon_detect import IconDetectTool
 from appeval.tools.ocr import OCRTool
-from appeval.em import EMManager, Evidence, OnlineEvidenceCollector
 
 # 忽略所有警告
 warnings.filterwarnings("ignore")
@@ -49,8 +50,7 @@ class OSAgentContext(RoleContext):
     summary_history: List[str] = Field(default_factory=list)
     # Historical executed action list
     action_history: List[str] = Field(default_factory=list)
-    reflection_thought_history: List[str] = Field(
-        default_factory=list)  # Historical reflection records list
+    reflection_thought_history: List[str] = Field(default_factory=list)  # Historical reflection records list
     reflection_thought: str = ""  # Current reflection content
     summary: str = ""  # Current operation summary
     image_description: str = ""  # Current image description extracted during thinking
@@ -64,12 +64,10 @@ class OSAgentContext(RoleContext):
     iter: int = 0  # Current iteration count
     # Current perception information list
     perception_infos: List[Dict] = Field(default_factory=list)
-    last_perception_infos: List[Dict] = Field(
-        default_factory=list)  # Previous perception information list
+    last_perception_infos: List[Dict] = Field(default_factory=list)  # Previous perception information list
     width: int = 0  # Screen width
     height: int = 0  # Screen height
-    webbrowser_console_logs: List[Any] = Field(
-        default_factory=list)  # Browser console log list
+    webbrowser_console_logs: List[Any] = Field(default_factory=list)  # Browser console log list
 
     def reset(self) -> None:
         """Reset all states to initial values"""
@@ -138,6 +136,9 @@ class OSAgent(Role):
         em_params_path: str = None,
         em_tau_agentfail: float = 0.7,
         em_tau_envfail: float = 0.7,
+        # Retry parameters
+        enable_retry: bool = True,
+        em_tau_retry: float = 0.4,
         **kwargs,
     ) -> None:
         """Initialize OSAgent.
@@ -167,6 +168,8 @@ class OSAgent(Role):
             em_params_path (str): Path to EM model parameters file. If None, uses default path.
             em_tau_agentfail (float): Threshold for AgentFail in EM correction.
             em_tau_envfail (float): Threshold for EnvFail in EM correction.
+            enable_retry (bool): Whether to enable retry when EM detects AgentRetryFail.
+            em_tau_retry (float): Threshold for retry decision based on AgentRetryFail probability.
         """
         super().__init__(**kwargs)
 
@@ -182,8 +185,7 @@ class OSAgent(Role):
     def _init_config(self, params: dict) -> None:
         """Initialize configuration parameters"""
         # Filter out self and kwargs
-        config_params = {k: v for k, v in params.items() if k not in [
-            "self", "kwargs"]}
+        config_params = {k: v for k, v in params.items() if k not in ["self", "kwargs"]}
         for key, value in config_params.items():
             setattr(self, key, value)
 
@@ -238,8 +240,7 @@ class OSAgent(Role):
         # Initialize evidence collector for online learning
         self.evidence_collector = None
         if self.enable_evidence_collection:
-            evidence_dir = self.evidence_output_dir or str(
-                Path(self.log_dirs) / "evidence")
+            evidence_dir = self.evidence_output_dir or str(Path(self.log_dirs) / "evidence")
             self.evidence_collector = OnlineEvidenceCollector(
                 output_dir=evidence_dir,
                 enable_coordinate_analysis=True,
@@ -247,8 +248,7 @@ class OSAgent(Role):
                 fallback_to_mllm=self.evidence_fallback_to_mllm,
                 project_name=self.name,
             )
-            logger.info(
-                f"Evidence collector initialized, output dir: {evidence_dir}")
+            logger.info(f"Evidence collector initialized, output dir: {evidence_dir}")
 
         # Initialize EM manager for prediction and correction
         self.em_manager = None
@@ -261,8 +261,7 @@ class OSAgent(Role):
                     tau_agentfail=self.em_tau_agentfail,
                     tau_envfail=self.em_tau_envfail,
                 )
-                logger.info(
-                    "EM manager initialized for prediction and correction")
+                logger.info("EM manager initialized for prediction and correction")
             except Exception as e:
                 logger.warning(f"Failed to initialize EM manager: {e}")
 
@@ -278,12 +277,9 @@ class OSAgent(Role):
         # Screenshot related paths
         self.screenshot_dir = log_dir / "screenshot"
         self.screenshot_file = str(self.screenshot_dir / "screenshot.jpg")
-        self.screenshot_som_file = str(
-            self.screenshot_dir / "screenshot_som.png")
-        self.last_screenshot_file = str(
-            self.screenshot_dir / "last_screenshot.jpg")
-        self.last_screenshot_som_file = str(
-            self.screenshot_dir / "last_screenshot_som.png")
+        self.screenshot_som_file = str(self.screenshot_dir / "screenshot_som.png")
+        self.last_screenshot_file = str(self.screenshot_dir / "last_screenshot.jpg")
+        self.last_screenshot_som_file = str(self.screenshot_dir / "last_screenshot_som.png")
 
     def _init_os_env(self) -> None:
         """Initialize operating system environment.
@@ -338,13 +334,11 @@ class OSAgent(Role):
         # Reset evidence collector
         if self.evidence_collector:
             # Update output directory with new timestamp
-            evidence_dir = self.evidence_output_dir or str(
-                Path(self.log_dirs) / time.strftime("%Y%m%d%H%M") / "evidence")
+            evidence_dir = self.evidence_output_dir or str(Path(self.log_dirs) / time.strftime("%Y%m%d%H%M") / "evidence")
             self.evidence_collector.output_dir = evidence_dir
             Path(evidence_dir).mkdir(parents=True, exist_ok=True)
             self.evidence_collector.clear_evidences()
-            logger.info(
-                f"Evidence collector reset, new output dir: {evidence_dir}")
+            logger.info(f"Evidence collector reset, new output dir: {evidence_dir}")
 
         # Reset EM manager
         if self.em_manager:
@@ -352,6 +346,10 @@ class OSAgent(Role):
             self.em_manager.set_case_id(self.name)
             self.em_correction_result = None
             logger.info("EM manager reset")
+
+        # Reset retry state
+        self.retry_suggestion = None
+        self.pending_retry = False
 
         # Recreate screenshot directory
         if self.screenshot_dir.exists():
@@ -381,8 +379,7 @@ class OSAgent(Role):
         )
 
         # Add console log handler
-        logger.add(sys.stdout, level="DEBUG", format=log_format,
-                   colorize=True, enqueue=True)
+        logger.add(sys.stdout, level="DEBUG", format=log_format, colorize=True, enqueue=True)
 
         logger.info(f"Initialized logging, log file: {self.save_info}")
 
@@ -406,8 +403,7 @@ class OSAgent(Role):
         text_offset_y = int(height * 0.013)
 
         # Generate random colors for each bounding box
-        colors = [tuple(random.randint(0, 255) for _ in range(3))
-                  for _ in range(len(coordinates))]
+        colors = [tuple(random.randint(0, 255) for _ in range(3)) for _ in range(len(coordinates))]
 
         # Draw bounding boxes and numbers
         draw = ImageDraw.Draw(image)
@@ -494,8 +490,7 @@ class OSAgent(Role):
         # OCR processing
         text, text_coordinates = [], []
         if self.use_ocr:
-            text, text_coordinates = self.ocr_tool.ocr(
-                screenshot_file, split=self.quad_split_ocr)
+            text, text_coordinates = self.ocr_tool.ocr(screenshot_file, split=self.quad_split_ocr)
 
         # Icon detection
         icon_coordinates = []
@@ -506,11 +501,9 @@ class OSAgent(Role):
         output_image_path = screenshot_som_file
         if self.use_ocr and self.use_icon_detect and self.draw_text_box:
             rec_list = text_coordinates + icon_coordinates
-            self._draw_bounding_boxes(screenshot_file, copy.deepcopy(
-                rec_list), screenshot_som_file, self.font_path)
+            self._draw_bounding_boxes(screenshot_file, copy.deepcopy(rec_list), screenshot_som_file, self.font_path)
         elif self.use_icon_detect:
-            self._draw_bounding_boxes(screenshot_file, copy.deepcopy(
-                icon_coordinates), screenshot_som_file, self.font_path)
+            self._draw_bounding_boxes(screenshot_file, copy.deepcopy(icon_coordinates), screenshot_som_file, self.font_path)
         else:
             output_image_path = screenshot_file
 
@@ -528,8 +521,7 @@ class OSAgent(Role):
                         "coordinates": text_coordinates[i],
                     }
                 else:
-                    perception_info = {
-                        "text": f"text: {text[i]}", "coordinates": text_coordinates[i]}
+                    perception_info = {"text": f"text: {text[i]}", "coordinates": text_coordinates[i]}
                 perception_infos.append(perception_info)
 
         # Add icon information
@@ -537,40 +529,33 @@ class OSAgent(Role):
             for i in range(len(icon_coordinates)):
                 mark_number += 1
                 if self.use_som:
-                    perception_info = {
-                        "text": f"mark number: {mark_number} icon", "coordinates": icon_coordinates[i]}
+                    perception_info = {"text": f"mark number: {mark_number} icon", "coordinates": icon_coordinates[i]}
                 else:
-                    perception_info = {"text": "icon",
-                                       "coordinates": icon_coordinates[i]}
+                    perception_info = {"text": "icon", "coordinates": icon_coordinates[i]}
                 perception_infos.append(perception_info)
 
         # Icon description
         if self.use_icon_detect and self.use_icon_caption:
-            icon_indices = [i for i in range(
-                len(perception_infos)) if "icon" in perception_infos[i]["text"]]
+            icon_indices = [i for i in range(len(perception_infos)) if "icon" in perception_infos[i]["text"]]
             if icon_indices:
-                icon_boxes = [perception_infos[i]["coordinates"]
-                              for i in icon_indices]
+                icon_boxes = [perception_infos[i]["coordinates"] for i in icon_indices]
                 descriptions = await self.icon_tool.caption(screenshot_file, icon_boxes, platform=self.platform)
 
                 # Add description to perception information
                 for idx, desc_idx in enumerate(icon_indices):
                     if descriptions.get(idx + 1):
-                        perception_infos[desc_idx]["text"] += ": " + \
-                            descriptions[idx + 1].replace("\n", " ")
+                        perception_infos[desc_idx]["text"] += ": " + descriptions[idx + 1].replace("\n", " ")
 
         # According to parameter modify coordinate information
         if self.location_info == "center":
             for i in range(len(perception_infos)):
                 x1, y1, x2, y2 = perception_infos[i]["coordinates"]
-                perception_infos[i]["coordinates"] = [
-                    int((x1 + x2) / 2), int((y1 + y2) / 2)]
+                perception_infos[i]["coordinates"] = [int((x1 + x2) / 2), int((y1 + y2) / 2)]
         elif self.location_info == "icon_center":
             for i in range(len(perception_infos)):
                 if "icon" in perception_infos[i]["text"]:
                     x1, y1, x2, y2 = perception_infos[i]["coordinates"]
-                    perception_infos[i]["coordinates"] = [
-                        int((x1 + x2) / 2), int((y1 + y2) / 2)]
+                    perception_infos[i]["coordinates"] = [int((x1 + x2) / 2), int((y1 + y2) / 2)]
 
         # If extend_xml_infos is enabled, then get XML information
         if self.extend_xml_infos and self.platform in ["Android", "Windows"]:
@@ -648,8 +633,7 @@ class OSAgent(Role):
                 info = "No add_info"
             logger.info(f"\n\n\n\n\n\n#### add_info:{info}\n\n")
         else:
-            logger.info(
-                "Knowledge base currently only implemented for Android")
+            logger.info("Knowledge base currently only implemented for Android")
 
         # Generate action
         ctx = ActionPromptContext(
@@ -675,8 +659,7 @@ class OSAgent(Role):
         )
 
         prompt_action = self.prompt_utils.get_action_prompt(ctx)
-        logger.info(
-            f"\n\n######################## prompt_action:\n{prompt_action}\n\n######################## prompt_action end\n\n\n\n")
+        logger.info(f"\n\n######################## prompt_action:\n{prompt_action}\n\n######################## prompt_action end\n\n\n\n")
 
         # Call LLM to generate decision with history images
         images = []
@@ -690,10 +673,8 @@ class OSAgent(Role):
                 if end >= 0:
                     start = max(0, end - (max_hist_frames - 1))
                     for frame_num in range(start, end + 1):  # ascending: old -> new
-                        origin_path = Path(self.save_img) / \
-                            f"origin_{frame_num}.jpg"
-                        draw_path = Path(self.save_img) / \
-                            f"draw_{frame_num}.jpg"
+                        origin_path = Path(self.save_img) / f"origin_{frame_num}.jpg"
+                        draw_path = Path(self.save_img) / f"draw_{frame_num}.jpg"
                         if origin_path.exists():
                             images.append(encode_image(str(origin_path)))
                             # If SOM is enabled and annotated image exists, also include it for the same frame
@@ -742,21 +723,147 @@ class OSAgent(Role):
                 content = re.sub(r"\s{2,}", " ", content)
             return content.strip()
 
-        self.rc.image_description = _extract_between(
-            output_action, "### Image Description ###", "### Reflection Thought ###", escape_newlines=True)
-        self.rc.reflection_thought = _extract_between(
-            output_action, "### Reflection Thought ###", "### Thought ###", escape_newlines=True)
-        self.rc.thought = _extract_between(
-            output_action, "### Thought ###", "### Action ###", normalize=True)
-        self.rc.action = _extract_between(
-            output_action, "### Action ###", "### Operation ###")
-        self.rc.summary = _extract_between(
-            output_action, "### Operation ###", "### Task List ###", escape_newlines=True)
-        self.rc.task_list = _extract_between(
-            output_action, "### Task List ###")
+        self.rc.image_description = _extract_between(output_action, "### Image Description ###", "### Reflection Thought ###", escape_newlines=True)
+        self.rc.reflection_thought = _extract_between(output_action, "### Reflection Thought ###", "### Thought ###", escape_newlines=True)
+        self.rc.thought = _extract_between(output_action, "### Thought ###", "### Action ###", normalize=True)
+        self.rc.action = _extract_between(output_action, "### Action ###", "### Operation ###")
+        self.rc.summary = _extract_between(output_action, "### Operation ###", "### Task List ###", escape_newlines=True)
+        self.rc.task_list = _extract_between(output_action, "### Task List ###")
 
+        logger.info(f"\n\n######################## output_action:\n{output_action}\n\n######################## output_action end\n\n\n\n")
+
+        if self.rc.action.startswith("Stop"):
+            return False
+        else:
+            return True
+
+    @retry(
+        stop=stop_after_attempt(10),
+        wait=wait_fixed(3),
+        retry=retry_if_exception_type(Exception),
+        before_sleep=lambda retry_state: logger.warning(
+            f"Generate retry operation failed, {retry_state.attempt_number}th retry: {str(retry_state.outcome.exception())}"
+        ),
+        reraise=True,
+    )
+    async def _think_with_retry_suggestion(self) -> bool:
+        """
+        Generate operation decisions with EM retry suggestion injected.
+        This method is called when EM detects AgentRetryFail and generates a retry suggestion.
+        """
+        # Add preset knowledge
+        add_info = self.add_info
+
+        # Add retry suggestion to add_info
+        if self.retry_suggestion:
+            retry_hint = f"\n\n### Retry Suggestion ###\nThe previous attempt was unsuccessful. Based on analysis, here is a suggested action to try:\n{self.retry_suggestion}\n\nPlease consider this suggestion when planning your next action.\n"
+            add_info = retry_hint + add_info
+            logger.info("Injected retry suggestion into prompt")
+
+        # Add application information to prompt
+        if self.platform == "Android":
+            info = self._get_app_info()
+            if info:
+                add_info += " ".join(info) if isinstance(info, list) else info
+            else:
+                info = "No add_info"
+            logger.info(f"\n\n\n\n\n\n#### add_info with retry:{info}\n\n")
+        else:
+            logger.info("Knowledge base currently only implemented for Android")
+
+        # Generate action
+        ctx = ActionPromptContext(
+            instruction=self.instruction,
+            clickable_infos=self.rc.perception_infos,
+            width=self.width,
+            height=self.height,
+            thought_history=self.rc.thought_history,
+            summary_history=self.rc.summary_history,
+            action_history=self.rc.action_history,
+            reflection_thought_history=self.rc.reflection_thought_history,
+            last_summary=self.rc.summary,
+            last_action=self.rc.action,
+            reflection_thought=self.rc.reflection_thought,
+            add_info=add_info,
+            error_flag=self.rc.error_flag,
+            error_message=self.rc.error_message,
+            completed_content=self.rc.completed_requirements,
+            memory=self.rc.memory,
+            task_list=self.rc.task_list,
+            use_som=self.use_som,
+            location_info=self.location_info,
+        )
+
+        prompt_action = self.prompt_utils.get_action_prompt(ctx)
         logger.info(
-            f"\n\n######################## output_action:\n{output_action}\n\n######################## output_action end\n\n\n\n")
+            f"\n\n######################## prompt_action (with retry):\n{prompt_action}\n\n######################## prompt_action end\n\n\n\n"
+        )
+
+        # Call LLM to generate decision with history images
+        images = []
+        try:
+            if isinstance(self.think_history_images, int) and self.think_history_images > 1:
+                max_hist_frames = self.think_history_images - 1
+                end = self.rc.iter - 2
+                if end >= 0:
+                    start = max(0, end - (max_hist_frames - 1))
+                    for frame_num in range(start, end + 1):
+                        origin_path = Path(self.save_img) / f"origin_{frame_num}.jpg"
+                        draw_path = Path(self.save_img) / f"draw_{frame_num}.jpg"
+                        if origin_path.exists():
+                            images.append(encode_image(str(origin_path)))
+                            if self.use_som and draw_path.exists():
+                                images.append(encode_image(str(draw_path)))
+        except Exception:
+            pass
+
+        images.append(encode_image(self.screenshot_file))
+        if self.use_som:
+            images.append(encode_image(self.screenshot_som_file))
+
+        # Use custom system prompt or default prompt with retry context
+        system_msg = (
+            self.system_prompt
+            if self.system_prompt
+            else f"You are a helpful AI {'mobile phone' if self.platform=='Android' else 'PC'} operating assistant. You need to help me operate the device to complete the user's instruction."
+        )
+        system_msg += " The previous attempt was unsuccessful. Please carefully consider the retry suggestion provided and try a different approach."
+
+        output_action = await self.llm.aask(
+            prompt_action,
+            system_msgs=[system_msg],
+            images=images,
+            stream=False,
+        )
+
+        # Parse output (same as _think)
+        def _extract_between(text, start, end=None, normalize=False, escape_newlines=False):
+            if start not in text:
+                return ""
+            start_idx = text.find(start) + len(start)
+            if end is not None:
+                end_idx = text.find(end, start_idx)
+                if end_idx == -1:
+                    return ""
+                content = text[start_idx:end_idx]
+            else:
+                content = text[start_idx:]
+            content = content.strip()
+            if escape_newlines:
+                content = content.replace("\n", "\\n")
+            if normalize:
+                content = content.replace(":", "")
+                content = re.sub(r"\s{2,}", " ", content)
+            return content.strip()
+
+        self.rc.image_description = _extract_between(output_action, "### Image Description ###", "### Reflection Thought ###", escape_newlines=True)
+        self.rc.reflection_thought = _extract_between(output_action, "### Reflection Thought ###", "### Thought ###", escape_newlines=True)
+        self.rc.thought = _extract_between(output_action, "### Thought ###", "### Action ###", normalize=True)
+        self.rc.action = _extract_between(output_action, "### Action ###", "### Operation ###")
+        self.rc.summary = _extract_between(output_action, "### Operation ###", "### Task List ###", escape_newlines=True)
+        self.rc.task_list = _extract_between(output_action, "### Task List ###")
+
+        logger.info(f"\n\n######################## output_action (retry):\n{output_action}\n\n######################## output_action end\n\n\n\n")
 
         if self.rc.action.startswith("Stop"):
             return False
@@ -780,17 +887,14 @@ class OSAgent(Role):
         if map_path.exists():
             app_mapping = map_path.read_text(encoding="utf-8").strip()
         else:
-            logger.warning(
-                f"{map_path} file does not exist, using default empty mapping")
+            logger.warning(f"{map_path} file does not exist, using default empty mapping")
 
         # Get package name
-        prompt_package_name = self.prompt_utils.get_package_name_prompt(
-            app_name=app_name, app_mapping=app_mapping, package_list=package_list)
+        prompt_package_name = self.prompt_utils.get_package_name_prompt(app_name=app_name, app_mapping=app_mapping, package_list=package_list)
 
         package_name = await self.llm.aask(
             prompt_package_name,
-            system_msgs=[
-                f"You are a helpful AI {'mobile phone' if self.platform=='Android' else 'PC'} operating assistant."],
+            system_msgs=[f"You are a helpful AI {'mobile phone' if self.platform=='Android' else 'PC'} operating assistant."],
             stream=False,
         )
 
@@ -816,15 +920,13 @@ class OSAgent(Role):
             self.controller.open_app(app_name)
             time.sleep(10)
         else:
-            logger.error(
-                f"Platform {self.platform} not supported for opening apps")
+            logger.error(f"Platform {self.platform} not supported for opening apps")
 
     async def _act(self) -> Message:
         """Execute action step"""
         if self.use_chrome_debugger:
             # Store browser logs from before action execution in previous action log. Note: Need a log for step 0 here since mgx web testing is not started by osagent
-            self.rc.webbrowser_console_logs.append(
-                self.chrome_debugger.get_new_messages())
+            self.rc.webbrowser_console_logs.append(self.chrome_debugger.get_new_messages())
 
         self.run_action_failed = False
         self.run_action_failed_exception = ""
@@ -902,11 +1004,9 @@ class OSAgent(Role):
         # Extract click coordinates from action
         click_coords = None
         if self.rc.action:
-            click_match = re.search(
-                r"pyautogui\.click\((\d+),\s*(\d+)\)", self.rc.action)
+            click_match = re.search(r"pyautogui\.click\((\d+),\s*(\d+)\)", self.rc.action)
             if click_match:
-                click_coords = (int(click_match.group(1)),
-                                int(click_match.group(2)))
+                click_coords = (int(click_match.group(1)), int(click_match.group(2)))
 
         # Get screenshot path for current iteration
         screenshot_path = f"{self.save_img}/origin_{self.rc.iter}.jpg"
@@ -931,8 +1031,7 @@ class OSAgent(Role):
             height=self.height,
         )
 
-        logger.debug(
-            f"Evidence collected for iter {self.rc.iter}: coordinate_match={evidence.coordinate_match}")
+        logger.debug(f"Evidence collected for iter {self.rc.iter}: coordinate_match={evidence.coordinate_match}")
 
         # 将证据添加到 EM 管理器
         if self.em_manager:
@@ -946,8 +1045,7 @@ class OSAgent(Role):
         # 如果检测到 Tell 动作，分析 agent_noresp 并进行 EM 预测和纠正
         if evidence.tell_evidence:
             agent_noresp = await self.evidence_collector.analyze_tell_action(evidence)
-            logger.info(
-                f"Tell action analyzed for iter {self.rc.iter}: agent_noresp={agent_noresp}")
+            logger.info(f"Tell action analyzed for iter {self.rc.iter}: agent_noresp={agent_noresp}")
 
             # 更新 EM 管理器中最新证据的 agent_noresp
             if self.em_manager and self.em_manager._evidence_rows:
@@ -960,6 +1058,7 @@ class OSAgent(Role):
     async def _perform_em_correction(self, evidence: Evidence) -> None:
         """
         Perform EM prediction and correction when Tell action is detected.
+        If EM detects AgentRetryFail, generate retry suggestion and set pending_retry flag.
 
         Args:
             evidence: The current evidence object containing Tell action info
@@ -971,12 +1070,10 @@ class OSAgent(Role):
         try:
             # Extract agent's original judgment from Tell action
             # Tell action typically contains the agent's judgment result
-            agent_original = self._extract_agent_judgment(
-                evidence.tell_evidence)
+            agent_original = self._extract_agent_judgment(evidence.tell_evidence)
 
             if agent_original is None:
-                logger.warning(
-                    "Could not extract agent judgment from Tell evidence")
+                logger.warning("Could not extract agent judgment from Tell evidence")
                 return
 
             # Get EM prediction
@@ -988,28 +1085,60 @@ class OSAgent(Role):
                 f"Reasoning={prediction['P_AgentReasoningFail']:.3f})"
             )
 
-            # Perform correction
-            correction_result = self.em_manager.correct_judgment(
-                agent_original=agent_original)
+            # Check if retry is needed
+            if self.enable_retry:
+                retry_result = self.em_manager.should_retry(tau_retry=self.em_tau_retry)
+
+                if retry_result["should_retry"]:
+                    logger.info(f"🔄 EM suggests RETRY: {retry_result['reason']}")
+
+                    # Generate retry action suggestion
+                    try:
+                        # Get current screenshot
+                        screenshot_path = f"{self.save_img}/origin_{self.rc.iter}.jpg"
+                        if not Path(screenshot_path).exists():
+                            screenshot_path = self.screenshot_file if Path(self.screenshot_file).exists() else None
+
+                        # Call generate_retry_action_online
+                        self.retry_suggestion = await generate_retry_action_online(
+                            task_description=getattr(self, "instruction", ""),
+                            action_history=list(self.rc.action_history),
+                            summary_history=list(self.rc.summary_history),
+                            screenshot=screenshot_path,
+                            llm=self.llm,
+                        )
+
+                        if self.retry_suggestion:
+                            logger.info("Retry suggestion generated successfully")
+                        else:
+                            logger.warning("Failed to generate retry suggestion")
+
+                    except Exception as e:
+                        logger.error(f"Error generating retry suggestion: {e}")
+                        self.retry_suggestion = None
+
+                    if self.retry_suggestion:
+                        self.pending_retry = True
+                        logger.info("📝 Retry suggestion generated")
+                        return  # Skip normal correction flow, will retry instead
+
+            # Perform correction (normal flow)
+            correction_result = self.em_manager.correct_judgment(agent_original=agent_original)
             self.em_correction_result = correction_result
 
             # Log the correction result
             logger.info("EM Correction Result:")
-            logger.info(
-                f"  - Agent Original: {agent_original} ({'PASS' if agent_original == 1 else 'FAIL'})")
+            logger.info(f"  - Agent Original: {agent_original} ({'PASS' if agent_original == 1 else 'FAIL'})")
             logger.info(
                 f"  - Corrected Label: {correction_result['corrected_label']} " f"({'PASS' if correction_result['corrected_label'] == 1 else 'FAIL'})"
             )
             logger.info(f"  - Action: {correction_result['action']}")
-            logger.info(
-                f"  - P(EnvFail): {correction_result['P_EnvFail']:.3f}")
-            logger.info(
-                f"  - P(AgentFail): {correction_result['P_AgentFail']:.3f}")
+            logger.info(f"  - P(EnvFail): {correction_result['P_EnvFail']:.3f}")
+            logger.info(f"  - P(AgentFail): {correction_result['P_AgentFail']:.3f}")
 
             # If correction differs from original, log prominently
             if agent_original != correction_result["corrected_label"]:
-                logger.warning(
-                    f"⚠️ EM CORRECTION APPLIED: {agent_original} → {correction_result['corrected_label']}")
+                logger.warning(f"⚠️ EM CORRECTION APPLIED: {agent_original} → {correction_result['corrected_label']}")
                 logger.warning(f"   Reason: {correction_result['action']}")
 
         except Exception as e:
@@ -1200,8 +1329,7 @@ class OSAgent(Role):
         )
 
         task_list = initial_task_list.strip()
-        logger.info(
-            f"\n\n######################## Initial Task List:\n{task_list}\n\n######################## End of Initial Task List\n\n\n\n")
+        logger.info(f"\n\n######################## Initial Task List:\n{task_list}\n\n######################## End of Initial Task List\n\n\n\n")
 
         return task_list
 
@@ -1231,15 +1359,21 @@ class OSAgent(Role):
                     self.instruction, self.screenshot_file, self.screenshot_som_file if self.use_som else None
                 )
 
-            # think
-            has_todo = await self._think()
+            # Check if there's a pending retry suggestion
+            if self.pending_retry and self.retry_suggestion:
+                logger.info(f"🔄 Executing retry with EM suggestion (attempt {self.retry_count})")
+                has_todo = await self._think_with_retry_suggestion()
+                self.pending_retry = False
+                self.retry_suggestion = None
+            else:
+                # think
+                has_todo = await self._think()
+
             if not has_todo:
-                rsp = AIMessage(
-                    content="OS Agent has finished all tasks", cause_by=Action)
+                rsp = AIMessage(content="OS Agent has finished all tasks", cause_by=Action)
                 break
             # act
-            logger.debug(
-                f"{self._setting}: {self.rc.state=}, will do {self.rc.todo}")
+            logger.debug(f"{self._setting}: {self.rc.state=}, will do {self.rc.todo}")
             rsp = await self._act()
 
         if self.use_chrome_debugger:
@@ -1269,15 +1403,11 @@ class OSAgent(Role):
         if self.em_correction_result:
             logger.info("=" * 50)
             logger.info("FINAL EM CORRECTION RESULT:")
-            logger.info(
-                f"  Agent Original: {self.em_correction_result['agent_original']}")
-            logger.info(
-                f"  Corrected Label: {self.em_correction_result['corrected_label']}")
+            logger.info(f"  Agent Original: {self.em_correction_result['agent_original']}")
+            logger.info(f"  Corrected Label: {self.em_correction_result['corrected_label']}")
             logger.info(f"  Action: {self.em_correction_result['action']}")
-            logger.info(
-                f"  P(EnvFail): {self.em_correction_result['P_EnvFail']:.3f}")
-            logger.info(
-                f"  P(AgentFail): {self.em_correction_result['P_AgentFail']:.3f}")
+            logger.info(f"  P(EnvFail): {self.em_correction_result['P_EnvFail']:.3f}")
+            logger.info(f"  P(AgentFail): {self.em_correction_result['P_AgentFail']:.3f}")
             logger.info("=" * 50)
 
         return rsp
