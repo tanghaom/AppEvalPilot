@@ -2,6 +2,7 @@
 EM 模型管理器模块
 
 提供 EMManager 类，整合证据收集、模型预测和纠偏功能。
+基于参考实现，使用 case-level 的 posterior 聚合。
 """
 
 import json
@@ -12,7 +13,6 @@ from typing import Any, Dict, List, Optional
 import numpy as np
 import pandas as pd
 
-from appeval.em.analysis import correct_agent_judgment
 from appeval.em.model import SimpleEM4EvidenceH_Refine
 
 
@@ -42,6 +42,9 @@ class EMManager:
     # 获取预测结果
     prediction = em_manager.predict()
 
+    # 判断是否需要 retry
+    retry_result = em_manager.should_retry(tau_retry=0.4)
+
     # 进行纠偏
     corrected = em_manager.correct_judgment(agent_original=0)
     ```
@@ -58,6 +61,11 @@ class EMManager:
         tau_agentfail: float = 0.7,
         tau_envfail: float = 0.7,
         alpha: float = 0.75,
+        # EM model parameters
+        w_gui: float = 1.0,
+        w_code: float = 1.2,
+        w_noresp: float = 0.3,
+        agent_weight: float = 0.9,
     ):
         """
         初始化 EM 管理器
@@ -69,11 +77,34 @@ class EMManager:
             tau_agentfail: AgentFail 判断阈值
             tau_envfail: EnvFail 判断阈值
             alpha: 纠偏时的阻塞概率指数
+            w_gui: GUI 证据权重
+            w_code: Code 证据权重
+            w_noresp: NoResp 证据权重
+            agent_weight: Agent 评分权重
         """
         self.logger = logging.getLogger(f"{__name__}.EMManager")
 
-        # 创建 EM 模型
+        # 创建 EM 模型（使用参考实现的参数）
         self.em = SimpleEM4EvidenceH_Refine(
+            max_iter=200,
+            tol=1e-4,
+            seed=42,
+            w_gui=w_gui,
+            w_code=w_code,
+            w_noresp=w_noresp,
+            agent_weight=agent_weight,
+            a_pi=5.0,
+            b_pi=5.0,
+            a_c0=3.0,
+            b_c0=3.0,
+            a_c1=3.0,
+            b_c1=3.0,
+            a_c2=3.0,
+            b_c2=3.0,
+            theta_floor=0.05,
+            theta_ceil=0.95,
+            pi_floor=0.02,
+            temp=0.8,
             learning_rate=learning_rate,
         )
 
@@ -128,7 +159,6 @@ class EMManager:
             params = json.load(f)
 
         self.em.load_params(params)
-        self.em._is_initialized = True
         self.logger.info(f"已加载 EM 参数: {params_path}")
 
     def save_params(self, params_path: str):
@@ -235,6 +265,7 @@ class EMManager:
                 gui_evidence=E_gui if M_gui == 0 else None,
                 code_evidence=E_code if M_code == 0 else None,
                 agent_score=agent_score,
+                agent_noresp=E_noresp if M_noresp == 0 else None,
                 test_case_id=test_case_id,
                 weight=weight,
             )
@@ -284,9 +315,97 @@ class EMManager:
             return pd.DataFrame()
         return pd.DataFrame(self._evidence_rows)
 
+    def _aggregate_case_posteriors(self, df: pd.DataFrame, case_col: str = "test_case_id") -> Dict[str, float]:
+        """
+        使用 em 的生成参数，对 case 做一次完整贝叶斯：
+        P(delta | 所有 step 证据 + agent_testcase_score)
+
+        参考 run_rootcause.py 中的 aggregate_case_posteriors 实现
+
+        Args:
+            df: 证据 DataFrame
+            case_col: case ID 列名
+
+        Returns:
+            包含 case-level 概率的字典
+        """
+        eps = 1e-9
+        D = 3  # 三类根因
+
+        if df.empty:
+            return {
+                "P_case_EnvFail": 1 / 3,
+                "P_case_AgentRetryFail": 1 / 3,
+                "P_case_AgentReasoningFail": 1 / 3,
+                "P_case_AgentFail": 2 / 3,
+            }
+
+        # 对当前 case 的所有 step 聚合
+        log_like = np.zeros(D)
+
+        for _, r in df.iterrows():
+            for d in range(D):
+                p_gui = self.em.theta[d, 0]
+                p_code = self.em.theta[d, 1]
+                p_no = self.em.theta[d, 2]
+
+                # gui 通道
+                if ("M_gui" not in df.columns) or (r.get("M_gui", 0) == 0):
+                    e = float(r.get("E1_gui", 0))
+                    log_like[d] += np.log((p_gui if e == 1.0 else 1 - p_gui) + eps)
+
+                # code 通道
+                if ("M_code" not in df.columns) or (r.get("M_code", 0) == 0):
+                    e = float(r.get("E2_code", 0))
+                    log_like[d] += np.log((p_code if e == 1.0 else 1 - p_code) + eps)
+
+                # noresp 通道
+                if ("M_noresp" not in df.columns) or (r.get("M_noresp", 0) == 0):
+                    e = float(r.get("E4_noresp", 0))
+                    log_like[d] += np.log((p_no if e == 1.0 else 1 - p_no) + eps)
+
+        # agent_testcase_score 作为 C_case 通道
+        C_case = None
+        if "agent_testcase_score_x" in df.columns:
+            vals = df["agent_testcase_score_x"].dropna().values
+            if len(vals) > 0:
+                C_case = 1.0 if vals[-1] >= 0.5 else 0.0
+        elif "agent_testcase_score" in df.columns:
+            vals = df["agent_testcase_score"].dropna().values
+            if len(vals) > 0:
+                C_case = 1.0 if vals[-1] >= 0.5 else 0.0
+
+        if C_case is not None:
+            for d in range(D):
+                psi_d = float(self.em.psi[d])
+                if C_case == 1.0:
+                    log_like[d] += np.log(psi_d + eps)
+                else:
+                    log_like[d] += np.log(1 - psi_d + eps)
+
+        # prior + 归一化 → posterior
+        log_post = np.log(self.em.p_delta + eps) + log_like
+        m = log_post.max()
+        post = np.exp(log_post - m)
+        post = post / post.sum()
+
+        P_env = float(post[0])
+        P_retry = float(post[1])
+        P_reasoning = float(post[2])
+        P_agent = P_retry + P_reasoning
+
+        return {
+            "P_case_EnvFail": P_env,
+            "P_case_AgentRetryFail": P_retry,
+            "P_case_AgentReasoningFail": P_reasoning,
+            "P_case_AgentFail": P_agent,
+        }
+
     def predict(self, case_id: Optional[str] = None) -> Dict[str, float]:
         """
         预测当前证据的根因概率
+
+        使用 case-level 的 posterior 聚合（参考 run_rootcause.py）
 
         Args:
             case_id: 测试用例 ID，为 None 时使用当前 case
@@ -301,46 +420,21 @@ class EMManager:
                 "P_EnvFail": 1 / 3,
                 "P_AgentRetryFail": 1 / 3,
                 "P_AgentReasoningFail": 1 / 3,
+                "P_AgentFail": 2 / 3,
             }
 
-        # 过滤指定 case
-        if case_id is not None:
+        # 如果指定了 case_id，只使用该 case 的证据
+        if case_id is not None and "test_case_id" in df.columns:
             df = df[df["test_case_id"] == case_id]
 
-        if df.empty:
-            return {
-                "P_EnvFail": 1 / 3,
-                "P_AgentRetryFail": 1 / 3,
-                "P_AgentReasoningFail": 1 / 3,
-            }
-
-        # 使用 EM 模型预测
-        post = self.em.predict_proba(df)
-
-        # 聚合为 case 级别
-        # 使用阻塞概率公式
-        # AgentFail = Retry + Reasoning
-        q_agent = np.clip(post[:, 1] + post[:, 2], 0.0, 1.0)
-        P_case_AgentFail = 1.0 - float(np.prod((1.0 - q_agent) ** self.alpha))
-
-        # 分解 AgentFail 为 Retry 和 Reasoning
-        avg_retry = float(post[:, 1].mean())
-        avg_reasoning = float(post[:, 2].mean())
-        total_agent = avg_retry + avg_reasoning
-        if total_agent > 0:
-            P_AgentRetryFail = P_case_AgentFail * (avg_retry / total_agent)
-            P_AgentReasoningFail = P_case_AgentFail * (avg_reasoning / total_agent)
-        else:
-            P_AgentRetryFail = P_case_AgentFail / 2
-            P_AgentReasoningFail = P_case_AgentFail / 2
-
-        P_EnvFail = 1.0 - P_case_AgentFail
+        # 使用 case-level 聚合
+        probs = self._aggregate_case_posteriors(df)
 
         return {
-            "P_EnvFail": P_EnvFail,
-            "P_AgentRetryFail": P_AgentRetryFail,
-            "P_AgentReasoningFail": P_AgentReasoningFail,
-            "P_AgentFail": P_case_AgentFail,  # 方便使用
+            "P_EnvFail": probs["P_case_EnvFail"],
+            "P_AgentRetryFail": probs["P_case_AgentRetryFail"],
+            "P_AgentReasoningFail": probs["P_case_AgentReasoningFail"],
+            "P_AgentFail": probs["P_case_AgentFail"],
         }
 
     def should_retry(
@@ -396,15 +490,19 @@ class EMManager:
         case_id: Optional[str] = None,
         tau_agentfail: Optional[float] = None,
         tau_envfail: Optional[float] = None,
+        margin: float = 0.0,
     ) -> Dict[str, Any]:
         """
         纠正 Agent 的判断
+
+        参考 run_rootcause.py 中的 correct_cases_with_post 实现
 
         Args:
             agent_original: Agent 原始判断（0=FAIL, 1=PASS）
             case_id: 测试用例 ID
             tau_agentfail: AgentFail 阈值，为 None 时使用默认值
             tau_envfail: EnvFail 阈值，为 None 时使用默认值
+            margin: 翻转的边际阈值
 
         Returns:
             包含纠偏结果的字典
@@ -414,25 +512,43 @@ class EMManager:
         if tau_envfail is None:
             tau_envfail = self.tau_envfail
 
-        # 获取预测结果
+        # 获取预测结果（使用 case-level 聚合）
         prediction = self.predict(case_id)
         P_AgentFail = prediction["P_AgentFail"]
+        P_AgentRetryFail = prediction["P_AgentRetryFail"]
+        P_AgentReasoningFail = prediction["P_AgentReasoningFail"]
         P_EnvFail = prediction["P_EnvFail"]
 
-        action = "keep"
+        # 确定失败类型
+        agent_fail_type = None
+        if P_AgentFail > P_EnvFail + margin:
+            if P_AgentRetryFail > P_AgentReasoningFail:
+                agent_fail_type = "AgentRetryFail"
+            else:
+                agent_fail_type = "AgentReasoningFail"
+
+        action = "keep_AgentJudge"
         corrected = agent_original
 
         if agent_original == 0:  # Agent 判断 FAIL
-            if P_AgentFail >= tau_agentfail:
+            # 区分 EnvFail vs AgentFail
+            if P_AgentFail > P_EnvFail + margin:
                 corrected = 1  # 认定是 AgentFail，翻转为 PASS
-                action = "flip_to_AgentFail"
-            elif P_EnvFail >= tau_envfail:
-                corrected = 0  # 确认是环境问题，维持 FAIL
-                action = "keep_EnvFail"
+                if agent_fail_type == "AgentRetryFail":
+                    action = "flip_to_AgentRetryFail"
+                else:
+                    action = "flip_to_AgentReasoningFail"
+            else:
+                corrected = 0  # 保持 FAIL
+                action = "keep_EnvFail_or_AgentFail"
         elif agent_original == 1:  # Agent 判断 PASS
-            if P_EnvFail >= tau_envfail:
+            # 只在强 EnvFail 证据下翻转
+            if P_EnvFail > P_AgentFail + margin:
                 corrected = 0  # 环境问题导致误判，翻转为 FAIL
                 action = "flip_to_EnvFail"
+            else:
+                corrected = 1  # 保持 PASS
+                action = "keep_AgentJudge"
 
         return {
             "agent_original": agent_original,
@@ -440,8 +556,9 @@ class EMManager:
             "action": action,
             "P_EnvFail": P_EnvFail,
             "P_AgentFail": P_AgentFail,
-            "P_AgentRetryFail": prediction["P_AgentRetryFail"],
-            "P_AgentReasoningFail": prediction["P_AgentReasoningFail"],
+            "P_AgentRetryFail": P_AgentRetryFail,
+            "P_AgentReasoningFail": P_AgentReasoningFail,
+            "agent_fail_type": agent_fail_type,
         }
 
     def correct_with_dataframe(
@@ -449,27 +566,88 @@ class EMManager:
         df: pd.DataFrame,
         col_case: str = "test_case_id",
         col_agent: str = "agent_testcase_score_x",
+        margin: float = 0.0,
     ) -> pd.DataFrame:
         """
         使用 DataFrame 进行批量纠偏
+
+        参考 run_rootcause.py 中的 correct_cases_with_post 实现
 
         Args:
             df: 证据 DataFrame
             col_case: case ID 列名
             col_agent: agent 评分列名
+            margin: 翻转的边际阈值
 
         Returns:
             纠偏结果 DataFrame
         """
-        return correct_agent_judgment(
-            df=df,
-            em=self.em,
-            tau_agentfail=self.tau_agentfail,
-            tau_envfail=self.tau_envfail,
-            alpha=self.alpha,
-            col_case=col_case,
-            col_agent=col_agent,
-        )
+        rows = []
+
+        for cid, g in df.groupby(col_case):
+            g = g.sort_index()
+
+            # 计算 case-level posterior
+            probs = self._aggregate_case_posteriors(g, col_case)
+            P_env = probs["P_case_EnvFail"]
+            P_retry = probs["P_case_AgentRetryFail"]
+            P_reasoning = probs["P_case_AgentReasoningFail"]
+            P_agent = probs["P_case_AgentFail"]
+
+            # 获取 agent 原始判定
+            C_case = None
+            if col_agent in g.columns:
+                vals = g[col_agent].dropna().values
+                if len(vals) > 0:
+                    C_case = int(vals[-1])
+
+            # 确定失败类型
+            agent_fail_type = None
+            if P_agent > P_env + margin:
+                if P_retry > P_reasoning:
+                    agent_fail_type = "AgentRetryFail"
+                else:
+                    agent_fail_type = "AgentReasoningFail"
+
+            if C_case is None or np.isnan(C_case):
+                # 没原判定：直接用 argmax
+                corrected = 1 if P_agent >= P_env else 0
+                action = "from_model"
+            elif C_case == 0:
+                # agent 说 FAIL：区分 EnvFail vs AgentFail
+                if P_agent > P_env + margin:
+                    corrected = 1
+                    if agent_fail_type == "AgentRetryFail":
+                        action = "flip_to_AgentRetryFail"
+                    else:
+                        action = "flip_to_AgentReasoningFail"
+                else:
+                    corrected = 0
+                    action = "keep_EnvFail_or_AgentFail"
+            else:  # C_case == 1, agent 说 PASS
+                # 只在强 EnvFail 证据下翻转
+                if P_env > P_agent + margin:
+                    corrected = 0
+                    action = "flip_to_EnvFail"
+                else:
+                    corrected = 1
+                    action = "keep_AgentJudge"
+
+            rows.append(
+                dict(
+                    case_id=cid,
+                    agent_original=C_case,
+                    P_case_EnvFail=P_env,
+                    P_case_AgentRetryFail=P_retry,
+                    P_case_AgentReasoningFail=P_reasoning,
+                    P_case_AgentFail=P_agent,
+                    corrected_label=corrected,
+                    action=action,
+                    agent_fail_type=agent_fail_type,
+                )
+            )
+
+        return pd.DataFrame(rows).sort_values("case_id") if rows else pd.DataFrame()
 
     def clear_evidences(self):
         """清空当前收集的证据"""

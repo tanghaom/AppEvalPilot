@@ -737,15 +737,6 @@ class OSAgent(Role):
         else:
             return True
 
-    @retry(
-        stop=stop_after_attempt(10),
-        wait=wait_fixed(3),
-        retry=retry_if_exception_type(Exception),
-        before_sleep=lambda retry_state: logger.warning(
-            f"Generate retry operation failed, {retry_state.attempt_number}th retry: {str(retry_state.outcome.exception())}"
-        ),
-        reraise=True,
-    )
     async def _think_with_retry_suggestion(self) -> bool:
         """
         Generate operation decisions with EM retry suggestion injected.
