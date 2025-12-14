@@ -178,12 +178,18 @@ class OSAgent(Role):
 
         # Save configuration parameters
         self._init_config(locals())
+        logger.debug(
+            f"[OSAgent.__init__] Config initialized, enable_em_correction={getattr(self, 'enable_em_correction', 'NOT_SET')}")
 
         # Initialize environment
         self._init_environment()
+        logger.debug("[OSAgent.__init__] Environment initialized")
 
         # Initialize tools
+        logger.debug("[OSAgent.__init__] About to call _init_tools()")
         self._init_tools()
+        logger.debug(
+            f"[OSAgent.__init__] Tools initialized, em_manager={self.em_manager}")
 
     def _init_config(self, params: dict) -> None:
         """Initialize configuration parameters"""
@@ -229,20 +235,27 @@ class OSAgent(Role):
 
     def _init_tools(self) -> None:
         """Initialize tool components"""
+        logger.debug("[_init_tools] Starting tool initialization...")
+
         # Initialize icon detection/caption tool
         if self.use_icon_detect or self.use_icon_caption:
             self.icon_tool = IconDetectTool(self.llm)
+            logger.debug("[_init_tools] Icon tool initialized")
 
         # Initialize OCR tool
         if self.use_ocr:
             self.ocr_tool = OCRTool()
+            logger.debug("[_init_tools] OCR tool initialized")
 
         # Initialize browser debugger
         if self.use_chrome_debugger:
             self.chrome_debugger = ChromeDebugger()
+            logger.debug("[_init_tools] Chrome debugger initialized")
 
         # Initialize evidence collector for online learning
         self.evidence_collector = None
+        logger.debug(
+            f"[_init_tools] enable_evidence_collection={self.enable_evidence_collection}")
         if self.enable_evidence_collection:
             evidence_dir = self.evidence_output_dir or str(
                 Path(self.log_dirs) / "evidence")
@@ -257,6 +270,8 @@ class OSAgent(Role):
                 f"Evidence collector initialized, output dir: {evidence_dir}")
 
         # Initialize EM manager for prediction and correction
+        logger.debug(
+            f"[_init_tools] About to initialize EM manager, enable_em_correction={getattr(self, 'enable_em_correction', 'NOT_SET')}")
         self.em_manager = None
         self.em_correction_result = None  # Store the latest EM correction result
         logger.info(f"EM correction enabled: {self.enable_em_correction}")
