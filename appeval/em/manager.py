@@ -135,8 +135,10 @@ class EMManager:
         # 尝试多个可能的路径
         possible_paths = [
             self.DEFAULT_PARAMS_PATH,
-            os.path.join(os.path.dirname(__file__), "..", "data", "em_params.json"),
-            os.path.join(os.path.dirname(__file__), "../../appeval/data/em_params.json"),
+            os.path.join(os.path.dirname(__file__),
+                         "..", "data", "em_params.json"),
+            os.path.join(os.path.dirname(__file__),
+                         "../../appeval/data/em_params.json"),
         ]
 
         for path in possible_paths:
@@ -259,16 +261,16 @@ class EMManager:
 
         self._evidence_rows.append(row)
 
-        # 如果启用在线学习，立即更新模型
-        if self.enable_online_learning:
-            self.em.online_update(
-                gui_evidence=E_gui if M_gui == 0 else None,
-                code_evidence=E_code if M_code == 0 else None,
-                agent_score=agent_score,
-                agent_noresp=E_noresp if M_noresp == 0 else None,
-                test_case_id=test_case_id,
-                weight=weight,
-            )
+        # 如果启用在线学习，立即更新模型 TODO
+        # if self.enable_online_learning:
+        #     self.em.online_update(
+        #         gui_evidence=E_gui if M_gui == 0 else None,
+        #         code_evidence=E_code if M_code == 0 else None,
+        #         agent_score=agent_score,
+        #         agent_noresp=E_noresp if M_noresp == 0 else None,
+        #         test_case_id=test_case_id,
+        #         weight=weight,
+        #     )
 
     def add_evidence_from_collector(
         self,
@@ -293,7 +295,8 @@ class EMManager:
             evidences=evidences,
             project_name=project_name,
             code_evidence=code_evidence,
-            agent_judge={project_name: agent_score} if agent_score is not None else None,
+            agent_judge={
+                project_name: agent_score} if agent_score is not None else None,
         )
 
         # 添加到证据行
@@ -328,17 +331,15 @@ class EMManager:
 
         Returns:
             包含 case-level 概率的字典
+
+        Raises:
+            ValueError: 如果传入的 DataFrame 为空
         """
         eps = 1e-9
         D = 3  # 三类根因
 
         if df.empty:
-            return {
-                "P_case_EnvFail": 1 / 3,
-                "P_case_AgentRetryFail": 1 / 3,
-                "P_case_AgentReasoningFail": 1 / 3,
-                "P_case_AgentFail": 2 / 3,
-            }
+            raise ValueError("传入的证据 DataFrame 为空")
 
         # 对当前 case 的所有 step 聚合
         log_like = np.zeros(D)
@@ -352,17 +353,20 @@ class EMManager:
                 # gui 通道
                 if ("M_gui" not in df.columns) or (r.get("M_gui", 0) == 0):
                     e = float(r.get("E1_gui", 0))
-                    log_like[d] += np.log((p_gui if e == 1.0 else 1 - p_gui) + eps)
+                    log_like[d] += np.log((p_gui if e ==
+                                          1.0 else 1 - p_gui) + eps)
 
                 # code 通道
                 if ("M_code" not in df.columns) or (r.get("M_code", 0) == 0):
                     e = float(r.get("E2_code", 0))
-                    log_like[d] += np.log((p_code if e == 1.0 else 1 - p_code) + eps)
+                    log_like[d] += np.log((p_code if e ==
+                                          1.0 else 1 - p_code) + eps)
 
                 # noresp 通道
                 if ("M_noresp" not in df.columns) or (r.get("M_noresp", 0) == 0):
                     e = float(r.get("E4_noresp", 0))
-                    log_like[d] += np.log((p_no if e == 1.0 else 1 - p_no) + eps)
+                    log_like[d] += np.log((p_no if e ==
+                                          1.0 else 1 - p_no) + eps)
 
         # agent_testcase_score 作为 C_case 通道
         C_case = None
@@ -401,52 +405,63 @@ class EMManager:
             "P_case_AgentFail": P_agent,
         }
 
-    def predict(self, case_id: Optional[str] = None) -> Dict[str, float]:
+    def predict(self, case_id: str) -> Dict[str, float]:
         """
         预测当前证据的根因概率
 
-        使用 case-level 的 posterior 聚合（参考 run_rootcause.py）
+        直接调用 EM 模型的 predict_proba 方法
 
         Args:
-            case_id: 测试用例 ID，为 None 时使用当前 case
+            case_id: 测试用例 ID
 
         Returns:
             包含三类根因概率的字典
+
+        Raises:
+            ValueError: 如果没有证据数据或指定的 case_id 不存在
         """
+
         df = self.get_evidence_dataframe()
 
         if df.empty:
-            return {
-                "P_EnvFail": 1 / 3,
-                "P_AgentRetryFail": 1 / 3,
-                "P_AgentReasoningFail": 1 / 3,
-                "P_AgentFail": 2 / 3,
-            }
+            raise ValueError(
+                "没有证据数据，请先调用 add_evidence 添加证据"
+            )
 
-        # 如果指定了 case_id，只使用该 case 的证据
-        if case_id is not None and "test_case_id" in df.columns:
+        # 使用指定 case_id 的证据
+        if "test_case_id" in df.columns:
             df = df[df["test_case_id"] == case_id]
+            if df.empty:
+                raise ValueError(
+                    f"找不到 case_id={case_id} 的证据数据"
+                )
 
-        # 使用 case-level 聚合
-        probs = self._aggregate_case_posteriors(df)
+        # 直接调用 EM 模型的 predict_proba
+        post = self.em.predict_proba(df)
+
+        # 聚合 step-level 到 case-level（取平均）
+        P_EnvFail = float(post[:, 0].mean())
+        P_AgentRetryFail = float(post[:, 1].mean())
+        P_AgentReasoningFail = float(post[:, 2].mean())
+        P_AgentFail = P_AgentRetryFail + P_AgentReasoningFail
 
         return {
-            "P_EnvFail": probs["P_case_EnvFail"],
-            "P_AgentRetryFail": probs["P_case_AgentRetryFail"],
-            "P_AgentReasoningFail": probs["P_case_AgentReasoningFail"],
-            "P_AgentFail": probs["P_case_AgentFail"],
+            "P_EnvFail": P_EnvFail,
+            "P_AgentRetryFail": P_AgentRetryFail,
+            "P_AgentReasoningFail": P_AgentReasoningFail,
+            "P_AgentFail": P_AgentFail,
         }
 
     def should_retry(
         self,
-        case_id: Optional[str] = None,
+        case_id: str,
         tau_retry: float = 0.4,
     ) -> Dict[str, Any]:
         """
         判断是否需要 retry（基于 AgentRetryFail 概率）
 
         Args:
-            case_id: 测试用例 ID
+            case_id: 测试用例 ID（必需）
             tau_retry: retry 判断阈值，当 P_AgentRetryFail 超过此值时返回 True
 
         Returns:
@@ -487,7 +502,7 @@ class EMManager:
     def correct_judgment(
         self,
         agent_original: int,
-        case_id: Optional[str] = None,
+        case_id: str,
         tau_agentfail: Optional[float] = None,
         tau_envfail: Optional[float] = None,
         margin: float = 0.0,
@@ -499,7 +514,7 @@ class EMManager:
 
         Args:
             agent_original: Agent 原始判断（0=FAIL, 1=PASS）
-            case_id: 测试用例 ID
+            case_id: 测试用例 ID（必需）
             tau_agentfail: AgentFail 阈值，为 None 时使用默认值
             tau_envfail: EnvFail 阈值，为 None 时使用默认值
             margin: 翻转的边际阈值

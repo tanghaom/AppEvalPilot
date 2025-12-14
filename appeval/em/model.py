@@ -1,12 +1,3 @@
-"""
-EM 模型核心模块
-
-实现 SimpleEM4EvidenceH_Refine 模型，用于根因分析。
-基于参考实现，支持三类根因：δ ∈ {0=EnvFail, 1=AgentRetryFail, 2=AgentReasoningFail}
-"""
-
-import json
-import logging
 from typing import Any, Dict, Optional
 
 import numpy as np
@@ -58,10 +49,6 @@ class SimpleEM4EvidenceH_Refine:
         theta_ceil: float = 0.95,
         pi_floor: float = 0.02,
         temp: float = 0.8,
-        # Legacy compatibility parameters (ignored, for backward compatibility)
-        n_components: int = 3,
-        learning_rate: float = 0.1,
-        random_state: Optional[int] = None,
     ):
         self.max_iter = max_iter
         self.tol = tol
@@ -100,16 +87,6 @@ class SimpleEM4EvidenceH_Refine:
         self.col_case = "test_case_id"
         self.col_agent = "agent_testcase_score_x"
         self.col_delta = "delta_label"
-
-        # 初始化标志（用于兼容）
-        self._is_initialized = False
-
-        # 在线学习统计（用于兼容）
-        self._online_samples = 0
-        self._initial_learning_rate = learning_rate
-        self.learning_rate = learning_rate
-
-        self.logger = logging.getLogger(f"{__name__}.SimpleEM4EvidenceH_Refine")
 
     # ---------- utils ----------
 
@@ -202,7 +179,6 @@ class SimpleEM4EvidenceH_Refine:
         # AgentReasoningFail: 较高错误率
         self.theta[2, :] = np.clip(m + 0.2, 0.2, 0.9)  # AgentReasoningFail
         self.psi[:] = np.array([0.4, 0.6, 0.8])
-        self._is_initialized = True
 
     # ---------- EM fit ----------
 
@@ -216,8 +192,7 @@ class SimpleEM4EvidenceH_Refine:
         col_code: str = "E2_code",
         col_noresp: str = "E4_noresp",
         col_w: str = "weight",
-        weights: Optional[np.ndarray] = None,
-    ):  # weights for backward compatibility
+    ):
         # bind column names
         self.col_case = col_case
         self.col_agent = col_agent
@@ -227,6 +202,7 @@ class SimpleEM4EvidenceH_Refine:
         self.col_noresp = col_noresp
         self.col_w = col_w
 
+        # E, w, case_ids, C_raw, delta_sup_raw = self._extract(df)
         E, w, M, case_ids, C_raw, delta_sup_raw = self._extract(df)
         N = E.shape[0]
         eps = 1e-9
@@ -360,18 +336,12 @@ class SimpleEM4EvidenceH_Refine:
             # (4) LL convergence
             avg_ll = float((w * log_den.squeeze()).sum() / (w.sum() + eps))
             if abs(avg_ll - ll_prev) < self.tol:
-                self.logger.info(f"EM 收敛于第 {it + 1} 次迭代")
                 break
             ll_prev = avg_ll
-
-        return self
 
     # ---------- inference ----------
     def predict_proba(self, df: pd.DataFrame) -> np.ndarray:
         """返回 step-level P(EnvFail), P(AgentRetryFail), P(AgentReasoningFail)，使用与 fit 一致的 M_* 掩码"""
-        if not self._is_initialized:
-            self._init_params(np.zeros((1, 3)))
-
         E, w, M, case_ids, C_raw, _ = self._extract(df)
         N = E.shape[0]
         eps = 1e-9
@@ -425,21 +395,7 @@ class SimpleEM4EvidenceH_Refine:
         # [:,0]=P(EnvFail), [:,1]=P(AgentRetryFail), [:,2]=P(AgentReasoningFail)
         return post
 
-    def predict(self, df: pd.DataFrame) -> np.ndarray:
-        """
-        预测最可能的根因类别
-
-        Args:
-            df: 证据 DataFrame
-
-        Returns:
-            预测类别数组
-        """
-        proba = self.predict_proba(df)
-        return np.argmax(proba, axis=1)
-
     def get_params(self) -> Dict[str, Any]:
-        """获取模型参数（参考格式）"""
         return {
             "P_delta": {"EnvFail": float(self.p_delta[0]), "AgentRetryFail": float(self.p_delta[1]), "AgentReasoningFail": float(self.p_delta[2])},
             "theta": {
@@ -457,40 +413,24 @@ class SimpleEM4EvidenceH_Refine:
     def load_params(self, params: Dict[str, Any]):
         """
         从参数字典加载已训练的参数
-        支持参考格式的参数
         """
-        if "P_delta" in params:
-            # 参考格式
-            self.p_delta[0] = float(params["P_delta"]["EnvFail"])
-            self.p_delta[1] = float(params["P_delta"]["AgentRetryFail"])
-            self.p_delta[2] = float(params["P_delta"]["AgentReasoningFail"])
+        self.p_delta[0] = float(params["P_delta"]["EnvFail"])
+        self.p_delta[1] = float(params["P_delta"]["AgentRetryFail"])
+        self.p_delta[2] = float(params["P_delta"]["AgentReasoningFail"])
 
-            self.theta[0, 0] = float(params["theta"]["EnvFail"]["E_gui"])
-            self.theta[0, 1] = float(params["theta"]["EnvFail"]["E_code"])
-            self.theta[0, 2] = float(params["theta"]["EnvFail"]["E_noresp"])
-            self.theta[1, 0] = float(params["theta"]["AgentRetryFail"]["E_gui"])
-            self.theta[1, 1] = float(params["theta"]["AgentRetryFail"]["E_code"])
-            self.theta[1, 2] = float(params["theta"]["AgentRetryFail"]["E_noresp"])
-            self.theta[2, 0] = float(params["theta"]["AgentReasoningFail"]["E_gui"])
-            self.theta[2, 1] = float(params["theta"]["AgentReasoningFail"]["E_code"])
-            self.theta[2, 2] = float(params["theta"]["AgentReasoningFail"]["E_noresp"])
+        self.theta[0, 0] = float(params["theta"]["EnvFail"]["E_gui"])
+        self.theta[0, 1] = float(params["theta"]["EnvFail"]["E_code"])
+        self.theta[0, 2] = float(params["theta"]["EnvFail"]["E_noresp"])
+        self.theta[1, 0] = float(params["theta"]["AgentRetryFail"]["E_gui"])
+        self.theta[1, 1] = float(params["theta"]["AgentRetryFail"]["E_code"])
+        self.theta[1, 2] = float(params["theta"]["AgentRetryFail"]["E_noresp"])
+        self.theta[2, 0] = float(params["theta"]["AgentReasoningFail"]["E_gui"])
+        self.theta[2, 1] = float(params["theta"]["AgentReasoningFail"]["E_code"])
+        self.theta[2, 2] = float(params["theta"]["AgentReasoningFail"]["E_noresp"])
 
-            self.psi[0] = float(params["psi"]["EnvFail"])
-            self.psi[1] = float(params["psi"]["AgentRetryFail"])
-            self.psi[2] = float(params["psi"]["AgentReasoningFail"])
-        elif "pi" in params:
-            # 旧格式兼容（如果有）
-            self.p_delta = np.array(params["pi"][:3])
-            # 其他参数使用默认值
-            self.logger.warning("使用旧格式参数，部分参数可能不准确")
-
-        self._is_initialized = True
-
-    def save_params(self, filepath: str):
-        """保存模型参数到文件"""
-        params = self.get_params()
-        with open(filepath, "w", encoding="utf-8") as f:
-            json.dump(params, f, indent=2, ensure_ascii=False)
+        self.psi[0] = float(params["psi"]["EnvFail"])
+        self.psi[1] = float(params["psi"]["AgentRetryFail"])
+        self.psi[2] = float(params["psi"]["AgentReasoningFail"])
 
     def _score_avg_ll(self, E, w, case_ids, C_raw):
         """
@@ -544,88 +484,155 @@ class SimpleEM4EvidenceH_Refine:
 
         return float((w * log_den.squeeze()).sum() / (w.sum() + eps))
 
-    # ---------- 在线学习接口（用于 osagent.py 兼容）----------
 
-    def partial_fit(self, df: pd.DataFrame) -> "SimpleEM4EvidenceH_Refine":
-        """
-        在线学习：增量更新模型（简化实现，用于兼容）
+def analyze_flips(val_df: pd.DataFrame, out_dir: Optional[str] = None):
+    """区分两类子集: 原判断正确 vs 错误，查看flip比例"""
+    from pathlib import Path
 
-        Args:
-            df: 新的证据数据
+    df = val_df.copy()
+    df["is_correct_before"] = df["human_gt"] == df["agent_original"]
+    df["is_correct_after"] = df["human_gt"] == df["corrected_label"]
+    df["is_flipped"] = df["agent_original"] != df["corrected_label"]
 
-        Returns:
-            self
-        """
-        if not self._is_initialized:
-            self._init_params(np.zeros((1, 3)))
+    # subset A: 原判断正确
+    subset_A = df[df["is_correct_before"]]
+    misflipped = subset_A[subset_A["is_flipped"]]
+    if len(subset_A) > 0:
+        print(f"[Subset A] 原判断正确: {len(subset_A)} cases, " f"被误翻 {len(misflipped)} ({len(misflipped)/len(subset_A):.2%})")
 
-        # 简化的在线更新：使用当前数据做一轮 EM 更新
-        E, w, M, case_ids, C_raw, delta_sup_raw = self._extract(df)
-        N = E.shape[0]
+        # 进一步区分原始标签是0和原始标签是1的误翻情况
+        misflipped_0 = misflipped[misflipped["agent_original"] == 0]
+        misflipped_1 = misflipped[misflipped["agent_original"] == 1]
+        subset_A_0 = subset_A[subset_A["agent_original"] == 0]
+        subset_A_1 = subset_A[subset_A["agent_original"] == 1]
 
-        # 使用学习率进行增量更新
-        lr = self.learning_rate / (1 + self._online_samples * 0.01)
+        if len(subset_A_0) > 0:
+            print(f"  - 原始标签=0: {len(subset_A_0)} cases, " f"被误翻 {len(misflipped_0)} ({len(misflipped_0)/len(subset_A_0):.2%})")
+        if len(subset_A_1) > 0:
+            print(f"  - 原始标签=1: {len(subset_A_1)} cases, " f"被误翻 {len(misflipped_1)} ({len(misflipped_1)/len(subset_A_1):.2%})")
 
-        # 计算当前 posterior
-        post = self.predict_proba(df)
+        # 保存数据
+        if out_dir is not None:
+            out_path = Path(out_dir)
+            out_path.mkdir(parents=True, exist_ok=True)
 
-        # 更新先验
-        new_pi = post.mean(axis=0)
-        self.p_delta = (1 - lr) * self.p_delta + lr * new_pi
-        self.p_delta /= self.p_delta.sum()
+            # 保存被误翻的数据（按原始标签分组）
+            if len(misflipped_0) > 0:
+                misflipped_0.to_csv(out_path / "misflipped_original_0.csv", index=False)
+                print(f"  已保存原始标签=0的误翻数据到: {out_path / 'misflipped_original_0.csv'}")
+            if len(misflipped_1) > 0:
+                misflipped_1.to_csv(out_path / "misflipped_original_1.csv", index=False)
+                print(f"  已保存原始标签=1的误翻数据到: {out_path / 'misflipped_original_1.csv'}")
 
-        self._online_samples += N
+            # 保存原判断正确的所有数据（按原始标签分组）
+            if len(subset_A_0) > 0:
+                subset_A_0.to_csv(out_path / "subset_A_original_0.csv", index=False)
+                print(f"  已保存原始标签=0的原判断正确数据到: {out_path / 'subset_A_original_0.csv'}")
+            if len(subset_A_1) > 0:
+                subset_A_1.to_csv(out_path / "subset_A_original_1.csv", index=False)
+                print(f"  已保存原始标签=1的原判断正确数据到: {out_path / 'subset_A_original_1.csv'}")
+    else:
+        print(f"[Subset A] 原判断正确: {len(subset_A)} cases, 被误翻 {len(misflipped)}")
 
-        return self
+    # subset B: 原判断错误
+    subset_B = df[~df["is_correct_before"]]
+    corrected = subset_B[subset_B["is_correct_after"]]
+    if len(subset_B) > 0:
+        print(f"[Subset B] 原判断错误: {len(subset_B)} cases, " f"被成功纠正 {len(corrected)} ({len(corrected)/len(subset_B):.2%})")
+    else:
+        print(f"[Subset B] 原判断错误: {len(subset_B)} cases, 被成功纠正 {len(corrected)}")
 
-    def online_update(
-        self,
-        gui_evidence: Optional[int] = None,
-        code_evidence: Optional[int] = None,
-        agent_score: Optional[float] = None,
-        agent_noresp: Optional[int] = None,
-        test_case_id: str = "default",
-        weight: float = 1.0,
-    ):
-        """
-        单样本在线更新（用于 osagent.py 兼容）
+    # 再打印最终 confusion
+    print("\n=== Confusion Matrix (GT vs Corrected) ===")
+    print(pd.crosstab(df["human_gt"], df["corrected_label"], rownames=["GT"], colnames=["Corrected"]))
 
-        Args:
-            gui_evidence: GUI 证据
-            code_evidence: 代码证据
-            agent_score: Agent 评分
-            agent_noresp: 无响应证据
-            test_case_id: 测试用例 ID
-            weight: 样本权重
-        """
-        if not self._is_initialized:
-            self._init_params(np.zeros((1, 3)))
 
-        # 构建单样本数据
-        data = {
-            "test_case_id": [test_case_id],
-            "E1_gui": [gui_evidence if gui_evidence is not None else 0],
-            "E2_code": [code_evidence if code_evidence is not None else 0],
-            "E4_noresp": [agent_noresp if agent_noresp is not None else 0],
-            "M_gui": [0 if gui_evidence is not None else 1],
-            "M_code": [0 if code_evidence is not None else 1],
-            "M_noresp": [0 if agent_noresp is not None else 1],
-            "weight": [weight],
-        }
-        if agent_score is not None:
-            data["agent_testcase_score_x"] = [agent_score]
-        df = pd.DataFrame(data)
-        self.partial_fit(df)
+def confusion_matrix(val_df: pd.DataFrame):
+    """统计人类标注 vs 矫正后结果"""
+    conf_matrix = pd.crosstab(val_df["human_gt"], val_df["corrected_label"], rownames=["GT"], colnames=["Corrected"])
+    print("=== Confusion Matrix (GT vs Corrected) ===")
+    print(conf_matrix)
+    acc = (val_df["human_gt"] == val_df["corrected_label"]).mean()
+    print(f"Accuracy after correction: {acc:.3f}")
+    return conf_matrix
 
-    def reset_learning_rate(self):
-        """重置学习率"""
-        self.learning_rate = self._initial_learning_rate
-        self._online_samples = 0
 
-    def get_online_stats(self) -> Dict[str, Any]:
-        """获取在线学习统计"""
-        return {
-            "online_samples": self._online_samples,
-            "current_learning_rate": self.learning_rate / (1 + self._online_samples * 0.01),
-            "pi": self.p_delta.tolist() if self.p_delta is not None else None,
-        }
+def correct_agent_judgment(
+    df: pd.DataFrame,
+    em: SimpleEM4EvidenceH_Refine,
+    tau_agentfail: float = 0.7,
+    tau_envfail: float = 0.7,
+    alpha: float = 0.75,
+    tau_envfail_high: float = 0.7,
+    col_case: str = "test_case_id",
+    col_agent: str = "agent_testcase_score_x",
+):
+    """
+    对每个 case：
+      - 汇总 step-level posterior 得到 P_case_AgentFail
+      - 与 agent 原判 (C_case) 结合，给出纠偏动作
+    """
+    post = em.predict_proba(df)
+    df_tmp = df.copy()
+    df_tmp["P_EnvFail"] = post[:, 0]
+    # AgentRetryFail (1) 和 AgentReasoningFail (2) 都视为 AgentFail
+    df_tmp["P_AgentFail"] = post[:, 1] + post[:, 2]
+
+    rows = []
+    for cid, g in df_tmp.groupby(col_case):
+        # agent 原判: 取该 case 最后一个非 nan
+        C_vals = g[col_agent].dropna().values
+        if cid == "web_14_2":
+            print(f"C_vals: {C_vals}")
+        # 1=PASS?, 0=FAIL? 按你现在的定义自行对应
+        C_case = int(C_vals[-1]) if len(C_vals) else None
+
+        gt = g["phi"].dropna().values[-1]
+
+        # 聚合为 case-level AgentFail 概率（阻塞口径）
+        q = np.clip(g["P_AgentFail"].values, 0.0, 1.0)
+        # 阻塞概率: 越多高风险 step, 越趋向 AgentFail
+        P_case_AgentFail = 1.0 - float(np.prod((1.0 - q) ** alpha))
+        P_case_EnvFail = 1.0 - P_case_AgentFail
+
+        action = "keep_AgentJudge"
+        corrected = C_case
+
+        if C_case is not None:
+            # 场景1: agent 判 FAIL (0)，我们要区分 Env vs Agent
+            if C_case == 0:
+                if P_case_AgentFail >= tau_agentfail:
+                    corrected = 1  # 认定 AgentFail
+                    action = "flip_to_AgentFail"
+                elif P_case_EnvFail >= tau_envfail:
+                    corrected = 0  # 环境问题，维持
+                    action = "keep_EnvFail"
+                # 介于两阈值之间可以保守 keep_AgentJudge/UNK
+
+            # 场景2: agent 判 PASS (1)，可选：当强 EnvFail 证据时 flip
+            elif C_case == 1:
+                # 如果你只关心纠正误报，可以先不动这里
+                if P_case_EnvFail >= tau_envfail_high:  # tau_envfail:
+                    corrected = 0
+                    action = "flip_to_EnvFail"
+
+        rows.append(
+            dict(
+                case_id=cid,
+                human_gt=gt,
+                agent_original=C_case,
+                P_case_EnvFail=P_case_EnvFail,
+                P_case_AgentFail=P_case_AgentFail,
+                corrected_label=corrected,
+                action=action,
+            )
+        )
+    val_df = pd.DataFrame(rows).sort_values("case_id")
+    acc_original = val_df["agent_original"] == val_df["human_gt"]
+    print(f"Accuracy: {acc_original.mean()}")
+
+    acc_correct = val_df["corrected_label"] == val_df["human_gt"]
+    print(f"Accuracy: {acc_correct.mean()}")
+    analyze_flips(val_df)
+    confusion_matrix(val_df)
+    return val_df
