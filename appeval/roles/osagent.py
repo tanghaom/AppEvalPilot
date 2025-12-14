@@ -137,6 +137,7 @@ class OSAgent(Role):
         # EM model parameters (for prediction and correction)
         enable_em_correction: bool = True,
         em_params_path: str = None,
+        em_code_evidence_path: str = None,
         em_tau_agentfail: float = 0.7,
         em_tau_envfail: float = 0.7,
         # Retry parameters
@@ -169,6 +170,7 @@ class OSAgent(Role):
             evidence_fallback_to_mllm (bool): Whether to fallback to MLLM when element tree matching fails.
             enable_em_correction (bool): Whether to enable EM model for prediction and correction when Tell action is detected.
             em_params_path (str): Path to EM model parameters file. If None, uses default path.
+            em_code_evidence_path (str): Path to code_evidence JSONL file. If None, uses default path.
             em_tau_agentfail (float): Threshold for AgentFail in EM correction.
             em_tau_envfail (float): Threshold for EnvFail in EM correction.
             enable_retry (bool): Whether to enable retry when EM detects AgentRetryFail.
@@ -279,12 +281,13 @@ class OSAgent(Role):
             try:
                 self.em_manager = EMManager(
                     params_path=self.em_params_path,
+                    code_evidence_path=self.em_code_evidence_path,
                     enable_online_learning=True,
                     tau_agentfail=self.em_tau_agentfail,
                     tau_envfail=self.em_tau_envfail,
                 )
                 logger.info(
-                    f"EM manager initialized successfully (params_path={self.em_params_path})")
+                    f"EM manager initialized successfully (params_path={self.em_params_path}, code_evidence_path={self.em_code_evidence_path})")
             except Exception as e:
                 logger.warning(f"Failed to initialize EM manager: {e}")
                 import traceback
@@ -388,6 +391,20 @@ class OSAgent(Role):
         if self.screenshot_dir.exists():
             shutil.rmtree(self.screenshot_dir)
         self.screenshot_dir.mkdir(parents=True, exist_ok=True)
+
+    def set_case_id(self, case_id: str) -> None:
+        """
+        设置当前测试用例 ID，用于 EM 预测和 code_evidence 查找
+
+        Args:
+            case_id: 测试用例 ID（如 "web_0_01"）
+        """
+        self.name = case_id
+        if self.evidence_collector:
+            self.evidence_collector.project_name = case_id
+        if self.em_manager:
+            self.em_manager.set_case_id(case_id)
+        logger.info(f"OSAgent case_id set to: {case_id}")
 
     def _setup_logs(self) -> None:
         """Set up logging"""

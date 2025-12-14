@@ -544,6 +544,9 @@ Please use the Tell action to report the results of all test cases before execut
                 # Set case-specific log directory to avoid overwriting
                 self.osagent.log_dirs = f"{base_log_dir}/{case_id}"
 
+                # Set case_id for EM prediction and code_evidence lookup
+                self.osagent.set_case_id(case_id)
+
                 # Create single case dict for execution
                 single_case = {case_id: case_info}
 
@@ -568,6 +571,8 @@ Please use the Tell action to report the results of all test cases before execut
         else:
             # Batch mode: execute all test cases at once (original behavior)
             logger.info("Start executing automated testing...")
+            # Set task_name as case_id for batch mode (will use first matching code_evidence)
+            self.osagent.set_case_id(task_name)
             result_dict = await self.execute_api_check(task_name, len(test_cases), test_cases)
 
             # Merge results

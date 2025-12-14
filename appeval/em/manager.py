@@ -53,10 +53,12 @@ class EMManager:
 
     # 默认参数文件路径
     DEFAULT_PARAMS_PATH = "appeval/data/em_params.json"
+    DEFAULT_CODE_EVIDENCE_PATH = "appeval/data/webdevjudge_with_code_review_concate.jsonl"
 
     def __init__(
         self,
         params_path: Optional[str] = None,
+        code_evidence_path: Optional[str] = None,
         enable_online_learning: bool = True,
         learning_rate: float = 0.1,
         tau_agentfail: float = 0.7,
@@ -73,6 +75,7 @@ class EMManager:
 
         Args:
             params_path: 预训练参数文件路径，为 None 时使用默认参数
+            code_evidence_path: code_evidence JSONL 文件路径，为 None 时使用默认路径
             enable_online_learning: 是否启用在线学习
             learning_rate: 在线学习的学习率
             tau_agentfail: AgentFail 判断阈值
@@ -124,6 +127,19 @@ class EMManager:
         # 在线学习开关
         self.enable_online_learning = enable_online_learning
 
+        # code_evidence 字典: {test_case_id: code_evidence_value}
+        self._code_evidence_dict: Dict[str, int] = {}
+
+        # 加载 code_evidence
+        if code_evidence_path is not None:
+            self.load_code_evidence(code_evidence_path)
+        else:
+            # 尝试加载默认 code_evidence 文件
+            default_code_path = self._find_default_code_evidence_path()
+            if default_code_path:
+                self.load_code_evidence(default_code_path)
+                self.logger.info(f"已加载默认 code_evidence: {default_code_path}")
+
         # 加载预训练参数
         if params_path is not None:
             self.load_params(params_path)
@@ -150,6 +166,64 @@ class EMManager:
                 return path
 
         return None
+
+    def _find_default_code_evidence_path(self) -> Optional[str]:
+        """查找默认 code_evidence 文件路径"""
+        possible_paths = [
+            self.DEFAULT_CODE_EVIDENCE_PATH,
+            os.path.join(os.path.dirname(__file__),
+                         "..", "data", "webdevjudge_with_code_review_concate.jsonl"),
+            os.path.join(os.path.dirname(__file__),
+                         "../../appeval/data/webdevjudge_with_code_review_concate.jsonl"),
+        ]
+
+        for path in possible_paths:
+            if os.path.exists(path):
+                return path
+
+        return None
+
+    def load_code_evidence(self, jsonl_path: str):
+        """
+        从 JSONL 文件加载 code_evidence 数据
+
+        Args:
+            jsonl_path: JSONL 文件路径
+        """
+        if not os.path.exists(jsonl_path):
+            self.logger.warning(f"code_evidence 文件不存在: {jsonl_path}")
+            return
+
+        count = 0
+        with open(jsonl_path, "r", encoding="utf-8") as f:
+            for line in f:
+                try:
+                    data = json.loads(line)
+                    web_id = data.get("web_id", "default")
+                    task_id = data.get("task_id", 0)
+                    code_review = data.get("code_review", {})
+                    is_implemented = code_review.get("is_implemented", False)
+
+                    # 生成 test_case_id，格式: {web_id}_{task_id:02d}
+                    test_case_id = f"{web_id}_{task_id:02d}"
+                    self._code_evidence_dict[test_case_id] = 1 if is_implemented else 0
+                    count += 1
+                except json.JSONDecodeError:
+                    continue
+
+        self.logger.info(f"已加载 {count} 条 code_evidence 数据")
+
+    def get_code_evidence(self, test_case_id: str) -> Optional[int]:
+        """
+        根据 test_case_id 获取 code_evidence
+
+        Args:
+            test_case_id: 测试用例 ID（如 "web_0_01"）
+
+        Returns:
+            code_evidence 值（0 或 1），如果找不到返回 None
+        """
+        return self._code_evidence_dict.get(test_case_id)
 
     def load_params(self, params_path: str):
         """
@@ -231,10 +305,18 @@ class EMManager:
             M_gui = 0
             E_gui = gui_evidence
 
-        # 处理代码证据
+        # 处理代码证据 - 如果未传入，尝试从预加载的字典中查找
         if code_evidence is None:
-            M_code = 1
-            E_code = 0
+            # 尝试根据 test_case_id 查找 code_evidence
+            code_evidence = self.get_code_evidence(test_case_id)
+            if code_evidence is None:
+                M_code = 1
+                E_code = 0
+            else:
+                M_code = 0
+                E_code = code_evidence
+                self.logger.debug(
+                    f"自动查找到 code_evidence: {test_case_id} -> {code_evidence}")
         else:
             M_code = 0
             E_code = code_evidence
@@ -439,7 +521,22 @@ class EMManager:
                 raise ValueError(
                     f"找不到 case_id={case_id} 的证据数据"
                 )
-        self.logger.info(f"EM predict_proba")
+        self.logger.info(f"EM predict_proba for case_id={case_id}")
+        # 输出 evidence 和 mask 信息
+        evidence_cols = ['E1_gui', 'E2_code', 'E4_noresp']
+        mask_cols = ['M_gui', 'M_code', 'M_noresp']
+        for idx, row in df.iterrows():
+            e_gui = row.get('E1_gui', 'N/A')
+            e_code = row.get('E2_code', 'N/A')
+            e_noresp = row.get('E4_noresp', 'N/A')
+            m_gui = row.get('M_gui', 'N/A')
+            m_code = row.get('M_code', 'N/A')
+            m_noresp = row.get('M_noresp', 'N/A')
+            self.logger.info(
+                f"  Step {idx}: Evidence(gui={e_gui}, code={e_code}, noresp={e_noresp}) "
+                f"Mask(gui={m_gui}, code={m_code}, noresp={m_noresp})"
+            )
+        self.logger.info(f"EM model p_delta: {self.em.p_delta}")
         # 直接调用 EM 模型的 predict_proba
         post = self.em.predict_proba(df)
         self.logger.info(f"EM predict_proba result: {post}")
