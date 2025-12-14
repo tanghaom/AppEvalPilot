@@ -1461,8 +1461,7 @@ class OSAgent(Role):
 
             # Check if there's a pending retry suggestion
             if self.pending_retry and self.retry_suggestion:
-                logger.info(
-                    f"🔄 Executing retry with EM suggestion (attempt {self.retry_count})")
+                logger.info("🔄 Executing retry with EM suggestion")
                 has_todo = await self._think_with_retry_suggestion()
                 self.pending_retry = False
                 self.retry_suggestion = None
