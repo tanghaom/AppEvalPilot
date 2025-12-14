@@ -152,35 +152,61 @@ class EMManager:
 
     def _find_default_params_path(self) -> Optional[str]:
         """查找默认参数文件路径"""
-        # 尝试多个可能的路径
+        # 获取当前模块所在目录的绝对路径
+        current_dir = os.path.dirname(os.path.abspath(__file__))
+        # 获取 appeval 包的根目录
+        appeval_root = os.path.dirname(current_dir)  # appeval/em -> appeval
+
         possible_paths = [
+            # 从 appeval 包目录查找 (最可靠)
+            os.path.join(appeval_root, "data", "em_params.json"),
+            # 从当前模块目录相对查找
+            os.path.join(current_dir, "..", "data", "em_params.json"),
+            # 从项目根目录相对查找 (需要 cwd 在项目根目录)
             self.DEFAULT_PARAMS_PATH,
-            os.path.join(os.path.dirname(__file__),
-                         "..", "data", "em_params.json"),
-            os.path.join(os.path.dirname(__file__),
-                         "../../appeval/data/em_params.json"),
+            os.path.join(current_dir, "../../appeval/data/em_params.json"),
         ]
 
         for path in possible_paths:
-            if os.path.exists(path):
-                return path
+            abs_path = os.path.abspath(path)
+            if os.path.exists(abs_path):
+                self.logger.debug(f"Found params file at: {abs_path}")
+                return abs_path
 
+        self.logger.warning(
+            f"params file not found. Searched paths: {[os.path.abspath(p) for p in possible_paths]}"
+        )
         return None
 
     def _find_default_code_evidence_path(self) -> Optional[str]:
         """查找默认 code_evidence 文件路径"""
+        # 获取当前模块所在目录的绝对路径
+        current_dir = os.path.dirname(os.path.abspath(__file__))
+        # 获取 appeval 包的根目录
+        appeval_root = os.path.dirname(current_dir)  # appeval/em -> appeval
+
         possible_paths = [
+            # 从 appeval 包目录查找 (最可靠)
+            os.path.join(appeval_root, "data",
+                         "webdevjudge_with_code_review_concate.jsonl"),
+            # 从当前模块目录相对查找
+            os.path.join(current_dir, "..", "data",
+                         "webdevjudge_with_code_review_concate.jsonl"),
+            # 从项目根目录相对查找 (需要 cwd 在项目根目录)
             self.DEFAULT_CODE_EVIDENCE_PATH,
-            os.path.join(os.path.dirname(__file__),
-                         "..", "data", "webdevjudge_with_code_review_concate.jsonl"),
-            os.path.join(os.path.dirname(__file__),
-                         "../../appeval/data/webdevjudge_with_code_review_concate.jsonl"),
+            os.path.join(
+                current_dir, "../../appeval/data/webdevjudge_with_code_review_concate.jsonl"),
         ]
 
         for path in possible_paths:
-            if os.path.exists(path):
-                return path
+            abs_path = os.path.abspath(path)
+            if os.path.exists(abs_path):
+                self.logger.debug(f"Found code_evidence file at: {abs_path}")
+                return abs_path
 
+        self.logger.warning(
+            f"code_evidence file not found. Searched paths: {[os.path.abspath(p) for p in possible_paths]}"
+        )
         return None
 
     def load_code_evidence(self, jsonl_path: str):
