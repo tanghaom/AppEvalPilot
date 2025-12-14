@@ -6,12 +6,13 @@ EM 模型管理器模块
 """
 
 import json
-import logging
 import os
 from typing import Any, Dict, List, Optional
 
 import numpy as np
 import pandas as pd
+
+from metagpt.logs import logger as metagpt_logger
 
 from appeval.em.model import SimpleEM4EvidenceH_Refine
 
@@ -82,14 +83,8 @@ class EMManager:
             w_noresp: NoResp 证据权重
             agent_weight: Agent 评分权重
         """
-        self.logger = logging.getLogger(f"{__name__}.EMManager")
-        self.logger.setLevel(logging.INFO)
-        if not self.logger.handlers:
-            handler = logging.StreamHandler()
-            formatter = logging.Formatter(
-                "%(asctime)s - %(name)s - %(levelname)s - %(message)s")
-            handler.setFormatter(formatter)
-            self.logger.addHandler(handler)
+        # 使用 metagpt 的 logger，与 osagent 保持一致
+        self.logger = metagpt_logger
 
         # 创建 EM 模型（使用参考实现的参数）
         self.em = SimpleEM4EvidenceH_Refine(
