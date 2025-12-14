@@ -105,8 +105,10 @@ class EMManager:
             theta_ceil=0.95,
             pi_floor=0.02,
             temp=0.8,
-            learning_rate=learning_rate,
         )
+
+        # 存储 learning_rate 以供在线学习使用
+        self.learning_rate = learning_rate
 
         # 存储证据数据
         self._evidence_rows: List[Dict] = []
@@ -669,9 +671,8 @@ class EMManager:
         self._evidence_rows = []
 
     def reset(self):
-        """重置管理器状态（清空证据并重置学习率）"""
+        """重置管理器状态（清空证据）"""
         self.clear_evidences()
-        self.em.reset_learning_rate()
 
     def get_model_params(self) -> Dict[str, Any]:
         """获取当前模型参数"""
@@ -679,7 +680,10 @@ class EMManager:
 
     def get_online_stats(self) -> Dict[str, Any]:
         """获取在线学习统计信息"""
-        stats = self.em.get_online_stats()
+        stats = {
+            "learning_rate": self.learning_rate,
+            "enable_online_learning": self.enable_online_learning,
+        }
         stats["evidence_count"] = len(self._evidence_rows)
         return stats
 
