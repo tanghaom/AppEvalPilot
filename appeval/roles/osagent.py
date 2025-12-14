@@ -1107,6 +1107,7 @@ class OSAgent(Role):
                 test_case_id=self.evidence_collector.project_name if self.evidence_collector else self.name,
                 iter_num=self.rc.iter,
             )
+            logger.info(f"EM manager added evidence for iter {self.rc.iter}")
 
         # 如果检测到 Tell 动作，分析 agent_noresp 并进行 EM 预测和纠正
         if evidence.tell_evidence:

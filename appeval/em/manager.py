@@ -83,6 +83,13 @@ class EMManager:
             agent_weight: Agent 评分权重
         """
         self.logger = logging.getLogger(f"{__name__}.EMManager")
+        self.logger.setLevel(logging.INFO)
+        if not self.logger.handlers:
+            handler = logging.StreamHandler()
+            formatter = logging.Formatter(
+                "%(asctime)s - %(name)s - %(levelname)s - %(message)s")
+            handler.setFormatter(formatter)
+            self.logger.addHandler(handler)
 
         # 创建 EM 模型（使用参考实现的参数）
         self.em = SimpleEM4EvidenceH_Refine(
@@ -437,9 +444,10 @@ class EMManager:
                 raise ValueError(
                     f"找不到 case_id={case_id} 的证据数据"
                 )
-
+        self.logger.info(f"EM predict_proba")
         # 直接调用 EM 模型的 predict_proba
         post = self.em.predict_proba(df)
+        self.logger.info(f"EM predict_proba result: {post}")
 
         # 聚合 step-level 到 case-level（取平均）
         P_EnvFail = float(post[:, 0].mean())
