@@ -259,6 +259,7 @@ class OSAgent(Role):
         # Initialize EM manager for prediction and correction
         self.em_manager = None
         self.em_correction_result = None  # Store the latest EM correction result
+        logger.info(f"EM correction enabled: {self.enable_em_correction}")
         if self.enable_em_correction:
             try:
                 self.em_manager = EMManager(
@@ -268,9 +269,14 @@ class OSAgent(Role):
                     tau_envfail=self.em_tau_envfail,
                 )
                 logger.info(
-                    "EM manager initialized for prediction and correction")
+                    f"EM manager initialized successfully (params_path={self.em_params_path})")
             except Exception as e:
                 logger.warning(f"Failed to initialize EM manager: {e}")
+                import traceback
+                logger.debug(
+                    f"EM manager initialization traceback: {traceback.format_exc()}")
+        else:
+            logger.info("EM manager disabled by configuration")
 
     def _get_timestamped_paths(self) -> None:
         """Update file paths with timestamps"""

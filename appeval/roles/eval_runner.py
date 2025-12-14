@@ -74,6 +74,16 @@ class AppEvalRole(Role):
             "extend_xml_infos": kwargs.get("extend_xml_infos", True),
             "log_dirs": kwargs.get("log_dirs", "work_dirs"),
             "max_iters": kwargs.get("max_iters", 20),
+            # EM model parameters
+            "enable_em_correction": kwargs.get("enable_em_correction", True),
+            "em_params_path": kwargs.get("em_params_path", None),
+            "em_tau_agentfail": kwargs.get("em_tau_agentfail", 0.7),
+            "em_tau_envfail": kwargs.get("em_tau_envfail", 0.7),
+            "enable_retry": kwargs.get("enable_retry", True),
+            "em_tau_retry": kwargs.get("em_tau_retry", 0.4),
+            # Evidence collection parameters
+            "enable_evidence_collection": kwargs.get("enable_evidence_collection", True),
+            "evidence_fallback_to_mllm": kwargs.get("evidence_fallback_to_mllm", False),
         }
 
         # Initialize CaseGenerator Action
@@ -110,6 +120,19 @@ Please use the Tell action to report the results of all test cases before execut
             log_dirs=self.rc.agent_params["log_dirs"],
             add_info=add_info,
             system_prompt=case_batch_check_system_prompt,
+            # EM model parameters for prediction and correction
+            enable_em_correction=kwargs.get("enable_em_correction", True),
+            em_params_path=kwargs.get("em_params_path", None),
+            em_tau_agentfail=kwargs.get("em_tau_agentfail", 0.7),
+            em_tau_envfail=kwargs.get("em_tau_envfail", 0.7),
+            # Retry parameters
+            enable_retry=kwargs.get("enable_retry", True),
+            em_tau_retry=kwargs.get("em_tau_retry", 0.4),
+            # Evidence collection parameters
+            enable_evidence_collection=kwargs.get(
+                "enable_evidence_collection", True),
+            evidence_fallback_to_mllm=kwargs.get(
+                "evidence_fallback_to_mllm", False),
         )
 
     # ==================== Core Helper Methods ====================
@@ -124,7 +147,8 @@ Please use the Tell action to report the results of all test cases before execut
 
     async def _cleanup_environment(self, is_web: bool, pid: Optional[int] = None) -> None:
         """Clean up test environment"""
-        processes = ["Chrome"] if is_web else ["Chrome", "cmd", "npm", "projectapp", "Edge"]
+        processes = ["Chrome"] if is_web else [
+            "Chrome", "cmd", "npm", "projectapp", "Edge"]
         await kill_windows(processes)
         if pid:
             await kill_process(pid)
@@ -144,7 +168,7 @@ Please use the Tell action to report the results of all test cases before execut
         if start_idx == -1 or end_idx == -1 or end_idx <= start_idx:
             return None
 
-        answer = content[start_idx + 1 : end_idx]
+        answer = content[start_idx + 1: end_idx]
 
         # Try direct eval
         try:
@@ -157,7 +181,7 @@ Please use the Tell action to report the results of all test cases before execut
         dict_end = answer.rfind("}")
         if dict_start != -1 and dict_end != -1 and dict_end > dict_start:
             try:
-                return eval(answer[dict_start : dict_end + 1])
+                return eval(answer[dict_start: dict_end + 1])
             except Exception as e:
                 logger.error(f"Result parsing failed: {str(e)}")
 
@@ -178,10 +202,12 @@ Please use the Tell action to report the results of all test cases before execut
                 return (self.osagent.rc.action_history, self.osagent.rc.task_list, self.osagent.rc.memory, self.osagent.rc.iter)
             except Exception as e:
                 if attempt < max_retries:
-                    logger.warning(f"Attempt {attempt + 1} failed for task {task_id}, retrying... Error: {str(e)}")
+                    logger.warning(
+                        f"Attempt {attempt + 1} failed for task {task_id}, retrying... Error: {str(e)}")
                     await asyncio.sleep(SLEEP_BETWEEN_RETRIES)
                 else:
-                    logger.error(f"All {max_retries + 1} attempts failed for task {task_id}. Error: {str(e)}")
+                    logger.error(
+                        f"All {max_retries + 1} attempts failed for task {task_id}. Error: {str(e)}")
                     raise
 
     async def _process_test_results(
@@ -211,13 +237,15 @@ Please use the Tell action to report the results of all test cases before execut
         data = read_json_file(self.rc.json_file)
         data[task_id]["iters"] = iter_num
         for key, value in results_dict.items():
-            data[task_id]["test_cases"][key].update({"result": value.get("result", ""), "evidence": value.get("evidence", "")})
+            data[task_id]["test_cases"][key].update(
+                {"result": value.get("result", ""), "evidence": value.get("evidence", "")})
         write_json_file(self.rc.json_file, data, indent=4)
         return None
 
     async def execute_batch_check(self, task_id: str, task_id_case_number: int, check_list: dict) -> None:
         """Execute test and write results to JSON file"""
-        logger.info(f"Start testing project {task_id}, log_dirs: {self.osagent.log_dirs}")
+        logger.info(
+            f"Start testing project {task_id}, log_dirs: {self.osagent.log_dirs}")
 
         try:
             action_history, task_list, memory, iter_num = await self._execute_test_with_retry(task_id, task_id_case_number, check_list)
@@ -227,12 +255,14 @@ Please use the Tell action to report the results of all test cases before execut
             try:
                 await self._process_test_results(task_id, task_id_case_number, ["Failed after all retries"], "Failed", [f"Error: {str(e)}"], "0")
             except Exception as write_error:
-                logger.error(f"Failed to write error result to JSON: {str(write_error)}")
+                logger.error(
+                    f"Failed to write error result to JSON: {str(write_error)}")
                 raise
 
     async def execute_api_check(self, task_id: str, task_id_case_number: int, check_list: dict) -> dict:
         """Execute test and return results as dictionary"""
-        logger.info(f"Start testing project {task_id}, log_dirs: {self.osagent.log_dirs}")
+        logger.info(
+            f"Start testing project {task_id}, log_dirs: {self.osagent.log_dirs}")
 
         action_history, task_list, memory, iter_num = await self._execute_test_with_retry(task_id, task_id_case_number, check_list)
         return await self._process_test_results(
@@ -252,9 +282,11 @@ Please use the Tell action to report the results of all test cases before execut
             if "test_cases" not in task_info:
                 continue
 
-            start_func = (task_info.get("url") or task_info.get("work_path") or "").strip()
+            start_func = (task_info.get("url") or task_info.get(
+                "work_path") or "").strip()
             if not start_func:
-                logger.warning(f"No valid url or work_path for task {task_id}, skipping...")
+                logger.warning(
+                    f"No valid url or work_path for task {task_id}, skipping...")
                 continue
 
             logger.info(f"Executing task: {task_id}")
@@ -280,7 +312,8 @@ Please use the Tell action to report the results of all test cases before execut
     async def _prepare_batch_test_cases(self, project_excel_path: str, operation_type: OperationType, converter_func) -> Optional[Any]:
         """Prepare test cases from Excel file"""
         if not project_excel_path:
-            raise ValueError("project_excel_path must be provided for batch run.")
+            raise ValueError(
+                "project_excel_path must be provided for batch run.")
 
         logger.info("Start generating automated test cases...")
         await self.test_generator.process_excel_file(project_excel_path, operation_type)
@@ -297,7 +330,8 @@ Please use the Tell action to report the results of all test cases before execut
         await asyncio.sleep(SLEEP_BEFORE_EXECUTE)
 
         task_id_case_number = len(uncertain_test_cases)
-        logger.info(f"Executing retry {retry_count} for {task_id_case_number} uncertain cases...")
+        logger.info(
+            f"Executing retry {retry_count} for {task_id_case_number} uncertain cases...")
         retry_result_dict = await self.execute_api_check(task_name, task_id_case_number, uncertain_test_cases)
 
         logger.info(f"Cleaning up environment after retry {retry_count}...")
@@ -315,7 +349,8 @@ Please use the Tell action to report the results of all test cases before execut
 
     async def _retry_uncertain_single_mode(self, uncertain_cases: dict, json_path: str, result: dict, retry_count: int) -> dict:
         """Retry uncertain cases in Single mode"""
-        retry_json_path = str(Path(json_path).parent / f"{Path(json_path).stem}_retry_{retry_count}.json")
+        retry_json_path = str(Path(json_path).parent /
+                              f"{Path(json_path).stem}_retry_{retry_count}.json")
         write_json_file(retry_json_path, uncertain_cases, indent=4)
         self.rc.json_file = retry_json_path
 
@@ -340,18 +375,21 @@ Please use the Tell action to report the results of all test cases before execut
         previous_uncertain_count = float("inf")
         original_log_dir = self.osagent.log_dirs
         is_api_mode = task_name is not None and start_func is not None
-        is_web = (start_func.startswith("http://") or start_func.startswith("https://")) if start_func else False
+        is_web = (start_func.startswith("http://")
+                  or start_func.startswith("https://")) if start_func else False
 
         while retry_count < max_retry:
             uncertain_cases = self._extract_uncertain_cases(result)
-            should_retry, current_count = self._should_retry_uncertain(uncertain_cases, retry_count, max_retry, previous_uncertain_count)
+            should_retry, current_count = self._should_retry_uncertain(
+                uncertain_cases, retry_count, max_retry, previous_uncertain_count)
 
             if not should_retry:
                 break
 
             previous_uncertain_count = current_count
             self.osagent.log_dirs = f"{original_log_dir}/retry_{retry_count}"
-            logger.info(f"Setting log_dirs to: {self.osagent.log_dirs} (retry)")
+            logger.info(
+                f"Setting log_dirs to: {self.osagent.log_dirs} (retry)")
 
             # Execute retry based on mode
             if is_api_mode:
@@ -400,9 +438,12 @@ Please use the Tell action to report the results of all test cases before execut
 
             for case_id, case_info in task_info["test_cases"].items():
                 if case_id in merged_result[task_id]["test_cases"]:
-                    merged_result[task_id]["test_cases"][case_id]["result"] = case_info.get("result", "")
-                    merged_result[task_id]["test_cases"][case_id]["evidence"] = case_info.get("evidence", "")
-                    logger.info(f"Updated case {case_id} in task {task_id} with retry result: {case_info.get('result', '')}")
+                    merged_result[task_id]["test_cases"][case_id]["result"] = case_info.get(
+                        "result", "")
+                    merged_result[task_id]["test_cases"][case_id]["evidence"] = case_info.get(
+                        "evidence", "")
+                    logger.info(
+                        f"Updated case {case_id} in task {task_id} with retry result: {case_info.get('result', '')}")
 
         return merged_result
 
@@ -427,7 +468,8 @@ Please use the Tell action to report the results of all test cases before execut
             )
             return False, current_count
 
-        logger.info(f"Found {current_count} uncertain cases, starting retry {retry_count + 1}/{max_retry}...")
+        logger.info(
+            f"Found {current_count} uncertain cases, starting retry {retry_count + 1}/{max_retry}...")
         return True, current_count
 
     async def _execute_test_cases(self, test_cases: dict, log_dir_suffix: str = "") -> None:
@@ -441,7 +483,8 @@ Please use the Tell action to report the results of all test cases before execut
             if log_dir_suffix:
                 original_log_dir = self.osagent.log_dirs
                 self.osagent.log_dirs = f"{original_log_dir}/{log_dir_suffix}"
-                logger.info(f"Setting log_dirs to: {self.osagent.log_dirs} (retry)")
+                logger.info(
+                    f"Setting log_dirs to: {self.osagent.log_dirs} (retry)")
 
             # Start environment and wait
             is_web = "url" in task_info
@@ -480,7 +523,8 @@ Please use the Tell action to report the results of all test cases before execut
                            only reset osagent state. If False, execute all test cases at once (default).
         """
         self.osagent.log_dirs = f"work_dirs/{log_dir}/{task_name}"
-        is_web = start_func.startswith("http://") or start_func.startswith("https://")
+        is_web = start_func.startswith(
+            "http://") or start_func.startswith("https://")
 
         # Start environment
         await self._start_environment(url=start_func if is_web else None, work_path=start_func if not is_web else None)
@@ -488,12 +532,14 @@ Please use the Tell action to report the results of all test cases before execut
 
         if sequential_mode:
             # Sequential mode: execute test cases one by one
-            logger.info(f"Start executing automated testing in sequential mode ({len(test_cases)} cases)...")
+            logger.info(
+                f"Start executing automated testing in sequential mode ({len(test_cases)} cases)...")
             all_results = {}
             base_log_dir = self.osagent.log_dirs
 
             for idx, (case_id, case_info) in enumerate(test_cases.items(), 1):
-                logger.info(f"Executing test case {idx}/{len(test_cases)}: {case_id}")
+                logger.info(
+                    f"Executing test case {idx}/{len(test_cases)}: {case_id}")
 
                 # Set case-specific log directory to avoid overwriting
                 self.osagent.log_dirs = f"{base_log_dir}/{case_id}"
@@ -508,7 +554,8 @@ Please use the Tell action to report the results of all test cases before execut
                 if case_id in result_dict:
                     all_results[case_id] = result_dict[case_id]
                     test_cases[case_id].update(
-                        {"result": result_dict[case_id].get("result", ""), "evidence": result_dict[case_id].get("evidence", "")}
+                        {"result": result_dict[case_id].get(
+                            "result", ""), "evidence": result_dict[case_id].get("evidence", "")}
                     )
 
                 # Reset osagent state for next case (no browser cleanup)
@@ -526,7 +573,8 @@ Please use the Tell action to report the results of all test cases before execut
             # Merge results
             for key, value in result_dict.items():
                 if key in test_cases:
-                    test_cases[key].update({"result": value.get("result", ""), "evidence": value.get("evidence", "")})
+                    test_cases[key].update({"result": value.get(
+                        "result", ""), "evidence": value.get("evidence", "")})
 
         result = {task_name: {"test_cases": test_cases}}
 
@@ -546,7 +594,8 @@ Please use the Tell action to report the results of all test cases before execut
             output_dir.mkdir(parents=True, exist_ok=True)
             output_file = output_dir / f"{Path(task_name).name}.json"
             with open(output_file, "w", encoding="utf-8") as f:
-                json.dump({"test_cases": final_test_cases}, f, indent=4, ensure_ascii=False)
+                json.dump({"test_cases": final_test_cases},
+                          f, indent=4, ensure_ascii=False)
             logger.info(f"Results saved to {output_file}")
 
         # Execute executability check
@@ -617,25 +666,30 @@ Please use the Tell action to report the results of all test cases before execut
         """
         # Generate test cases if needed
         if not use_json_only:
-            logger.info(f"Start generating automated test cases for '{case_name}'...")
+            logger.info(
+                f"Start generating automated test cases for '{case_name}'...")
             generated_cases = await self.test_generator.generate_test_cases(user_requirement)
             logger.info("Start converting to JSON format...")
-            make_json_single(case_name, url, generated_cases, json_path, work_path)
+            make_json_single(case_name, url, generated_cases,
+                             json_path, work_path)
 
         # Read and validate JSON
         self.rc.json_file = json_path
         test_data = read_json_file(json_path)
 
         if case_name not in test_data:
-            raise ValueError(f"Case '{case_name}' not found in JSON file {json_path}")
+            raise ValueError(
+                f"Case '{case_name}' not found in JSON file {json_path}")
 
         task_info = test_data[case_name]
         test_cases = task_info.get("test_cases", {})
 
         # Determine start function
-        start_func = (task_info.get("url") or url or task_info.get("work_path") or work_path or "").strip()
+        start_func = (task_info.get("url") or url or task_info.get(
+            "work_path") or work_path or "").strip()
         if not start_func:
-            raise ValueError("No valid url or work_path provided for single test execution")
+            raise ValueError(
+                "No valid url or work_path provided for single test execution")
 
         # Execute tests with retry
         final_test_cases, executability = await self._run_test_with_retry(
@@ -702,7 +756,8 @@ Please use the Tell action to report the results of all test cases before execut
             # Return early if only generating cases (mini mode only)
             if generate_case_only:
                 if not is_mini:
-                    raise ValueError("generate_case_only is only supported for mini batch mode.")
+                    raise ValueError(
+                        "generate_case_only is only supported for mini batch mode.")
                 return case_result
 
             # Execute tests with retry support
