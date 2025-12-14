@@ -213,17 +213,96 @@ class EMManager:
 
         self.logger.info(f"已加载 {count} 条 code_evidence 数据")
 
+    def _parse_test_case_id(self, case_id: str) -> Optional[str]:
+        """
+        从复杂的 case_id 中解析出标准的 test_case_id 格式
+
+        支持的输入格式：
+        - 标准格式: "web_21_01" -> "web_21_01"
+        - 复杂路径格式: "lqy/xxx/web_21_1_0_174806" -> "web_21_01"
+
+        Args:
+            case_id: 原始 case_id
+
+        Returns:
+            标准化的 test_case_id（如 "web_21_01"），解析失败返回 None
+        """
+        import re
+
+        # 如果直接匹配成功，返回原始值
+        if case_id in self._code_evidence_dict:
+            return case_id
+
+        # 获取最后一部分（处理路径格式）
+        last_part = case_id.split("/")[-1]
+
+        # 尝试匹配标准格式 web_X_YY（两位数 task_id）
+        standard_match = re.match(r'^(web_\d+)_(\d{2})$', last_part)
+        if standard_match:
+            standard_id = f"{standard_match.group(1)}_{standard_match.group(2)}"
+            if standard_id in self._code_evidence_dict:
+                return standard_id
+
+        # 尝试从复杂格式中提取: web_21_1_0_174806 -> web_21, task_id=1
+        # 模式: web_{web_num}_{task_id}_{其他部分}
+        complex_match = re.match(r'^(web_\d+)_(\d+)_', last_part)
+        if complex_match:
+            web_id = complex_match.group(1)
+            task_id = int(complex_match.group(2))
+            parsed_id = f"{web_id}_{task_id:02d}"
+            if parsed_id in self._code_evidence_dict:
+                self.logger.debug(
+                    f"Parsed case_id '{case_id}' -> '{parsed_id}'")
+                return parsed_id
+
+        # 尝试更宽松的匹配: 只匹配 web_X_Y 模式
+        loose_match = re.match(r'^(web_\d+)_(\d+)', last_part)
+        if loose_match:
+            web_id = loose_match.group(1)
+            task_id = int(loose_match.group(2))
+            parsed_id = f"{web_id}_{task_id:02d}"
+            if parsed_id in self._code_evidence_dict:
+                self.logger.debug(
+                    f"Parsed case_id (loose) '{case_id}' -> '{parsed_id}'")
+                return parsed_id
+
+        self.logger.debug(f"Failed to parse case_id: '{case_id}'")
+        return None
+
     def get_code_evidence(self, test_case_id: str) -> Optional[int]:
         """
         根据 test_case_id 获取 code_evidence
 
+        支持从复杂的 case_id 格式中自动解析出标准 test_case_id。
+
         Args:
-            test_case_id: 测试用例 ID（如 "web_0_01"）
+            test_case_id: 测试用例 ID
+                - 标准格式: "web_0_01"
+                - 复杂格式: "lqy/xxx/web_21_1_0_174806" (会自动解析为 "web_21_01")
 
         Returns:
             code_evidence 值（0 或 1），如果找不到返回 None
         """
-        return self._code_evidence_dict.get(test_case_id)
+        # 直接查找
+        result = self._code_evidence_dict.get(test_case_id)
+        if result is not None:
+            return result
+
+        # 尝试解析复杂格式
+        parsed_id = self._parse_test_case_id(test_case_id)
+        if parsed_id:
+            result = self._code_evidence_dict.get(parsed_id)
+            if result is not None:
+                return result
+
+        # 未找到 code_evidence，报错
+        self.logger.warning(
+            f"Failed to get code_evidence for test_case_id='{test_case_id}'. "
+            f"Parsed id: '{parsed_id}'. "
+            f"Available keys sample: {list(self._code_evidence_dict.keys())[:5]}. "
+            f"Total loaded: {len(self._code_evidence_dict)} entries."
+        )
+        return None
 
     def load_params(self, params_path: str):
         """
