@@ -1,0 +1,29 @@
+{
+  "P_delta": {
+    "EnvFail": 0.32187871086099945,
+    "AgentRetryFail": 0.6245834702978378,
+    "AgentReasoningFail": 0.05353781784116281
+  },
+  "theta": {
+    "EnvFail": {
+      "E_gui": 0.27577579738640856,
+      "E_code": 0.3443999499193584,
+      "E_noresp": 0.2255250998450805
+    },
+    "AgentRetryFail": {
+      "E_gui": 0.37488303636166526,
+      "E_code": 0.95,
+      "E_noresp": 0.10216594458368333
+    },
+    "AgentReasoningFail": {
+      "E_gui": 0.2170999516737678,
+      "E_code": 0.95,
+      "E_noresp": 0.36399185566789144
+    }
+  },
+  "psi": {
+    "EnvFail": 0.35095193638808625,
+    "AgentRetryFail": 0.6106477960709296,
+    "AgentReasoningFail": 0.1387183149477442
+  }
+}

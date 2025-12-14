@@ -3,6 +3,7 @@
 workspace/
 work_dirs/
 data/
+!appeval/data/
 rc_states/
 config/config2.yaml
 osagent_logs/
