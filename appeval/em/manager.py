@@ -229,10 +229,6 @@ class EMManager:
         """
         import re
 
-        # 如果直接匹配成功，返回原始值
-        if case_id in self._code_evidence_dict:
-            return case_id
-
         # 获取最后一部分（处理路径格式）
         last_part = case_id.split("/")[-1]
 
@@ -240,8 +236,9 @@ class EMManager:
         standard_match = re.match(r'^(web_\d+)_(\d{2})$', last_part)
         if standard_match:
             standard_id = f"{standard_match.group(1)}_{standard_match.group(2)}"
-            if standard_id in self._code_evidence_dict:
-                return standard_id
+            self.logger.debug(
+                f"Parsed case_id (standard) '{case_id}' -> '{standard_id}'")
+            return standard_id
 
         # 尝试从复杂格式中提取: web_21_1_0_174806 -> web_21, task_id=1
         # 模式: web_{web_num}_{task_id}_{其他部分}
@@ -250,10 +247,9 @@ class EMManager:
             web_id = complex_match.group(1)
             task_id = int(complex_match.group(2))
             parsed_id = f"{web_id}_{task_id:02d}"
-            if parsed_id in self._code_evidence_dict:
-                self.logger.debug(
-                    f"Parsed case_id '{case_id}' -> '{parsed_id}'")
-                return parsed_id
+            self.logger.debug(
+                f"Parsed case_id (complex) '{case_id}' -> '{parsed_id}'")
+            return parsed_id
 
         # 尝试更宽松的匹配: 只匹配 web_X_Y 模式
         loose_match = re.match(r'^(web_\d+)_(\d+)', last_part)
@@ -261,10 +257,9 @@ class EMManager:
             web_id = loose_match.group(1)
             task_id = int(loose_match.group(2))
             parsed_id = f"{web_id}_{task_id:02d}"
-            if parsed_id in self._code_evidence_dict:
-                self.logger.debug(
-                    f"Parsed case_id (loose) '{case_id}' -> '{parsed_id}'")
-                return parsed_id
+            self.logger.debug(
+                f"Parsed case_id (loose) '{case_id}' -> '{parsed_id}'")
+            return parsed_id
 
         self.logger.debug(f"Failed to parse case_id: '{case_id}'")
         return None
