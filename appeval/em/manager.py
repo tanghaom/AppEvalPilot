@@ -89,6 +89,12 @@ class EMManager:
         # 使用 metagpt 的 logger，与 osagent 保持一致
         self.logger = metagpt_logger
 
+        # [DEBUG] 打印初始化入口信息
+        self.logger.info(
+            f"[EMManager.__init__] ========== EMManager 初始化开始 ==========")
+        self.logger.info(
+            f"[EMManager.__init__] code_evidence_path={code_evidence_path}, params_path={params_path}")
+
         # 创建 EM 模型（使用参考实现的参数）
         self.em = SimpleEM4EvidenceH_Refine(
             max_iter=200,
@@ -131,14 +137,25 @@ class EMManager:
         self._code_evidence_dict: Dict[str, int] = {}
 
         # 加载 code_evidence
+        self.logger.info(
+            f"[EMManager.__init__] 开始加载 code_evidence, code_evidence_path={code_evidence_path}")
         if code_evidence_path is not None:
+            self.logger.info(
+                f"[EMManager.__init__] 使用指定 code_evidence 路径: {code_evidence_path}")
             self.load_code_evidence(code_evidence_path)
         else:
             # 尝试加载默认 code_evidence 文件
+            self.logger.info(
+                "[EMManager.__init__] code_evidence_path 为 None，尝试查找默认路径")
             default_code_path = self._find_default_code_evidence_path()
+            self.logger.info(
+                f"[EMManager.__init__] _find_default_code_evidence_path 返回: {default_code_path}")
             if default_code_path:
                 self.load_code_evidence(default_code_path)
                 self.logger.info(f"已加载默认 code_evidence: {default_code_path}")
+            else:
+                self.logger.warning(
+                    "[EMManager.__init__] 未找到默认 code_evidence 文件!")
 
         # 加载预训练参数
         if params_path is not None:
@@ -149,6 +166,12 @@ class EMManager:
             if default_path:
                 self.load_params(default_path)
                 self.logger.info(f"已加载默认参数: {default_path}")
+
+        # 初始化完成
+        self.logger.info(
+            f"[EMManager.__init__] ========== EMManager 初始化完成 ==========")
+        self.logger.info(
+            f"[EMManager.__init__] code_evidence_dict 共 {len(self._code_evidence_dict)} 条记录")
 
     def _find_default_params_path(self) -> Optional[str]:
         """查找默认参数文件路径"""
@@ -180,10 +203,17 @@ class EMManager:
 
     def _find_default_code_evidence_path(self) -> Optional[str]:
         """查找默认 code_evidence 文件路径"""
+        self.logger.info(
+            "[_find_default_code_evidence_path] 开始查找默认 code_evidence 文件")
         # 获取当前模块所在目录的绝对路径
         current_dir = os.path.dirname(os.path.abspath(__file__))
         # 获取 appeval 包的根目录
         appeval_root = os.path.dirname(current_dir)  # appeval/em -> appeval
+
+        self.logger.info(
+            f"[_find_default_code_evidence_path] current_dir={current_dir}")
+        self.logger.info(
+            f"[_find_default_code_evidence_path] appeval_root={appeval_root}")
 
         possible_paths = [
             # 从 appeval 包目录查找 (最可靠)
@@ -198,14 +228,18 @@ class EMManager:
                 current_dir, "../../appeval/data/webdevjudge_with_code_review_concate.jsonl"),
         ]
 
-        for path in possible_paths:
+        for i, path in enumerate(possible_paths):
             abs_path = os.path.abspath(path)
-            if os.path.exists(abs_path):
-                self.logger.debug(f"Found code_evidence file at: {abs_path}")
+            exists = os.path.exists(abs_path)
+            self.logger.info(
+                f"[_find_default_code_evidence_path] 检查路径[{i}]: {abs_path}, exists={exists}")
+            if exists:
+                self.logger.info(
+                    f"[_find_default_code_evidence_path] 找到文件: {abs_path}")
                 return abs_path
 
         self.logger.warning(
-            f"code_evidence file not found. Searched paths: {[os.path.abspath(p) for p in possible_paths]}"
+            f"[_find_default_code_evidence_path] code_evidence file not found. Searched paths: {[os.path.abspath(p) for p in possible_paths]}"
         )
         return None
 
@@ -216,11 +250,15 @@ class EMManager:
         Args:
             jsonl_path: JSONL 文件路径
         """
+        self.logger.info(f"[load_code_evidence] 开始加载文件: {jsonl_path}")
         if not os.path.exists(jsonl_path):
-            self.logger.warning(f"code_evidence 文件不存在: {jsonl_path}")
+            self.logger.warning(
+                f"[load_code_evidence] code_evidence 文件不存在: {jsonl_path}")
             return
 
+        self.logger.info(f"[load_code_evidence] 文件存在，开始解析...")
         count = 0
+        error_count = 0
         with open(jsonl_path, "r", encoding="utf-8") as f:
             for line in f:
                 try:
@@ -234,10 +272,19 @@ class EMManager:
                     test_case_id = f"{web_id}_{task_id:02d}"
                     self._code_evidence_dict[test_case_id] = 1 if is_implemented else 0
                     count += 1
-                except json.JSONDecodeError:
+                except json.JSONDecodeError as e:
+                    error_count += 1
+                    if error_count <= 3:  # 只记录前3个错误
+                        self.logger.warning(
+                            f"[load_code_evidence] JSON解析错误: {e}")
                     continue
 
-        self.logger.info(f"已加载 {count} 条 code_evidence 数据")
+        self.logger.info(
+            f"[load_code_evidence] 已加载 {count} 条 code_evidence 数据, 解析错误 {error_count} 条")
+        if count > 0:
+            # 显示前5个加载的key作为示例
+            sample_keys = list(self._code_evidence_dict.keys())[:5]
+            self.logger.info(f"[load_code_evidence] 示例 keys: {sample_keys}")
 
     def _parse_test_case_id(self, case_id: str) -> Optional[str]:
         """
