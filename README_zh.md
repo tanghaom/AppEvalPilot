@@ -130,7 +130,17 @@ AppEvalPilot/
 
 ## 引用
 
-相关研究论文将在不久的将来在arXiv上发布。请稍后查看引用信息。
+如果您觉得 AppEvalPilot 有用，请考虑引用我们的工作：
+```
+@inproceedings{bian2025you,
+  title={You Don't Know Until You Click: Automated GUI Testing for Production-Ready Software Evaluation},
+  author={Bian, Yutong and Lin, Xianhao and Xie, Yupeng and Liu, Tianyang and Zhuge, Mingchen and Lu, Siyuan and Tang, Haoming and Wang, Jinlin and Zhang, Jiayi and Chen, Jiaqi and others},
+  booktitle={The 39th Conference on Neural Information Processing Systems (NeurIPS 2025)},  
+  series = {Scaling Environments for Agents (SEA)},
+  url={https://sea-workshop.github.io},
+  year={2025}
+}
+```
 
 ## 许可证
 
