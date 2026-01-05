@@ -119,7 +119,6 @@ class OSAgentHijacker:
         self.log_dir = Path(log_dir)
         self.log_dir.mkdir(exist_ok=True, parents=True)
         self.original_aask = None
-        self.original_reflection = None
         self.original_reset_state = None
         self.directory_structure = directory_structure
         self.save_full_state = save_full_state
@@ -147,11 +146,8 @@ class OSAgentHijacker:
         # 性能统计重置
         self.perf_stats = {
             "aask_calls": 0,
-            "reflection_calls": 0,
             "aask_total_time": 0,
-            "reflection_total_time": 0,
             "aask_max_time": 0,
-            "reflection_max_time": 0,
             "errors": 0,
             "start_time": time.time(),
         }
@@ -168,11 +164,6 @@ class OSAgentHijacker:
             self.think_states_dir = self.think_dir / "states"
             self.think_outputs_dir = self.think_dir / "outputs"
             self.think_images_dir = self.think_dir / "images"
-            self.reflection_dir = self.session_dir / "reflection"
-            self.reflection_states_dir = self.reflection_dir / "states"
-            self.reflection_prompts_dir = self.reflection_dir / "prompts"
-            self.reflection_outputs_dir = self.reflection_dir / "outputs"
-            self.reflection_images_dir = self.reflection_dir / "images"
             self.performance_dir = self.session_dir / "performance"
 
             self.dirs_to_create = [
@@ -185,11 +176,6 @@ class OSAgentHijacker:
                 self.think_states_dir,
                 self.think_outputs_dir,
                 self.think_images_dir,
-                self.reflection_dir,
-                self.reflection_states_dir,
-                self.reflection_prompts_dir,
-                self.reflection_outputs_dir,
-                self.reflection_images_dir,
                 self.performance_dir,
             ]
         else:
@@ -291,7 +277,6 @@ class OSAgentHijacker:
         try:
             # 计算平均时间
             aask_avg_time = self.perf_stats["aask_total_time"] / max(1, self.perf_stats["aask_calls"])
-            reflection_avg_time = self.perf_stats["reflection_total_time"] / max(1, self.perf_stats["reflection_calls"])
 
             # 计算总运行时间
             total_runtime = time.time() - self.perf_stats["start_time"]
@@ -300,7 +285,6 @@ class OSAgentHijacker:
             full_stats = {
                 **self.perf_stats,
                 "aask_avg_time": aask_avg_time,
-                "reflection_avg_time": reflection_avg_time,
                 "total_runtime": total_runtime,
                 "timestamp": time.strftime("%Y-%m-%d %H:%M:%S"),
             }
@@ -339,8 +323,6 @@ class OSAgentHijacker:
                 "use_som": getattr(agent, "use_som", False),
                 "use_ocr": getattr(agent, "use_ocr", False),
                 "use_icon_detect": getattr(agent, "use_icon_detect", False),
-                "use_memory": getattr(agent, "use_memory", False),
-                "use_reflection": getattr(agent, "use_reflection", False),
                 "timestamp": time.strftime("%Y-%m-%d %H:%M:%S"),
             }
 
@@ -370,9 +352,6 @@ class OSAgentHijacker:
 
         # 保存原始aask方法
         self.original_aask = agent.llm.aask
-
-        # 保存原始reflection方法
-        self.original_reflection = agent._reflection
 
         # 保存原始reset_state方法
         self.original_reset_state = agent._reset_state
@@ -553,135 +532,6 @@ class OSAgentHijacker:
 
             return output
 
-        # 创建新的reflection方法
-        @wraps(self.original_reflection)
-        async def patched_reflection(
-            instruction,
-            last_perception_infos,
-            perception_infos,
-            width,
-            height,
-            summary,
-            action,
-            add_info,
-            last_screenshot_file,
-            screenshot_file,
-        ):
-            # 保存输入参数
-            try:
-                iteration = agent.rc.iter
-
-                # 手动提取rc的属性
-                if self.save_full_state:
-                    try:
-                        # 收集额外数据
-                        additional_data = {
-                            "instruction": instruction,
-                            "width": width,
-                            "height": height,
-                            "summary": summary,
-                            "action": action,
-                            "add_info": add_info,
-                            "last_perception_infos_count": len(last_perception_infos) if last_perception_infos else 0,
-                            "perception_infos_count": len(perception_infos) if perception_infos else 0,
-                            "last_screenshot_file": last_screenshot_file,
-                            "screenshot_file": screenshot_file,
-                        }
-
-                        # 调用保存函数
-                        await self.save_agent_state(agent, self.reflection_states_dir, iteration, additional_data)
-                    except Exception as e:
-                        logger.error(f"保存反思完整状态出错: {e}")
-                        self.perf_stats["errors"] += 1
-
-                # 根据配置决定是否保存图片
-                if self.save_images:
-                    # 保存截图
-                    img_dir = self.reflection_images_dir / f"iter_{iteration}"
-                    img_dir.mkdir(exist_ok=True)
-
-                    if last_screenshot_file and Path(last_screenshot_file).exists():
-                        await self.save_image_async(last_screenshot_file, img_dir / "last_screenshot.jpg")
-
-                    if screenshot_file and Path(screenshot_file).exists():
-                        await self.save_image_async(screenshot_file, img_dir / "screenshot.jpg")
-                else:
-                    logger.debug("跳过保存反思截图（save_images=False）")
-
-                # 构建和保存反思提示词
-                if hasattr(agent.reflection_action, "get_reflection_prompt"):
-                    # 使用reflection_action的方法构建提示词
-                    prompt = agent.reflection_action.get_reflection_prompt(
-                        instruction, last_perception_infos, perception_infos, width, height, summary, action, add_info
-                    )
-
-                    # 保存提示词和系统消息为JSON格式，与aask格式对齐
-                    system_msg = f"You are a helpful AI {'mobile phone' if agent.platform=='Android' else 'PC'} operating assistant."
-                    prompt_data = {"prompt": prompt, "system_msgs": system_msg, "has_images": True}  # 反思总是包含图片
-                    await self.save_json_async(self.reflection_prompts_dir / f"reflection_prompt_iter_{iteration}.json", prompt_data)
-
-                else:
-                    # 如果无法找到get_reflection_prompt方法，记录错误
-                    logger.warning("无法找到reflection_action.get_reflection_prompt方法，无法保存反思提示词")
-
-            except Exception as e:
-                logger.error(f"保存反思输入数据出错: {e}")
-                self.perf_stats["errors"] += 1
-
-            # 调用原始方法
-            start_time = time.time()
-            try:
-                reflect, reflection_thought = await self.original_reflection(
-                    instruction,
-                    last_perception_infos,
-                    perception_infos,
-                    width,
-                    height,
-                    summary,
-                    action,
-                    add_info,
-                    last_screenshot_file,
-                    screenshot_file,
-                )
-                self.perf_stats["reflection_calls"] += 1
-            except Exception as e:
-                self.perf_stats["errors"] += 1
-                logger.error(f"调用原始reflection方法出错: {e}")
-                # 重新抛出异常，确保错误传播
-                raise
-            finally:
-                end_time = time.time()
-                execution_time = end_time - start_time
-                self.perf_stats["reflection_total_time"] += execution_time
-                self.perf_stats["reflection_max_time"] = max(self.perf_stats["reflection_max_time"], execution_time)
-
-            # 保存输出结果
-            try:
-                iteration = agent.rc.iter
-                output_data = {
-                    "reflect": reflect,
-                    "reflection_thought": reflection_thought,
-                    "execution_time": execution_time,
-                    "timestamp": time.strftime("%Y-%m-%d %H:%M:%S"),
-                }
-
-                await self.save_json_async(self.reflection_outputs_dir / f"output_meta_iter_{iteration}.json", output_data)
-
-                # 保存反思完整输出
-                # 根据reflection_thought和reflect重建原始LLM输出
-                reconstructed_output = f"### Thought ###\n{reflection_thought}\n\n### Answer ###\n{reflect}"
-                await self.save_text_async(self.reflection_outputs_dir / f"llm_raw_output_iter_{iteration}.txt", reconstructed_output)
-
-                # 如果启用性能统计并达到指定间隔，则保存性能统计
-                if self.perf_stats_interval > 0 and iteration % self.perf_stats_interval == 0:
-                    await self.update_performance_stats(iteration)
-
-            except Exception as e:
-                logger.error(f"保存反思输出数据出错: {e}")
-                self.perf_stats["errors"] += 1
-
-            return reflect, reflection_thought
-
         # 创建新的reset_state方法
         @wraps(self.original_reset_state)
         def patched_reset_state():
@@ -704,9 +554,8 @@ class OSAgentHijacker:
 
         # 应用猴子补丁
         agent.llm.aask = patched_aask
-        agent._reflection = patched_reflection
         agent._reset_state = patched_reset_state
-        logger.info("已成功劫持OSAgent的llm.aask、_reflection和_reset_state方法")
+        logger.info("已成功劫持OSAgent的llm.aask和_reset_state方法")
 
         return agent
 
@@ -722,11 +571,8 @@ class OSAgentHijacker:
         summary = f"""性能统计摘要:
 - 总运行时间: {stats.get('total_runtime', 0):.2f}秒
 - aask调用次数: {stats.get('aask_calls', 0)}
-- reflection调用次数: {stats.get('reflection_calls', 0)}
 - aask平均耗时: {stats.get('aask_avg_time', 0):.2f}秒
-- reflection平均耗时: {stats.get('reflection_avg_time', 0):.2f}秒
 - aask最长耗时: {stats.get('aask_max_time', 0):.2f}秒
-- reflection最长耗时: {stats.get('reflection_max_time', 0):.2f}秒
 - 错误次数: {stats.get('errors', 0)}
 - 时间戳: {stats.get('timestamp', '')}
 """
@@ -759,8 +605,6 @@ async def run():
         max_iters=10,  # 最大迭代次数
         use_ocr=False,  # 是否使用OCR
         use_icon_detect=False,  # 是否使用图标检测
-        use_memory=False,  # 是否使用记忆
-        use_reflection=True,  # 是否使用反思
         use_chrome_debugger=False,  # 是否使用chrome调试器
         extend_xml_infos=True,  # 是否扩展xml信息
     )
