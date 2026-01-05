@@ -5,6 +5,7 @@ work_dirs/
 data/
 rc_states/
 config/config2.yaml
+osagent_logs/
 
 # Byte-compiled / optimized / DLL files
 __pycache__

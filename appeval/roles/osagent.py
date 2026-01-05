@@ -6,7 +6,6 @@
 @File    : osagent.py
 @Desc    : Operating System Operation Assistant
 """
-import asyncio
 import copy
 import json
 import random
@@ -27,8 +26,6 @@ from PIL import Image, ImageDraw, ImageFont
 from pydantic import ConfigDict, Field
 from tenacity import retry, retry_if_exception_type, stop_after_attempt, wait_fixed
 
-from appeval.actions.reflection import Reflection
-from appeval.actions.screen_info_extractor import ScreenInfoExtractor
 from appeval.prompts.osagent import ActionPromptContext, Android_prompt, PC_prompt
 from appeval.tools.chrome_debugger import ChromeDebugger
 from appeval.tools.device_controller import ControllerTool
@@ -51,11 +48,13 @@ class OSAgentContext(RoleContext):
     reflection_thought_history: List[str] = Field(default_factory=list)  # Historical reflection records list
     reflection_thought: str = ""  # Current reflection content
     summary: str = ""  # Current operation summary
+    image_description: str = ""  # Current image description extracted during thinking
     action: str = ""  # Current executed action
     task_list: str = ""  # Task list
     completed_requirements: str = ""  # Completed requirements
     memory: List[str] = Field(default_factory=list)  # Important content memory list
     error_flag: bool = False  # Error flag
+    error_message: str = ""  # Error message when action execution fails
     iter: int = 0  # Current iteration count
     perception_infos: List[Dict] = Field(default_factory=list)  # Current perception information list
     last_perception_infos: List[Dict] = Field(default_factory=list)  # Previous perception information list
@@ -77,6 +76,7 @@ class OSAgentContext(RoleContext):
         self.completed_requirements = ""
         self.memory = []
         self.error_flag = False
+        self.error_message = ""
         self.iter = 0
         self.perception_infos = []
         self.last_perception_infos = []
@@ -102,15 +102,14 @@ class OSAgent(Role):
         platform: str = "Android",
         max_iters: int = 50,
         # Feature switch parameters
-        use_ocr: bool = True,
+        use_ocr: bool = False,
         quad_split_ocr: bool = False,
-        use_icon_detect: bool = True,
-        use_icon_caption: bool = True,
-        use_memory: bool = True,
-        use_reflection: bool = True,
+        use_icon_detect: bool = False,
+        use_icon_caption: bool = False,
         use_som: bool = False,
         extend_xml_infos: bool = True,
         use_chrome_debugger: bool = False,
+        think_history_images: int = 3,
         # Display and layout parameters
         location_info: str = "center",
         draw_text_box: bool = False,
@@ -132,8 +131,6 @@ class OSAgent(Role):
             quad_split_ocr (bool): Whether to split image into four parts for OCR recognition.
             use_icon_detect (bool): Whether to use icon detection.
             use_icon_caption (bool): Whether to use icon caption.
-            use_memory (bool): Whether to enable important content memory.
-            use_reflection (bool): Whether to perform reflection.
             use_som (bool): Whether to draw visualization boxes on screenshots.
             extend_xml_infos (bool): Whether to add XML element information.
             use_chrome_debugger (bool): Whether to record browser console output.
@@ -144,6 +141,7 @@ class OSAgent(Role):
             knowledge_base_path (str): Preset knowledge base file directory path
             system_prompt (str): System prompt
             add_info (str): Additional information to add to the prompt
+            think_history_images (int): Max number of screenshots (latest-first) to include during think
         """
         super().__init__(**kwargs)
 
@@ -199,12 +197,6 @@ class OSAgent(Role):
 
     def _init_tools(self) -> None:
         """Initialize tool components"""
-        # Initialize information extractor
-        self.info_extractor = ScreenInfoExtractor(platform=self.platform)
-
-        # Initialize reflection tool
-        self.reflection_action = Reflection(platform=self.platform)
-
         # Initialize icon detection/caption tool
         if self.use_icon_detect or self.use_icon_caption:
             self.icon_tool = IconDetectTool(self.llm)
@@ -315,9 +307,7 @@ class OSAgent(Role):
 
         logger.info(f"Initialized logging, log file: {self.save_info}")
 
-    def _draw_bounding_boxes(
-        self, image_path: str, coordinates: List[List[int]], output_path: str, font_path: str
-    ) -> None:
+    def _draw_bounding_boxes(self, image_path: str, coordinates: List[List[int]], output_path: str, font_path: str) -> None:
         """Draw numbered coordinate boxes on the image.
 
         Args:
@@ -408,9 +398,7 @@ class OSAgent(Role):
             return None
         return app_info.get(package_name, None)
 
-    async def _get_perception_infos(
-        self, screenshot_file: str, screenshot_som_file: str
-    ) -> Tuple[List[Dict[str, Any]], int, int, str]:
+    async def _get_perception_infos(self, screenshot_file: str, screenshot_som_file: str) -> Tuple[List[Dict[str, Any]], int, int, str]:
         """Get perception information, including OCR and icon detection.
         Args:
             screenshot_file (str): Screenshot file path.
@@ -439,9 +427,7 @@ class OSAgent(Role):
             rec_list = text_coordinates + icon_coordinates
             self._draw_bounding_boxes(screenshot_file, copy.deepcopy(rec_list), screenshot_som_file, self.font_path)
         elif self.use_icon_detect:
-            self._draw_bounding_boxes(
-                screenshot_file, copy.deepcopy(icon_coordinates), screenshot_som_file, self.font_path
-            )
+            self._draw_bounding_boxes(screenshot_file, copy.deepcopy(icon_coordinates), screenshot_som_file, self.font_path)
         else:
             output_image_path = screenshot_file
 
@@ -530,54 +516,23 @@ class OSAgent(Role):
 
     def get_action_history(self) -> List[Dict[str, Any]]:
         """
-        Get action history, including thoughts, summaries, actions, optional memories and reflections.
+        Get action history, including thoughts, summaries, actions, memories and reflections.
         Returns:
             list: A list of dictionaries, each dictionary represents a historical record of an action step.
-                  Each dictionary contains "thought", "summary", "action",
-                  and optional "memory" and "reflection".
+                  Each dictionary contains "thought", "summary", "action", "memory" and "reflection".
         """
         outputs = []
-        # Use zip to pair corresponding elements of three historical lists and use enumerate to get index
-        for i, (thought, summary, action) in enumerate(
-            zip(self.rc.thought_history, self.rc.summary_history, self.rc.action_history)
-        ):
+        # Use zip to pair corresponding elements of historical lists
+        for i, (thought, summary, action) in enumerate(zip(self.rc.thought_history, self.rc.summary_history, self.rc.action_history)):
             output = {
                 "thought": thought,
                 "summary": summary,
                 "action": action,
-            }  # Current step thought  # Current step summary  # Current step action
-            # If memory switch is enabled, add memory information
-            if self.use_memory:
-                output["memory"] = self.rc.memory[i]
-            # If reflection switch is enabled, add reflection information
-            if self.use_reflection:
-                output["reflection"] = self.rc.reflection_thought_history[i]
-            outputs.append(output)  # Add current step information to output list
+                "memory": self.rc.memory[i] if i < len(self.rc.memory) else "",
+                "reflection": self.rc.reflection_thought_history[i] if i < len(self.rc.reflection_thought_history) else "",
+            }
+            outputs.append(output)
         return outputs
-
-    @retry(
-        stop=stop_after_attempt(10),
-        wait=wait_fixed(3),
-        retry=retry_if_exception_type(Exception),
-        before_sleep=lambda retry_state: logger.warning(
-            f"Information extraction failed, {retry_state.attempt_number}th retry: {str(retry_state.outcome.exception())}"
-        ),
-        reraise=True,
-    )
-    async def _async_memory_task(self, insight: str, screenshot_file: str) -> str:
-        """Execute information extraction task asynchronously
-
-        Args:
-            insight (str): Content/task description to focus on
-            screenshot_file (str): Screenshot file path
-
-        Returns:
-            str: Extracted important content
-        """
-        if not self.use_memory:
-            return ""
-
-        return await self.info_extractor.run(insight, screenshot_file)
 
     @retry(
         stop=stop_after_attempt(10),
@@ -618,6 +573,7 @@ class OSAgent(Role):
             reflection_thought=self.rc.reflection_thought,
             add_info=add_info,
             error_flag=self.rc.error_flag,
+            error_message=self.rc.error_message,
             completed_content=self.rc.completed_requirements,
             memory=self.rc.memory,
             task_list=self.rc.task_list,
@@ -626,12 +582,31 @@ class OSAgent(Role):
         )
 
         prompt_action = self.prompt_utils.get_action_prompt(ctx)
-        logger.info(
-            f"\n\n######################## prompt_action:\n{prompt_action}\n\n######################## prompt_action end\n\n\n\n"
-        )
+        logger.info(f"\n\n######################## prompt_action:\n{prompt_action}\n\n######################## prompt_action end\n\n\n\n")
 
-        # Call LLM to generate decision
-        images = [encode_image(self.screenshot_file)]
+        # Call LLM to generate decision with history images
+        images = []
+        # include previous frames up to think_history_images - 1 using saved origin/draw files
+        try:
+            if isinstance(self.think_history_images, int) and self.think_history_images > 1:
+                # Skip the immediate previous frame (iter-1). Select up to (think_history_images - 1) most recent frames
+                # from iter-2 backward, then append them in chronological order (old -> new).
+                max_hist_frames = self.think_history_images - 1
+                end = self.rc.iter - 2
+                if end >= 0:
+                    start = max(0, end - (max_hist_frames - 1))
+                    for frame_num in range(start, end + 1):  # ascending: old -> new
+                        origin_path = Path(self.save_img) / f"origin_{frame_num}.jpg"
+                        draw_path = Path(self.save_img) / f"draw_{frame_num}.jpg"
+                        if origin_path.exists():
+                            images.append(encode_image(str(origin_path)))
+                            # If SOM is enabled and annotated image exists, also include it for the same frame
+                            if self.use_som and draw_path.exists():
+                                images.append(encode_image(str(draw_path)))
+        except Exception:
+            pass
+        # include latest image (with/without SOM)
+        images.append(encode_image(self.screenshot_file))
         if self.use_som:
             images.append(encode_image(self.screenshot_som_file))
 
@@ -650,88 +625,40 @@ class OSAgent(Role):
         )
 
         # Parse output
-        self.rc.thought = (
-            output_action.split("### Thought ###")[-1]
-            .split("### Action ###")[0]
-            .replace("\n", " ")
-            .replace(":", "")
-            .replace("  ", " ")
-            .strip()
-        )
-        self.rc.action = output_action.split("### Action ###")[-1].split("### Operation ###")[0].strip()
-        self.rc.summary = (
-            output_action.split("### Operation ###")[-1].split("### Task List ###")[0].strip().replace("\n", "\\n")
-        )
-        self.rc.task_list = output_action.split("### Task List ###")[-1].strip()
+        # Safely parse LLM output sections. If any required marker is missing, return empty to avoid mis-parsing.
+        def _extract_between(text, start, end=None, normalize=False, escape_newlines=False):
+            if start not in text:
+                return ""
+            start_idx = text.find(start) + len(start)
+            if end is not None:
+                end_idx = text.find(end, start_idx)
+                if end_idx == -1:
+                    return ""
+                content = text[start_idx:end_idx]
+            else:
+                content = text[start_idx:]
+            content = content.strip()
+            if escape_newlines:
+                content = content.replace("\n", "\\n")
+            if normalize:
+                content = content.replace(":", "")
+                # collapse multiple spaces
+                content = re.sub(r"\s{2,}", " ", content)
+            return content.strip()
 
-        logger.info(
-            f"\n\n######################## output_action:\n{output_action}\n\n######################## output_action end\n\n\n\n"
-        )
+        self.rc.image_description = _extract_between(output_action, "### Image Description ###", "### Reflection Thought ###", escape_newlines=True)
+        self.rc.reflection_thought = _extract_between(output_action, "### Reflection Thought ###", "### Thought ###", escape_newlines=True)
+        self.rc.thought = _extract_between(output_action, "### Thought ###", "### Action ###", normalize=True)
+        self.rc.action = _extract_between(output_action, "### Action ###", "### Operation ###")
+        self.rc.summary = _extract_between(output_action, "### Operation ###", "### Task List ###", escape_newlines=True)
+        self.rc.task_list = _extract_between(output_action, "### Task List ###")
+
+        logger.info(f"\n\n######################## output_action:\n{output_action}\n\n######################## output_action end\n\n\n\n")
 
         if self.rc.action.startswith("Stop"):
             return False
         else:
             return True
-
-    @retry(
-        stop=stop_after_attempt(10),
-        wait=wait_fixed(3),
-        retry=retry_if_exception_type(Exception),
-        before_sleep=lambda retry_state: logger.warning(
-            f"Reflection execution failed, {retry_state.attempt_number}th retry: {str(retry_state.outcome.exception())}"
-        ),
-        reraise=True,
-    )
-    async def _reflection(
-        self,
-        instruction: str,
-        last_perception_infos: list,
-        perception_infos: list,
-        width: int,
-        height: int,
-        summary: str,
-        action: str,
-        add_info: str,
-        last_screenshot_file: str,
-        screenshot_file: str,
-    ) -> Tuple[str, str]:
-        """Execute reflection task
-
-        Args:
-            instruction (str): User instruction
-            last_perception_infos (list): Previous perception information
-            perception_infos (list): Current perception information
-            width (int): Screenshot width
-            height (int): Screenshot height
-            summary (str): Operation summary
-            action (str): Executed action
-            add_info (str): Additional information
-            last_screenshot_file (str): Previous screenshot path
-            screenshot_file (str): Current screenshot path
-
-        Returns:
-            tuple: (reflection result, reflection content)
-        """
-        if not self.use_reflection:
-            return "", ""
-
-        if "Tell" in action or "Wait" in action:
-            return "", "When using the Tell or Wait action, there is no need to do reflection."
-
-        reflect, reflection_thought = await self.reflection_action.run(
-            instruction,
-            last_perception_infos,
-            perception_infos,
-            width,
-            height,
-            summary,
-            action,
-            add_info,
-            last_screenshot_file,
-            screenshot_file,
-        )
-
-        return reflect, reflection_thought
 
     async def _get_app_package_name(self, app_name: str) -> str:
         """Get application package name
@@ -753,15 +680,11 @@ class OSAgent(Role):
             logger.warning(f"{map_path} file does not exist, using default empty mapping")
 
         # Get package name
-        prompt_package_name = self.prompt_utils.get_package_name_prompt(
-            app_name=app_name, app_mapping=app_mapping, package_list=package_list
-        )
+        prompt_package_name = self.prompt_utils.get_package_name_prompt(app_name=app_name, app_mapping=app_mapping, package_list=package_list)
 
         package_name = await self.llm.aask(
             prompt_package_name,
-            system_msgs=[
-                f"You are a helpful AI {'mobile phone' if self.platform=='Android' else 'PC'} operating assistant."
-            ],
+            system_msgs=[f"You are a helpful AI {'mobile phone' if self.platform=='Android' else 'PC'} operating assistant."],
             stream=False,
         )
 
@@ -834,55 +757,32 @@ class OSAgent(Role):
         # Save images
         self._save_iteration_images(self.rc.iter)
 
-        # Execute memory task asynchronously
-        memory_task = None
-        if self.use_memory:
-            memory_task = asyncio.create_task(self._async_memory_task(self.instruction, self.screenshot_file))
-
         # Update history records
         self.rc.thought_history.append(self.rc.thought)
         self.rc.summary_history.append(self.rc.summary)
         self.rc.action_history.append(self.rc.action)
 
-        if self.run_action_failed:
-            self.rc.reflection_thought_history.append(
-                f"ERROR(run action code filed): {self.run_action_failed_exception}\\n "
-            )
-            self.rc.error_flag = True
+        # Save memory: use image_description from think (merged request mode)
+        self.rc.memory.append(getattr(self.rc, "image_description", "") or "")
 
-        elif self.use_reflection:
-            # Execute reflection
-            reflect, self.rc.reflection_thought = await self._reflection(
-                self.instruction,
-                self.rc.last_perception_infos,
-                self.rc.perception_infos,
-                self.width,
-                self.height,
-                self.rc.summary,
-                self.rc.action,
-                self.add_info,
-                self.last_screenshot_file,
-                self.screenshot_file,
-            )
-            self.rc.reflection_thought_history.append(self.rc.reflection_thought)
-            if reflect == "CORRECT":
-                self.rc.error_flag = False
-            elif reflect == "ERROR":
-                self.rc.error_flag = True
+        # Handle reflection: always persist the reflection from think (reflects on previous step)
+        self.rc.reflection_thought_history.append(self.rc.reflection_thought)
+
+        # Handle execution errors separately
+        if self.run_action_failed:
+            # Store error message for next iteration's prompt
+            self.rc.error_message = f"ERROR(run action code filed): {self.run_action_failed_exception}\\n"
+            self.rc.error_flag = True
+        else:
+            # Clear error message on successful execution
+            self.rc.error_message = ""
 
         # Clean up screenshots
         Path(self.last_screenshot_som_file if self.use_som else self.last_screenshot_file).unlink()
 
-        # Wait for memory task to complete and save results
-        if memory_task:
-            memory_content = await memory_task
-            self.rc.memory.append(memory_content)
-
         return AIMessage(content=self.rc.action, cause_by=Action)
 
-    async def _generate_initial_task_list(
-        self, instruction: str, screenshot_file: str, screenshot_som_file: str = None
-    ) -> str:
+    async def _generate_initial_task_list(self, instruction: str, screenshot_file: str, screenshot_som_file: str = None) -> str:
         """Generate initial task list for the first iteration.
 
         Args:
@@ -931,9 +831,7 @@ class OSAgent(Role):
         )
 
         task_list = initial_task_list.strip()
-        logger.info(
-            f"\n\n######################## Initial Task List:\n{task_list}\n\n######################## End of Initial Task List\n\n\n\n"
-        )
+        logger.info(f"\n\n######################## Initial Task List:\n{task_list}\n\n######################## End of Initial Task List\n\n\n\n")
 
         return task_list
 
@@ -954,8 +852,8 @@ class OSAgent(Role):
                     self.output_image_path,
                 ) = await self._get_perception_infos(self.screenshot_file, self.screenshot_som_file)
 
-                # Save images
-                self._save_iteration_images(self.rc.iter)
+                # Save images (use 0 for the very first snapshot to avoid being overwritten after think/act)
+                self._save_iteration_images(0)
 
                 # Generate initial task list
                 self.rc.task_list = await self._generate_initial_task_list(
