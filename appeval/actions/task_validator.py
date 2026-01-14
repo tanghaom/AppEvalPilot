@@ -7,9 +7,13 @@
 """
 import json
 import re
+from pathlib import Path
 from typing import Any, Dict, List
 
+import yaml
 from metagpt.actions.action import Action
+from metagpt.config2 import Config
+from metagpt.llm import LLM
 from metagpt.logs import logger
 from metagpt.utils.common import encode_image
 
@@ -31,8 +35,23 @@ class TaskValidator(Action):
     name: str = "TaskValidator"
     desc: str = "Validates task completion before accepting Tell action"
 
-    def __init__(self, **kwargs):
+    def __init__(self, config_path: str = "config/config2.yaml", **kwargs):
         super().__init__(**kwargs)
+        self.config_path = Path(config_path)
+
+        # Load validator-specific configuration (task_validator section)
+        if self.config_path.exists():
+            with open(self.config_path, "r", encoding="utf-8") as file:
+                validator_config = yaml.safe_load(file).get("task_validator")
+                if validator_config:
+                    self.config = Config.from_llm_config(validator_config)
+                    self.llm = LLM(self.config.llm)
+                    logger.info(
+                        f"TaskValidator using custom LLM: {validator_config.get('model')}")
+                    return
+
+        # Fallback: use default llm from parent Action class
+        logger.info("TaskValidator using default LLM config")
 
     def _build_action_summary(self, summary_history: List[str], max_steps: int = 5) -> str:
         """Build a compact summary of recent actions.
