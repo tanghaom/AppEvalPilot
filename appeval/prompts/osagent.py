@@ -26,6 +26,8 @@ class ActionPromptContext(BaseModel):
     use_som: bool  # Whether to use SOM
     location_info: str = "center"  # Location format, defaults to center coordinates
     icon_caption: bool = True  # Whether to use icon descriptions
+    is_first_step: bool = True  # Whether this is the first step
+    previous_assumption: str = ""  # Previous step's assumption
 
 
 class BasePrompt:
@@ -55,6 +57,8 @@ class BasePrompt:
 
 ### Task requirements ###
 {task_requirements}
+
+{assumption_prompt}
 
 ### Output format ###
 {output_format}
@@ -118,7 +122,7 @@ Before reaching this page, some operations have been completed. You need to refe
 
         # Base output format template
         self.output_format = """
-Your output consists of the following six parts. Please note that only one set of content should be output at a time, and do not repeat the output.
+Your output consists of the following eight parts. Please note that only one set of content should be output at a time, and do not repeat the output.
 
 **IMPORTANT**: Each section title must be wrapped with `###` on both sides (e.g., `### Title ###`). Follow this exact format:
 
@@ -163,6 +167,12 @@ This is a one sentence summary of this operation.
     * <Task 1 Description>
     * <Task 2 Description>
     ...
+
+### Assumption ###
+Based on your analysis, state your assumption about whether the task can meet the expected result. Format: "The function can/cannot meet the expected result."
+
+### Confidence ###
+Rate your confidence level from 0 to 1 (e.g., 0.3, 0.7, 1.0). Output a single number only.
 """
 
         # Package name prompt template
@@ -231,9 +241,12 @@ The following is the correspondence between some common application names and th
         history_details = ""
         for i in range(len(ctx.action_history)):
             # Remove newlines from each field to avoid format disruption
-            memory = (ctx.memory[i] if len(ctx.memory) > i else "None").replace("\n", " ").replace("\r", " ")
-            operation = ctx.summary_history[i].replace("\n", " ").replace("\r", " ")
-            action = ctx.action_history[i].replace("\n", " ").replace("\r", " ")
+            memory = (ctx.memory[i] if len(ctx.memory) > i else "None").replace(
+                "\n", " ").replace("\r", " ")
+            operation = ctx.summary_history[i].replace(
+                "\n", " ").replace("\r", " ")
+            action = ctx.action_history[i].replace(
+                "\n", " ").replace("\r", " ")
 
             history_details += f"Step-{i+1}:\n\tMemory: {memory}\n"
             history_details += f"\tOperation: {operation}\n"
@@ -241,7 +254,8 @@ The following is the correspondence between some common application names and th
             # Reflection from next step (reflects on this step's outcome)
             reflection_idx = i + 1
             if reflection_idx < len(ctx.reflection_thought_history):
-                reflection = ctx.reflection_thought_history[reflection_idx].replace("\n", " ").replace("\r", " ")
+                reflection = ctx.reflection_thought_history[reflection_idx].replace(
+                    "\n", " ").replace("\r", " ")
                 history_details += f"\tReflection_thought: {reflection}\n"
 
         return self.history_template.format(history_details=history_details)
@@ -272,13 +286,28 @@ The following is the correspondence between some common application names and th
             f"{error_details}\n\nPlease analyze the error details above carefully and fix the issue in your next operation."
         )
 
+    def _build_assumption_prompt(self, ctx: ActionPromptContext) -> str:
+        """Build assumption verification prompt based on step number"""
+        if ctx.is_first_step:
+            return """
+### Assumption Verification ###
+I guess the function can meet the expected result but possibly wrong. Verify my assumption to see if it meets the expected result and then step by step to find the correct answer.
+"""
+        else:
+            can_or_cannot = "can" if "can meet" in ctx.previous_assumption.lower() or "cannot" not in ctx.previous_assumption.lower() else "cannot"
+            return f"""
+### Assumption Verification ###
+Based on previous observation, I guess the function {can_or_cannot} ({ctx.previous_assumption}) meet the expected result but possibly wrong because I might have hallucinated perception on UI, lack complete signals as proof of full success or failure or explore the page insufficiently. Verify my assumption to see if it meets the expected result and then step by step to find the correct answer.
+"""
+
     def get_action_prompt(self, ctx: ActionPromptContext) -> str:
         raise NotImplementedError
 
     def get_package_name_prompt(self, app_name: str, app_mapping: str, package_list: List[str]) -> str:
         """Build package name prompt (common implementation for all platforms)"""
         # Build mapping information
-        mapping_info = self.mapping_info_template.format(app_mapping=app_mapping) if app_mapping else ""
+        mapping_info = self.mapping_info_template.format(
+            app_mapping=app_mapping) if app_mapping else ""
 
         # Use template to build prompt
         return self.package_name_template.format(app_name=app_name, platform=self.platform, mapping_info=mapping_info, package_list=package_list)
@@ -339,10 +368,12 @@ You must choose one of the actions below:
     def get_action_prompt(self, ctx: ActionPromptContext) -> str:
         # Build all sections using base class methods
         background = self._build_background(ctx, "phone")
-        screenshot_info = self._build_screenshot_info(ctx, "on the current screenshot through system files")
+        screenshot_info = self._build_screenshot_info(
+            ctx, "on the current screenshot through system files")
         history_operations = self._build_history_operations(ctx)
         task_list = self._build_task_list(ctx)
         last_operation = self._build_last_operation(ctx)
+        assumption_prompt = self._build_assumption_prompt(ctx)
 
         # Use main template to build final prompt
         return self.prompt_template.format(
@@ -354,6 +385,7 @@ You must choose one of the actions below:
             task_list=task_list,
             last_operation=last_operation,
             task_requirements=self.task_requirements,
+            assumption_prompt=assumption_prompt,
             output_format=self.output_format.format(
                 action_options="Open app () or Run () or Wait or Stop. Only one action can be output at one time."
             ),
@@ -421,10 +453,12 @@ You must choose one of the actions below:
     def get_action_prompt(self, ctx: ActionPromptContext) -> str:
         # Build all sections using base class methods
         background = self._build_background(ctx, "computer")
-        screenshot_info = self._build_screenshot_info(ctx, "of the current screenshot")
+        screenshot_info = self._build_screenshot_info(
+            ctx, "of the current screenshot")
         history_operations = self._build_history_operations(ctx)
         task_list = self._build_task_list(ctx)
         last_operation = self._build_last_operation(ctx)
+        assumption_prompt = self._build_assumption_prompt(ctx)
 
         # Use main template to build final prompt
         return self.prompt_template.format(
@@ -436,6 +470,7 @@ You must choose one of the actions below:
             task_list=task_list,
             last_operation=last_operation,
             task_requirements=self.task_requirements,
+            assumption_prompt=assumption_prompt,
             output_format=self.output_format.format(
                 action_options="Open App () or Run () or Tell () or Stop. Only one action can be output at one time."
             ),
