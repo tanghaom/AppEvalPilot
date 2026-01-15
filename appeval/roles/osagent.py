@@ -943,14 +943,6 @@ class OSAgent(Role):
                     content="OS Agent has finished all tasks", cause_by=Action)
                 break
 
-            # Check if confidence is 1.0, if so, terminate
-            if self.rc.confidence == 1.0:
-                logger.info(
-                    f"#### Confidence reached 1.0, terminating. Final assumption: {self.rc.assumption}")
-                rsp = AIMessage(
-                    content=f"OS Agent completed with confidence 1.0. Assumption: {self.rc.assumption}", cause_by=Action)
-                break
-
             # act
             logger.debug(
                 f"{self._setting}: {self.rc.state=}, will do {self.rc.todo}")
