@@ -169,10 +169,10 @@ This is a one sentence summary of this operation.
     ...
 
 ### Assumption ###
-Based on your analysis, state your assumption about whether the task can meet the expected result. Format: "The function can/cannot meet the expected result."
+Based on your analysis, state your assumption about whether the task can meet the expected result. Format: "The function can/cannot meet the expected result because [reason]"
 
 ### Confidence ###
-Rate your confidence level from 0 to 1 (e.g., 0.3, 0.7, 1.0). Output a single number only.
+Rate your confidence level for the above assumption from 0 to 1 (e.g., 0.3, 0.7, 1.0). This represents how confident you are that your assumption is correct. Output 1 only when you are absolutely certain your assumption is correct. Output a single number only.
 """
 
         # Package name prompt template
@@ -294,7 +294,8 @@ The following is the correspondence between some common application names and th
 I guess the function can meet the expected result but possibly wrong. Verify my assumption to see if it meets the expected result and then step by step to find the correct answer.
 """
         else:
-            can_or_cannot = "can" if "can meet" in ctx.previous_assumption.lower() or "cannot" not in ctx.previous_assumption.lower() else "cannot"
+            can_or_cannot = "can" if "can meet" in ctx.previous_assumption.lower(
+            ) or "cannot" not in ctx.previous_assumption.lower() else "cannot"
             return f"""
 ### Assumption Verification ###
 Based on previous observation, I guess the function {can_or_cannot} ({ctx.previous_assumption}) meet the expected result but possibly wrong because I might have hallucinated perception on UI, lack complete signals as proof of full success or failure or explore the page insufficiently. Verify my assumption to see if it meets the expected result and then step by step to find the correct answer.
