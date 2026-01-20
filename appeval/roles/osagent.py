@@ -990,6 +990,11 @@ class OSAgent(Role):
                 f"{self._setting}: {self.rc.state=}, will do {self.rc.todo}")
             rsp = await self._act()
 
+            # Exit loop after Tell action (tell_verifier has already processed it)
+            if self.rc.action.startswith("Tell"):
+                logger.info("Tell action completed, exiting loop")
+                break
+
         if self.use_chrome_debugger:
             self.chrome_debugger.stop_monitoring()
 
