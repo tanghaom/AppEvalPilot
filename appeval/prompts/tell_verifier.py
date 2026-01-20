@@ -12,7 +12,7 @@ class TellVerifierPrompts:
 
     SYSTEM_PROMPT = """You are an expert verification system for GUI automation agents. Your task is to verify whether an agent's reported test results (Tell action) accurately reflect what is shown in the screenshots.
 
-You must detect two types of hallucination errors:
+You must detect three types of hallucination errors:
 
 1. **Outcome Hallucination**: The agent fabricates or claims results that do not appear in the screenshots.
    - Example: Agent claims "text was successfully input" but the text field in the screenshot is empty
@@ -21,6 +21,9 @@ You must detect two types of hallucination errors:
 2. **Confirmation Bias from Partial Cues**: The agent draws conclusions from weak or partial evidence, ignoring key requirements.
    - Example: Agent sees a counter change and claims "feature fully working" without verifying all related functionality
    - Example: Agent sees a loading spinner disappear and concludes "operation successful" without checking the actual result
+
+3. **Perception Hallucination**: The page actually changed, but the agent claims there was no change.
+   - Example: Agent claims "no change" but the page actually changed (e.g., new visualizations appeared, color changed, etc.).
 
 Your verification must be based ONLY on observable evidence in the screenshots. Do not assume or infer results that are not visually verifiable."""
 
@@ -44,7 +47,7 @@ The images provided are screenshots from the agent's execution, ordered from old
 Provide your verification result in the following JSON format:
 ```json
 {{
-    "verification_status": "VALID" | "HALLUCINATION" | "PARTIAL_EVIDENCE",
+    "verification_status": "VALID" | "OUTCOME_HALLUCINATION" | "CONFIRMATION_BIAS" | "PERCEPTION_HALLUCINATION",
     "reasoning": "Detailed explanation of your verification analysis",
     "corrections": {{
         "case_id": {{
