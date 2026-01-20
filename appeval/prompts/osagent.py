@@ -172,7 +172,18 @@ This is a one sentence summary of this operation.
 Based on your analysis, state your assumption about whether the task can meet the expected result. Format: "The function can/cannot meet the expected result because [reason]"
 
 ### Confidence ###
-Rate your confidence level for the above assumption from 0 to 1 (e.g., 0.3, 0.7, 1.0). This represents how confident you are that your assumption is correct. Output 1 only when you are absolutely certain your assumption is correct. Output a single number only.
+Rate your confidence level from 0 to 1 based ONLY on the strength of available observable evidence.
+
+Definition:
+- 0.0–0.2: Pure speculation, no supporting evidence
+- 0.3–0.5: Weak or indirect evidence
+- 0.6–0.8: Partial but incomplete evidence
+- 0.9–1.0: Strong, explicit, verifiable evidence
+
+If no direct evidence is available, confidence must not exceed 0.3.
+
+Output a single number only.
+
 """
 
         # Package name prompt template
