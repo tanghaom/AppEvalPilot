@@ -26,6 +26,7 @@ from PIL import Image, ImageDraw, ImageFont
 from pydantic import ConfigDict, Field
 from tenacity import retry, retry_if_exception_type, stop_after_attempt, wait_fixed
 
+from appeval.actions.tell_verifier import TellVerifier
 from appeval.prompts.osagent import ActionPromptContext, Android_prompt, PC_prompt
 from appeval.tools.chrome_debugger import ChromeDebugger
 from appeval.tools.device_controller import ControllerTool
@@ -127,6 +128,7 @@ class OSAgent(Role):
         use_som: bool = False,
         extend_xml_infos: bool = True,
         use_chrome_debugger: bool = False,
+        use_tell_verifier: bool = True,
         think_history_images: int = 3,
         # Display and layout parameters
         location_info: str = "center",
@@ -152,6 +154,7 @@ class OSAgent(Role):
             use_som (bool): Whether to draw visualization boxes on screenshots.
             extend_xml_infos (bool): Whether to add XML element information.
             use_chrome_debugger (bool): Whether to record browser console output.
+            use_tell_verifier (bool): Whether to verify Tell action judgments against screenshots.
             location_info (str): Location information type (center or bbox).
             draw_text_box (bool): Whether to draw text boxes in visualization.
             log_dirs (str): Log directory
@@ -227,6 +230,17 @@ class OSAgent(Role):
         # Initialize browser debugger
         if self.use_chrome_debugger:
             self.chrome_debugger = ChromeDebugger()
+
+        # Initialize Tell action verifier
+        if self.use_tell_verifier:
+            try:
+                self.tell_verifier = TellVerifier()
+                logger.info("TellVerifier initialized successfully")
+            except Exception as e:
+                logger.warning(
+                    f"Failed to initialize TellVerifier, disabling: {str(e)}")
+                self.use_tell_verifier = False
+                self.tell_verifier = None
 
     def _get_timestamped_paths(self) -> None:
         """Update file paths with timestamps"""
@@ -828,6 +842,34 @@ class OSAgent(Role):
 
         # Save images
         self._save_iteration_images(self.rc.iter)
+
+        # Verify Tell action if enabled and action is Tell
+        if self.use_tell_verifier and self.rc.action.startswith("Tell"):
+            try:
+                logger.info("Tell action detected, triggering verification...")
+                verification_result = await self.tell_verifier.run(
+                    tell_content=self.rc.action,
+                    reflection_history=self.rc.reflection_thought_history,
+                    screenshot_dir=self.save_img,
+                    current_iter=self.rc.iter,
+                    test_cases=getattr(self, 'instruction', ''),
+                )
+
+                if verification_result.needs_correction:
+                    logger.warning(
+                        f"Tell action verification found hallucination ({verification_result.verification_status}), "
+                        f"correcting action. Reasoning: {verification_result.reasoning[:200]}..."
+                    )
+                    # Update action with corrected version
+                    self.rc.action = verification_result.corrected_action
+                    logger.info(
+                        f"Corrected Tell action: {self.rc.action[:200]}...")
+                else:
+                    logger.info(
+                        f"Tell action verification passed: {verification_result.verification_status}")
+            except Exception as e:
+                logger.error(
+                    f"Tell action verification failed with error: {str(e)}, using original action")
 
         # Update history records
         self.rc.thought_history.append(self.rc.thought)
