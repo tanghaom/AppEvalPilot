@@ -995,6 +995,121 @@ class OSAgent(Role):
                 logger.info("Tell action completed, exiting loop")
                 break
 
+        # If reached max_iters and last action is not Tell, force Tell action and verify
+        if self.rc.iter >= self.max_iters and not (self.rc.action_history and self.rc.action_history[-1].startswith("Tell")):
+            logger.info(
+                f"Reached max_iters ({self.max_iters}), forcing Tell action and verification...")
+
+            # Get latest perception info
+            (
+                self.rc.perception_infos,
+                self.width,
+                self.height,
+                self.output_image_path,
+            ) = await self._get_perception_infos(self.screenshot_file, self.screenshot_som_file)
+
+            # Save images
+            self._save_iteration_images(self.rc.iter)
+
+            # Force think to generate Tell action
+            has_todo = await self._think()
+            if has_todo:
+                # act to execute action
+                rsp = await self._act()
+                # If the generated action is not Tell, force it to be Tell and verify
+                if not self.rc.action.startswith("Tell"):
+                    logger.warning(
+                        f"Action at max_iters is not Tell ({self.rc.action[:50] if len(self.rc.action) > 50 else self.rc.action}...), forcing Tell action")
+                    # Create a Tell action based on current state
+                    current_state = self.rc.image_description if hasattr(
+                        self.rc, 'image_description') and self.rc.image_description else "Unknown state"
+                    self.rc.action = f"Tell (Reached maximum steps ({self.max_iters}). Task may be incomplete. Current state: {current_state[:200]})"
+                    self.rc.summary = "Reached max steps, reporting current state"
+
+                    # Execute tell verifier for the forced Tell action
+                    if self.use_tell_verifier:
+                        try:
+                            logger.info(
+                                "Tell action detected at max_iters, triggering verification...")
+                            verification_result = await self.tell_verifier.run(
+                                tell_content=self.rc.action,
+                                reflection_history=self.rc.reflection_thought_history,
+                                screenshot_dir=self.save_img,
+                                current_iter=self.rc.iter,
+                                test_cases=getattr(self, 'instruction', ''),
+                            )
+
+                            if verification_result.needs_correction:
+                                logger.warning(
+                                    f"Tell action verification found hallucination ({verification_result.verification_status}), "
+                                    f"correcting action. Reasoning: {verification_result.reasoning[:200]}..."
+                                )
+                                self.rc.action = verification_result.corrected_action
+                                logger.info(
+                                    f"Corrected Tell action: {self.rc.action[:200]}...")
+                            else:
+                                logger.info(
+                                    f"Tell action verification passed: {verification_result.verification_status}")
+                        except Exception as e:
+                            logger.error(
+                                f"Tell verifier failed at max_iters: {str(e)}")
+
+                    # Update action history with the forced Tell action
+                    if self.rc.action_history:
+                        self.rc.action_history[-1] = self.rc.action
+                    else:
+                        self.rc.action_history.append(self.rc.action)
+                # If action is already Tell, tell_verifier has already been executed in _act()
+            else:
+                # If think returns no todo, create a default Tell action
+                logger.warning(
+                    "Think returned no todo at max_iters, creating default Tell action")
+                self.rc.action = f"Tell (Reached maximum steps ({self.max_iters}). Current state: {self.rc.image_description if hasattr(self.rc, 'image_description') else 'Unknown'})"
+                self.rc.summary = "Reached max steps, reporting current state"
+
+                # Execute tell verifier for the forced Tell action
+                if self.use_tell_verifier:
+                    try:
+                        logger.info(
+                            "Tell action detected at max_iters, triggering verification...")
+                        verification_result = await self.tell_verifier.run(
+                            tell_content=self.rc.action,
+                            reflection_history=self.rc.reflection_thought_history,
+                            screenshot_dir=self.save_img,
+                            current_iter=self.rc.iter,
+                            test_cases=getattr(self, 'instruction', ''),
+                        )
+
+                        if verification_result.needs_correction:
+                            logger.warning(
+                                f"Tell action verification found hallucination ({verification_result.verification_status}), "
+                                f"correcting action. Reasoning: {verification_result.reasoning[:200]}..."
+                            )
+                            self.rc.action = verification_result.corrected_action
+                            logger.info(
+                                f"Corrected Tell action: {self.rc.action[:200]}...")
+                        else:
+                            logger.info(
+                                f"Tell action verification passed: {verification_result.verification_status}")
+                    except Exception as e:
+                        logger.error(
+                            f"Tell verifier failed at max_iters: {str(e)}")
+
+                # Update history
+                self.rc.thought_history.append(self.rc.thought if hasattr(
+                    self.rc, 'thought') else "Reached max steps")
+                self.rc.summary_history.append(self.rc.summary)
+                self.rc.action_history.append(self.rc.action)
+                if hasattr(self.rc, 'assumption'):
+                    self.rc.assumption_history.append(self.rc.assumption)
+                if hasattr(self.rc, 'confidence'):
+                    self.rc.confidence_history.append(self.rc.confidence)
+                if hasattr(self.rc, 'image_description'):
+                    self.rc.memory.append(self.rc.image_description)
+                if hasattr(self.rc, 'reflection_thought'):
+                    self.rc.reflection_thought_history.append(
+                        self.rc.reflection_thought)
+
         if self.use_chrome_debugger:
             self.chrome_debugger.stop_monitoring()
 
