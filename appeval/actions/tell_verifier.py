@@ -22,6 +22,26 @@ from tenacity import retry, retry_if_exception_type, stop_after_attempt, wait_fi
 from appeval.prompts.tell_verifier import TellVerifierPrompts
 
 
+class ActionError(BaseModel):
+    """Details of action error when agent uses wrong interaction method or has operation failures"""
+
+    error_type: str = Field(
+        description="Error type: 'W4' for interaction modality mismatch, 'W6' for mechanics/focus failure"
+    )
+    error_description: str = Field(
+        default="",
+        description="Specific description of what went wrong with the agent's operation"
+    )
+    required_action: str = Field(
+        default="",
+        description="The correct interaction method or operation that should have been used"
+    )
+    corrective_guidance: str = Field(
+        default="",
+        description="Step-by-step instructions for the agent to perform the correct operation"
+    )
+
+
 class VerificationResult(BaseModel):
     """Result of Tell action verification"""
 
@@ -29,7 +49,8 @@ class VerificationResult(BaseModel):
         description="Whether the original judgment is valid")
     verification_status: str = Field(
         default="VALID",
-        description="Verification status: 'VALID', 'HALLUCINATION', or 'PARTIAL_EVIDENCE'"
+        description="Verification status: 'VALID', 'OUTCOME_HALLUCINATION', 'CONFIRMATION_BIAS', "
+                    "'PERCEPTION_HALLUCINATION', 'INTERACTION_MODALITY_MISMATCH', or 'MECHANICS_FOCUS_FAILURE'"
     )
     original_judgment: str = Field(
         description="The original Tell action content")
@@ -47,6 +68,14 @@ class VerificationResult(BaseModel):
         default=False,
         description="Whether the original judgment needs to be corrected"
     )
+    action_error: Optional[ActionError] = Field(
+        default=None,
+        description="Details of action error if verification_status is INTERACTION_MODALITY_MISMATCH or MECHANICS_FOCUS_FAILURE"
+    )
+    has_action_error: bool = Field(
+        default=False,
+        description="Whether the verification found an action error (W4 or W6)"
+    )
 
     @property
     def corrected_action(self) -> str:
@@ -54,6 +83,17 @@ class VerificationResult(BaseModel):
         if self.corrected_judgment:
             return f"Tell ({self.corrected_judgment})"
         return f"Tell ({self.original_judgment})"
+
+    @property
+    def is_action_error(self) -> bool:
+        """Check if this is an action error (W4 or W6)"""
+        return self.verification_status in ["INTERACTION_MODALITY_MISMATCH", "MECHANICS_FOCUS_FAILURE"]
+
+    def get_corrective_guidance(self) -> Optional[str]:
+        """Get corrective guidance for action errors"""
+        if self.action_error:
+            return self.action_error.corrective_guidance
+        return None
 
 
 class TellVerifier(Action):
@@ -152,6 +192,52 @@ class TellVerifier(Action):
 
         return "\n".join(formatted)
 
+    def _format_execution_history(
+        self,
+        action_history: List[str],
+        reflection_history: List[str]
+    ) -> str:
+        """Format action and reflection history into a step-by-step execution history
+
+        Args:
+            action_history: List of actions performed at each step
+            reflection_history: List of reflections after each step
+
+        Returns:
+            str: Formatted execution history with actions and reflections per step
+        """
+        if not action_history and not reflection_history:
+            return "No execution history available"
+
+        # Determine the number of steps (use the longer list)
+        num_steps = max(len(action_history), len(reflection_history))
+
+        if num_steps == 0:
+            return "No execution history available"
+
+        formatted = []
+        for i in range(num_steps):
+            step_num = i + 1
+            formatted.append(f"--- Step {step_num} ---")
+
+            # Add action if available
+            if i < len(action_history) and action_history[i]:
+                action = action_history[i].replace("\\n", " ").strip()
+                formatted.append(f"  Action: {action}")
+            else:
+                formatted.append(f"  Action: N/A")
+
+            # Add reflection if available
+            if i < len(reflection_history) and reflection_history[i]:
+                reflection = reflection_history[i].replace("\\n", " ").strip()
+                formatted.append(f"  Reflection: {reflection}")
+            else:
+                formatted.append(f"  Reflection: N/A")
+
+            formatted.append("")  # Add empty line between steps
+
+        return "\n".join(formatted)
+
     def _extract_tell_content(self, tell_action: str) -> str:
         """Extract content from Tell action string
 
@@ -222,6 +308,39 @@ class TellVerifier(Action):
                 corrected_judgment = json.dumps(
                     corrected_tell_content, ensure_ascii=False)
 
+            # Parse action_error if present (for W4 and W6 errors)
+            action_error = None
+            has_action_error = verification_status in [
+                "INTERACTION_MODALITY_MISMATCH", "MECHANICS_FOCUS_FAILURE"
+            ]
+
+            if has_action_error:
+                action_error_dict = result_dict.get("action_error", {})
+                if action_error_dict:
+                    action_error = ActionError(
+                        error_type=action_error_dict.get("error_type", "W6"),
+                        error_description=action_error_dict.get(
+                            "error_description", ""),
+                        required_action=action_error_dict.get(
+                            "required_action", ""),
+                        corrective_guidance=action_error_dict.get(
+                            "corrective_guidance", ""),
+                    )
+                    logger.info(
+                        f"Detected action error ({action_error.error_type}): {action_error.error_description}"
+                    )
+                else:
+                    # Create a default action error if the LLM didn't provide details
+                    action_error = ActionError(
+                        error_type="W4" if verification_status == "INTERACTION_MODALITY_MISMATCH" else "W6",
+                        error_description=reasoning,
+                        required_action="",
+                        corrective_guidance="Please review the task requirements and retry with the correct interaction method.",
+                    )
+                    logger.warning(
+                        f"Action error detected but no action_error details provided in LLM output"
+                    )
+
             return VerificationResult(
                 is_valid=is_valid,
                 verification_status=verification_status,
@@ -230,6 +349,8 @@ class TellVerifier(Action):
                 reasoning=reasoning,
                 corrections=corrections,
                 needs_correction=needs_correction,
+                action_error=action_error,
+                has_action_error=has_action_error,
             )
 
         except json.JSONDecodeError as e:
@@ -281,6 +402,7 @@ class TellVerifier(Action):
     async def run(
         self,
         tell_content: str,
+        action_history: List[str],
         reflection_history: List[str],
         screenshot_dir: str,
         current_iter: int,
@@ -290,6 +412,7 @@ class TellVerifier(Action):
 
         Args:
             tell_content: The Tell action content to verify (e.g., "Tell ({...})")
+            action_history: List of actions performed at each step
             reflection_history: List of reflection thoughts for each step
             screenshot_dir: Directory containing screenshot files
             current_iter: Current iteration number
@@ -339,15 +462,15 @@ class TellVerifier(Action):
                 needs_correction=False,
             )
 
-        # Format reflection history
-        formatted_reflections = self._format_history(
-            reflection_history, "Reflection")
+        # Format execution history (action + reflection per step)
+        formatted_execution_history = self._format_execution_history(
+            action_history, reflection_history)
 
         # Build verification prompt
         prompt = TellVerifierPrompts.get_verification_prompt(
             test_cases=test_cases or "Not provided",
             judgment=original_judgment,
-            reflection_history=formatted_reflections,
+            execution_history=formatted_execution_history,
         )
 
         # Print the full verification prompt for debugging
@@ -375,9 +498,28 @@ class TellVerifier(Action):
         result = self._parse_verification_result(llm_output, original_judgment)
 
         # Log verification outcome
-        if result.needs_correction:
+        if result.has_action_error:
+            # Action error detected (W4 or W6)
+            error_type_name = (
+                "Interaction Modality Mismatch (W4)"
+                if result.verification_status == "INTERACTION_MODALITY_MISMATCH"
+                else "Mechanics & Focus Failure (W6)"
+            )
             logger.warning(
-                f"Tell action verification found issues: {result.verification_status}, "
+                f"Tell action verification detected ACTION ERROR: {error_type_name}\n"
+                f"Reasoning: {result.reasoning}\n"
+            )
+            if result.action_error:
+                logger.info(
+                    f"Action Error Details:\n"
+                    f"  - Error Type: {result.action_error.error_type}\n"
+                    f"  - Description: {result.action_error.error_description}\n"
+                    f"  - Required Action: {result.action_error.required_action}\n"
+                    f"  - Corrective Guidance: {result.action_error.corrective_guidance}\n"
+                )
+        elif result.needs_correction:
+            logger.warning(
+                f"Tell action verification found hallucination issues: {result.verification_status}, "
                 f"reasoning: {result.reasoning[:200]}..."
             )
         else:

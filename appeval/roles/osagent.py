@@ -307,6 +307,7 @@ class OSAgent(Role):
         # Reset other states
         self.run_action_failed = False
         self.run_action_failed_exception = ""
+        self._action_error_detected = False  # Reset action error flag
 
         if self.use_chrome_debugger:
             self.chrome_debugger.start_monitoring()
@@ -849,27 +850,59 @@ class OSAgent(Role):
                 logger.info("Tell action detected, triggering verification...")
                 verification_result = await self.tell_verifier.run(
                     tell_content=self.rc.action,
+                    action_history=self.rc.action_history,
                     reflection_history=self.rc.reflection_thought_history,
                     screenshot_dir=self.save_img,
                     current_iter=self.rc.iter,
                     test_cases=getattr(self, 'instruction', ''),
                 )
 
-                if verification_result.needs_correction:
+                # Check if it's an action error (W4 or W6)
+                if verification_result.has_action_error:
+                    logger.warning(
+                        f"Tell action verification found ACTION ERROR ({verification_result.verification_status}), "
+                        f"agent will retry with corrective guidance. Reasoning: {verification_result.reasoning}"
+                    )
+                    # Set error flag and corrective guidance for next iteration
+                    self.rc.error_flag = True
+                    corrective_guidance = verification_result.get_corrective_guidance() or ""
+                    action_error = verification_result.action_error
+                    error_type_desc = (
+                        "Interaction Modality Mismatch (W4): Wrong interaction method used"
+                        if action_error and action_error.error_type == "W4"
+                        else "Mechanics & Focus Failure (W6): Basic operation mistake"
+                    )
+                    self.rc.error_message = (
+                        f"ACTION ERROR - {error_type_desc}\\n"
+                        f"Error Description: {action_error.error_description if action_error else verification_result.reasoning}\\n"
+                        f"Required Action: {action_error.required_action if action_error else 'Review task requirements'}\\n"
+                        f"Corrective Guidance: {corrective_guidance}\\n"
+                        f"Please follow the corrective guidance above to retry the operation correctly."
+                    )
+                    # Mark that we should continue instead of stopping
+                    self._action_error_detected = True
+                    # Change the action from Tell to indicate retry needed
+                    self.rc.action = f"Wait (Action error detected, retrying with corrective guidance)"
+                    logger.info(
+                        f"Agent will continue with corrective guidance: {corrective_guidance[:200]}...")
+                elif verification_result.needs_correction:
                     logger.warning(
                         f"Tell action verification found hallucination ({verification_result.verification_status}), "
                         f"correcting action. Reasoning: {verification_result.reasoning[:200]}..."
                     )
                     # Update action with corrected version
                     self.rc.action = verification_result.corrected_action
+                    self._action_error_detected = False
                     logger.info(
                         f"Corrected Tell action: {self.rc.action[:200]}...")
                 else:
                     logger.info(
                         f"Tell action verification passed: {verification_result.verification_status}")
+                    self._action_error_detected = False
             except Exception as e:
                 logger.error(
                     f"Tell action verification failed with error: {str(e)}, using original action")
+                self._action_error_detected = False
 
         # Update history records
         self.rc.thought_history.append(self.rc.thought)
@@ -990,10 +1023,17 @@ class OSAgent(Role):
                 f"{self._setting}: {self.rc.state=}, will do {self.rc.todo}")
             rsp = await self._act()
 
-            # Exit loop after Tell action (tell_verifier has already processed it)
+            # Exit loop after Tell action, unless it was an action error (W4/W6)
+            # In case of action error, the agent should continue with corrective guidance
             if self.rc.action.startswith("Tell"):
                 logger.info("Tell action completed, exiting loop")
                 break
+            elif hasattr(self, '_action_error_detected') and self._action_error_detected:
+                # Action error was detected, continue the loop to retry
+                logger.info(
+                    "Action error detected, continuing loop to retry with corrective guidance")
+                self._action_error_detected = False  # Reset the flag
+                continue
 
         # If reached max_iters and last action is not Tell, force Tell action and verify
         if self.rc.iter >= self.max_iters and not (self.rc.action_history and self.rc.action_history[-1].startswith("Tell")):
@@ -1033,13 +1073,23 @@ class OSAgent(Role):
                                 "Tell action detected at max_iters, triggering verification...")
                             verification_result = await self.tell_verifier.run(
                                 tell_content=self.rc.action,
+                                action_history=self.rc.action_history,
                                 reflection_history=self.rc.reflection_thought_history,
                                 screenshot_dir=self.save_img,
                                 current_iter=self.rc.iter,
                                 test_cases=getattr(self, 'instruction', ''),
                             )
 
-                            if verification_result.needs_correction:
+                            # At max_iters, we still correct hallucinations but log action errors differently
+                            if verification_result.has_action_error:
+                                logger.warning(
+                                    f"Tell action verification found ACTION ERROR at max_iters ({verification_result.verification_status}), "
+                                    f"but cannot retry due to max iterations. Reasoning: {verification_result.reasoning}"
+                                )
+                                # Still report the action error in the Tell action
+                                corrective_guidance = verification_result.get_corrective_guidance() or ""
+                                self.rc.action = f"Tell (Reached maximum steps. Action error detected: {verification_result.reasoning}. Corrective guidance: {corrective_guidance})"
+                            elif verification_result.needs_correction:
                                 logger.warning(
                                     f"Tell action verification found hallucination ({verification_result.verification_status}), "
                                     f"correcting action. Reasoning: {verification_result.reasoning[:200]}..."
@@ -1074,13 +1124,23 @@ class OSAgent(Role):
                             "Tell action detected at max_iters, triggering verification...")
                         verification_result = await self.tell_verifier.run(
                             tell_content=self.rc.action,
+                            action_history=self.rc.action_history,
                             reflection_history=self.rc.reflection_thought_history,
                             screenshot_dir=self.save_img,
                             current_iter=self.rc.iter,
                             test_cases=getattr(self, 'instruction', ''),
                         )
 
-                        if verification_result.needs_correction:
+                        # At max_iters, we still correct hallucinations but log action errors differently
+                        if verification_result.has_action_error:
+                            logger.warning(
+                                f"Tell action verification found ACTION ERROR at max_iters ({verification_result.verification_status}), "
+                                f"but cannot retry due to max iterations. Reasoning: {verification_result.reasoning}"
+                            )
+                            # Still report the action error in the Tell action
+                            corrective_guidance = verification_result.get_corrective_guidance() or ""
+                            self.rc.action = f"Tell (Reached maximum steps. Action error detected: {verification_result.reasoning}. Corrective guidance: {corrective_guidance})"
+                        elif verification_result.needs_correction:
                             logger.warning(
                                 f"Tell action verification found hallucination ({verification_result.verification_status}), "
                                 f"correcting action. Reasoning: {verification_result.reasoning[:200]}..."
