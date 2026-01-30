@@ -250,6 +250,14 @@ class OSAgent(Role):
                 },
                 "prompt_class": PC_prompt,
             },
+            "Linux": {
+                "controller_args": {
+                    "platform": "Linux",
+                    "search_keys": ["super", ""],
+                    "ctrl_key": "ctrl",
+                },
+                "prompt_class": PC_prompt,
+            },
         }
 
         if self.platform not in platform_configs:

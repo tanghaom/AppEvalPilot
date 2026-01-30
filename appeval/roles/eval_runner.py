@@ -28,7 +28,17 @@ from appeval.utils.excel_json_converter import (
     mini_list_to_json,
     update_project_excel_iters,
 )
-from appeval.utils.window_utils import kill_process, kill_windows, start_windows
+from appeval.utils.platform_utils import (
+    start_browser,
+    kill_browser,
+    kill_process,
+    cleanup_environment,
+    get_default_platform,
+    IS_WINDOWS,
+)
+# Keep window_utils import for backward compatibility on Windows
+if IS_WINDOWS:
+    from appeval.utils.window_utils import kill_windows, start_windows
 
 # Constants for sleep times
 SLEEP_AFTER_START_WEB = 10
@@ -76,6 +86,10 @@ class AppEvalRole(Role):
             "max_iters": kwargs.get("max_iters", 20),
         }
 
+        # Parallel execution parameters (Linux only)
+        self.remote_debugging_port = kwargs.get("remote_debugging_port", 9222)
+        self.user_data_dir = kwargs.get("user_data_dir", None)
+
         # Initialize CaseGenerator Action
         self.test_generator = CaseGenerator()
 
@@ -94,7 +108,7 @@ When testing game-related content, please pay close attention to judge whether t
 Please use the Tell action to report the results of all test cases before executing Stop"""
 
         self.osagent = OSAgent(
-            platform=kwargs.get("os_type", "Windows"),
+            platform=kwargs.get("os_type", get_default_platform()),
             max_iters=self.rc.agent_params["max_iters"],
             use_ocr=self.rc.agent_params["use_ocr"],
             quad_split_ocr=self.rc.agent_params["quad_split_ocr"],
@@ -117,17 +131,22 @@ Please use the Tell action to report the results of all test cases before execut
     async def _start_environment(self, url: str = None, work_path: str = None) -> Optional[int]:
         """Start test environment (browser or application)"""
         if url:
-            return await start_windows(target_url=url)
+            return await start_browser(
+                target_url=url,
+                remote_debugging_port=self.remote_debugging_port,
+                user_data_dir=self.user_data_dir
+            )
         if work_path:
-            return await start_windows(work_path=work_path)
+            return await start_browser(
+                work_path=work_path,
+                remote_debugging_port=self.remote_debugging_port,
+                user_data_dir=self.user_data_dir
+            )
         return None
 
     async def _cleanup_environment(self, is_web: bool, pid: Optional[int] = None) -> None:
         """Clean up test environment"""
-        processes = ["Chrome"] if is_web else ["Chrome", "cmd", "npm", "projectapp", "Edge"]
-        await kill_windows(processes)
-        if pid:
-            await kill_process(pid)
+        await cleanup_environment(is_web=is_web, pid=pid, port=self.remote_debugging_port)
 
     @staticmethod
     def _find_matching_key(key: Any, target_dict: dict) -> Optional[Any]:
@@ -618,7 +637,7 @@ Please use the Tell action to report the results of all test cases before execut
             return final_test_cases, executability
         except Exception as e:
             logger.error(f"Error occurred during test execution: {str(e)}")
-            await kill_windows(["Chrome", "cmd", "npm", "projectapp", "Edge"])
+            await cleanup_environment(is_web=True)
             raise
 
     async def run_single(
@@ -755,7 +774,7 @@ Please use the Tell action to report the results of all test cases before execut
 
         except Exception as e:
             logger.error(f"Error occurred during test execution: {str(e)}")
-            await kill_windows(["Chrome", "cmd", "npm", "projectapp", "Edge"])
+            await cleanup_environment(is_web=True, port=self.remote_debugging_port)
             raise
 
     async def run_mini_batch(

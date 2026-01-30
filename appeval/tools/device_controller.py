@@ -13,13 +13,32 @@ import xml.etree.ElementTree as ET
 from pathlib import Path
 from typing import Dict, List, Optional, Set, Tuple, Union
 
-import pyautogui
+import os
+
 import pyperclip
-import uiautomator2 as u2
 from metagpt.logs import logger
-from pywinauto import Desktop
-from pywinauto.controls.uiawrapper import UIAWrapper
-from pywinauto.win32structures import RECT
+
+# Conditional imports for platform-specific modules
+IS_WINDOWS = os.name == "nt"
+
+# Try to import pyautogui (may fail on headless Linux without DISPLAY)
+try:
+    import pyautogui
+except Exception as e:
+    pyautogui = None
+    logger.warning(f"pyautogui import failed (may need DISPLAY): {e}")
+
+if IS_WINDOWS:
+    import uiautomator2 as u2
+    from pywinauto import Desktop
+    from pywinauto.controls.uiawrapper import UIAWrapper
+    from pywinauto.win32structures import RECT
+else:
+    # Provide stubs for Linux to avoid import errors
+    u2 = None
+    Desktop = None
+    UIAWrapper = None
+    RECT = None
 
 
 class BaseController:
@@ -649,14 +668,95 @@ class WindowsElementProcessor:
         return (rect.left, rect.top, rect.right, rect.bottom)
 
 
+class LinuxController(BaseController):
+    """Linux device controller class
+
+    Provides basic operations for Linux devices.
+    Uses pyautogui for mouse/keyboard control, but does not support UI tree parsing.
+    """
+
+    def __init__(
+        self,
+        search_keys: Tuple[str, str] = ("super", ""),
+        ctrl_key: str = "ctrl",
+        max_tokens: int = 1000,
+    ):
+        """Initialize Linux controller
+
+        Args:
+            search_keys: Search shortcut keys (Super key on Linux)
+            ctrl_key: Control key
+            max_tokens: Maximum token count for UI element text
+        """
+        self.search_keys = search_keys
+        self.ctrl_key = ctrl_key
+        self.max_tokens = max_tokens
+        self.pc_type = "linux"
+
+    def _take_screenshot(self, filepath: str) -> None:
+        """Implement screenshot function for Linux device"""
+        screenshot = pyautogui.screenshot()
+        screenshot.save(filepath)
+
+    def open_app(self, name: str) -> None:
+        """Open application on Linux
+
+        Args:
+            name: Application name
+        """
+        logger.info(f"Opening application: {name}")
+        # Use Super key to open application launcher on most Linux desktops
+        pyautogui.hotkey("super")
+        time.sleep(0.5)
+
+        if self._contains_chinese(name):
+            pyperclip.copy(name)
+            pyautogui.hotkey(self.ctrl_key, "v")
+        else:
+            pyautogui.typewrite(name)
+
+        time.sleep(1)
+        pyautogui.press("enter")
+
+    def get_screen_xml(self, location_info: str = "center") -> List[Dict]:
+        """Get screen element information
+
+        On Linux, UI tree parsing is not supported.
+        Returns empty list - OSAgent should rely on OCR and icon detection.
+
+        Args:
+            location_info: Location information format (ignored on Linux)
+
+        Returns:
+            List[Dict]: Empty list (UI tree not available on Linux)
+        """
+        logger.debug("Linux does not support UI tree parsing, returning empty list")
+        return []
+
+    def _handle_run(self, action: str) -> None:
+        """Handle 'Run' action"""
+        code = self._extract_code(action)
+        logger.info(f"Executing code: {code}")
+        exec(code)
+
+
 class ControllerTool:
     """Device control tool class
 
-    Provides unified device control interface, supporting Android and PC devices.
+    Provides unified device control interface, supporting Android, Windows and Linux devices.
     """
 
     def __init__(self, platform: str = "Android", **kwargs):
-        self.controller = AndroidController() if platform == "Android" else PCController(**kwargs)
+        if platform == "Android":
+            if not IS_WINDOWS:
+                logger.warning("Android controller may not work properly on Linux")
+            self.controller = AndroidController()
+        elif platform == "Windows":
+            self.controller = PCController(**kwargs)
+        elif platform == "Linux":
+            self.controller = LinuxController(**kwargs)
+        else:
+            raise ValueError(f"Unsupported platform: {platform}")
 
     def __getattr__(self, name):
         """Proxy all method calls to specific controller"""
@@ -667,7 +767,7 @@ def create_controller(platform: str = "Android", **kwargs) -> ControllerTool:
     """Create controller tool instance
 
     Args:
-        platform: Platform type
+        platform: Platform type (Android, Windows, or Linux)
         **kwargs: Other parameters
 
     Returns:
@@ -676,6 +776,6 @@ def create_controller(platform: str = "Android", **kwargs) -> ControllerTool:
     Raises:
         ValueError: Raised when device type is invalid
     """
-    if platform not in ["Android", "Windows"]:
+    if platform not in ["Android", "Windows", "Linux"]:
         raise ValueError(f"Unsupported device type: {platform}")
     return ControllerTool(platform, **kwargs)
