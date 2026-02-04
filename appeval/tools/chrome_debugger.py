@@ -105,6 +105,61 @@ class ChromeDebugger:
         """Enable runtime monitoring"""
         await self.send_command("Runtime.enable")
         await self.send_command("Log.enable")
+        # Inject anti-detection code
+        await self.inject_anti_detection()
+
+    async def inject_anti_detection(self):
+        """Inject JavaScript to bypass bot detection"""
+        anti_detection_script = """
+        // Override navigator.webdriver
+        Object.defineProperty(navigator, 'webdriver', {
+            get: () => undefined,
+            configurable: true
+        });
+        
+        // Remove automation indicators
+        delete window.cdc_adoQpoasnfa76pfcZLmcfl_Array;
+        delete window.cdc_adoQpoasnfa76pfcZLmcfl_Promise;
+        delete window.cdc_adoQpoasnfa76pfcZLmcfl_Symbol;
+        
+        // Override chrome.runtime to hide automation
+        if (window.chrome) {
+            window.chrome.runtime = undefined;
+        }
+        
+        // Fake plugins
+        Object.defineProperty(navigator, 'plugins', {
+            get: () => [1, 2, 3, 4, 5],
+            configurable: true
+        });
+        
+        // Fake languages
+        Object.defineProperty(navigator, 'languages', {
+            get: () => ['en-US', 'en'],
+            configurable: true
+        });
+        
+        // Override permissions query
+        const originalQuery = window.navigator.permissions.query;
+        window.navigator.permissions.query = (parameters) => (
+            parameters.name === 'notifications' ?
+            Promise.resolve({ state: Notification.permission }) :
+            originalQuery(parameters)
+        );
+        """
+        try:
+            # Add script to run on every new document
+            await self.send_command("Page.enable")
+            await self.send_command("Page.addScriptToEvaluateOnNewDocument", {
+                "source": anti_detection_script
+            })
+            # Also run immediately on current page
+            await self.send_command("Runtime.evaluate", {
+                "expression": anti_detection_script
+            })
+            logger.info("Anti-detection script injected successfully")
+        except Exception as e:
+            logger.warning(f"Failed to inject anti-detection script: {e}")
 
     def _format_console_message(self, method: str, params: Dict) -> str:
         """Format console message

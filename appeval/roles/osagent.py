@@ -109,6 +109,7 @@ class OSAgent(Role):
         use_som: bool = False,
         extend_xml_infos: bool = True,
         use_chrome_debugger: bool = False,
+        remote_debugging_port: int = 9222,
         think_history_images: int = 3,
         # Display and layout parameters
         location_info: str = "center",
@@ -207,7 +208,7 @@ class OSAgent(Role):
 
         # Initialize browser debugger
         if self.use_chrome_debugger:
-            self.chrome_debugger = ChromeDebugger()
+            self.chrome_debugger = ChromeDebugger(port=self.remote_debugging_port)
 
     def _get_timestamped_paths(self) -> None:
         """Update file paths with timestamps"""
@@ -738,10 +739,10 @@ class OSAgent(Role):
         else:
             # Execute other actions
             try:
-                if self.platform in ["Android", "Windows"]:
+                if self.platform in ["Android", "Windows", "Linux"]:
                     self.controller.run_action(self.rc.action)
                 else:
-                    logger.error("Currently only supports Android and Windows")
+                    logger.error(f"Currently only supports Android, Windows and Linux, got: {self.platform}")
             except Exception as e:
                 # For direct exit when using tell in automg
                 if isinstance(e, SystemExit) and e.code == 0:

@@ -45,7 +45,7 @@ SLEEP_AFTER_START_WEB = 10
 SLEEP_AFTER_START_APP = 20
 SLEEP_AFTER_CLEANUP = 5
 SLEEP_BEFORE_EXECUTE = 30
-SLEEP_BETWEEN_RETRIES = 5
+SLEEP_BETWEEN_RETRIES = 30
 
 
 class AppEvalContext(RoleContext):
@@ -89,9 +89,12 @@ class AppEvalRole(Role):
         # Parallel execution parameters (Linux only)
         self.remote_debugging_port = kwargs.get("remote_debugging_port", 9222)
         self.user_data_dir = kwargs.get("user_data_dir", None)
+        
+        # Config file path
+        self.config_file = kwargs.get("config_file", "config/config2.yaml")
 
-        # Initialize CaseGenerator Action
-        self.test_generator = CaseGenerator()
+        # Initialize CaseGenerator Action with config file
+        self.test_generator = CaseGenerator(config_path=self.config_file)
 
         # Initialize OSAgent
         self._init_osagent(**kwargs)
@@ -119,6 +122,7 @@ Please use the Tell action to report the results of all test cases before execut
             use_som=False,
             extend_xml_infos=self.rc.agent_params["extend_xml_infos"],
             use_chrome_debugger=self.rc.agent_params["use_chrome_debugger"],
+            remote_debugging_port=self.remote_debugging_port,
             location_info="center",
             draw_text_box=False,
             log_dirs=self.rc.agent_params["log_dirs"],
@@ -386,7 +390,7 @@ Please use the Tell action to report the results of all test cases before execut
         previous_uncertain_count = float("inf")
         original_log_dir = self.osagent.log_dirs
         is_api_mode = task_name is not None and start_func is not None
-        is_web = (start_func.startswith("http://") or start_func.startswith("https://")) if start_func else False
+        is_web = (start_func.startswith("http://") or start_func.startswith("https://") or start_func.startswith("file://")) if start_func else False
 
         while retry_count < max_retry:
             uncertain_cases = self._extract_uncertain_cases(result)
@@ -527,7 +531,7 @@ Please use the Tell action to report the results of all test cases before execut
                            only reset osagent state. If False, execute all test cases at once (default).
         """
         self.osagent.log_dirs = f"work_dirs/{log_dir}/{task_name}"
-        is_web = start_func.startswith("http://") or start_func.startswith("https://")
+        is_web = start_func.startswith("http://") or start_func.startswith("https://") or start_func.startswith("file://")
 
         # Start environment
         await self._start_environment(url=start_func if is_web else None, work_path=start_func if not is_web else None)

@@ -14,6 +14,16 @@ from typing import List, Optional
 import psutil
 from metagpt.logs import logger
 
+# Try to import undetected_chromedriver
+try:
+    import undetected_chromedriver as uc
+    # Disable UC for now due to Xvfb compatibility issues
+    UC_AVAILABLE = False
+    logger.info("undetected_chromedriver available but disabled (Xvfb compatibility)")
+except ImportError:
+    UC_AVAILABLE = False
+    logger.warning("undetected_chromedriver not available, using standard Chrome")
+
 # Alternative Chrome paths for Linux
 LINUX_CHROME_PATHS = [
     "/usr/bin/google-chrome",
@@ -39,6 +49,79 @@ def find_chrome_path() -> Optional[str]:
     return None
 
 
+# Global dict to store UC driver instances
+_uc_drivers = {}
+
+
+async def _start_browser_with_uc(
+    target_url: str,
+    remote_debugging_port: int,
+    headless: bool,
+    user_data_dir: str,
+) -> int:
+    """
+    Start browser using undetected_chromedriver to bypass Cloudflare.
+    
+    Args:
+        target_url: URL to open
+        remote_debugging_port: Chrome debugging port
+        headless: Whether to run headless
+        user_data_dir: User data directory
+        
+    Returns:
+        int: Process ID of the browser
+    """
+    import undetected_chromedriver as uc
+    
+    options = uc.ChromeOptions()
+    
+    # Basic options
+    options.add_argument("--no-sandbox")
+    options.add_argument("--disable-dev-shm-usage")
+    options.add_argument("--disable-gpu")
+    options.add_argument("--window-size=1920,1080")
+    options.add_argument("--window-position=0,0")
+    options.add_argument("--force-renderer-accessibility")
+    options.add_argument(f"--remote-debugging-port={remote_debugging_port}")
+    
+    if user_data_dir:
+        options.add_argument(f"--user-data-dir={user_data_dir}")
+    
+    if headless:
+        options.add_argument("--headless=new")
+    
+    logger.info(f"Starting undetected Chrome on port {remote_debugging_port}")
+    
+    try:
+        # Create driver with version_main to match installed Chrome (144)
+        driver = uc.Chrome(
+            options=options,
+            use_subprocess=True,
+            version_main=144,  # Match installed Chrome version
+        )
+        
+        # Navigate to URL
+        driver.get(target_url)
+        
+        # Store driver reference to prevent garbage collection
+        _uc_drivers[remote_debugging_port] = driver
+        
+        # Get the browser process PID
+        pid = driver.browser_pid if hasattr(driver, 'browser_pid') else driver.service.process.pid
+        
+        logger.info(f"Undetected Chrome started with PID: {pid}")
+        
+        # Wait for page to load
+        await asyncio.sleep(3)
+        
+        return pid
+        
+    except Exception as e:
+        logger.error(f"Failed to start undetected Chrome: {e}")
+        # Fallback to standard method
+        raise
+
+
 async def start_browser(
     target_url: str = "",
     chrome_path: str = None,
@@ -49,6 +132,7 @@ async def start_browser(
 ) -> int:
     """
     Start browser with accessibility and remote debugging enabled on Linux.
+    Uses undetected_chromedriver to bypass Cloudflare detection.
 
     Args:
         target_url: URL to open in browser
@@ -65,6 +149,13 @@ async def start_browser(
     await kill_chrome_by_port(remote_debugging_port)
 
     if target_url:
+        # Try using undetected_chromedriver first
+        if UC_AVAILABLE:
+            return await _start_browser_with_uc(
+                target_url, remote_debugging_port, headless, user_data_dir
+            )
+        
+        # Fallback to standard Chrome
         # Find Chrome path
         if chrome_path is None:
             chrome_path = find_chrome_path()
@@ -74,7 +165,7 @@ async def start_browser(
                 f"Searched paths: {LINUX_CHROME_PATHS}"
             )
 
-        # Build Chrome command
+        # Build Chrome command with anti-detection flags
         cmd_parts = [
             chrome_path,
             "--force-renderer-accessibility",
@@ -86,6 +177,12 @@ async def start_browser(
             "--disable-dev-shm-usage", # Overcome limited /dev/shm in containers
             "--window-position=0,0",  # Start window at top-left corner
             "--window-size=1920,1080", # Set exact window size
+            # Anti-detection flags to bypass Cloudflare
+            "--disable-blink-features=AutomationControlled",
+            "--disable-infobars",
+            "--disable-automation",
+            "--disable-extensions",
+            '--user-agent=Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
         ]
 
         if headless:
