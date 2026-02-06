@@ -5,6 +5,8 @@
 @File    : case_generator.py
 @Desc    : Action for generating and validating test cases
 """
+import json
+import re
 from enum import Enum
 from pathlib import Path
 from typing import Dict, List
@@ -32,25 +34,6 @@ class OperationType(Enum):
 class CaseGenerator(Action):
     name: str = "CaseGenerator"
     desc: str = "Action for generating and validating test cases"
-
-    @staticmethod
-    def clean_markdown_json(text: str) -> str:
-        """Clean markdown code block format from JSON string
-
-        Args:
-            text: Input string that may contain markdown code blocks
-
-        Returns:
-            str: Cleaned string with markdown code blocks removed
-        """
-        text = text.strip()
-        if text.startswith("```json"):
-            text = text[7:]  # Remove ```json
-        elif text.startswith("```"):
-            text = text[3:]  # Remove ```
-        if text.endswith("```"):
-            text = text[:-3]  # Remove trailing ```
-        return text.strip()
 
     def __init__(self, config_path: str = "config/config2.yaml"):
         super().__init__()
@@ -231,12 +214,12 @@ class CaseGenerator(Action):
             # Call chat to generate results
             answer = await self._inference_chat(prompt)
             logger.info(f"answer: {answer}")
-
-            # Clean markdown code block format if present
-            answer = self.clean_markdown_json(answer)
-
+            # Remove markdown code block markers if present
+            answer = answer.strip()
+            answer = re.sub(r"^```(?:json)?\s*\n?", "", answer)
+            answer = re.sub(r"\n?```\s*$", "", answer)
             # Convert string to dictionary
-            results = eval(answer)
+            results = json.loads(answer)
             return results
 
         except Exception as e:
@@ -337,8 +320,6 @@ class CaseGenerator(Action):
 
                 # Convert string to dictionary
                 try:
-                    # Clean markdown format if present
-                    case_result = self.clean_markdown_json(case_result)
                     case_result_dict = eval(case_result)
                     is_executable = await self.gen_executability(case_result_dict)
                     df.at[index, "Executability"] = str(is_executable)

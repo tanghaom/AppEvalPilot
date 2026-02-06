@@ -7,14 +7,28 @@
 """
 import asyncio
 import os
+import shutil
 import subprocess
 from pathlib import Path
 from typing import List, Optional
 
 import psutil
 from metagpt.logs import logger
-from pywinauto import Desktop
-from pywinauto.application import WindowSpecification
+
+# Windows-only imports - pywinauto only works on Windows
+try:
+    if os.name == "nt":
+        from pywinauto import Desktop
+        from pywinauto.application import WindowSpecification
+        _HAS_PYWINAUTO = True
+    else:
+        Desktop = None  # type: ignore
+        WindowSpecification = None  # type: ignore
+        _HAS_PYWINAUTO = False
+except ImportError:
+    Desktop = None  # type: ignore
+    WindowSpecification = None  # type: ignore
+    _HAS_PYWINAUTO = False
 
 # Add CREATE_NO_WINDOW flag import
 if os.name == "nt":  # Only import on Windows systems
@@ -55,14 +69,30 @@ async def start_windows(
     Returns:
         int: Process ID (PID) of the started process
     """
+    # clean up the chrome windows
+    await kill_windows(["Chrome"])
     if target_url:
-        app_path = Path(app_path)
-        if not app_path.exists():
-            raise FileNotFoundError(f"Browser executable not found at: {app_path}")
-
-        cmd = (
-            f'"{app_path}" --force-renderer-accessibility --remote-debugging-port=9222 --start-fullscreen {target_url}'
-        )
+        if os.name == "nt":
+            # Windows: Use provided app_path or default Windows Chrome path
+            app_path_obj = Path(app_path)
+            if not app_path_obj.exists():
+                raise FileNotFoundError(f"Browser executable not found at: {app_path_obj}")
+            cmd = (
+                f'"{app_path_obj}" --force-renderer-accessibility --remote-debugging-port=9222 --start-fullscreen {target_url}'
+            )
+        else:
+            # Linux/Mac: Find Chrome/Chromium executable
+            chrome_cmd = None
+            for cmd_name in ["google-chrome", "chromium", "chromium-browser", "chrome", "google-chrome-stable"]:
+                chrome_path = shutil.which(cmd_name)
+                if chrome_path:
+                    chrome_cmd = chrome_path
+                    break
+            if not chrome_cmd:
+                raise FileNotFoundError("Chrome/Chromium browser not found. Please install google-chrome or chromium.")
+            # Add --no-sandbox for root user on Linux
+            no_sandbox = "--no-sandbox" if os.geteuid() == 0 else ""
+            cmd = f'{chrome_cmd} {no_sandbox} --no-default-browser-check --no-first-run --force-renderer-accessibility --remote-debugging-port=9222 --start-fullscreen {target_url}'
     elif work_path:
         work_path = Path(work_path)
         if not work_path.exists():
@@ -88,7 +118,7 @@ async def start_windows(
     return process.pid
 
 
-async def kill_windows(target_names: List[str]) -> Optional[List[WindowSpecification]]:
+async def kill_windows(target_names: List[str]) -> Optional[List]:
     """
     Find and close windows matching the target names.
 
@@ -96,8 +126,24 @@ async def kill_windows(target_names: List[str]) -> Optional[List[WindowSpecifica
         target_names: List of window names to match and close
 
     Returns:
-        Optional[List[WindowSpecification]]: List of windows that couldn't be closed, or None if successful
+        Optional[List]: List of windows that couldn't be closed, or None if successful
     """
+    if not _HAS_PYWINAUTO or os.name != "nt":
+        # Linux/Unix: Use pkill to kill processes by name
+        logger.debug(f"Using pkill to kill processes: {target_names}")
+        for name in target_names:
+            try:
+                # Use pkill to kill processes by name (case-insensitive)
+                cmd = f"pkill -f -i '{name}'"
+                process = await asyncio.create_subprocess_shell(
+                    cmd, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE
+                )
+                await process.communicate()
+                logger.info(f"Killed processes matching: {name}")
+            except Exception as e:
+                logger.error(f"Failed to kill process {name}: {str(e)}")
+        return None
+
     try:
         desktop = Desktop(backend="uia")
         windows = desktop.windows()

@@ -6,7 +6,6 @@
 @File    : osagent.py
 @Desc    : Operating System Operation Assistant
 """
-import asyncio
 import copy
 import json
 import random
@@ -16,7 +15,13 @@ import sys
 import time
 import warnings
 from pathlib import Path
+import os
 from typing import Any, Dict, List, Optional, Tuple
+
+os.environ['CONFIG_ROOT'] = str(Path(__file__).parent.parent / "config")
+
+from metagpt.const import CONFIG_ROOT
+print(CONFIG_ROOT)
 
 from metagpt.actions.action import Action
 from metagpt.logs import logger
@@ -27,8 +32,7 @@ from PIL import Image, ImageDraw, ImageFont
 from pydantic import ConfigDict, Field
 from tenacity import retry, retry_if_exception_type, stop_after_attempt, wait_fixed
 
-from appeval.actions.reflection import Reflection
-from appeval.actions.screen_info_extractor import ScreenInfoExtractor
+from appeval.actions.tell_verifier import TellVerifier
 from appeval.prompts.osagent import ActionPromptContext, Android_prompt, PC_prompt
 from appeval.tools.chrome_debugger import ChromeDebugger
 from appeval.tools.device_controller import ControllerTool
@@ -45,23 +49,39 @@ class OSAgentContext(RoleContext):
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
     thought: str = ""  # Current thinking content
-    thought_history: List[str] = Field(default_factory=list)  # Historical thinking records list
-    summary_history: List[str] = Field(default_factory=list)  # Historical operation summary list
-    action_history: List[str] = Field(default_factory=list)  # Historical executed action list
-    reflection_thought_history: List[str] = Field(default_factory=list)  # Historical reflection records list
+    # Historical thinking records list
+    thought_history: List[str] = Field(default_factory=list)
+    # Historical operation summary list
+    summary_history: List[str] = Field(default_factory=list)
+    # Historical executed action list
+    action_history: List[str] = Field(default_factory=list)
+    reflection_thought_history: List[str] = Field(
+        default_factory=list)  # Historical reflection records list
     reflection_thought: str = ""  # Current reflection content
     summary: str = ""  # Current operation summary
+    image_description: str = ""  # Current image description extracted during thinking
     action: str = ""  # Current executed action
     task_list: str = ""  # Task list
     completed_requirements: str = ""  # Completed requirements
-    memory: List[str] = Field(default_factory=list)  # Important content memory list
+    # Important content memory list
+    memory: List[str] = Field(default_factory=list)
     error_flag: bool = False  # Error flag
+    error_message: str = ""  # Error message when action execution fails
     iter: int = 0  # Current iteration count
-    perception_infos: List[Dict] = Field(default_factory=list)  # Current perception information list
-    last_perception_infos: List[Dict] = Field(default_factory=list)  # Previous perception information list
+    # Current perception information list
+    perception_infos: List[Dict] = Field(default_factory=list)
+    last_perception_infos: List[Dict] = Field(
+        default_factory=list)  # Previous perception information list
     width: int = 0  # Screen width
     height: int = 0  # Screen height
-    webbrowser_console_logs: List[Any] = Field(default_factory=list)  # Browser console log list
+    webbrowser_console_logs: List[Any] = Field(
+        default_factory=list)  # Browser console log list
+    assumption: str = ""  # Current assumption about task completion
+    confidence: float = 0.0  # Current confidence level (0-1)
+    # Historical assumption records list
+    assumption_history: List[str] = Field(default_factory=list)
+    confidence_history: List[float] = Field(
+        default_factory=list)  # Historical confidence records list
 
     def reset(self) -> None:
         """Reset all states to initial values"""
@@ -77,12 +97,17 @@ class OSAgentContext(RoleContext):
         self.completed_requirements = ""
         self.memory = []
         self.error_flag = False
+        self.error_message = ""
         self.iter = 0
         self.perception_infos = []
         self.last_perception_infos = []
         self.width = 0
         self.height = 0
         self.webbrowser_console_logs = []
+        self.assumption = ""
+        self.confidence = 0.0
+        self.assumption_history = []
+        self.confidence_history = []
 
 
 class OSAgent(Role):
@@ -102,15 +127,15 @@ class OSAgent(Role):
         platform: str = "Android",
         max_iters: int = 50,
         # Feature switch parameters
-        use_ocr: bool = True,
+        use_ocr: bool = False,
         quad_split_ocr: bool = False,
-        use_icon_detect: bool = True,
-        use_icon_caption: bool = True,
-        use_memory: bool = True,
-        use_reflection: bool = True,
+        use_icon_detect: bool = False,
+        use_icon_caption: bool = False,
         use_som: bool = False,
         extend_xml_infos: bool = True,
         use_chrome_debugger: bool = False,
+        use_tell_verifier: bool = True,
+        think_history_images: int = 3,
         # Display and layout parameters
         location_info: str = "center",
         draw_text_box: bool = False,
@@ -132,11 +157,10 @@ class OSAgent(Role):
             quad_split_ocr (bool): Whether to split image into four parts for OCR recognition.
             use_icon_detect (bool): Whether to use icon detection.
             use_icon_caption (bool): Whether to use icon caption.
-            use_memory (bool): Whether to enable important content memory.
-            use_reflection (bool): Whether to perform reflection.
             use_som (bool): Whether to draw visualization boxes on screenshots.
             extend_xml_infos (bool): Whether to add XML element information.
             use_chrome_debugger (bool): Whether to record browser console output.
+            use_tell_verifier (bool): Whether to verify Tell action judgments against screenshots.
             location_info (str): Location information type (center or bbox).
             draw_text_box (bool): Whether to draw text boxes in visualization.
             log_dirs (str): Log directory
@@ -144,6 +168,7 @@ class OSAgent(Role):
             knowledge_base_path (str): Preset knowledge base file directory path
             system_prompt (str): System prompt
             add_info (str): Additional information to add to the prompt
+            think_history_images (int): Max number of screenshots (latest-first) to include during think
         """
         super().__init__(**kwargs)
 
@@ -159,7 +184,8 @@ class OSAgent(Role):
     def _init_config(self, params: dict) -> None:
         """Initialize configuration parameters"""
         # Filter out self and kwargs
-        config_params = {k: v for k, v in params.items() if k not in ["self", "kwargs"]}
+        config_params = {k: v for k, v in params.items() if k not in [
+            "self", "kwargs"]}
         for key, value in config_params.items():
             setattr(self, key, value)
 
@@ -199,12 +225,6 @@ class OSAgent(Role):
 
     def _init_tools(self) -> None:
         """Initialize tool components"""
-        # Initialize information extractor
-        self.info_extractor = ScreenInfoExtractor(platform=self.platform)
-
-        # Initialize reflection tool
-        self.reflection_action = Reflection(platform=self.platform)
-
         # Initialize icon detection/caption tool
         if self.use_icon_detect or self.use_icon_caption:
             self.icon_tool = IconDetectTool(self.llm)
@@ -216,6 +236,17 @@ class OSAgent(Role):
         # Initialize browser debugger
         if self.use_chrome_debugger:
             self.chrome_debugger = ChromeDebugger()
+
+        # Initialize Tell action verifier
+        if self.use_tell_verifier:
+            try:
+                self.tell_verifier = TellVerifier()
+                logger.info("TellVerifier initialized successfully")
+            except Exception as e:
+                logger.warning(
+                    f"Failed to initialize TellVerifier, disabling: {str(e)}")
+                self.use_tell_verifier = False
+                self.tell_verifier = None
 
     def _get_timestamped_paths(self) -> None:
         """Update file paths with timestamps"""
@@ -229,9 +260,12 @@ class OSAgent(Role):
         # Screenshot related paths
         self.screenshot_dir = log_dir / "screenshot"
         self.screenshot_file = str(self.screenshot_dir / "screenshot.jpg")
-        self.screenshot_som_file = str(self.screenshot_dir / "screenshot_som.png")
-        self.last_screenshot_file = str(self.screenshot_dir / "last_screenshot.jpg")
-        self.last_screenshot_som_file = str(self.screenshot_dir / "last_screenshot_som.png")
+        self.screenshot_som_file = str(
+            self.screenshot_dir / "screenshot_som.png")
+        self.last_screenshot_file = str(
+            self.screenshot_dir / "last_screenshot.jpg")
+        self.last_screenshot_som_file = str(
+            self.screenshot_dir / "last_screenshot_som.png")
 
     def _init_os_env(self) -> None:
         """Initialize operating system environment.
@@ -288,6 +322,7 @@ class OSAgent(Role):
         # Reset other states
         self.run_action_failed = False
         self.run_action_failed_exception = ""
+        self._action_error_detected = False  # Reset action error flag
 
         if self.use_chrome_debugger:
             self.chrome_debugger.start_monitoring()
@@ -320,7 +355,8 @@ class OSAgent(Role):
         )
 
         # Add console log handler
-        logger.add(sys.stdout, level="DEBUG", format=log_format, colorize=True, enqueue=True)
+        logger.add(sys.stdout, level="DEBUG", format=log_format,
+                   colorize=True, enqueue=True)
 
         logger.info(f"Initialized logging, log file: {self.save_info}")
 
@@ -344,7 +380,8 @@ class OSAgent(Role):
         text_offset_y = int(height * 0.013)
 
         # Generate random colors for each bounding box
-        colors = [tuple(random.randint(0, 255) for _ in range(3)) for _ in range(len(coordinates))]
+        colors = [tuple(random.randint(0, 255) for _ in range(3))
+                  for _ in range(len(coordinates))]
 
         # Draw bounding boxes and numbers
         draw = ImageDraw.Draw(image)
@@ -431,7 +468,8 @@ class OSAgent(Role):
         # OCR processing
         text, text_coordinates = [], []
         if self.use_ocr:
-            text, text_coordinates = self.ocr_tool.ocr(screenshot_file, split=self.quad_split_ocr)
+            text, text_coordinates = self.ocr_tool.ocr(
+                screenshot_file, split=self.quad_split_ocr)
 
         # Icon detection
         icon_coordinates = []
@@ -442,9 +480,11 @@ class OSAgent(Role):
         output_image_path = screenshot_som_file
         if self.use_ocr and self.use_icon_detect and self.draw_text_box:
             rec_list = text_coordinates + icon_coordinates
-            self._draw_bounding_boxes(screenshot_file, copy.deepcopy(rec_list), screenshot_som_file, self.font_path)
+            self._draw_bounding_boxes(screenshot_file, copy.deepcopy(
+                rec_list), screenshot_som_file, self.font_path)
         elif self.use_icon_detect:
-            self._draw_bounding_boxes(screenshot_file, copy.deepcopy(icon_coordinates), screenshot_som_file, self.font_path)
+            self._draw_bounding_boxes(screenshot_file, copy.deepcopy(
+                icon_coordinates), screenshot_som_file, self.font_path)
         else:
             output_image_path = screenshot_file
 
@@ -462,7 +502,8 @@ class OSAgent(Role):
                         "coordinates": text_coordinates[i],
                     }
                 else:
-                    perception_info = {"text": f"text: {text[i]}", "coordinates": text_coordinates[i]}
+                    perception_info = {
+                        "text": f"text: {text[i]}", "coordinates": text_coordinates[i]}
                 perception_infos.append(perception_info)
 
         # Add icon information
@@ -470,33 +511,40 @@ class OSAgent(Role):
             for i in range(len(icon_coordinates)):
                 mark_number += 1
                 if self.use_som:
-                    perception_info = {"text": f"mark number: {mark_number} icon", "coordinates": icon_coordinates[i]}
+                    perception_info = {
+                        "text": f"mark number: {mark_number} icon", "coordinates": icon_coordinates[i]}
                 else:
-                    perception_info = {"text": "icon", "coordinates": icon_coordinates[i]}
+                    perception_info = {"text": "icon",
+                                       "coordinates": icon_coordinates[i]}
                 perception_infos.append(perception_info)
 
         # Icon description
         if self.use_icon_detect and self.use_icon_caption:
-            icon_indices = [i for i in range(len(perception_infos)) if "icon" in perception_infos[i]["text"]]
+            icon_indices = [i for i in range(
+                len(perception_infos)) if "icon" in perception_infos[i]["text"]]
             if icon_indices:
-                icon_boxes = [perception_infos[i]["coordinates"] for i in icon_indices]
+                icon_boxes = [perception_infos[i]["coordinates"]
+                              for i in icon_indices]
                 descriptions = await self.icon_tool.caption(screenshot_file, icon_boxes, platform=self.platform)
 
                 # Add description to perception information
                 for idx, desc_idx in enumerate(icon_indices):
                     if descriptions.get(idx + 1):
-                        perception_infos[desc_idx]["text"] += ": " + descriptions[idx + 1].replace("\n", " ")
+                        perception_infos[desc_idx]["text"] += ": " + \
+                            descriptions[idx + 1].replace("\n", " ")
 
         # According to parameter modify coordinate information
         if self.location_info == "center":
             for i in range(len(perception_infos)):
                 x1, y1, x2, y2 = perception_infos[i]["coordinates"]
-                perception_infos[i]["coordinates"] = [int((x1 + x2) / 2), int((y1 + y2) / 2)]
+                perception_infos[i]["coordinates"] = [
+                    int((x1 + x2) / 2), int((y1 + y2) / 2)]
         elif self.location_info == "icon_center":
             for i in range(len(perception_infos)):
                 if "icon" in perception_infos[i]["text"]:
                     x1, y1, x2, y2 = perception_infos[i]["coordinates"]
-                    perception_infos[i]["coordinates"] = [int((x1 + x2) / 2), int((y1 + y2) / 2)]
+                    perception_infos[i]["coordinates"] = [
+                        int((x1 + x2) / 2), int((y1 + y2) / 2)]
 
         # If extend_xml_infos is enabled, then get XML information
         if self.extend_xml_infos and self.platform in ["Android", "Windows", "Linux"]:
@@ -521,7 +569,8 @@ class OSAgent(Role):
         if not self.rc.webbrowser_console_logs:
             return []  # If there is no log, directly return empty list
         if expand:
-            return [log for log in self.rc.webbrowser_console_logs[-steps:] if log]  # Filter empty list
+            # Filter empty list
+            return [log for log in self.rc.webbrowser_console_logs[-steps:] if log]
         else:
             # Use zip to pair operation history and log
             outputs = [
@@ -533,52 +582,23 @@ class OSAgent(Role):
 
     def get_action_history(self) -> List[Dict[str, Any]]:
         """
-        Get action history, including thoughts, summaries, actions, optional memories and reflections.
+        Get action history, including thoughts, summaries, actions, memories and reflections.
         Returns:
             list: A list of dictionaries, each dictionary represents a historical record of an action step.
-                  Each dictionary contains "thought", "summary", "action",
-                  and optional "memory" and "reflection".
+                  Each dictionary contains "thought", "summary", "action", "memory" and "reflection".
         """
         outputs = []
-        # Use zip to pair corresponding elements of three historical lists and use enumerate to get index
+        # Use zip to pair corresponding elements of historical lists
         for i, (thought, summary, action) in enumerate(zip(self.rc.thought_history, self.rc.summary_history, self.rc.action_history)):
             output = {
                 "thought": thought,
                 "summary": summary,
                 "action": action,
-            }  # Current step thought  # Current step summary  # Current step action
-            # If memory switch is enabled, add memory information
-            if self.use_memory:
-                output["memory"] = self.rc.memory[i]
-            # If reflection switch is enabled, add reflection information
-            if self.use_reflection:
-                output["reflection"] = self.rc.reflection_thought_history[i]
-            outputs.append(output)  # Add current step information to output list
+                "memory": self.rc.memory[i] if i < len(self.rc.memory) else "",
+                "reflection": self.rc.reflection_thought_history[i] if i < len(self.rc.reflection_thought_history) else "",
+            }
+            outputs.append(output)
         return outputs
-
-    @retry(
-        stop=stop_after_attempt(10),
-        wait=wait_fixed(3),
-        retry=retry_if_exception_type(Exception),
-        before_sleep=lambda retry_state: logger.warning(
-            f"Information extraction failed, {retry_state.attempt_number}th retry: {str(retry_state.outcome.exception())}"
-        ),
-        reraise=True,
-    )
-    async def _async_memory_task(self, insight: str, screenshot_file: str) -> str:
-        """Execute information extraction task asynchronously
-
-        Args:
-            insight (str): Content/task description to focus on
-            screenshot_file (str): Screenshot file path
-
-        Returns:
-            str: Extracted important content
-        """
-        if not self.use_memory:
-            return ""
-
-        return await self.info_extractor.run(insight, screenshot_file)
 
     @retry(
         stop=stop_after_attempt(10),
@@ -602,7 +622,8 @@ class OSAgent(Role):
                 info = "No add_info"
             logger.info(f"\n\n\n\n\n\n#### add_info:{info}\n\n")
         else:
-            logger.info("Knowledge base currently only implemented for Android")
+            logger.info(
+                "Knowledge base currently only implemented for Android")
 
         # Generate action
         ctx = ActionPromptContext(
@@ -619,18 +640,45 @@ class OSAgent(Role):
             reflection_thought=self.rc.reflection_thought,
             add_info=add_info,
             error_flag=self.rc.error_flag,
+            error_message=self.rc.error_message,
             completed_content=self.rc.completed_requirements,
             memory=self.rc.memory,
             task_list=self.rc.task_list,
             use_som=self.use_som,
             location_info=self.location_info,
+            is_first_step=(self.rc.iter == 1),
+            previous_assumption=self.rc.assumption,
         )
 
         prompt_action = self.prompt_utils.get_action_prompt(ctx)
-        logger.info(f"\n\n######################## prompt_action:\n{prompt_action}\n\n######################## prompt_action end\n\n\n\n")
+        logger.info(
+            f"\n\n######################## prompt_action:\n{prompt_action}\n\n######################## prompt_action end\n\n\n\n")
 
-        # Call LLM to generate decision
-        images = [encode_image(self.screenshot_file)]
+        # Call LLM to generate decision with history images
+        images = []
+        # include previous frames up to think_history_images - 1 using saved origin/draw files
+        try:
+            if isinstance(self.think_history_images, int) and self.think_history_images > 1:
+                # Skip the immediate previous frame (iter-1). Select up to (think_history_images - 1) most recent frames
+                # from iter-2 backward, then append them in chronological order (old -> new).
+                max_hist_frames = self.think_history_images - 1
+                end = self.rc.iter - 2
+                if end >= 0:
+                    start = max(0, end - (max_hist_frames - 1))
+                    for frame_num in range(start, end + 1):  # ascending: old -> new
+                        origin_path = Path(self.save_img) / \
+                            f"origin_{frame_num}.jpg"
+                        draw_path = Path(self.save_img) / \
+                            f"draw_{frame_num}.jpg"
+                        if origin_path.exists():
+                            images.append(encode_image(str(origin_path)))
+                            # If SOM is enabled and annotated image exists, also include it for the same frame
+                            if self.use_som and draw_path.exists():
+                                images.append(encode_image(str(draw_path)))
+        except Exception:
+            pass
+        # include latest image (with/without SOM)
+        images.append(encode_image(self.screenshot_file))
         if self.use_som:
             images.append(encode_image(self.screenshot_som_file))
 
@@ -649,79 +697,65 @@ class OSAgent(Role):
         )
 
         # Parse output
-        self.rc.thought = (
-            output_action.split("### Thought ###")[-1].split("### Action ###")[0].replace("\n", " ").replace(":", "").replace("  ", " ").strip()
-        )
-        self.rc.action = output_action.split("### Action ###")[-1].split("### Operation ###")[0].strip()
-        self.rc.summary = output_action.split("### Operation ###")[-1].split("### Task List ###")[0].strip().replace("\n", "\\n")
-        self.rc.task_list = output_action.split("### Task List ###")[-1].strip()
+        # Safely parse LLM output sections. If any required marker is missing, return empty to avoid mis-parsing.
+        def _extract_between(text, start, end=None, normalize=False, escape_newlines=False):
+            if start not in text:
+                return ""
+            start_idx = text.find(start) + len(start)
+            if end is not None:
+                end_idx = text.find(end, start_idx)
+                if end_idx == -1:
+                    return ""
+                content = text[start_idx:end_idx]
+            else:
+                content = text[start_idx:]
+            content = content.strip()
+            if escape_newlines:
+                content = content.replace("\n", "\\n")
+            if normalize:
+                content = content.replace(":", "")
+                # collapse multiple spaces
+                content = re.sub(r"\s{2,}", " ", content)
+            return content.strip()
 
-        logger.info(f"\n\n######################## output_action:\n{output_action}\n\n######################## output_action end\n\n\n\n")
+        self.rc.image_description = _extract_between(
+            output_action, "### Image Description ###", "### Reflection Thought ###", escape_newlines=True)
+        self.rc.reflection_thought = _extract_between(
+            output_action, "### Reflection Thought ###", "### Thought ###", escape_newlines=True)
+        self.rc.thought = _extract_between(
+            output_action, "### Thought ###", "### Action ###", normalize=True)
+        self.rc.action = _extract_between(
+            output_action, "### Action ###", "### Operation ###")
+        self.rc.summary = _extract_between(
+            output_action, "### Operation ###", "### Task List ###", escape_newlines=True)
+        self.rc.task_list = _extract_between(
+            output_action, "### Task List ###", "### Assumption ###")
+        self.rc.assumption = _extract_between(
+            output_action, "### Assumption ###", "### Confidence ###", escape_newlines=True)
+
+        # Parse confidence value
+        confidence_str = _extract_between(output_action, "### Confidence ###")
+        try:
+            # Extract the first number from the confidence string
+            confidence_match = re.search(r"(\d+\.?\d*)", confidence_str)
+            if confidence_match:
+                self.rc.confidence = float(confidence_match.group(1))
+                # Clamp to [0, 1] range
+                self.rc.confidence = max(0.0, min(1.0, self.rc.confidence))
+            else:
+                self.rc.confidence = 0.0
+        except (ValueError, AttributeError):
+            self.rc.confidence = 0.0
+
+        logger.info(
+            f"\n\n######################## output_action:\n{output_action}\n\n######################## output_action end\n\n\n\n")
+        logger.info(f"#### Assumption: {self.rc.assumption}")
+        logger.info(f"#### Confidence: {self.rc.confidence}")
 
         if self.rc.action.startswith("Stop"):
             return False
         else:
             return True
-
-    @retry(
-        stop=stop_after_attempt(10),
-        wait=wait_fixed(3),
-        retry=retry_if_exception_type(Exception),
-        before_sleep=lambda retry_state: logger.warning(
-            f"Reflection execution failed, {retry_state.attempt_number}th retry: {str(retry_state.outcome.exception())}"
-        ),
-        reraise=True,
-    )
-    async def _reflection(
-        self,
-        instruction: str,
-        last_perception_infos: list,
-        perception_infos: list,
-        width: int,
-        height: int,
-        summary: str,
-        action: str,
-        add_info: str,
-        last_screenshot_file: str,
-        screenshot_file: str,
-    ) -> Tuple[str, str]:
-        """Execute reflection task
-
-        Args:
-            instruction (str): User instruction
-            last_perception_infos (list): Previous perception information
-            perception_infos (list): Current perception information
-            width (int): Screenshot width
-            height (int): Screenshot height
-            summary (str): Operation summary
-            action (str): Executed action
-            add_info (str): Additional information
-            last_screenshot_file (str): Previous screenshot path
-            screenshot_file (str): Current screenshot path
-
-        Returns:
-            tuple: (reflection result, reflection content)
-        """
-        if not self.use_reflection:
-            return "", ""
-
-        if "Tell" in action or "Wait" in action:
-            return "", "When using the Tell or Wait action, there is no need to do reflection."
-
-        reflect, reflection_thought = await self.reflection_action.run(
-            instruction,
-            last_perception_infos,
-            perception_infos,
-            width,
-            height,
-            summary,
-            action,
-            add_info,
-            last_screenshot_file,
-            screenshot_file,
-        )
-
-        return reflect, reflection_thought
 
     async def _get_app_package_name(self, app_name: str) -> str:
         """Get application package name
@@ -740,14 +774,17 @@ class OSAgent(Role):
         if map_path.exists():
             app_mapping = map_path.read_text(encoding="utf-8").strip()
         else:
-            logger.warning(f"{map_path} file does not exist, using default empty mapping")
+            logger.warning(
+                f"{map_path} file does not exist, using default empty mapping")
 
         # Get package name
-        prompt_package_name = self.prompt_utils.get_package_name_prompt(app_name=app_name, app_mapping=app_mapping, package_list=package_list)
+        prompt_package_name = self.prompt_utils.get_package_name_prompt(
+            app_name=app_name, app_mapping=app_mapping, package_list=package_list)
 
         package_name = await self.llm.aask(
             prompt_package_name,
-            system_msgs=[f"You are a helpful AI {'mobile phone' if self.platform=='Android' else 'PC'} operating assistant."],
+            system_msgs=[
+                f"You are a helpful AI {'mobile phone' if self.platform=='Android' else 'PC'} operating assistant."],
             stream=False,
         )
 
@@ -773,13 +810,15 @@ class OSAgent(Role):
             self.controller.open_app(app_name)
             time.sleep(10)
         else:
-            logger.error(f"Platform {self.platform} not supported for opening apps")
+            logger.error(
+                f"Platform {self.platform} not supported for opening apps")
 
     async def _act(self) -> Message:
         """Execute action step"""
         if self.use_chrome_debugger:
             # Store browser logs from before action execution in previous action log. Note: Need a log for step 0 here since mgx web testing is not started by osagent
-            self.rc.webbrowser_console_logs.append(self.chrome_debugger.get_new_messages())
+            self.rc.webbrowser_console_logs.append(
+                self.chrome_debugger.get_new_messages())
 
         self.run_action_failed = False
         self.run_action_failed_exception = ""
@@ -820,47 +859,90 @@ class OSAgent(Role):
         # Save images
         self._save_iteration_images(self.rc.iter)
 
-        # Execute memory task asynchronously
-        memory_task = None
-        if self.use_memory:
-            memory_task = asyncio.create_task(self._async_memory_task(self.instruction, self.screenshot_file))
+        # Verify Tell action if enabled and action is Tell
+        if self.use_tell_verifier and self.rc.action.startswith("Tell"):
+            try:
+                logger.info("Tell action detected, triggering verification...")
+                verification_result = await self.tell_verifier.run(
+                    tell_content=self.rc.action,
+                    action_history=self.rc.action_history,
+                    reflection_history=self.rc.reflection_thought_history,
+                    screenshot_dir=self.save_img,
+                    current_iter=self.rc.iter,
+                    test_cases=getattr(self, 'instruction', ''),
+                )
+
+                # Check if it's an action error (W4 or W6)
+                if verification_result.has_action_error:
+                    logger.warning(
+                        f"Tell action verification found ACTION ERROR ({verification_result.verification_status}), "
+                        f"agent will retry with corrective guidance. Reasoning: {verification_result.reasoning}"
+                    )
+                    # Set error flag and corrective guidance for next iteration
+                    self.rc.error_flag = True
+                    corrective_guidance = verification_result.get_corrective_guidance() or ""
+                    action_error = verification_result.action_error
+                    error_type_desc = (
+                        "Interaction Modality Mismatch (W4): Wrong interaction method used"
+                        if action_error and action_error.error_type == "W4"
+                        else "Mechanics & Focus Failure (W6): Basic operation mistake"
+                    )
+                    self.rc.error_message = (
+                        f"ACTION ERROR - {error_type_desc}\\n"
+                        f"Error Description: {action_error.error_description if action_error else verification_result.reasoning}\\n"
+                        f"Required Action: {action_error.required_action if action_error else 'Review task requirements'}\\n"
+                        f"Corrective Guidance: {corrective_guidance}\\n"
+                        f"Please follow the corrective guidance above to retry the operation correctly."
+                    )
+                    # Mark that we should continue instead of stopping
+                    self._action_error_detected = True
+                    # Change the action from Tell to indicate retry needed
+                    self.rc.action = f"Wait (Action error detected, retrying with corrective guidance)"
+                    logger.info(
+                        f"Agent will continue with corrective guidance: {corrective_guidance[:200]}...")
+                elif verification_result.needs_correction:
+                    logger.warning(
+                        f"Tell action verification found hallucination ({verification_result.verification_status}), "
+                        f"correcting action. Reasoning: {verification_result.reasoning[:200]}..."
+                    )
+                    # Update action with corrected version
+                    self.rc.action = verification_result.corrected_action
+                    self._action_error_detected = False
+                    logger.info(
+                        f"Corrected Tell action: {self.rc.action[:200]}...")
+                else:
+                    logger.info(
+                        f"Tell action verification passed: {verification_result.verification_status}")
+                    self._action_error_detected = False
+            except Exception as e:
+                logger.error(
+                    f"Tell action verification failed with error: {str(e)}, using original action")
+                self._action_error_detected = False
 
         # Update history records
         self.rc.thought_history.append(self.rc.thought)
         self.rc.summary_history.append(self.rc.summary)
         self.rc.action_history.append(self.rc.action)
+        self.rc.assumption_history.append(self.rc.assumption)
+        self.rc.confidence_history.append(self.rc.confidence)
 
+        # Save memory: use image_description from think (merged request mode)
+        self.rc.memory.append(getattr(self.rc, "image_description", "") or "")
+
+        # Handle reflection: always persist the reflection from think (reflects on previous step)
+        self.rc.reflection_thought_history.append(self.rc.reflection_thought)
+
+        # Handle execution errors separately
         if self.run_action_failed:
-            self.rc.reflection_thought_history.append(f"ERROR(run action code filed): {self.run_action_failed_exception}\\n ")
+            # Store error message for next iteration's prompt
+            self.rc.error_message = f"ERROR(run action code filed): {self.run_action_failed_exception}\\n"
             self.rc.error_flag = True
-
-        elif self.use_reflection:
-            # Execute reflection
-            reflect, self.rc.reflection_thought = await self._reflection(
-                self.instruction,
-                self.rc.last_perception_infos,
-                self.rc.perception_infos,
-                self.width,
-                self.height,
-                self.rc.summary,
-                self.rc.action,
-                self.add_info,
-                self.last_screenshot_file,
-                self.screenshot_file,
-            )
-            self.rc.reflection_thought_history.append(self.rc.reflection_thought)
-            if reflect == "CORRECT":
-                self.rc.error_flag = False
-            elif reflect == "ERROR":
-                self.rc.error_flag = True
+        else:
+            # Clear error message on successful execution
+            self.rc.error_message = ""
 
         # Clean up screenshots
         Path(self.last_screenshot_som_file if self.use_som else self.last_screenshot_file).unlink()
-
-        # Wait for memory task to complete and save results
-        if memory_task:
-            memory_content = await memory_task
-            self.rc.memory.append(memory_content)
 
         return AIMessage(content=self.rc.action, cause_by=Action)
 
@@ -913,13 +995,15 @@ class OSAgent(Role):
         )
 
         task_list = initial_task_list.strip()
-        logger.info(f"\n\n######################## Initial Task List:\n{task_list}\n\n######################## End of Initial Task List\n\n\n\n")
+        logger.info(
+            f"\n\n######################## Initial Task List:\n{task_list}\n\n######################## End of Initial Task List\n\n\n\n")
 
         return task_list
 
     async def _react(self) -> Message:
         self.rc.iter = 0
-        rsp = AIMessage(content="No actions taken yet", cause_by=Action)  # will be overwritten after Role _act
+        # will be overwritten after Role _act
+        rsp = AIMessage(content="No actions taken yet", cause_by=Action)
         while self.rc.iter < self.max_iters and not self._check_last_three_start_with_wait(self.rc.action_history):
             self.rc.iter += 1
 
@@ -934,8 +1018,8 @@ class OSAgent(Role):
                     self.output_image_path,
                 ) = await self._get_perception_infos(self.screenshot_file, self.screenshot_som_file)
 
-                # Save images
-                self._save_iteration_images(self.rc.iter)
+                # Save images (use 0 for the very first snapshot to avoid being overwritten after think/act)
+                self._save_iteration_images(0)
 
                 # Generate initial task list
                 self.rc.task_list = await self._generate_initial_task_list(
@@ -945,11 +1029,161 @@ class OSAgent(Role):
             # think
             has_todo = await self._think()
             if not has_todo:
-                rsp = AIMessage(content="OS Agent has finished all tasks", cause_by=Action)
+                rsp = AIMessage(
+                    content="OS Agent has finished all tasks", cause_by=Action)
                 break
+
             # act
-            logger.debug(f"{self._setting}: {self.rc.state=}, will do {self.rc.todo}")
+            logger.debug(
+                f"{self._setting}: {self.rc.state=}, will do {self.rc.todo}")
             rsp = await self._act()
+
+            # Exit loop after Tell action, unless it was an action error (W4/W6)
+            # In case of action error, the agent should continue with corrective guidance
+            if self.rc.action.startswith("Tell"):
+                logger.info("Tell action completed, exiting loop")
+                break
+            elif hasattr(self, '_action_error_detected') and self._action_error_detected:
+                # Action error was detected, continue the loop to retry
+                logger.info(
+                    "Action error detected, continuing loop to retry with corrective guidance")
+                self._action_error_detected = False  # Reset the flag
+                continue
+
+        # If reached max_iters and last action is not Tell, force Tell action and verify
+        if self.rc.iter >= self.max_iters and not (self.rc.action_history and self.rc.action_history[-1].startswith("Tell")):
+            logger.info(
+                f"Reached max_iters ({self.max_iters}), forcing Tell action and verification...")
+
+            # Get latest perception info
+            (
+                self.rc.perception_infos,
+                self.width,
+                self.height,
+                self.output_image_path,
+            ) = await self._get_perception_infos(self.screenshot_file, self.screenshot_som_file)
+
+            # Save images
+            self._save_iteration_images(self.rc.iter)
+
+            # Force think to generate Tell action
+            has_todo = await self._think()
+            if has_todo:
+                # act to execute action
+                rsp = await self._act()
+                # If the generated action is not Tell, force it to be Tell and verify
+                if not self.rc.action.startswith("Tell"):
+                    logger.warning(
+                        f"Action at max_iters is not Tell ({self.rc.action[:50] if len(self.rc.action) > 50 else self.rc.action}...), forcing Tell action")
+                    # Create a Tell action based on current state
+                    current_state = self.rc.image_description if hasattr(
+                        self.rc, 'image_description') and self.rc.image_description else "Unknown state"
+                    self.rc.action = f"Tell (Reached maximum steps ({self.max_iters}). Task may be incomplete. Current state: {current_state[:200]})"
+                    self.rc.summary = "Reached max steps, reporting current state"
+
+                    # Execute tell verifier for the forced Tell action
+                    if self.use_tell_verifier:
+                        try:
+                            logger.info(
+                                "Tell action detected at max_iters, triggering verification...")
+                            verification_result = await self.tell_verifier.run(
+                                tell_content=self.rc.action,
+                                action_history=self.rc.action_history,
+                                reflection_history=self.rc.reflection_thought_history,
+                                screenshot_dir=self.save_img,
+                                current_iter=self.rc.iter,
+                                test_cases=getattr(self, 'instruction', ''),
+                            )
+
+                            # At max_iters, we still correct hallucinations but log action errors differently
+                            if verification_result.has_action_error:
+                                logger.warning(
+                                    f"Tell action verification found ACTION ERROR at max_iters ({verification_result.verification_status}), "
+                                    f"but cannot retry due to max iterations. Reasoning: {verification_result.reasoning}"
+                                )
+                                # Still report the action error in the Tell action
+                                corrective_guidance = verification_result.get_corrective_guidance() or ""
+                                self.rc.action = f"Tell (Reached maximum steps. Action error detected: {verification_result.reasoning}. Corrective guidance: {corrective_guidance})"
+                            elif verification_result.needs_correction:
+                                logger.warning(
+                                    f"Tell action verification found hallucination ({verification_result.verification_status}), "
+                                    f"correcting action. Reasoning: {verification_result.reasoning[:200]}..."
+                                )
+                                self.rc.action = verification_result.corrected_action
+                                logger.info(
+                                    f"Corrected Tell action: {self.rc.action[:200]}...")
+                            else:
+                                logger.info(
+                                    f"Tell action verification passed: {verification_result.verification_status}")
+                        except Exception as e:
+                            logger.error(
+                                f"Tell verifier failed at max_iters: {str(e)}")
+
+                    # Update action history with the forced Tell action
+                    if self.rc.action_history:
+                        self.rc.action_history[-1] = self.rc.action
+                    else:
+                        self.rc.action_history.append(self.rc.action)
+                # If action is already Tell, tell_verifier has already been executed in _act()
+            else:
+                # If think returns no todo, create a default Tell action
+                logger.warning(
+                    "Think returned no todo at max_iters, creating default Tell action")
+                self.rc.action = f"Tell (Reached maximum steps ({self.max_iters}). Current state: {self.rc.image_description if hasattr(self.rc, 'image_description') else 'Unknown'})"
+                self.rc.summary = "Reached max steps, reporting current state"
+
+                # Execute tell verifier for the forced Tell action
+                if self.use_tell_verifier:
+                    try:
+                        logger.info(
+                            "Tell action detected at max_iters, triggering verification...")
+                        verification_result = await self.tell_verifier.run(
+                            tell_content=self.rc.action,
+                            action_history=self.rc.action_history,
+                            reflection_history=self.rc.reflection_thought_history,
+                            screenshot_dir=self.save_img,
+                            current_iter=self.rc.iter,
+                            test_cases=getattr(self, 'instruction', ''),
+                        )
+
+                        # At max_iters, we still correct hallucinations but log action errors differently
+                        if verification_result.has_action_error:
+                            logger.warning(
+                                f"Tell action verification found ACTION ERROR at max_iters ({verification_result.verification_status}), "
+                                f"but cannot retry due to max iterations. Reasoning: {verification_result.reasoning}"
+                            )
+                            # Still report the action error in the Tell action
+                            corrective_guidance = verification_result.get_corrective_guidance() or ""
+                            self.rc.action = f"Tell (Reached maximum steps. Action error detected: {verification_result.reasoning}. Corrective guidance: {corrective_guidance})"
+                        elif verification_result.needs_correction:
+                            logger.warning(
+                                f"Tell action verification found hallucination ({verification_result.verification_status}), "
+                                f"correcting action. Reasoning: {verification_result.reasoning[:200]}..."
+                            )
+                            self.rc.action = verification_result.corrected_action
+                            logger.info(
+                                f"Corrected Tell action: {self.rc.action[:200]}...")
+                        else:
+                            logger.info(
+                                f"Tell action verification passed: {verification_result.verification_status}")
+                    except Exception as e:
+                        logger.error(
+                            f"Tell verifier failed at max_iters: {str(e)}")
+
+                # Update history
+                self.rc.thought_history.append(self.rc.thought if hasattr(
+                    self.rc, 'thought') else "Reached max steps")
+                self.rc.summary_history.append(self.rc.summary)
+                self.rc.action_history.append(self.rc.action)
+                if hasattr(self.rc, 'assumption'):
+                    self.rc.assumption_history.append(self.rc.assumption)
+                if hasattr(self.rc, 'confidence'):
+                    self.rc.confidence_history.append(self.rc.confidence)
+                if hasattr(self.rc, 'image_description'):
+                    self.rc.memory.append(self.rc.image_description)
+                if hasattr(self.rc, 'reflection_thought'):
+                    self.rc.reflection_thought_history.append(
+                        self.rc.reflection_thought)
 
         if self.use_chrome_debugger:
             self.chrome_debugger.stop_monitoring()

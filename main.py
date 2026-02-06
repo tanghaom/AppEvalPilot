@@ -1,6 +1,12 @@
 import asyncio
+import argparse
+import os
+from pathlib import Path
 
 from loguru import logger
+
+# Set MetaGPT config root to /root/.metagpt
+os.environ['CONFIG_ROOT'] = '/root/.metagpt'
 
 from appeval.roles.eval_runner import AppEvalRole
 from appeval.utils.excel_json_converter import make_work_path
@@ -189,6 +195,16 @@ async def run_single_test(mode: str = "single"):
 
 async def main():
     """Main function"""
+    parser = argparse.ArgumentParser(description="AppEval Test Runner")
+    parser.add_argument("--platform", type=str, default=None, help="Platform: Windows, Linux, Mac, or Android")
+    parser.add_argument("--max_iters", type=int, default=None, help="Maximum iterations")
+    parser.add_argument("--mode", type=str, default="api", choices=["single", "api", "batch", "generate_case"], help="Test mode")
+    args = parser.parse_args()
+    
+    # Store platform in environment for AppEvalRole to use
+    if args.platform:
+        os.environ['PLATFORM'] = args.platform
+    
     # Run single test example
     # logger.info("Starting to execute single test...")
     # await run_single_test()

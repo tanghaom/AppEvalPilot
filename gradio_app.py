@@ -14,6 +14,9 @@ from pathlib import Path
 import gradio as gr
 from loguru import logger
 
+# Set MetaGPT config root to /root/.metagpt
+os.environ['CONFIG_ROOT'] = '/root/.metagpt'
+
 from appeval.roles.eval_runner import AppEvalRole
 from appeval.utils.excel_json_converter import make_json_single
 
@@ -147,8 +150,6 @@ async def run_single_test(case_name: str, url: str, requirement: str, test_cases
             json_file=json_path,
             use_ocr=False,
             quad_split_ocr=False,
-            use_memory=False,
-            use_reflection=True,
             use_chrome_debugger=True,
             extend_xml_infos=True,
             log_dirs=f"work_dirs/{case_name}",

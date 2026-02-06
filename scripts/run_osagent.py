@@ -8,7 +8,9 @@
 """
 import argparse
 import asyncio
+import os
 from pathlib import Path
+
 
 from appeval.roles.osagent import OSAgent
 
