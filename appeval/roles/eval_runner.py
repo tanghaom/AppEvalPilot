@@ -65,6 +65,10 @@ class AppEvalRole(Role):
         super().__init__()
         self.rc.json_file = json_file
 
+        # Chrome launch params for multi-worker isolation
+        self._remote_debugging_port = kwargs.get("remote_debugging_port", 9222)
+        self._user_data_dir = kwargs.get("user_data_dir", "")
+
         # Initialize agent_params
         self.rc.agent_params = {
             "use_ocr": kwargs.get("use_ocr", True),
@@ -135,9 +139,17 @@ Please use the Tell action to report the results of all test cases before execut
     async def _start_environment(self, url: str = None, work_path: str = None) -> Optional[int]:
         """Start test environment (browser or application)"""
         if url:
-            return await start_windows(target_url=url)
+            return await start_windows(
+                target_url=url,
+                remote_debugging_port=self._remote_debugging_port,
+                user_data_dir=self._user_data_dir,
+            )
         if work_path:
-            return await start_windows(work_path=work_path)
+            return await start_windows(
+                work_path=work_path,
+                remote_debugging_port=self._remote_debugging_port,
+                user_data_dir=self._user_data_dir,
+            )
         return None
 
     async def _cleanup_environment(self, is_web: bool, pid: Optional[int] = None) -> None:
@@ -1021,7 +1033,7 @@ Please use the Tell action to report the results of all test cases before execut
 
             # Prepare test cases
             case_result = await self._prepare_batch_test_cases(project_excel_path, operation_type, json_converter)
-
+            import pdb; pdb.set_trace()
             # Return early if only generating cases (mini mode only)
             if generate_case_only:
                 if not is_mini:

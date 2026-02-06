@@ -16,10 +16,10 @@ async def run_batch_test():
     """Run batch test example"""
     try:
         # Set test related paths
-        project_excel = r"data/test.xlsx"
-        case_excel = r"data/test_results.xlsx"
-        json_file = r"data/test_results.json"
-        work_dir = r"work_dirs/test"
+        project_excel = r"/data/hongsirui/AppEvalPilot/data/mgx跑测_MGX低完成度_三合一_拆分case_带label_gemini3flash_VF_critic_action.xlsx"
+        case_excel = r"/data/hongsirui/AppEvalPilot/data/test_results.xlsx"
+        json_file = r"/data/hongsirui/AppEvalPilot/data/test_results.json"
+        work_dir = r"/data/hongsirui/AppEvalPilot/work_dirs"
         # Make work path
         make_work_path(project_excel, work_dir)
 
@@ -83,7 +83,7 @@ async def run_api_test():
         test_cases = case_result_example["1"]["test_cases"]
         url = case_result_example["1"]["url"]
         result, executability = await appeval.run_api(
-            task_name="MGX", test_cases=test_cases, start_func=url, log_dir="work_dirs/MGX", max_retry_uncertain=1
+            task_name="MGX", test_cases=test_cases, start_func=url, log_dir="work_dirs", max_retry_uncertain=1
         )
         # eval output format
         # {'0': {'result': 'Pass', 'evidence': 'All required login page UI elements are present and properly displayed: username/email input field at (1414, 750), password input field at (1414, 840), and sign in button at (1413, 984). The elements are clearly visible and positioned appropriately on the login form.'}, '1': {'result': 'Pass', 'evidence': "Successfully entered alphanumeric string 'Test123User' into the username field. The field accepted and displayed the input correctly without any restrictions or errors."}, '2': {'result': 'Pass', 'evidence': "The password field successfully masks input characters - when 'testpass123' was entered, it displays as bullet points/dots (•••••••••••) instead of plain text, providing proper password security."}, '3': {'result': 'Uncertain', 'evidence': 'Unable to verify special character acceptance in password field due to connection error with accounts.google.com (ERR_CONNECTION_CLOSED)'}}
@@ -198,7 +198,7 @@ async def main():
     parser = argparse.ArgumentParser(description="AppEval Test Runner")
     parser.add_argument("--platform", type=str, default=None, help="Platform: Windows, Linux, Mac, or Android")
     parser.add_argument("--max_iters", type=int, default=None, help="Maximum iterations")
-    parser.add_argument("--mode", type=str, default="api", choices=["single", "api", "batch", "generate_case"], help="Test mode")
+    parser.add_argument("--mode", type=str, default="batch", choices=["single", "api", "batch", "generate_case"], help="Test mode")
     args = parser.parse_args()
     
     # Store platform in environment for AppEvalRole to use
@@ -211,8 +211,8 @@ async def main():
 
     # Run batch test example
     # logger.info("Starting to execute batch test...")
-    # await run_batch_test()
-    await run_api_test()
+    await run_batch_test()
+    # await run_api_test()
 
 
 if __name__ == "__main__":
