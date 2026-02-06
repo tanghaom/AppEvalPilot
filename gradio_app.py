@@ -147,8 +147,6 @@ async def run_single_test(case_name: str, url: str, requirement: str, test_cases
             json_file=json_path,
             use_ocr=False,
             quad_split_ocr=False,
-            use_memory=False,
-            use_reflection=True,
             use_chrome_debugger=True,
             extend_xml_infos=True,
             log_dirs=f"work_dirs/{case_name}",

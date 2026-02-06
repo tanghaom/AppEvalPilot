@@ -84,22 +84,14 @@ class AppEvalRole(Role):
 
     def _init_osagent(self, **kwargs) -> None:
         """Initialize OSAgent"""
-        add_info = (
-            "If you need to interact with elements outside of a web popup, such as calendar or time "
-            "selection popups, make sure to close the popup first. If the content in a text box is "
-            "entered incorrectly, use the select all and delete actions to clear it, then re-enter "
-            "the correct information. To open a folder in File Explorer, please use a double-click. "
-            "If there is a problem with opening the web page, please do not keep trying to refresh "
-            "the page or click repeatedly. After an attempt, please proceed directly to the remaining "
-            "tasks. Pay attention not to use shortcut keys to change the window size when testing "
-            "on the web page. If it involves the display effect of a web page on mobile devices, "
-            "you can open the developer mode of the web page by pressing F12, and then use the "
-            "shortcut key Ctrl+Shift+M to switch to the mobile view. When testing game-related "
-            "content, please pay close attention to judge whether the game functions are abnormal. "
-            "If you find that no expected changes occur after certain operations, directly exit "
-            "and mark this feature as negative. Please use the Tell action to report the results "
-            "of all test cases before executing Stop"
-        )
+        add_info = """Before interacting with any web page, first browse the page completely from top to bottom by pressing Page Down to page through the content, so you get an overall understanding and can locate the required elements. If after a full scan you still cannot find the element, press Ctrl+F to search by visible keywords such as labels, button text, or field names. Clear the search and continue once the element is located.
+If you need to interact with elements outside of a web popup, such as calendar or time selection popups, make sure to close the popup first. If the content in a text box is entered incorrectly, use the select all and delete actions to clear it, then re-enter the correct information.
+To open a folder in File Explorer, please use a double-click.
+If there is a problem with opening the web page, please do not keep trying to refresh the page or click repeatedly. After an attempt, please proceed directly to the remaining tasks.
+Pay attention not to use shortcut keys to change the window size when testing on the web page.
+If it involves the display effect of a web page on mobile devices, you can open the developer mode of the web page by pressing F12, and then use the shortcut key Ctrl+Shift+M to switch to the mobile view.
+When testing game-related content, please pay close attention to judge whether the game functions are abnormal. If you find that no expected changes occur after certain operations, directly exit and mark this feature as negative.
+Please use the Tell action to report the results of all test cases before executing Stop"""
 
         self.osagent = OSAgent(
             platform=kwargs.get("os_type", "Windows"),
@@ -136,6 +128,31 @@ class AppEvalRole(Role):
         await kill_windows(processes)
         if pid:
             await kill_process(pid)
+
+    @staticmethod
+    def _find_matching_key(key: Any, target_dict: dict) -> Optional[Any]:
+        """Find matching key in target dict, handling both string and int key types.
+
+        Args:
+            key: The key to match (can be string or int)
+            target_dict: The dictionary to search in
+
+        Returns:
+            The matching key if found, None otherwise
+        """
+        if key in target_dict:
+            return key
+
+        str_key = str(key)
+        if str_key in target_dict:
+            return str_key
+
+        if str_key.isdigit():
+            int_key = int(str_key)
+            if int_key in target_dict:
+                return int_key
+
+        return None
 
     def _parse_results_from_tell(self, action_history: List[str]) -> Optional[dict]:
         """Parse test results from Tell action in action history"""
@@ -219,7 +236,9 @@ class AppEvalRole(Role):
         data = read_json_file(self.rc.json_file)
         data[task_id]["iters"] = iter_num
         for key, value in results_dict.items():
-            data[task_id]["test_cases"][key].update({"result": value.get("result", ""), "evidence": value.get("evidence", "")})
+            matched_key = self._find_matching_key(key, data[task_id]["test_cases"])
+            if matched_key is not None:
+                data[task_id]["test_cases"][matched_key].update({"result": value.get("result", ""), "evidence": value.get("evidence", "")})
         write_json_file(self.rc.json_file, data, indent=4)
         return None
 
@@ -247,8 +266,15 @@ class AppEvalRole(Role):
             task_id, task_id_case_number, action_history, task_list, memory, iter_num, check_list, return_dict=True
         )
 
-    async def _execute_task_batch(self, test_cases: dict, max_retry_uncertain: int = 1) -> None:
-        """Execute batch of test tasks with retry mechanism"""
+    async def _execute_task_batch(self, test_cases: dict, max_retry_uncertain: int = 1, sequential_mode: bool = False) -> None:
+        """Execute batch of test tasks with retry mechanism
+
+        Args:
+            test_cases: Dictionary of test cases to execute
+            max_retry_uncertain: Maximum retries for uncertain cases
+            sequential_mode: If True, execute test cases one by one without browser cleanup between cases,
+                           only reset osagent state. If False, execute all test cases at once (default).
+        """
         for task_id, task_info in test_cases.items():
             if "test_cases" not in task_info:
                 continue
@@ -268,6 +294,7 @@ class AppEvalRole(Role):
                     log_dir="batch",
                     max_retry_uncertain=max_retry_uncertain,
                     save_to_file=False,
+                    sequential_mode=sequential_mode,
                 )
                 task_info["test_cases"] = final_test_cases
 
@@ -340,7 +367,7 @@ class AppEvalRole(Role):
         previous_uncertain_count = float("inf")
         original_log_dir = self.osagent.log_dirs
         is_api_mode = task_name is not None and start_func is not None
-        is_web = start_func.startswith("http") if start_func else False
+        is_web = (start_func.startswith("http://") or start_func.startswith("https://")) if start_func else False
 
         while retry_count < max_retry:
             uncertain_cases = self._extract_uncertain_cases(result)
@@ -399,9 +426,10 @@ class AppEvalRole(Role):
                 continue
 
             for case_id, case_info in task_info["test_cases"].items():
-                if case_id in merged_result[task_id]["test_cases"]:
-                    merged_result[task_id]["test_cases"][case_id]["result"] = case_info.get("result", "")
-                    merged_result[task_id]["test_cases"][case_id]["evidence"] = case_info.get("evidence", "")
+                matched_key = self._find_matching_key(case_id, merged_result[task_id]["test_cases"])
+                if matched_key is not None:
+                    merged_result[task_id]["test_cases"][matched_key]["result"] = case_info.get("result", "")
+                    merged_result[task_id]["test_cases"][matched_key]["evidence"] = case_info.get("evidence", "")
                     logger.info(f"Updated case {case_id} in task {task_id} with retry result: {case_info.get('result', '')}")
 
         return merged_result
@@ -458,23 +486,77 @@ class AppEvalRole(Role):
             await self._cleanup_environment(is_web, pid)
 
     async def _run_test_with_retry(
-        self, task_name: str, test_cases: dict, start_func: str, log_dir: str, max_retry_uncertain: int, save_to_file: bool = True
+        self,
+        task_name: str,
+        test_cases: dict,
+        start_func: str,
+        log_dir: str,
+        max_retry_uncertain: int,
+        save_to_file: bool = True,
+        sequential_mode: bool = False,
     ) -> tuple[dict, bool]:
-        """Core test execution logic with retry mechanism"""
-        self.osagent.log_dirs = f"work_dirs/{log_dir}/{task_name}"
-        is_web = start_func.startswith("http")
+        """Core test execution logic with retry mechanism
 
-        # Start environment and execute initial tests
+        Args:
+            task_name: Task identifier
+            test_cases: Dictionary of test cases to execute
+            start_func: URL or work path to start the environment
+            log_dir: Directory for logs
+            max_retry_uncertain: Maximum retries for uncertain cases
+            save_to_file: Whether to save results to file
+            sequential_mode: If True, execute test cases one by one without browser cleanup between cases,
+                           only reset osagent state. If False, execute all test cases at once (default).
+        """
+        self.osagent.log_dirs = f"work_dirs/{log_dir}/{task_name}"
+        is_web = start_func.startswith("http://") or start_func.startswith("https://")
+
+        # Start environment
         await self._start_environment(url=start_func if is_web else None, work_path=start_func if not is_web else None)
         await asyncio.sleep(SLEEP_BEFORE_EXECUTE)
 
-        logger.info("Start executing automated testing...")
-        result_dict = await self.execute_api_check(task_name, len(test_cases), test_cases)
+        if sequential_mode:
+            # Sequential mode: execute test cases one by one
+            logger.info(f"Start executing automated testing in sequential mode ({len(test_cases)} cases)...")
+            all_results = {}
+            base_log_dir = self.osagent.log_dirs
 
-        # Merge results
-        for key, value in result_dict.items():
-            if key in test_cases:
-                test_cases[key].update({"result": value.get("result", ""), "evidence": value.get("evidence", "")})
+            for idx, (case_id, case_info) in enumerate(test_cases.items(), 1):
+                logger.info(f"Executing test case {idx}/{len(test_cases)}: {case_id}")
+
+                # Set case-specific log directory to avoid overwriting
+                self.osagent.log_dirs = f"{base_log_dir}/{case_id}"
+
+                # Create single case dict for execution
+                single_case = {case_id: case_info}
+
+                # Execute single test case
+                result_dict = await self.execute_api_check(task_name, 1, single_case)
+
+                # Merge result
+                matched_key = self._find_matching_key(case_id, result_dict)
+                if matched_key is not None:
+                    all_results[case_id] = result_dict[matched_key]
+                    test_cases[case_id].update(
+                        {"result": result_dict[matched_key].get("result", ""), "evidence": result_dict[matched_key].get("evidence", "")}
+                    )
+
+                # Reset osagent state for next case (no browser cleanup)
+                if idx < len(test_cases):
+                    logger.info("Resetting osagent state for next case...")
+                    self.osagent.rc.reset()
+
+            # Restore base log directory
+            self.osagent.log_dirs = base_log_dir
+        else:
+            # Batch mode: execute all test cases at once (original behavior)
+            logger.info("Start executing automated testing...")
+            result_dict = await self.execute_api_check(task_name, len(test_cases), test_cases)
+
+            # Merge results
+            for key, value in result_dict.items():
+                matched_key = self._find_matching_key(key, test_cases)
+                if matched_key is not None:
+                    test_cases[matched_key].update({"result": value.get("result", ""), "evidence": value.get("evidence", "")})
 
         result = {task_name: {"test_cases": test_cases}}
 
@@ -509,8 +591,19 @@ class AppEvalRole(Role):
         start_func: str,
         log_dir: str,
         max_retry_uncertain: int = 1,
+        sequential_mode: bool = False,
     ) -> tuple[dict, bool]:
-        """Run API testing with retry mechanism for uncertain results"""
+        """Run API testing with retry mechanism for uncertain results
+
+        Args:
+            task_name: Task identifier
+            test_cases: Dictionary of test cases to execute
+            start_func: URL or work path to start the environment
+            log_dir: Directory for logs
+            max_retry_uncertain: Maximum retries for uncertain cases
+            sequential_mode: If True, execute test cases one by one without browser cleanup between cases,
+                           only reset osagent state. If False, execute all test cases at once (default).
+        """
         try:
             final_test_cases, executability = await self._run_test_with_retry(
                 task_name=task_name,
@@ -519,6 +612,7 @@ class AppEvalRole(Role):
                 log_dir=log_dir,
                 max_retry_uncertain=max_retry_uncertain,
                 save_to_file=True,
+                sequential_mode=sequential_mode,
             )
             logger.info("Test process completed")
             return final_test_cases, executability
@@ -536,8 +630,21 @@ class AppEvalRole(Role):
         json_path: str = "data/temp.json",
         use_json_only: bool = False,
         max_retry_uncertain: int = 1,
+        sequential_mode: bool = False,
     ) -> tuple[dict, bool]:
-        """Execute single test case with retry mechanism for uncertain results"""
+        """Execute single test case with retry mechanism for uncertain results
+
+        Args:
+            case_name: Test case name
+            url: Test target URL
+            work_path: Work path for local application
+            user_requirement: Requirement description
+            json_path: Output JSON file path
+            use_json_only: Whether to only use JSON files
+            max_retry_uncertain: Maximum retries for uncertain cases
+            sequential_mode: If True, execute test cases one by one without browser cleanup between cases,
+                           only reset osagent state. If False, execute all test cases at once (default).
+        """
         # Generate test cases if needed
         if not use_json_only:
             logger.info(f"Start generating automated test cases for '{case_name}'...")
@@ -568,6 +675,7 @@ class AppEvalRole(Role):
             log_dir=f"single/{Path(json_path).stem}",
             max_retry_uncertain=max_retry_uncertain,
             save_to_file=False,
+            sequential_mode=sequential_mode,
         )
 
         # Update and save results
@@ -585,6 +693,7 @@ class AppEvalRole(Role):
         batch_mode: str = "standard",
         generate_case_only: bool = False,
         max_retry_uncertain: int = 1,
+        sequential_mode: bool = False,
     ) -> Union[tuple[dict, bool], Any, None]:
         """Run batch testing (unified for both standard and mini modes)
 
@@ -602,6 +711,8 @@ class AppEvalRole(Role):
             batch_mode: Batch mode - "standard" or "mini" (default: "standard")
             generate_case_only: Whether to only generate test cases (only for mini mode)
             max_retry_uncertain: Maximum retry times for uncertain cases (default: 1)
+            sequential_mode: If True, execute test cases one by one without browser cleanup between cases,
+                           only reset osagent state. If False, execute all test cases at once (default).
 
         Returns:
             - For standard mode: tuple[dict, bool] (result dict and executability)
@@ -627,7 +738,7 @@ class AppEvalRole(Role):
             # Execute tests with retry support
             logger.info("Start executing automated testing...")
             test_cases = read_json_file(self.rc.json_file)
-            await self._execute_task_batch(test_cases, max_retry_uncertain=max_retry_uncertain)
+            await self._execute_task_batch(test_cases, max_retry_uncertain=max_retry_uncertain, sequential_mode=sequential_mode)
             write_json_file(self.rc.json_file, test_cases, indent=4)
 
             # Output results to Excel
@@ -648,7 +759,12 @@ class AppEvalRole(Role):
             raise
 
     async def run_mini_batch(
-        self, project_excel_path: str = None, case_excel_path: str = None, generate_case_only: bool = False, max_retry_uncertain: int = 1
+        self,
+        project_excel_path: str = None,
+        case_excel_path: str = None,
+        generate_case_only: bool = False,
+        max_retry_uncertain: int = 1,
+        sequential_mode: bool = False,
     ) -> Optional[Any]:
         """Deprecated: Use run_batch(batch_mode='mini') instead"""
         return await self.run_batch(
@@ -657,6 +773,7 @@ class AppEvalRole(Role):
             batch_mode="mini",
             generate_case_only=generate_case_only,
             max_retry_uncertain=max_retry_uncertain,
+            sequential_mode=sequential_mode,
         )
 
     async def run(self, **kwargs) -> Union[tuple[dict, bool], dict, Exception]:
@@ -672,11 +789,13 @@ class AppEvalRole(Role):
                     - project_excel_path: Project level Excel file path
                     - case_excel_path: Case level Excel file path (optional)
                     - use_json_only: Whether to only use JSON files (optional)
+                    - sequential_mode: If True, execute test cases one by one (optional)
                 Single test:
                     - case_name: Test case name
                     - url: Test target URL
                     - user_requirement: Requirement description
                     - json_path: Output JSON file path (optional)
+                    - sequential_mode: If True, execute test cases one by one (optional)
         """
         try:
             if kwargs.get("case_name") and kwargs.get("user_requirement"):
@@ -688,10 +807,15 @@ class AppEvalRole(Role):
                     user_requirement=kwargs["user_requirement"],
                     json_path=kwargs.get("json_path", "data/temp.json"),
                     use_json_only=kwargs.get("use_json_only", False),
+                    sequential_mode=kwargs.get("sequential_mode", False),
                 )
             else:
                 # Batch test scenario
-                return await self.run_batch(kwargs.get("project_excel_path"), kwargs.get("case_excel_path"))
+                return await self.run_batch(
+                    kwargs.get("project_excel_path"),
+                    kwargs.get("case_excel_path"),
+                    sequential_mode=kwargs.get("sequential_mode", False),
+                )
         except Exception as e:
             logger.error(f"Test execution failed: {str(e)}")
             logger.exception("Detailed error information")
