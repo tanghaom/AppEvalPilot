@@ -13,6 +13,7 @@ scripts/start_xvfb.sh
 scripts/test_device_controller.py
 scripts/start_orca.sh
 scripts/run_with_xvfb.sh
+test_run.sh
 
 # Byte-compiled / optimized / DLL files
 __pycache__
