@@ -63,6 +63,7 @@ def _setup_chrome_preferences(user_data_dir: str) -> None:
         "idle_detection": 1, "window_placement": 1,
         "clipboard_read_write": 1, "local_fonts": 1,
         "sensors": 1, "automatic_downloads": 1,
+        "insecure_private_network": 1,  # Allow private network requests
     }
     prefs.setdefault("browser", {})
     prefs["browser"]["check_default_browser"] = False
@@ -70,6 +71,12 @@ def _setup_chrome_preferences(user_data_dir: str) -> None:
     prefs["distribution"]["skip_first_run_ui"] = True
     prefs["distribution"]["show_welcome_page"] = False
     prefs["distribution"]["suppress_first_run_default_browser_prompt"] = True
+    
+    # Explicitly allow private network access for all origins
+    prefs.setdefault("profile", {}).setdefault("content_settings", {}).setdefault("exceptions", {})
+    prefs["profile"]["content_settings"]["exceptions"]["insecure_private_network"] = {
+        "*,*": {"setting": 1, "last_modified": "13300000000000000"}  # Allow all
+    }
 
     try:
         with open(prefs_file, "w") as f:

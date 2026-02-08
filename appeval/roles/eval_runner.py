@@ -154,9 +154,20 @@ Please use the Tell action to report the results of all test cases before execut
 
     async def _cleanup_environment(self, is_web: bool, pid: Optional[int] = None) -> None:
         """Clean up test environment"""
-        processes = ["Chrome"] if is_web else [
-            "Chrome", "cmd", "npm", "projectapp", "Edge"]
-        await kill_windows(processes)
+        # If we have a dedicated user_data_dir, only kill that Chrome instance
+        if self._user_data_dir and os.name != "nt":
+            try:
+                cmd_kill = f"pkill -f 'user-data-dir={self._user_data_dir}'"
+                proc = await asyncio.create_subprocess_shell(
+                    cmd_kill, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE
+                )
+                await proc.communicate()
+            except Exception:
+                pass
+        else:
+            processes = ["Chrome"] if is_web else [
+                "Chrome", "cmd", "npm", "projectapp", "Edge"]
+            await kill_windows(processes)
         if pid:
             await kill_process(pid)
 
@@ -918,7 +929,7 @@ Please use the Tell action to report the results of all test cases before execut
             return final_test_cases, executability
         except Exception as e:
             logger.error(f"Error occurred during test execution: {str(e)}")
-            await kill_windows(["Chrome", "cmd", "npm", "projectapp", "Edge"])
+            await self._cleanup_environment(is_web=True)
             raise
 
     async def run_single(
@@ -1061,7 +1072,7 @@ Please use the Tell action to report the results of all test cases before execut
 
         except Exception as e:
             logger.error(f"Error occurred during test execution: {str(e)}")
-            await kill_windows(["Chrome", "cmd", "npm", "projectapp", "Edge"])
+            await self._cleanup_environment(is_web=True)
             raise
 
     async def run_mini_batch(
