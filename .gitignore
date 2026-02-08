@@ -7,6 +7,12 @@ rc_states/
 config/config2.yaml
 config/config_gemini3_flash.yaml
 osagent_logs/
+run_experiments/run_test.py
+run_experiments/run_config.yaml
+scripts/start_xvfb.sh
+scripts/test_device_controller.py
+scripts/start_orca.sh
+scripts/run_with_xvfb.sh
 
 # Byte-compiled / optimized / DLL files
 __pycache__
