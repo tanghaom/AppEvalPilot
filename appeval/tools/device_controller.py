@@ -22,17 +22,38 @@ from loguru import logger
 
 # Set DISPLAY environment variable for Linux if not set
 if os.name != "nt" and "DISPLAY" not in os.environ:
-    # Try to use Xvfb virtual display if available, otherwise use :0
+    # Use a safe default that won't cause import errors
+    # The actual DISPLAY will be set by the worker process
     os.environ["DISPLAY"] = ":0"
-    logger.warning("DISPLAY environment variable not set, using :0 as default. "
-                   "For headless servers, consider using Xvfb: Xvfb :99 -screen 0 1024x768x24 & export DISPLAY=:99")
+    logger.debug("DISPLAY environment variable not set, using :0 as placeholder. "
+                 "Worker process will set the correct DISPLAY.")
 
 # Delay import pyautogui to avoid DISPLAY issues on headless servers
-try:
-    import pyautogui
-except Exception as e:
-    logger.warning(f"Failed to import pyautogui: {e}. GUI automation may not work properly.")
-    pyautogui = None  # type: ignore
+# Import will be retried when actually needed
+_pyautogui = None
+
+def _get_pyautogui():
+    """Lazy import pyautogui to avoid DISPLAY connection errors at module load time."""
+    global _pyautogui
+    if _pyautogui is None:
+        try:
+            import pyautogui as pg
+            _pyautogui = pg
+            logger.debug(f"pyautogui imported successfully with DISPLAY={os.environ.get('DISPLAY')}")
+        except Exception as e:
+            logger.warning(f"Failed to import pyautogui: {e}. GUI automation may not work properly.")
+            _pyautogui = False  # Mark as failed to avoid repeated attempts
+    return _pyautogui if _pyautogui is not False else None
+
+# Create a proxy object for pyautogui that imports on first use
+class _PyAutoGUIProxy:
+    def __getattr__(self, name):
+        pg = _get_pyautogui()
+        if pg is None:
+            raise RuntimeError("pyautogui is not available")
+        return getattr(pg, name)
+
+pyautogui = _PyAutoGUIProxy()  # type: ignore
 
 import pyperclip
 import uiautomator2 as u2
@@ -318,6 +339,8 @@ class PCController(BaseController):
         ctrl_key: str = "ctrl",
         pc_type: str = "windows",
         max_tokens: int = 1000,
+        a11y_mode: str = "atspi",
+        remote_debugging_port: int = 9222,
     ):
         """Initialize PC controller
 
@@ -326,12 +349,20 @@ class PCController(BaseController):
             ctrl_key: Control key
             pc_type: Operating system type
             max_tokens: Maximum token count for UI element text, defaults to 1000 tokens
+            a11y_mode: Accessibility tree mode - 'atspi' (AT-SPI, needs D-Bus) or 'cdp' (Chrome DevTools Protocol, lightweight)
+            remote_debugging_port: Chrome remote debugging port (used when a11y_mode='cdp')
         """
         try:
             self.search_keys = search_keys
             self.ctrl_key = ctrl_key
             self.pc_type = pc_type.lower()
             self.max_tokens = max_tokens
+            self.a11y_mode = a11y_mode.lower()
+            self.remote_debugging_port = remote_debugging_port
+            if self.a11y_mode not in ("atspi", "cdp"):
+                logger.warning(f"Unknown a11y_mode '{a11y_mode}', falling back to 'atspi'")
+                self.a11y_mode = "atspi"
+            logger.info(f"PCController initialized: pc_type={self.pc_type}, a11y_mode={self.a11y_mode}")
         except Exception as e:
             logger.error(f"Failed to initialize PC controller: {str(e)}")
             raise
@@ -382,18 +413,26 @@ class PCController(BaseController):
             logger.warning("Mac OS not supported yet")
             return []
         if self.pc_type in ("linux", "ubuntu"):
-            if not _HAS_PYATSPI:
-                logger.debug("pyatspi is not available; AT-SPI XML features disabled. Basic GUI automation (screenshots, keyboard, mouse) still works.")
-                return []
             t1 = time.time()
             try:
-                processor = LinuxElementProcessor(location_info, self.max_tokens)
-                elements = processor.collect_elements()
+                if self.a11y_mode == "cdp":
+                    # CDP mode: lightweight, only needs Chrome debugging port
+                    processor = CDPElementProcessor(location_info, self.max_tokens,
+                                                    self.remote_debugging_port)
+                    elements = processor.collect_elements()
+                else:
+                    # AT-SPI mode: needs D-Bus + AT-SPI services
+                    if not _HAS_PYATSPI:
+                        logger.debug("pyatspi is not available; AT-SPI XML features disabled. "
+                                     "Try a11y_mode='cdp' for lightweight alternative.")
+                        return []
+                    processor = LinuxElementProcessor(location_info, self.max_tokens)
+                    elements = processor.collect_elements()
                 t2 = time.time()
-                logger.info(f"Time taken to get Linux screen element info: {t2 - t1} seconds")
+                logger.info(f"Time taken to get Linux screen element info ({self.a11y_mode}): {t2 - t1} seconds")
                 return elements
             except Exception as e:
-                logger.error(f"Linux AT-SPI processing failed: {e}")
+                logger.error(f"Linux {self.a11y_mode} processing failed: {e}")
                 return []
         t1 = time.time()
         try:
@@ -462,6 +501,142 @@ class PCController(BaseController):
             logger.error(f"Failed to open '{name}'. Ensure the command exists in PATH or provide a valid desktop id.")
         except Exception as e:
             logger.error(f"Linux open_app failed: {e}")
+
+
+class CDPElementProcessor:
+    """Chrome UI element processor based on Chrome DevTools Protocol (CDP).
+
+    Queries Chrome's built-in accessibility tree via the remote debugging port.
+    Much lighter than AT-SPI: no D-Bus, no AT-SPI bus, no GTK_MODULES needed.
+    Only requires Chrome started with --remote-debugging-port.
+    """
+
+    def __init__(self, location_info: str = "center", max_tokens: int = 1000,
+                 remote_debugging_port: int = 9222):
+        self.location_info = location_info
+        self.max_tokens = max_tokens
+        self.port = remote_debugging_port
+
+    def collect_elements(self) -> List[Dict]:
+        """Collect accessible elements from Chrome via CDP.
+
+        Returns:
+            List of dicts with 'coordinates' and 'text'
+        """
+        import json
+        elements: List[Dict] = []
+
+        try:
+            import requests
+            tabs = requests.get(f"http://127.0.0.1:{self.port}/json", timeout=5).json()
+        except Exception as e:
+            logger.warning(f"CDP: Cannot connect to Chrome on port {self.port}: {e}")
+            return elements
+
+        # Find a page target (skip devtools, background, etc.)
+        ws_url = None
+        for tab in tabs:
+            if tab.get("type") == "page":
+                ws_url = tab.get("webSocketDebuggerUrl")
+                break
+        if not ws_url:
+            logger.warning("CDP: No page target found in Chrome")
+            return elements
+
+        ws = None
+        try:
+            import websocket
+            ws = websocket.create_connection(ws_url, timeout=10)
+            msg_id = 1
+
+            def _send(method, params=None):
+                nonlocal msg_id
+                payload = {"id": msg_id, "method": method}
+                if params:
+                    payload["params"] = params
+                ws.send(json.dumps(payload))
+                msg_id += 1
+                # Read responses until we get the one matching our id
+                target_id = msg_id - 1
+                while True:
+                    resp = json.loads(ws.recv())
+                    if resp.get("id") == target_id:
+                        return resp
+                    # Skip events
+
+            # Enable domains
+            _send("Accessibility.enable")
+            _send("DOM.enable")
+
+            # Get full accessibility tree
+            resp = _send("Accessibility.getFullAXTree")
+            nodes = resp.get("result", {}).get("nodes", [])
+
+            # Build nodeId -> backendDOMNodeId map for getting coordinates
+            dom_node_ids = {}
+            for node in nodes:
+                backend_id = node.get("backendDOMNodeId")
+                if backend_id:
+                    dom_node_ids[node["nodeId"]] = backend_id
+
+            # Skip roles that are not useful
+            skip_roles = {
+                "none", "generic", "GenericContainer", "Ignoreablediv",
+                "RootWebArea", "InlineTextBox", "StaticText",
+            }
+
+            for node in nodes:
+                role_val = node.get("role", {}).get("value", "")
+                name_obj = node.get("name", {})
+                name_val = name_obj.get("value", "").strip() if name_obj else ""
+
+                if not name_val or role_val in skip_roles:
+                    continue
+
+                # Try to get bounding box via DOM
+                backend_id = dom_node_ids.get(node["nodeId"])
+                x, y, w, h = 0, 0, 0, 0
+                if backend_id:
+                    try:
+                        box_resp = _send("DOM.getBoxModel", {"backendNodeId": backend_id})
+                        model = box_resp.get("result", {}).get("model", {})
+                        border = model.get("border", [])
+                        if len(border) >= 8:
+                            # border is [x1,y1, x2,y1, x2,y2, x1,y2]
+                            x = border[0]
+                            y = border[1]
+                            w = border[2] - border[0]
+                            h = border[5] - border[1]
+                    except Exception:
+                        pass
+
+                if w <= 0 or h <= 0:
+                    continue
+
+                # Map role names to more readable control types
+                control_type = role_val.replace("Role", "").strip()
+
+                text = f"text:{name_val}; control_type:{control_type}; rect: ({x}, {y}, {x + w}, {y + h})"
+
+                if self.location_info == "center":
+                    cx = int(x + w / 2)
+                    cy = int(y + h / 2)
+                    elements.append({"coordinates": (cx, cy), "text": text})
+                else:
+                    elements.append({"coordinates": (x, y, x + w, y + h), "text": text})
+
+            logger.info(f"CDP: Collected {len(elements)} elements from Chrome (port {self.port})")
+
+        except Exception as e:
+            logger.error(f"CDP accessibility tree extraction failed: {e}")
+        finally:
+            if ws:
+                try:
+                    ws.close()
+                except Exception:
+                    pass
+
+        return elements
 
 
 class LinuxElementProcessor:
@@ -670,7 +845,7 @@ class LinuxElementProcessor:
                 try:
                     if win:
                         role = win.getRoleName().lower()
-                        if role in ("frame", "window"):
+                        if role in ("frame", "window", "dialog"):
                             yield win
                 except Exception:
                     continue

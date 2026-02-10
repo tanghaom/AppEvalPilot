@@ -133,6 +133,8 @@ class OSAgent(Role):
         use_icon_caption: bool = False,
         use_som: bool = False,
         extend_xml_infos: bool = True,
+        a11y_mode: str = "atspi",
+        remote_debugging_port: int = 9222,
         use_chrome_debugger: bool = False,
         use_tell_verifier: bool = True,
         think_history_images: int = 3,
@@ -159,6 +161,8 @@ class OSAgent(Role):
             use_icon_caption (bool): Whether to use icon caption.
             use_som (bool): Whether to draw visualization boxes on screenshots.
             extend_xml_infos (bool): Whether to add XML element information.
+            a11y_mode (str): Accessibility tree mode - 'atspi' (needs D-Bus/AT-SPI) or 'cdp' (Chrome DevTools Protocol, lightweight).
+            remote_debugging_port (int): Chrome remote debugging port (used when a11y_mode='cdp').
             use_chrome_debugger (bool): Whether to record browser console output.
             use_tell_verifier (bool): Whether to verify Tell action judgments against screenshots.
             location_info (str): Location information type (center or bbox).
@@ -289,6 +293,8 @@ class OSAgent(Role):
                     "search_keys": ["win", "s"],
                     "ctrl_key": "ctrl",
                     "pc_type": "Linux",
+                    "a11y_mode": self.a11y_mode,
+                    "remote_debugging_port": self.remote_debugging_port,
                 },
                 "prompt_class": PC_prompt,
             },

@@ -194,6 +194,7 @@ async def start_windows(
                 "--no-default-browser-check", "--no-first-run",
                 "--force-renderer-accessibility",
                 f"--remote-debugging-port={remote_debugging_port}",
+                "--remote-allow-origins=*",
                 f"--user-data-dir={user_data_dir}" if user_data_dir else "",
                 # Xvfb rendering
                 "--disable-gpu", "--disable-software-rasterizer", "--disable-dev-shm-usage",
