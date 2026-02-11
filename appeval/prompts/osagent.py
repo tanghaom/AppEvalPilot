@@ -417,7 +417,7 @@ The webpage you need to test is already displayed in front of you, so you don't 
 If the target application requires uploading an image for testing, please upload the image located in "C:/test_data".
 If the target application needs to upload a video for testing, please upload the video located in "C:/test_data".
 If the target application needs to upload other files, please use the files in the "C:/test_data" directory as the main source.
-If the target application requires entering a password, please first register an account and then use the account to log in.
+If the target application requires login or registration, use the following pre-registered account to log in directly instead of creating a new account: Email: press_test8@mgx.dev, Password: 123456. If the login page shows a "Log in" option, use it directly with these credentials. Do NOT attempt to register a new account or go through the sign-up flow.
 """
 
         # PC-specific task requirements

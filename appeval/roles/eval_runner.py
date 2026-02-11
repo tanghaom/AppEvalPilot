@@ -91,7 +91,14 @@ class AppEvalRole(Role):
 
     def _init_osagent(self, **kwargs) -> None:
         """Initialize OSAgent"""
-        add_info = """Before interacting with any web page, first browse the page completely from top to bottom by pressing Page Down to page through the content, so you get an overall understanding and can locate the required elements. If after a full scan you still cannot find the element, press Ctrl+F to search by visible keywords such as labels, button text, or field names. Clear the search and continue once the element is located.
+        add_info = """**[CRITICAL - Login Credentials]** If the application requires login or registration (e.g. you see a login page, "Welcome Back", "Sign Up", or "Create your account"), use these credentials to LOG IN directly:
+  - Email: press_test8@mgx.dev
+  - Password: 123456
+Click the email field, type the email using pyautogui.write(), then click the password field and type the password. Then click the "Log in" button. Do NOT register a new account. Do NOT click "Create your account" or "Sign up".
+If you see an "Authorize Application" page requesting permissions (OpenID, Email etc.), click the "Allow" button immediately.
+If a "Save password?" popup appears from Chrome, click "Never" to dismiss it and continue testing.
+
+Before interacting with any web page, first browse the page completely from top to bottom by pressing Page Down to page through the content, so you get an overall understanding and can locate the required elements. If after a full scan you still cannot find the element, press Ctrl+F to search by visible keywords such as labels, button text, or field names. Clear the search and continue once the element is located.
 If you need to interact with elements outside of a web popup, such as calendar or time selection popups, make sure to close the popup first. If the content in a text box is entered incorrectly, use the select all and delete actions to clear it, then re-enter the correct information.
 To open a folder in File Explorer, please use a double-click.
 If there is a problem with opening the web page, please do not keep trying to refresh the page or click repeatedly. After an attempt, please proceed directly to the remaining tasks.

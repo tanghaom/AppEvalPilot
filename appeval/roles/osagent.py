@@ -458,6 +458,24 @@ class OSAgent(Role):
             return None
         return app_info.get(package_name, None)
 
+    @staticmethod
+    def _is_black_screen(filepath: str, threshold: float = 0.95) -> bool:
+        """Check if a screenshot is mostly black (indicating rendering failure).
+        Args:
+            filepath: Path to the screenshot image.
+            threshold: Fraction of black pixels above which the image is considered black.
+        Returns:
+            True if the screenshot is a black screen.
+        """
+        try:
+            import numpy as np
+            img = np.array(Image.open(filepath))
+            # Pixel is "black" if sum of RGB channels < 30
+            black_ratio = (img.sum(axis=2) < 30).mean()
+            return black_ratio >= threshold
+        except Exception:
+            return False
+
     async def _get_perception_infos(self, screenshot_file: str, screenshot_som_file: str) -> Tuple[List[Dict[str, Any]], int, int, str]:
         """Get perception information, including OCR and icon detection.
         Args:
@@ -468,6 +486,11 @@ class OSAgent(Role):
         """
         # Get screen screenshot
         self.controller.get_screenshot(screenshot_file)
+
+        # Black screen detection: if screenshot is mostly black, log a warning
+        if self._is_black_screen(screenshot_file):
+            logger.warning("⚠️ Black screen detected! Chrome may have rendering issues.")
+
         # Get screen screenshot width and height
         width, height = Image.open(screenshot_file).size
 

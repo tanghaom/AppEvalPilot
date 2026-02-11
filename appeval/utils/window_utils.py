@@ -65,6 +65,13 @@ def _setup_chrome_preferences(user_data_dir: str) -> None:
         "sensors": 1, "automatic_downloads": 1,
         "insecure_private_network": 1,  # Allow private network requests
     }
+    # 禁用密码保存弹窗
+    prefs.setdefault("credentials_enable_service", False)
+    prefs.setdefault("credentials_enable_autosignin", False)
+    prefs.setdefault("password_manager", {})
+    prefs["password_manager"]["enabled"] = False
+    prefs["password_manager"]["leak_detection"] = False
+
     prefs.setdefault("browser", {})
     prefs["browser"]["check_default_browser"] = False
     prefs.setdefault("distribution", {})
@@ -203,6 +210,8 @@ async def start_windows(
                 "--disable-infobars", "--disable-component-update",
                 "--disable-background-networking",
                 "--disable-features=PrivateNetworkAccessPermissionPrompt",
+                # 禁用密码保存弹窗
+                "--password-store=basic",
                 target_url,
             ]
             cmd = " ".join(f for f in flags if f)
