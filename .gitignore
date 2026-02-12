@@ -169,3 +169,4 @@ cov.xml
 *.dot
 .python-version
 run_experiments/
+.env.example
