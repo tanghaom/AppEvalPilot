@@ -169,4 +169,4 @@ htmlcov.*
 cov.xml
 *.dot
 .python-version
-*.csv
+*.csvrun_experiments/run_test.py
