@@ -1,0 +1,12 @@
+llm:
+  api_type: "openai"
+  # model: "gemini-3-flash-preview"
+  model: test-sft-001
+  base_url: "http://172.31.0.5:8080/v1/chat/completions"
+  api_key: "1234567890"
+
+case_generator:
+  api_type: "openai"
+  model: "gpt-4o"
+  base_url: "https://newapi.deepwisdom.ai/v1"
+  api_key: "sk-fqEL7wgzCbUxrSJNVpOjs280XMosctAHp5I5xcIV8NXOConv"
