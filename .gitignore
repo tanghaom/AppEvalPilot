@@ -7,7 +7,6 @@ rc_states/
 config/config2.yaml
 config/config_gemini3_flash.yaml
 osagent_logs/
-run_experiments/run_test.py
 run_experiments/run_config.yaml
 scripts/start_xvfb.sh
 scripts/test_device_controller.py
@@ -169,4 +168,4 @@ htmlcov.*
 cov.xml
 *.dot
 .python-version
-*.csvrun_experiments/run_test.py
+run_experiments/
