@@ -14,10 +14,10 @@ async def run_batch_test():
     """Run batch test example"""
     try:
         # Set test related paths
-        project_excel = r"/data/hongsirui/AppEvalPilot/data/mgx跑测_MGX低完成度_三合一_拆分case_带label_gemini3flash_VF_critic_action.xlsx"
-        case_excel = r"/data/hongsirui/AppEvalPilot/data/test_results.xlsx"
-        json_file = r"/data/hongsirui/AppEvalPilot/data/test_results.json"
-        work_dir = r"/data/hongsirui/AppEvalPilot/work_dirs"
+        project_excel = r"/data/test.xlsx"
+        case_excel = r"/data/test_results.xlsx"
+        json_file = r"/data/test_results.json"
+        work_dir = r"/data/work_dirs"
         # Make work path
         make_work_path(project_excel, work_dir)
 
