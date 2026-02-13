@@ -1,0 +1,47 @@
+[
+  {
+    "task_id": 1,
+    "detail_id": 4001,
+    "case_name": "3D Showcase",
+    "test_arry": [
+      "检查切换作品时信息卡片是否正确更新"
+    ],
+    "prod_url": "https://45781-e9937ea628414596a587feaa03676d4a-3-latest.app.beta.mgx.dev"
+  },
+  {
+    "task_id": 1,
+    "detail_id": 4002,
+    "case_name": "3D Showcase",
+    "test_arry": [
+      "检查新增作品时缩略图导航是否更新"
+    ],
+    "prod_url": "https://45781-e9937ea628414596a587feaa03676d4a-3-latest.app.beta.mgx.dev"
+  },
+  {
+    "task_id": 1,
+    "detail_id": 4003,
+    "case_name": "3D Showcase",
+    "test_arry": [
+      "检查3D模型的放大/缩小功能"
+    ],
+    "prod_url": "https://45781-e9937ea628414596a587feaa03676d4a-3-latest.app.beta.mgx.dev"
+  },
+  {
+    "task_id": 1,
+    "detail_id": 4004,
+    "case_name": "3D Showcase",
+    "test_arry": [
+      "确认每个作品的基础信息（名称、描述、创作背景）正常展示"
+    ],
+    "prod_url": "https://45781-e9937ea628414596a587feaa03676d4a-3-latest.app.beta.mgx.dev"
+  },
+  {
+    "task_id": 1,
+    "detail_id": 4005,
+    "case_name": "3D Showcase",
+    "test_arry": [
+      "确认每个作品均配有信息卡片"
+    ],
+    "prod_url": "https://45781-e9937ea628414596a587feaa03676d4a-3-latest.app.beta.mgx.dev"
+  }
+]

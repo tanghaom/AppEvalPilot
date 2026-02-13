@@ -63,7 +63,8 @@ def _setup_chrome_preferences(user_data_dir: str) -> None:
         "idle_detection": 1, "window_placement": 1,
         "clipboard_read_write": 1, "local_fonts": 1,
         "sensors": 1, "automatic_downloads": 1,
-        "insecure_private_network": 1,  # Allow private network requests
+        "insecure_private_network": 1,
+        "private_network_request_settings": 1,  # Chrome 120+: "Access devices on local network"
     }
     # 禁用密码保存弹窗
     prefs.setdefault("credentials_enable_service", False)
@@ -78,12 +79,12 @@ def _setup_chrome_preferences(user_data_dir: str) -> None:
     prefs["distribution"]["skip_first_run_ui"] = True
     prefs["distribution"]["show_welcome_page"] = False
     prefs["distribution"]["suppress_first_run_default_browser_prompt"] = True
-    
+
     # Explicitly allow private network access for all origins
+    allow_all = {"setting": 1, "last_modified": "13300000000000000"}
     prefs.setdefault("profile", {}).setdefault("content_settings", {}).setdefault("exceptions", {})
-    prefs["profile"]["content_settings"]["exceptions"]["insecure_private_network"] = {
-        "*,*": {"setting": 1, "last_modified": "13300000000000000"}  # Allow all
-    }
+    prefs["profile"]["content_settings"]["exceptions"]["insecure_private_network"] = {"*,*": allow_all}
+    prefs["profile"]["content_settings"]["exceptions"]["private_network_request_settings"] = {"*,*": allow_all}
 
     try:
         with open(prefs_file, "w") as f:
@@ -101,12 +102,15 @@ def _setup_chrome_preferences(user_data_dir: str) -> None:
         except Exception:
             local_state = {}
     local_state.setdefault("browser", {}).setdefault("enabled_labs_experiments", [])
-    # Disable the Private Network Access permission prompt flag
-    flag_entry = "private-network-access-permission-prompt@2"  # @2 = Disabled
     existing = local_state["browser"]["enabled_labs_experiments"]
-    # Remove old entries for this flag, then add disabled
-    existing = [e for e in existing if not e.startswith("private-network-access-permission-prompt")]
-    existing.append(flag_entry)
+    # Disable private network access related flags (@2 = Disabled)
+    pna_flags = [
+        "private-network-access-permission-prompt",
+        "private-network-access-respect-preflight-results",
+    ]
+    existing = [e for e in existing if not any(e.startswith(f) for f in pna_flags)]
+    for f in pna_flags:
+        existing.append(f"{f}@2")
     local_state["browser"]["enabled_labs_experiments"] = existing
     try:
         with open(local_state_file, "w") as f:
@@ -115,12 +119,18 @@ def _setup_chrome_preferences(user_data_dir: str) -> None:
         logger.warning(f"Failed to write Chrome Local State: {e}")
 
     # 3. Chrome Enterprise Policy (system-wide)
-    for policy_dir in ["/etc/opt/chrome/policies/managed", "/etc/chromium/policies/managed"]:
+    for policy_dir in [
+        "/etc/opt/chrome/policies/managed",
+        "/etc/chromium/policies/managed",
+        "/etc/chromium-browser/policies/managed",
+    ]:
         try:
             os.makedirs(policy_dir, exist_ok=True)
             policy = {
                 "InsecurePrivateNetworkRequestsAllowed": True,
                 "InsecurePrivateNetworkRequestsAllowedForUrls": ["*"],
+                "PrivateNetworkAccessRestrictionsEnabled": False,
+                "DefaultPrivateNetworkRequestSettings": 1,  # 1=Allow
                 "DefaultNotificationsSetting": 1,
                 "DefaultGeolocationSetting": 1,
             }
@@ -185,13 +195,20 @@ async def start_windows(
                 f' --start-fullscreen {target_url}'
             )
         else:
-            # Linux/Mac: find Chrome
+            # Linux/Mac: find Chrome; prefer non-snap to avoid AppArmor/DBus errors (snap chromium blocks DBus)
             chrome_cmd = None
-            for name in ["google-chrome", "chromium", "chromium-browser", "chrome", "google-chrome-stable"]:
+            candidate_names = [
+                "google-chrome-stable", "google-chrome", "chromium-browser", "chromium", "chrome"
+            ]
+            for name in candidate_names:
                 p = shutil.which(name)
                 if p:
-                    chrome_cmd = p
-                    break
+                    # Prefer non-snap: snap Chromium triggers "AppArmor policy prevents ... DBus.ListActivatableNames"
+                    if "/snap/" not in p:
+                        chrome_cmd = p
+                        break
+                    if chrome_cmd is None:
+                        chrome_cmd = p  # keep as fallback if no non-snap found
             if not chrome_cmd:
                 raise FileNotFoundError("Chrome/Chromium not found.")
 
@@ -206,14 +223,23 @@ async def start_windows(
                 # Xvfb rendering
                 "--disable-gpu", "--disable-software-rasterizer", "--disable-dev-shm-usage",
                 "--window-size=1920,1080", "--start-maximized",
-                # Suppress prompts & private network access dialog
+                # Suppress prompts & dialogs
                 "--disable-infobars", "--disable-component-update",
                 "--disable-background-networking",
                 "--disable-features=PrivateNetworkAccessPermissionPrompt",
                 # 禁用密码保存弹窗
                 "--password-store=basic",
+                "--disable-sync",  # 减少 GCM 等后台注册，避免 DEPRECATED_ENDPOINT 刷屏
+                "--disable-features=PrivateNetworkAccessPermissionPrompt,PrivateNetworkAccessNullIpAddress,DialMediaRouteProvider",
+                # 避免 SSL 握手失败导致页面/请求不可用（测试环境）
+                "--ignore-certificate-errors", "--ignore-ssl-errors",
                 target_url,
             ]
+            # 彻底抑制「Access other devices on your local network」弹窗（仅测试环境）
+            # 需与 --user-data-dir 同时使用；仅当设置环境变量时启用
+            if os.environ.get("APPEVAL_CHROME_DISABLE_WEB_SECURITY", "").strip().lower() in ("1", "true", "yes") and user_data_dir:
+                flags.insert(-1, "--disable-web-security")
+                flags.insert(-1, "--disable-site-isolation-trials")
             cmd = " ".join(f for f in flags if f)
     elif work_path:
         work_path = Path(work_path)
@@ -232,7 +258,12 @@ async def start_windows(
     if os.name == "nt":
         process = subprocess.Popen(cmd, shell=True, creationflags=CREATE_NO_WINDOW)
     else:
-        process = subprocess.Popen(cmd, shell=True)
+        # 抑制 Chrome 的 stderr（SSL handshake、GCM DEPRECATED 等）避免刷屏
+        process = subprocess.Popen(
+            cmd, shell=True,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+        )
     return process.pid
 
 

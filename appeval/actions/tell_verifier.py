@@ -480,8 +480,9 @@ class TellVerifier(Action):
             f"Screenshots count: {len(encoded_images)}\n\n"
         )
 
-        # Call LLM for verification
+        # Call LLM for verification（每次此处都会向 Tell Verifier API 发一次请求，控制台可见对应调用记录）
         try:
+            logger.info("TellVerifier: calling LLM API for verification (1 request)")
             llm_output = await self._call_llm(prompt, encoded_images)
             logger.info(f"Verification LLM response: {llm_output[:500]}...")
         except Exception as e:

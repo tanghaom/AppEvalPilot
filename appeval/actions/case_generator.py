@@ -42,7 +42,13 @@ class CaseGenerator(Action):
         with open(self.config_path, "r", encoding="utf-8") as file:
             config = yaml.safe_load(file).get("case_generator")
             self.config = Config.from_llm_config(config)
-        logger.info(f"CaseGenerator Config: {self.config}")
+        # 仅记录关键配置，避免多 worker 并发时大量日志刷屏
+        try:
+            llm = getattr(self.config, "llm", None)
+            model_info = f"{getattr(llm, 'model', '?')} @ {getattr(llm, 'base_url', '')}" if llm else "?"
+        except Exception:
+            model_info = "?"
+        logger.info(f"CaseGenerator ready (llm={model_info})")
         self.llm = LLM(self.config.llm)
 
     @retry(

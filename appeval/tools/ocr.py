@@ -23,10 +23,39 @@ except ImportError:
     logger.warning("Warning: modelscope package is not installed, OCR function is unavailable.")
     logger.warning("Please use 'pip install appeval[ultra]' to install the required dependencies.")
 
+# 进程内单例：同进程内多次 OCRTool() 只加载一次模型，后续复用
+_process_ocr_singleton = None
+
+
+def release_ocr_memory():
+    """释放进程内 OCR 单例占用的内存，任务完成后调用。下次使用会重新加载。"""
+    global _process_ocr_singleton
+    if _process_ocr_singleton is not None:
+        try:
+            if hasattr(_process_ocr_singleton, "detection_model") and _process_ocr_singleton.detection_model is not None:
+                del _process_ocr_singleton.detection_model
+            if hasattr(_process_ocr_singleton, "recognition_model") and _process_ocr_singleton.recognition_model is not None:
+                del _process_ocr_singleton.recognition_model
+        except Exception:
+            pass
+        _process_ocr_singleton = None
+    try:
+        import gc
+        gc.collect()
+    except Exception:
+        pass
+    try:
+        import torch
+        if torch.cuda.is_available():
+            torch.cuda.empty_cache()
+    except Exception:
+        pass
+
 
 class OCRTool:
     def __init__(self):
-        """Initialize OCR tool class"""
+        """Initialize OCR tool class (reuses in-process singleton to avoid repeated model load)."""
+        global _process_ocr_singleton
         if not _has_modelscope:
             logger.warning("Warning: modelscope package is not installed, OCR function is unavailable.")
             logger.warning("Please use 'pip install appeval[ultra]' to install the required dependencies.")
@@ -34,11 +63,17 @@ class OCRTool:
             self.recognition_model = None
             return
 
-        # Initialize text detection and recognition models
+        if _process_ocr_singleton is not None:
+            self.detection_model = _process_ocr_singleton.detection_model
+            self.recognition_model = _process_ocr_singleton.recognition_model
+            return
+
+        # Initialize text detection and recognition models (first time in this process)
         self.detection_model = pipeline(Tasks.ocr_detection, model="iic/cv_resnet18_ocr-detection-db-line-level_damo")
         self.recognition_model = pipeline(
             Tasks.ocr_recognition, model="iic/cv_convnextTiny_ocr-recognition-document_damo"
         )
+        _process_ocr_singleton = self
 
     @staticmethod
     def _order_point(coor: np.ndarray) -> np.ndarray:

@@ -220,9 +220,6 @@ class OSAgent(Role):
         # Initialize paths
         self._get_timestamped_paths()
 
-        # Initialize logs
-        self._setup_logs()
-
         # Initialize operating system environment
         self._init_os_env()
 
@@ -240,10 +237,11 @@ class OSAgent(Role):
         if self.use_chrome_debugger:
             self.chrome_debugger = ChromeDebugger()
 
-        # Initialize Tell action verifier
+        # Initialize Tell action verifier (use same config as run so tell_verifier section is found)
         if self.use_tell_verifier:
             try:
-                self.tell_verifier = TellVerifier()
+                config_path = self.config_file if getattr(self, "config_file", None) else "config/config2.yaml"
+                self.tell_verifier = TellVerifier(config_path=config_path)
                 logger.info("TellVerifier initialized successfully")
             except Exception as e:
                 logger.warning(
@@ -252,11 +250,13 @@ class OSAgent(Role):
                 self.tell_verifier = None
 
     def _get_timestamped_paths(self) -> None:
-        """Update file paths with timestamps"""
-        current_time = time.strftime("%Y%m%d%H%M")
-
-        # Base paths
-        log_dir = Path(self.log_dirs) / current_time
+        """Update file paths, optionally with timestamps"""
+        use_ts = getattr(self, "use_timestamp_log_dir", True)
+        if use_ts:
+            current_time = time.strftime("%Y%m%d%H%M")
+            log_dir = Path(self.log_dirs) / current_time
+        else:
+            log_dir = Path(self.log_dirs)
         self.save_info = str(log_dir / "info.txt")
         self.save_img = str(log_dir)
 
@@ -321,8 +321,10 @@ class OSAgent(Role):
         # Reset state in rc
         self.rc.reset()
 
-        # Reset temporary files and directories
-        self._get_timestamped_paths()
+        # Reset temporary files and directories (skip if paths were locked externally,
+        # e.g. eval_runner sequential mode already set the timestamped path)
+        if not getattr(self, "_lock_timestamped_paths", False):
+            self._get_timestamped_paths()
 
         # Reset other states
         self.run_action_failed = False

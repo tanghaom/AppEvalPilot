@@ -13,7 +13,9 @@ import os
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Union
 
+import yaml as _yaml
 from loguru import logger
+from metagpt.config2 import Config
 from metagpt.roles.role import Role, RoleContext
 from metagpt.utils.common import read_json_file, write_json_file
 from pydantic import ConfigDict, Field
@@ -83,6 +85,7 @@ class AppEvalRole(Role):
             "a11y_mode": kwargs.get("a11y_mode", "atspi"),
             "use_tell_verifier": kwargs.get("use_tell_verifier", True),
             "log_dirs": kwargs.get("log_dirs", "work_dirs"),
+            "use_timestamp_log_dir": kwargs.get("use_timestamp_log_dir", True),
             "max_iters": kwargs.get("max_iters", 20),
         }
 
@@ -131,9 +134,20 @@ Please use the Tell action to report the results of all test cases before execut
             default_platform = "Mac"
         else:
             default_platform = "Linux"  # Default to Linux for other Unix-like systems
-        
-        # Common agent kwargs
-        agent_kwargs = dict(
+
+        # 从 config_file 读取 llm 配置，显式传给 OSAgent，
+        # 避免被 metagpt 默认的 config/config2.yaml 覆盖 run_config 的模型设置
+        osagent_config = None
+        config_file = kwargs.get("config_file", "")
+        if config_file and os.path.exists(config_file):
+            with open(config_file, "r", encoding="utf-8") as f:
+                _cfg = _yaml.safe_load(f)
+            _llm_cfg = _cfg.get("llm") if _cfg else None
+            if _llm_cfg:
+                osagent_config = Config.from_llm_config(_llm_cfg)
+                logger.info(f"OSAgent LLM config from {config_file}: {_llm_cfg.get('model')} @ {_llm_cfg.get('base_url')}")
+
+        self.osagent = OSAgent(
             platform=kwargs.get("os_type", kwargs.get("platform", default_platform)),
             max_iters=self.rc.agent_params["max_iters"],
             extend_xml_infos=self.rc.agent_params["extend_xml_infos"],
@@ -141,7 +155,11 @@ Please use the Tell action to report the results of all test cases before execut
             remote_debugging_port=self._remote_debugging_port,
             location_info="center",
             log_dirs=self.rc.agent_params["log_dirs"],
+            use_timestamp_log_dir=self.rc.agent_params["use_timestamp_log_dir"],
+            config_file=kwargs.get("config_file", ""),
             add_info=add_info,
+            system_prompt=case_batch_check_system_prompt,
+            **({"config": osagent_config} if osagent_config else {}),
         )
 
         if self._agent_class == "text_agent":
@@ -834,6 +852,7 @@ Please use the Tell action to report the results of all test cases before execut
         max_retry_uncertain: int,
         save_to_file: bool = True,
         sequential_mode: bool = False,
+        case_name_for_log: Optional[str] = None,
     ) -> tuple[dict, bool]:
         """Core test execution logic with retry mechanism
 
@@ -846,8 +865,13 @@ Please use the Tell action to report the results of all test cases before execut
             save_to_file: Whether to save results to file
             sequential_mode: If True, execute test cases one by one without browser cleanup between cases,
                            only reset osagent state. If False, execute all test cases at once (default).
+            case_name_for_log: If set, log subdirs are {case_name_for_log}0, {case_name_for_log}1, ... (no task_name level).
         """
-        self.osagent.log_dirs = f"work_dirs/{log_dir}/{task_name}"
+        log_base = self.rc.agent_params.get("log_dirs", "work_dirs")
+        if case_name_for_log is not None:
+            self.osagent.log_dirs = f"{log_base}/{log_dir}"
+        else:
+            self.osagent.log_dirs = f"{log_base}/{log_dir}/{task_name}"
         is_web = start_func.startswith(
             "http://") or start_func.startswith("https://")
 
@@ -867,13 +891,22 @@ Please use the Tell action to report the results of all test cases before execut
                     f"Executing test case {idx}/{len(test_cases)}: {case_id}")
 
                 # Set case-specific log directory to avoid overwriting
-                self.osagent.log_dirs = f"{base_log_dir}/{case_id}"
+                if case_name_for_log is not None:
+                    self.osagent.log_dirs = f"{base_log_dir}/{case_name_for_log}{case_id}"
+                else:
+                    self.osagent.log_dirs = f"{base_log_dir}/{case_id}"
+                self.osagent._get_timestamped_paths()
+                # Lock timestamped paths so _reset_state won't regenerate a new timestamp dir
+                self.osagent._lock_timestamped_paths = True
 
                 # Create single case dict for execution
                 single_case = {case_id: case_info}
 
                 # Execute single test case
                 result_dict = await self.execute_api_check(task_name, 1, single_case)
+
+                # Unlock after execution
+                self.osagent._lock_timestamped_paths = False
 
                 # Merge result
                 matched_key = self._find_matching_key(case_id, result_dict)
@@ -890,7 +923,13 @@ Please use the Tell action to report the results of all test cases before execut
                     self.osagent.rc.reset()
 
             # Restore base log directory
-            self.osagent.log_dirs = base_log_dir
+            # If only one case is executed in sequential API mode, keep log root at that case folder
+            # so uncertain retry logs go under the same case (e.g. .../3D Showcase6/retry_0/...).
+            if case_name_for_log is not None and len(test_cases) == 1:
+                only_case_id = next(iter(test_cases.keys()))
+                self.osagent.log_dirs = f"{base_log_dir}/{case_name_for_log}{only_case_id}"
+            else:
+                self.osagent.log_dirs = base_log_dir
         else:
             # Batch mode: execute all test cases at once (original behavior)
             logger.info("Start executing automated testing...")
@@ -917,13 +956,55 @@ Please use the Tell action to report the results of all test cases before execut
 
         # Save to file if needed
         if save_to_file:
-            output_dir = Path("work_dirs") / log_dir / task_name
-            output_dir.mkdir(parents=True, exist_ok=True)
-            output_file = output_dir / f"{Path(task_name).name}.json"
-            with open(output_file, "w", encoding="utf-8") as f:
-                json.dump({"test_cases": final_test_cases},
-                          f, indent=4, ensure_ascii=False)
-            logger.info(f"Results saved to {output_file}")
+            def _to_bool_result(v) -> bool:
+                if isinstance(v, bool):
+                    return v
+                if isinstance(v, (int, float)):
+                    return bool(v)
+                s = str(v).strip().lower()
+                return s in ("pass", "true", "1", "yes", "y")
+
+            def _build_case_item(case_id, case_data, case_name: Optional[str] = None) -> dict:
+                return {
+                    "test_id": f"{case_name}{case_id}" if case_name else str(case_id),
+                    "case_desc": case_data.get("case_desc", ""),
+                    "evidence": case_data.get("evidence", ""),
+                    "result": _to_bool_result(case_data.get("result", "")),
+                    "cost": case_data.get("cost", ""),
+                }
+
+            log_base = self.rc.agent_params.get("log_dirs", "work_dirs")
+            if case_name_for_log is not None:
+                # 每个任务一个目录（3D Showcase0, 3D Showcase1, ...），各写一份 test_case.json
+                for case_id, case_data in final_test_cases.items():
+                    case_dir = Path(log_base) / log_dir / f"{case_name_for_log}{case_id}"
+                    case_dir.mkdir(parents=True, exist_ok=True)
+                    # Prefer timestamp subdir so json lands at .../{case}/{YYYYMMDDHHMM}/test_case.json
+                    ts_dirs = [
+                        p for p in case_dir.iterdir()
+                        if p.is_dir() and p.name.isdigit() and len(p.name) >= 12
+                    ]
+                    output_dir = sorted(ts_dirs, key=lambda p: p.name)[-1] if ts_dirs else case_dir
+                    output_file = output_dir / "test_case.json"
+                    with open(output_file, "w", encoding="utf-8") as f:
+                        json.dump(
+                            {"test_cases": [_build_case_item(case_id, case_data, case_name_for_log)]},
+                            f,
+                            indent=4,
+                            ensure_ascii=False,
+                        )
+                    logger.info(f"Results saved to {output_file}")
+            else:
+                output_dir = Path(log_base) / log_dir / task_name
+                output_dir.mkdir(parents=True, exist_ok=True)
+                output_file = output_dir / f"{Path(task_name).name}.json"
+                case_items = [
+                    _build_case_item(case_id, case_data)
+                    for case_id, case_data in final_test_cases.items()
+                ]
+                with open(output_file, "w", encoding="utf-8") as f:
+                    json.dump({"test_cases": case_items}, f, indent=4, ensure_ascii=False)
+                logger.info(f"Results saved to {output_file}")
 
         # Execute executability check (skip if no screenshot available, e.g. TextAgent mode)
         image_path = getattr(self.osagent, 'output_image_path', '')
@@ -943,6 +1024,7 @@ Please use the Tell action to report the results of all test cases before execut
         log_dir: str,
         max_retry_uncertain: int = 1,
         sequential_mode: bool = False,
+        case_name_for_log: Optional[str] = None,
     ) -> tuple[dict, bool]:
         """Run API testing with retry mechanism for uncertain results
 
@@ -954,6 +1036,7 @@ Please use the Tell action to report the results of all test cases before execut
             max_retry_uncertain: Maximum retries for uncertain cases
             sequential_mode: If True, execute test cases one by one without browser cleanup between cases,
                            only reset osagent state. If False, execute all test cases at once (default).
+            case_name_for_log: If set, log subdirs become {case_name_for_log}0, {case_name_for_log}1, ...
         """
         try:
             final_test_cases, executability = await self._run_test_with_retry(
@@ -964,6 +1047,7 @@ Please use the Tell action to report the results of all test cases before execut
                 max_retry_uncertain=max_retry_uncertain,
                 save_to_file=True,
                 sequential_mode=sequential_mode,
+                case_name_for_log=case_name_for_log,
             )
             logger.info("Test process completed")
             return final_test_cases, executability

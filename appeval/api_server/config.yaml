@@ -1,0 +1,55 @@
+# AppEval API Server 默认配置（不依赖 test2，独立使用）
+# 启动: python appeval/api_server/server.py --port 8888 --no-callback
+
+# 并行 worker 数（建议 5~8，过大可能导致 OCR 初始化拥塞）
+workers: 5
+model: remote
+
+# 本地测试不回调：设为 true 时任务完成后不 POST，仅写 /status 与 api_log（可用 --no-callback 覆盖）
+skip_callback: false
+# 本地测试时回调到自己：填本机接收地址（如 http://127.0.0.1:9999），需先起 receive_callback.py；正式环境改对方地址或用 --callback-url 覆盖
+callback_base_url: "http://127.0.0.1:9999"
+# 回调重试策略（当 HTTP 失败或回调响应 $.data.success != true 时触发）
+callback_retry_times: 3
+callback_retry_interval_sec: 30
+chrome_disable_web_security: true
+cuda_devices: [0]
+
+tell_verifier:
+  api_type: openai
+  model: gpt-4o
+  base_url: https://newapi.deepwisdom.ai/v1
+  api_key: "sk-zOXSb4VOWafSXatZlRjpZ5B8q7Oq3ilb5LH7YUqYIf0UiTeU"
+  stream: "false"
+  max_token: 8192
+
+local:
+  config_file: ""
+  llm:
+    api_type: openai
+    model: osagent-grpo-1200
+    base_url: http://172.31.0.5:8080/v1
+    api_key: not-needed
+    stream: "false"
+    max_token: 8192
+  base_display: 300
+  base_chrome_port: 9500
+  log_dir_prefix: api_local
+  a11y_mode: atspi
+  max_iters: 20
+  post_action_wait_sec: 2
+
+remote:
+  config_file: ""
+  llm:
+    api_type: openai
+    model: gemini-3-flash-preview
+    base_url: https://newapi.deepwisdom.ai/v1
+    api_key: "sk-zOXSb4VOWafSXatZlRjpZ5B8q7Oq3ilb5LH7YUqYIf0UiTeU"
+    stream: "false"
+    max_token: 8192
+  base_display: 800
+  base_chrome_port: 10000
+  log_dir_prefix: api_remote
+  max_iters: 2
+  post_action_wait_sec: 2
