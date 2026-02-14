@@ -20,6 +20,7 @@ from pydantic import ConfigDict, Field
 
 from appeval.actions.case_generator import CaseGenerator, OperationType
 from appeval.prompts.osagent import case_batch_check_system_prompt
+from appeval.prompts.text_agent import text_agent_system_prompt
 from appeval.roles.osagent import OSAgent
 from appeval.utils.excel_json_converter import (
     convert_json_to_excel,
@@ -83,14 +84,21 @@ class AppEvalRole(Role):
             "max_iters": kwargs.get("max_iters", 20),
         }
 
+        # Store agent_class for _init_osagent
+        self._agent_class = kwargs.get("agent_class", "osagent")
+
         # Initialize CaseGenerator Action
         self.test_generator = CaseGenerator()
 
-        # Initialize OSAgent
+        # Initialize OSAgent (or TextAgent)
         self._init_osagent(**kwargs)
 
     def _init_osagent(self, **kwargs) -> None:
-        """Initialize OSAgent"""
+        """Initialize OSAgent or TextAgent based on agent_class parameter.
+
+        Args (via kwargs):
+            agent_class: "osagent" (default, VLM + screenshots) or "text_agent" (text-only, a11y tree)
+        """
         add_info = """**[CRITICAL - Login Credentials]** If the application requires login or registration (e.g. you see a login page, "Welcome Back", "Sign Up", or "Create your account"), use these credentials to LOG IN directly:
   - Email: press_test8@mgx.dev
   - Password: 123456
@@ -122,27 +130,42 @@ Please use the Tell action to report the results of all test cases before execut
         else:
             default_platform = "Linux"  # Default to Linux for other Unix-like systems
         
-        self.osagent = OSAgent(
+        # Common agent kwargs
+        agent_kwargs = dict(
             platform=kwargs.get("os_type", kwargs.get("platform", default_platform)),
             max_iters=self.rc.agent_params["max_iters"],
-            use_ocr=self.rc.agent_params["use_ocr"],
-            quad_split_ocr=self.rc.agent_params["quad_split_ocr"],
-            use_icon_detect=False,
-            use_icon_caption=True,
-            use_memory=self.rc.agent_params["use_memory"],
-            use_reflection=self.rc.agent_params["use_reflection"],
-            use_som=False,
             extend_xml_infos=self.rc.agent_params["extend_xml_infos"],
             a11y_mode=self.rc.agent_params["a11y_mode"],
             remote_debugging_port=self._remote_debugging_port,
-            use_chrome_debugger=self.rc.agent_params["use_chrome_debugger"],
-            use_tell_verifier=self.rc.agent_params["use_tell_verifier"],
             location_info="center",
-            draw_text_box=False,
             log_dirs=self.rc.agent_params["log_dirs"],
             add_info=add_info,
-            system_prompt=case_batch_check_system_prompt,
         )
+
+        if self._agent_class == "text_agent":
+            # Text-only agent: uses a11y tree / DOM tree, no screenshots
+            from appeval.roles.text_agent import TextAgent
+            agent_kwargs.update(
+                debug_screenshots=kwargs.get("debug_screenshots", True),
+                system_prompt=text_agent_system_prompt,
+            )
+            self.osagent = TextAgent(**agent_kwargs)
+        else:
+            # Default: VLM-based OSAgent with screenshots
+            agent_kwargs.update(
+                use_ocr=self.rc.agent_params["use_ocr"],
+                quad_split_ocr=self.rc.agent_params["quad_split_ocr"],
+                use_icon_detect=False,
+                use_icon_caption=True,
+                use_memory=self.rc.agent_params["use_memory"],
+                use_reflection=self.rc.agent_params["use_reflection"],
+                use_som=False,
+                use_chrome_debugger=self.rc.agent_params["use_chrome_debugger"],
+                use_tell_verifier=self.rc.agent_params["use_tell_verifier"],
+                draw_text_box=False,
+                system_prompt=case_batch_check_system_prompt,
+            )
+            self.osagent = OSAgent(**agent_kwargs)
 
     # ==================== Core Helper Methods ====================
 

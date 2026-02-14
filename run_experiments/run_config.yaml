@@ -1,0 +1,77 @@
+# test2 跑测配置：任务数、并行数、本地/远程模型
+# RealDevBench MGX，URL=prod_id，真实标签=A角分数，任务=测试点
+# 修改此文件后: conda activate appeval && python run_test.py
+
+# 运行参数
+tasks: 100          # 跑多少个任务，0=全部
+workers: 30      # 并行 worker 数
+model: text     # local=本地模型 | remote=Gemini 远程 | text=纯文本TextAgent
+serial_per_url: true   # 同一网站串行、不同网站并行
+cuda_devices: [0, 1, 2, 3]  # OCR 使用的 GPU 列表，worker 按轮询分配（每张卡约承载 workers/len(cuda_devices) 个 OCR 模型）
+
+# 数据文件
+excel_file: "RealDevBench_MGX_20260130.xlsx"
+# excel_file: "RealDevBench_MGX_20260212_c46o_filtered.xlsx"
+
+# 真实标签列名（用于统计准确率）
+true_label_column: "A 角分数"
+
+# 本地模型配置（model: local 时使用）
+local:
+  config_file: config/config_local.yaml
+  llm:
+    api_type: openai
+    model: checkpoint-13-merged
+    base_url: http://localhost:8001/v1
+    api_key: not-needed
+    stream: "false"
+  base_display: 300
+  base_chrome_port: 9500
+  log_dir_prefix: test2_local
+  result_excel: test2_results_local.xlsx
+  score_column: os_agent_score
+  evidence_column: evidence
+
+# 远程模型配置（model: remote 时使用）
+remote:
+  config_file: config/config_gemini3_flash.yaml
+  # config_file: config/config_sft.yaml
+  llm:
+    api_type: openai
+    model: gemini-3-flash-preview
+    # model: test-sft-001
+    base_url: https://newapi.deepwisdom.ai/v1
+    api_key: sk-fqEL7wgzCbUxrSJNVpOjs280XMosctAHp5I5xcIV8NXOConv"
+    # base_url: http://172.31.0.5:8080/v1
+    # api_key: "1234567890"
+    stream: "false"
+  base_display: 800
+  base_chrome_port: 10000
+  log_dir_prefix: test2_sf_api_atspi_test_gemini_3_flash_preview_c46o
+  result_excel: test2_sf_api_atspi_test_gemini_3_flash_preview_c46o.xlsx
+  score_column: gemini_score
+  evidence_column: gemini_evidence
+  a11y_mode: atspi   # atspi=AT-SPI | cdp=CDP
+
+# TextAgent 纯文本模式配置（model: text 时使用）
+# 不依赖截图/VLM，用 a11y tree / DOM tree 操作网页
+# 优势：token 消耗低 10x，不需要 GPU/OCR，可用便宜的 text LLM
+text:
+  config_file: config/config_gemini3_flash.yaml
+  agent_class: text_agent      # 🆕 使用 TextAgent
+  a11y_mode: atspi               # cdp=Chrome DevTools Protocol（轻量，不需要 D-Bus）
+  llm:
+    api_type: openai
+    model: gemini-3-flash-preview
+    base_url: https://newapi.deepwisdom.ai/v1
+    api_key: sk-fqEL7wgzCbUxrSJNVpOjs280XMosctAHp5I5xcIV8NXOConv"
+    stream: "false"
+  base_display: 1200
+  base_chrome_port: 11000
+  max_iters: 15
+  use_ocr: false               # 不需要 OCR
+  debug_screenshots: true      # 截图仅存盘供人工审查，不送 LLM
+  log_dir_prefix: test2_text_agent_no_images
+  result_excel: test2_text_agent_no_images_results.xlsx
+  score_column: text_agent_score
+  evidence_column: text_agent_evidence
