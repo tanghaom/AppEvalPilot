@@ -925,8 +925,13 @@ Please use the Tell action to report the results of all test cases before execut
                           f, indent=4, ensure_ascii=False)
             logger.info(f"Results saved to {output_file}")
 
-        # Execute executability check
-        executability = await self.test_generator.generate_executability(result, self.osagent.output_image_path)
+        # Execute executability check (skip if no screenshot available, e.g. TextAgent mode)
+        image_path = getattr(self.osagent, 'output_image_path', '')
+        if image_path and Path(image_path).is_file():
+            executability = await self.test_generator.generate_executability(result, image_path)
+        else:
+            executability = None
+            logger.info("Skipping executability check (no screenshot available)")
 
         return final_test_cases, executability
 
