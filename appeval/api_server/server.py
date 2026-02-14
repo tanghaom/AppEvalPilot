@@ -20,12 +20,12 @@ import traceback
 import warnings
 from concurrent.futures import ProcessPoolExecutor
 from pathlib import Path
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Union
 
 import httpx
 import uvicorn
 import yaml
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Request, Form, File, UploadFile
 from pydantic import BaseModel
 
 PROJECT_DIR = Path(__file__).resolve().parent.parent.parent
@@ -36,8 +36,8 @@ SHARED_MODEL_CACHE = os.path.join(PROJECT_DIR, ".cache", "modelscope")
 
 
 class StartRequest(BaseModel):
-    task_id: int
-    detail_id: int
+    task_id: Union[int, str]
+    detail_id: Union[int, str]
     case_name: str
     test_arry: List[str]
     prod_url: str
@@ -564,8 +564,57 @@ async def _callback(detail_id: int, result: dict):
     print(f"[Callback] detail_id={detail_id} 回调最终失败，已达最大重试次数 {retry_times}")
 
 
+def _callback_url_with_detail_id(base_url: str, detail_id) -> str:
+    """将 callback_base_url 末尾的数字换成具体的 detail_id。例如 .../detail/1 -> .../detail/123"""
+    base_url = base_url.strip().rstrip("/")
+    base_url = re.sub(r"/\d+$", "", base_url)  # 去掉末尾的 /数字
+    return f"{base_url}/{detail_id}"
+
+
+def _parse_cost_to_seconds(cost_str: str) -> int:
+    """从 'time=10.0s, usd=...' 或 'avg_time=10.0s, ...' 中解析出秒数，返回整数。"""
+    if not cost_str or not isinstance(cost_str, str):
+        return 0
+    m = re.search(r"(?:avg_)?time[=:]?\s*([\d.]+)\s*s", cost_str, re.I)
+    if m:
+        try:
+            return int(float(m.group(1)))
+        except (ValueError, TypeError):
+            pass
+    return 0
+
+
+def _transform_result_for_callback(result: dict) -> dict:
+    """对方接口要求 eval_cost/test_id/cost 为整数，将我们的 result 转成对方格式。"""
+    out = dict(result)
+    out["eval_cost"] = _parse_cost_to_seconds(str(out.get("eval_cost", "")))
+    did = result.get("detail_id")
+    try:
+        out["detail_id"] = int(did) if did is not None and str(did).strip() != "" else did
+    except (TypeError, ValueError):
+        out["detail_id"] = did
+    cases = []
+    for i, tc in enumerate(out.get("test_cases", [])):
+        c = dict(tc)
+        tid = tc.get("test_id", i)
+        if isinstance(tid, str):
+            nums = re.findall(r"\d+", tid)
+            raw = int(nums[0]) if nums else i
+        else:
+            try:
+                raw = int(tid)
+            except (TypeError, ValueError):
+                raw = i
+        c["test_id"] = max(1, raw)  # 对方要求 test_id 必须为正整数
+        cost = tc.get("cost", "")
+        c["cost"] = _parse_cost_to_seconds(str(cost))
+        cases.append(c)
+    out["test_cases"] = cases
+    return out
+
+
 async def _callback_batch(callback_url: str, results: list):
-    """batch 专用：全部任务完成后只回调一次，POST 完整 results 数组。"""
+    """batch 专用：全部任务完成后，按条回调；每条 POST 到 .../detail/{detail_id}，body 为 {"results": [单条]}。"""
     if _should_skip_callback():
         print("[Callback] batch 已跳过（本地测试不回调）")
         return
@@ -573,38 +622,47 @@ async def _callback_batch(callback_url: str, results: list):
     retry_interval_sec = int(_full_cfg.get("callback_retry_interval_sec", 300) or 300)
     retry_times = max(1, retry_times)
     retry_interval_sec = max(1, retry_interval_sec)
-    url = callback_url.strip()
-    print(f"[Callback] batch 全部完成，POST {len(results)} 条结果到 {url}")
-    for attempt in range(1, retry_times + 1):
-        try:
-            async with httpx.AsyncClient(timeout=httpx.Timeout(30.0, connect=10.0), trust_env=False) as c:
-                resp = await c.post(url, json=results)
-                if resp.status_code >= 400:
-                    print(f"[Callback] batch 第{attempt}/{retry_times}次失败: HTTP {resp.status_code} | {resp.text[:500]}")
-                else:
-                    callback_ok = False
-                    try:
-                        resp_json = resp.json()
-                        if isinstance(resp_json, dict):
-                            data = resp_json.get("data", {})
-                            callback_ok = data.get("success") is True or resp_json.get("ok") is True
-                    except Exception:
-                        pass
-                    if callback_ok:
-                        print(f"[Callback] batch 成功: HTTP {resp.status_code}")
-                        return
-                    print(f"[Callback] batch 第{attempt}/{retry_times}次失败: 回调需 data.success 或 ok=true | {resp.text[:500]}")
-        except Exception as e:
-            print(f"[Callback] batch 第{attempt}/{retry_times}次异常: {type(e).__name__} {e}")
-        if attempt < retry_times:
-            print(f"[Callback] batch {retry_interval_sec}s 后重试...")
-            await asyncio.sleep(retry_interval_sec)
-    print(f"[Callback] batch 回调最终失败，已达最大重试次数 {retry_times}")
+    base_url = callback_url.strip()
+    print(f"[Callback] batch 全部完成，按 detail_id 分别回调共 {len(results)} 条")
+    async with httpx.AsyncClient(timeout=httpx.Timeout(30.0, connect=10.0), trust_env=True) as c:
+        for result in results:
+            detail_id = result.get("detail_id", "")
+            url = _callback_url_with_detail_id(base_url, detail_id)
+            # 对方接口要求 eval_cost、test_id、cost 为整数，先做转换
+            payload = _transform_result_for_callback(result)
+            for attempt in range(1, retry_times + 1):
+                try:
+                    resp = await c.post(url, json=payload)
+                    if resp.status_code >= 400:
+                        print(f"[Callback] detail_id={detail_id} 第{attempt}/{retry_times}次失败: HTTP {resp.status_code} | {resp.text[:500]}")
+                    else:
+                        callback_ok = False
+                        try:
+                            resp_json = resp.json()
+                            if isinstance(resp_json, dict):
+                                data = resp_json.get("data", {})
+                                callback_ok = (
+                                    data.get("success") is True
+                                    or resp_json.get("ok") is True
+                                    or resp_json.get("success") is True
+                                )
+                        except Exception:
+                            pass
+                        if callback_ok:
+                            print(f"[Callback] detail_id={detail_id} 成功: HTTP {resp.status_code}")
+                            break
+                        print(f"[Callback] detail_id={detail_id} 第{attempt}/{retry_times}次失败: 回调需 data.success 或 ok=true | {resp.text[:500]}")
+                except Exception as e:
+                    print(f"[Callback] detail_id={detail_id} 第{attempt}/{retry_times}次异常: {type(e).__name__} {e}")
+                if attempt < retry_times:
+                    await asyncio.sleep(retry_interval_sec)
+            else:
+                print(f"[Callback] detail_id={detail_id} 回调最终失败，已达最大重试次数 {retry_times}")
 
 
 async def _dispatch(req: StartRequest, start_index: int, run_group_ts: Optional[str] = None):
     max_workers = _executor._max_workers if _executor else 1
-    worker_id = req.detail_id % max_workers
+    worker_id = hash(str(req.detail_id)) % max_workers
     _task_status[req.detail_id] = {"status": "running", "case_name": req.case_name}
     print(f"[API] 提交任务 detail_id={req.detail_id} worker_id={worker_id} "
           f"start_index={start_index} (并行槽位 0~{max_workers - 1})", flush=True)
@@ -681,7 +739,7 @@ async def _run_batch_then_callback(
         _task_status[t.detail_id] = {"status": "running", "case_name": t.case_name}
     futures = []
     for t in req.tasks:
-        worker_id = t.detail_id % max_workers
+        worker_id = hash(str(t.detail_id)) % max_workers
         args_tuple = (
             worker_id, t.detail_id, t.task_id, t.case_name,
             t.prod_url, t.test_arry,
@@ -750,10 +808,135 @@ async def _run_batch_then_callback(
 
 
 @app.post("/batch")
-async def batch_tasks(req: BatchRequest):
-    """接收一批任务，仅返回接单结果；全部任务完成后一次性回调推送完整结果数组。"""
-    if not req.tasks:
-        return {"code": 1, "message": "tasks 为空", "data": {"success": False}}
+async def batch_tasks(request: Request):
+    """接收一批任务，仅返回接单结果；全部任务完成后一次性回调推送完整结果数组。
+    支持三种方式：
+    1. POST body (JSON) - 标准方式
+    2. multipart/form-data - 对方使用的方式
+    3. URL 参数
+    """
+    req = None
+    
+    # 打印调试信息
+    content_type = request.headers.get('content-type', '').lower()
+    print(f"[API] /batch 收到请求:")
+    print(f"  Method: {request.method}")
+    print(f"  URL: {request.url}")
+    print(f"  Query params: {dict(request.query_params)}")
+    print(f"  Content-Type: {content_type}")
+    
+    # 1. 尝试 multipart/form-data
+    if 'multipart/form-data' in content_type:
+        try:
+            form = await request.form()
+            print(f"  Form fields: {list(form.keys())}")
+            form_dict = {}
+            for key, value in form.items():
+                # 如果是文件对象，读取内容
+                if hasattr(value, 'read'):
+                    content = await value.read()
+                    form_dict[key] = content.decode('utf-8')
+                else:
+                    form_dict[key] = value
+                print(f"    {key}: {str(form_dict[key])[:200]}")
+            
+            # 对方发送的格式：分散的字段，不是 tasks 数组
+            # 检查必填字段
+            if all(k in form_dict for k in ['task_id', 'case_name', 'prod_url']):
+                # detail_id 可选，如果没有就用 task_id
+                detail_id = form_dict.get('detail_id', form_dict.get('task_id'))
+                
+                # test_arry 处理：可能是 JSON 字符串，或者多个字段
+                test_arry = []
+                if 'test_arry' in form_dict:
+                    try:
+                        test_arry = json.loads(form_dict['test_arry'])
+                    except:
+                        test_arry = [form_dict['test_arry']]
+                elif 'test_array' in form_dict:
+                    try:
+                        test_arry = json.loads(form_dict['test_array'])
+                    except:
+                        test_arry = [form_dict['test_array']]
+                else:
+                    # 查找所有 test_* 字段
+                    test_fields = {k: v for k, v in form_dict.items() if k.startswith('test_')}
+                    if test_fields:
+                        test_arry = list(test_fields.values())
+                
+                # 如果没有 test_arry，设置默认值
+                if not test_arry:
+                    test_arry = ["默认测试步骤"]
+                
+                task = StartRequest(
+                    task_id=form_dict.get('task_id'),
+                    detail_id=detail_id,
+                    case_name=form_dict.get('case_name'),
+                    prod_url=form_dict.get('prod_url'),
+                    test_arry=test_arry
+                )
+                callback_url = form_dict.get('callback_url')
+                req = BatchRequest(tasks=[task], callback_url=callback_url)
+                print(f"  ✓ 从 form-data 解析成功: 1 个任务")
+                print(f"    task_id={task.task_id}, detail_id={task.detail_id}")
+                print(f"    case_name={task.case_name}")
+                print(f"    test_arry={task.test_arry}")
+            elif 'tasks' in form_dict:
+                # tasks 字段包含 JSON 字符串
+                tasks_json = json.loads(form_dict['tasks'])
+                callback_url = form_dict.get('callback_url')
+                req = BatchRequest(tasks=tasks_json, callback_url=callback_url)
+                print(f"  ✓ 从 form-data (tasks JSON) 解析成功: {len(req.tasks)} 个任务")
+            
+            if req:
+                print(f"  最终解析: {len(req.tasks)} 个任务, callback={req.callback_url}")
+        except Exception as e:
+            print(f"  Form-data 解析失败: {e}")
+            import traceback
+            traceback.print_exc()
+    
+    # 2. 尝试从 JSON body 解析
+    if not req and 'application/json' in content_type:
+        try:
+            body = await request.json()
+            print(f"  Body (JSON): {json.dumps(body, ensure_ascii=False)[:200]}")
+            req = BatchRequest(**body)
+            print(f"  ✓ 从 JSON 解析成功")
+        except Exception as e:
+            print(f"  JSON 解析失败: {e}")
+    
+    # 3. 尝试从原始 body 解析
+    if not req:
+        try:
+            body_bytes = await request.body()
+            body_text = body_bytes.decode('utf-8')
+            if body_text:
+                print(f"  Body (raw): {body_text[:500]}")
+                body_data = json.loads(body_text)
+                req = BatchRequest(**body_data)
+                print(f"  ✓ 从原始 body 解析成功")
+        except Exception as e:
+            print(f"  原始 body 解析失败: {e}")
+    
+    # 4. 尝试从 query parameters 读取
+    if not req:
+        query_params = dict(request.query_params)
+        if query_params:
+            try:
+                if "tasks" in query_params:
+                    tasks_json = json.loads(query_params["tasks"])
+                    callback_url = query_params.get("callback_url")
+                    req = BatchRequest(tasks=tasks_json, callback_url=callback_url)
+                    print(f"  ✓ 从 query 参数解析成功")
+            except Exception as e:
+                print(f"  Query 参数解析失败: {e}")
+    
+    if not req or not req.tasks:
+        return {
+            "code": 1, 
+            "message": "无法解析请求，请确保提供 tasks 数据（支持 JSON body 或 form-data）", 
+            "data": {"success": False}
+        }
 
     running_ids = [t.detail_id for t in req.tasks if _task_status.get(t.detail_id, {}).get("status") == "running"]
     if running_ids:
