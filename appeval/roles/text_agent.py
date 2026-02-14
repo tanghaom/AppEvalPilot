@@ -3,8 +3,11 @@
 """
 @Time    : 2026/02/14
 @File    : text_agent.py
-@Desc    : Text-only OS Agent that uses accessibility tree / DOM tree instead of screenshots.
-           Uses factory function + monkey-patch to avoid pydantic coercing subclass back to OSAgent.
+@Desc    : Text-only OS Agent v2 — uses accessibility tree / DOM tree instead of screenshots.
+           Factory function + monkey-patch to avoid Pydantic coercing subclass back to OSAgent.
+           Optimized 4-section output: Changes / Thought / Action / Operation.
+           v2.1: Visual Supplement — LLM auto-detects if a case needs visual info,
+                 then attaches prev+curr screenshots for visual verification.
 """
 import copy
 import re
@@ -17,10 +20,38 @@ from typing import Any, Dict, List, Tuple
 from metagpt.actions.action import Action
 from metagpt.logs import logger
 from metagpt.schema import AIMessage
+from metagpt.utils.common import encode_image
 
 from appeval.prompts.osagent import ActionPromptContext
-from appeval.prompts.text_agent import TextPrompt, text_agent_system_prompt
+from appeval.prompts.text_agent import TextPrompt, compute_element_diff, text_agent_system_prompt
 from appeval.roles.osagent import OSAgent
+
+
+# ================================================================
+# Visual Supplement: LLM auto-classification prompt
+# ================================================================
+
+_VISUAL_CHECK_PROMPT = """Given this test instruction, does verifying the result require SEEING the visual appearance of the page?
+
+Visual verification is needed when the test checks:
+- Colors, themes, or styling (e.g. "verify the button turns red")
+- Animations or transitions (e.g. "check the animation plays")
+- Images, thumbnails, or media rendering (e.g. "verify the 3D model displays")
+- Layout, positioning, or responsive design (e.g. "check mobile layout")
+- Font styles, syntax highlighting, or text rendering
+- Visual effects (e.g. shadows, gradients, hover effects)
+- Charts, graphs, or data visualization rendering
+
+Visual verification is NOT needed when the test only checks:
+- Functionality (click, input, navigation, form submission)
+- Text content, labels, or values
+- Element existence or absence
+- Error messages or notifications (text-based)
+- API responses or data correctness
+
+Instruction: {instruction}
+
+Answer only YES or NO."""
 
 
 def create_text_agent(**kwargs) -> OSAgent:
@@ -51,8 +82,10 @@ def create_text_agent(**kwargs) -> OSAgent:
     # Store text-mode config
     agent._text_mode = True
     agent._debug_screenshots = debug_screenshots
+    agent._visual_supplement = False  # Will be set at iter==1 by LLM auto-detection
+    agent._prev_screenshot_path = ""  # Path to previous step's screenshot for visual diff
 
-    # Replace prompt utils
+    # Replace prompt utils with optimized v2 TextPrompt
     agent.prompt_utils = TextPrompt()
 
     # Monkey-patch core methods with text-only implementations
@@ -62,7 +95,7 @@ def create_text_agent(**kwargs) -> OSAgent:
     agent._save_iteration_images = types.MethodType(_save_iteration_images_text, agent)
     agent._update_screenshot_files = types.MethodType(_update_screenshot_files_noop, agent)
 
-    logger.info(f"TextAgent created (factory): a11y_mode={agent.a11y_mode}, "
+    logger.info(f"TextAgent v2 created (factory): a11y_mode={agent.a11y_mode}, "
                 f"debug_screenshots={debug_screenshots}")
     return agent
 
@@ -98,9 +131,63 @@ async def _get_perception_infos_text(
     return perception_infos, width, height, ""
 
 
+# ── Visual Supplement: LLM auto-detection ──
+
+async def _detect_visual_need(self, instruction: str) -> bool:
+    """Ask the LLM whether this test case requires visual verification.
+
+    Called once at iter==1. Result is cached for the rest of the run.
+    Cost: ~50 tokens (one short yes/no call).
+    """
+    prompt = _VISUAL_CHECK_PROMPT.format(instruction=instruction)
+    system_msg = "Answer only YES or NO."
+    try:
+        result = await self.llm.aask(prompt, system_msgs=[system_msg], images=[], stream=False)
+        needs_visual = result.strip().upper().startswith("YES")
+        logger.info(f"🔍 Visual supplement detection: {'YES → attaching screenshots' if needs_visual else 'NO → text-only mode'}")
+        return needs_visual
+    except Exception as e:
+        logger.warning(f"Visual detection failed (defaulting to text-only): {e}")
+        return False
+
+
+# ── Think (v2.1: with element diff + optional visual supplement) ──
+
 async def _think_text(self) -> bool:
-    """Generate operation decisions using text-only LLM (no images)."""
+    """Generate operation decisions using text-only LLM.
+
+    v2.1: injects a programmatic element diff into add_info so the model
+    only needs to interpret what changed, not re-describe the whole page.
+    When _visual_supplement is True, attaches prev+curr screenshots.
+    """
+    # Build element diff
+    prev_elements = getattr(self.rc, 'last_perception_infos', None) or []
+    diff_text = compute_element_diff(self.rc.perception_infos, prev_elements)
+
+    # Prepend diff to add_info
     add_info = self.add_info
+    if diff_text:
+        add_info = diff_text + "\n" + add_info
+
+    # Visual supplement: inject hint into add_info when screenshots are attached
+    visual_mode = getattr(self, '_visual_supplement', False)
+    if visual_mode:
+        visual_hint = (
+            "\n### Visual Context ###\n"
+            "Screenshots are provided for visual verification. "
+        )
+        if self.rc.iter > 1:
+            visual_hint += (
+                "Two images: BEFORE (previous step) and AFTER (current). "
+                "Compare them for visual changes (colors, layout, rendering, animations)."
+            )
+        else:
+            visual_hint += (
+                "One image: current page state. "
+                "Use it to verify visual aspects (colors, layout, rendering)."
+            )
+        visual_hint += "\nThe accessibility tree remains your primary source for element coordinates and structure.\n"
+        add_info = visual_hint + "\n" + add_info
 
     ctx = ActionPromptContext(
         instruction=self.instruction,
@@ -128,86 +215,131 @@ async def _think_text(self) -> bool:
 
     prompt_action = self.prompt_utils.get_action_prompt(ctx)
     logger.info(
-        f"\n\n######################## prompt_action (TextAgent):\n{prompt_action}\n"
+        f"\n\n######################## prompt_action (TextAgent v2.1):\n{prompt_action}\n"
         f"\n######################## prompt_action end\n\n"
     )
 
     system_msg = (
         self.system_prompt
         if self.system_prompt
-        else "You are a helpful AI PC operating assistant. You operate web pages by reading their accessibility tree."
+        else "You are a helpful AI web testing assistant that reads accessibility trees."
     )
 
-    # KEY: images=[] — pure text LLM call, no screenshots
+    # Build images list: empty for text-only, prev+curr for visual supplement
+    images = []
+    if visual_mode and getattr(self, '_debug_screenshots', True):
+        try:
+            # Previous step screenshot (for visual diff)
+            prev_path = getattr(self, '_prev_screenshot_path', "")
+            if prev_path and Path(prev_path).exists():
+                images.append(encode_image(prev_path))
+            # Current screenshot
+            if Path(self.screenshot_file).exists():
+                images.append(encode_image(self.screenshot_file))
+            if images:
+                logger.info(f"📸 Visual supplement: attaching {len(images)} screenshot(s)")
+        except Exception as e:
+            logger.warning(f"Failed to encode screenshots for visual supplement: {e}")
+            images = []
+
     output_action = await self.llm.aask(
         prompt_action,
         system_msgs=[system_msg],
-        images=[],
+        images=images,
         stream=False,
     )
 
-    _parse_think_output(self, output_action)
+    _parse_think_output_v2(self, output_action)
 
     logger.info(
-        f"\n\n######################## output_action (TextAgent):\n{output_action}\n"
+        f"\n\n######################## output_action (TextAgent v2.1):\n{output_action}\n"
         f"\n######################## output_action end\n\n"
     )
     logger.info(f"#### Assumption: {self.rc.assumption}")
     logger.info(f"#### Confidence: {self.rc.confidence}")
+    if visual_mode:
+        logger.info(f"📸 Visual mode: ON ({len(images)} images attached)")
 
     return not self.rc.action.startswith("Stop")
 
 
-def _parse_think_output(self, output_action: str) -> None:
-    """Parse LLM output. Handles both Screen State (TextAgent) and Image Description (OSAgent)."""
-    def _extract_between(text, start, end=None, normalize=False, escape_newlines=False):
+# ── Parser for 4-section output ──
+
+def _parse_think_output_v2(self, output_action: str) -> None:
+    """Parse the 4-section LLM output (Changes / Thought / Action / Operation).
+
+    Also extracts embedded Assumption and Confidence from the Thought section.
+    Populates the same rc.* fields as v1 for framework compatibility.
+    """
+    def _extract(text: str, start: str, end: str = None) -> str:
         if start not in text:
             return ""
-        start_idx = text.find(start) + len(start)
+        idx = text.find(start) + len(start)
         if end is not None:
-            end_idx = text.find(end, start_idx)
+            end_idx = text.find(end, idx)
             if end_idx == -1:
-                return ""
-            content = text[start_idx:end_idx]
-        else:
-            content = text[start_idx:]
-        content = content.strip()
-        if escape_newlines:
-            content = content.replace("\n", "\\n")
-        if normalize:
-            content = content.replace(":", "")
-            content = re.sub(r"\s{2,}", " ", content)
-        return content.strip()
+                return text[idx:].strip()
+            return text[idx:end_idx].strip()
+        return text[idx:].strip()
 
-    screen_state = _extract_between(
-        output_action, "### Screen State ###", "### Reflection Thought ###", escape_newlines=True
+    # ── Extract 4 sections ──
+    changes = _extract(output_action, "### Changes ###", "### Thought ###")
+    thought = _extract(output_action, "### Thought ###", "### Action ###")
+    action = _extract(output_action, "### Action ###", "### Operation ###")
+    operation = _extract(output_action, "### Operation ###")
+
+    # ── Fallback: try v1 section names for backward compat ──
+    if not action:
+        action = _extract(output_action, "### Action ###")
+    if not thought and "### Reflection Thought ###" in output_action:
+        # v1 fallback
+        thought = _extract(output_action, "### Reflection Thought ###", "### Thought ###")
+        thought += " " + _extract(output_action, "### Thought ###", "### Action ###")
+
+    # ── Extract embedded Assumption + Confidence from Thought ──
+    assumption = ""
+    confidence = 0.0
+
+    # Pattern: "Assumption: can/cannot meet expected result | Confidence: 0.X"
+    assumption_match = re.search(
+        r"Assumption:\s*(.*?)(?:\||$)", thought, re.IGNORECASE
     )
-    if not screen_state:
-        screen_state = _extract_between(
-            output_action, "### Image Description ###", "### Reflection Thought ###", escape_newlines=True
-        )
-    self.rc.image_description = screen_state
+    if assumption_match:
+        assumption = assumption_match.group(1).strip()
 
-    self.rc.reflection_thought = _extract_between(
-        output_action, "### Reflection Thought ###", "### Thought ###", escape_newlines=True)
-    self.rc.thought = _extract_between(
-        output_action, "### Thought ###", "### Action ###", normalize=True)
-    self.rc.action = _extract_between(
-        output_action, "### Action ###", "### Operation ###")
-    self.rc.summary = _extract_between(
-        output_action, "### Operation ###", "### Task List ###", escape_newlines=True)
-    self.rc.task_list = _extract_between(
-        output_action, "### Task List ###", "### Assumption ###")
-    self.rc.assumption = _extract_between(
-        output_action, "### Assumption ###", "### Confidence ###", escape_newlines=True)
+    confidence_match = re.search(
+        r"Confidence:\s*(\d+\.?\d*)", thought, re.IGNORECASE
+    )
+    if confidence_match:
+        try:
+            confidence = max(0.0, min(1.0, float(confidence_match.group(1))))
+        except (ValueError, AttributeError):
+            confidence = 0.0
 
-    confidence_str = _extract_between(output_action, "### Confidence ###")
-    try:
-        match = re.search(r"(\d+\.?\d*)", confidence_str)
-        self.rc.confidence = max(0.0, min(1.0, float(match.group(1)))) if match else 0.0
-    except (ValueError, AttributeError):
-        self.rc.confidence = 0.0
+    # If no structured assumption found, try to infer from thought text
+    if not assumption:
+        if "cannot meet" in thought.lower():
+            assumption = "cannot meet expected result"
+        elif "can meet" in thought.lower():
+            assumption = "can meet expected result"
+        else:
+            assumption = "uncertain"
 
+    # ── Populate rc fields (same names as v1 for compatibility) ──
+    self.rc.image_description = changes  # "Changes" replaces "Screen State"
+    self.rc.reflection_thought = thought  # Thought includes reflection
+    self.rc.thought = thought
+    self.rc.action = action
+    self.rc.summary = operation
+
+    # Task list: NOT extracted from output — keep the initial task list unchanged
+    # self.rc.task_list stays as-is
+
+    self.rc.assumption = assumption
+    self.rc.confidence = confidence
+
+
+# ── Act (text-only, simplified) ──
 
 async def _act_text(self) -> AIMessage:
     """Execute action — simplified for text-only mode. No TellVerifier, no screenshot management."""
@@ -232,7 +364,15 @@ async def _act_text(self) -> AIMessage:
             self.run_action_failed_exception = e
 
     time.sleep(0.5)
+
+    # Save previous elements for diff computation in next _think_text
     self.rc.last_perception_infos = copy.deepcopy(self.rc.perception_infos)
+
+    # Save previous screenshot path for visual diff (before taking new screenshot)
+    if getattr(self, '_visual_supplement', False) and getattr(self, '_debug_screenshots', True):
+        prev_origin = f"{self.save_img}/origin_{self.rc.iter - 1}.jpg"
+        if Path(prev_origin).exists():
+            self._prev_screenshot_path = prev_origin
 
     self.rc.perception_infos, self.width, self.height, self.output_image_path = (
         await self._get_perception_infos(self.screenshot_file, self.screenshot_som_file)
@@ -241,12 +381,13 @@ async def _act_text(self) -> AIMessage:
     if getattr(self, '_debug_screenshots', True):
         self._save_iteration_images(self.rc.iter)
 
+    # Append to history lists (same fields as v1 for compatibility)
     self.rc.thought_history.append(self.rc.thought)
     self.rc.summary_history.append(self.rc.summary)
     self.rc.action_history.append(self.rc.action)
     self.rc.assumption_history.append(self.rc.assumption)
     self.rc.confidence_history.append(self.rc.confidence)
-    self.rc.memory.append(getattr(self.rc, "image_description", "") or "")
+    self.rc.memory.append(self.rc.image_description or "")  # "Changes" text
     self.rc.reflection_thought_history.append(self.rc.reflection_thought)
 
     if self.run_action_failed:
@@ -258,8 +399,10 @@ async def _act_text(self) -> AIMessage:
     return AIMessage(content=self.rc.action, cause_by=Action)
 
 
+# ── Main react loop ──
+
 async def _react_text(self) -> AIMessage:
-    """Main react loop — text-only version."""
+    """Main react loop — text-only version v2."""
     self.rc.iter = 0
     rsp = AIMessage(content="No actions taken yet", cause_by=Action)
 
@@ -267,7 +410,7 @@ async def _react_text(self) -> AIMessage:
         self.rc.action_history
     ):
         self.rc.iter += 1
-        logger.info(f"\n\n\n\n\n\n#### iter:{self.rc.iter} (TextAgent)\n\n")
+        logger.info(f"\n\n\n\n\n\n#### iter:{self.rc.iter} (TextAgent v2)\n\n")
 
         if self.rc.iter == 1:
             (
@@ -277,11 +420,16 @@ async def _react_text(self) -> AIMessage:
             if getattr(self, '_debug_screenshots', True):
                 self._save_iteration_images(0)
 
+            # Visual Supplement: LLM auto-detects if visual verification is needed
+            if getattr(self, '_debug_screenshots', True):
+                self._visual_supplement = await _detect_visual_need(self, self.instruction)
+
+            # Task list: generated ONCE, then kept as read-only reference
             self.rc.task_list = await self._generate_initial_task_list(
                 self.instruction, self.screenshot_file, None
             )
 
-        # Think (text-only, no images)
+        # Think (text-only with element diff)
         has_todo = await _think_text(self)
         if not has_todo:
             rsp = AIMessage(content="TextAgent has finished all tasks", cause_by=Action)
@@ -308,10 +456,10 @@ async def _react_text(self) -> AIMessage:
         if has_todo:
             rsp = await _act_text(self)
             if not self.rc.action.startswith("Tell"):
-                current_state = self.rc.image_description or "Unknown state"
+                current_changes = self.rc.image_description or "Unknown state"
                 self.rc.action = (
                     f"Tell (Reached maximum steps ({self.max_iters}). "
-                    f"Task may be incomplete. Current state: {current_state[:200]})"
+                    f"Task may be incomplete. Last changes: {current_changes[:200]})"
                 )
                 self.rc.summary = "Reached max steps, reporting current state"
                 if self.rc.action_history:
@@ -335,44 +483,44 @@ async def _react_text(self) -> AIMessage:
     return rsp
 
 
+# ── Initial task list generation ──
+
 async def _generate_initial_task_list_text(
     self, instruction: str, screenshot_file: str = None, screenshot_som_file: str = None
 ) -> str:
     """Generate initial task list from element tree (no screenshots)."""
     elements_text = _format_elements(self.rc.perception_infos)
 
-    prompt = f"""Based on the following instruction and the current page's accessibility tree, generate an initial task list.
+    prompt = f"""Based on the instruction and current page elements, generate a concise task plan.
 
 **Instruction:** {instruction}
 
-**Current Page Elements:**
+**Current Page Elements (top entries):**
 {elements_text}
 
-Please output the task list in the following format:
-* **[Completed Tasks]:**
-  * None
-* **[Current Task]:** <describe the first high-level task to execute>
-* **[Next Operation]:**
-  * <describe the first step in detail>
+Output format:
+* **[Current Task]:** <first task>
 * **[Remaining Tasks]:**
-  * <describe remaining high-level task 1>
+  * <task 2>
   * ...
 """
 
     system_msg = (
         self.system_prompt
         if self.system_prompt
-        else "You are a helpful AI PC operating assistant that reads accessibility trees to understand web pages."
+        else "You are a helpful AI web testing assistant."
     )
 
     result = await self.llm.aask(prompt, system_msgs=[system_msg], images=[], stream=False)
     task_list = result.strip()
     logger.info(
-        f"\n\n######################## Initial Task List (TextAgent):\n{task_list}\n"
+        f"\n\n######################## Initial Task List (TextAgent v2):\n{task_list}\n"
         f"\n######################## End of Initial Task List\n\n"
     )
     return task_list
 
+
+# ── Utility methods ──
 
 def _save_iteration_images_text(self, iter_num: int) -> None:
     """Save debug screenshots if enabled."""
@@ -394,7 +542,7 @@ def _update_screenshot_files_noop(self) -> None:
 def _format_elements(elements: List[Dict], max_elements: int = 200) -> str:
     """Format a11y tree elements as readable text."""
     if not elements:
-        return "(No elements detected — the page may be loading or empty)"
+        return "(No elements detected — page may be loading or empty)"
     lines = [f"  [{el.get('coordinates', ())}] {el.get('text', '')}" for el in elements[:max_elements]]
     result = "\n".join(lines)
     if len(elements) > max_elements:

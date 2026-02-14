@@ -5,6 +5,8 @@ from pathlib import Path
 
 from loguru import logger
 
+# set MetaGPT config root to /root/.metagpt
+os.environ['CONFIG_ROOT'] = '/root/.metagpt'
 
 from appeval.roles.eval_runner import AppEvalRole
 from appeval.utils.excel_json_converter import make_work_path

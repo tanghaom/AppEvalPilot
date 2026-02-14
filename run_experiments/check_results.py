@@ -3,7 +3,7 @@
 跑测结果检查脚本 — 独立运行，查看准确率、混淆矩阵、错误分析。
 
 用法:
-    # 检查 TextAgent 结果
+    # 检查 TextAgent 结果（自动检测列名）
     python check_results.py
 
     # 检查指定结果文件
@@ -17,10 +17,18 @@
 
     # 实时刷新（跑测期间监控）
     python check_results.py --watch 30
+
+    # 🆕 完整错误归因分析（分类 + 按App聚合 + 可优化建议）
+    python check_results.py --analyze
+
+    # 分析并导出 markdown
+    python check_results.py --analyze --export analysis_report.md
 """
 import argparse
+import re
 import time
 import sys
+from collections import defaultdict
 from pathlib import Path
 
 import pandas as pd
@@ -210,6 +218,358 @@ def print_compare(file1, file2, true_col="A 角分数"):
     row("FN", "fn", "d")
 
 
+############################################################
+# ── 错误归因分析 ──
+############################################################
+
+# 关键词 → 错误类别映射（优先级从高到低）
+ERROR_CATEGORY_RULES = [
+    # ── 系统/API 错误 ──
+    {
+        "name": "API/系统错误",
+        "icon": "🔴",
+        "keywords_evidence": [
+            r"Error:", r"额度已用尽", r"40[13]", r"429", r"500",
+            r"timeout", r"Errno", r"ConnectionError", r"rate.?limit",
+        ],
+        "optimizable": False,
+        "desc": "LLM API 调用失败、超时、限流等系统级错误。",
+    },
+    # ── 视觉渲染 ──
+    {
+        "name": "视觉渲染盲区",
+        "icon": "👁️",
+        "keywords_a_reason": [
+            r"显示失败", r"未显示", r"无法显示", r"渲染失败", r"不显示",
+            r"缩略图", r"3[Dd].*模型", r"图片.*加载", r"样式.*异常",
+            r"动画.*效果", r"颜色.*不对", r"布局.*错",
+        ],
+        "optimizable": False,
+        "desc": "A角标注为渲染/视觉问题，TextAgent 的 a11y tree 无法感知视觉渲染结果。",
+    },
+    # ── 控件暴露不完整 ──
+    {
+        "name": "A11y Tree 暴露不完整",
+        "icon": "🌳",
+        "keywords_evidence": [
+            r"no.*slider", r"no.*button.*found", r"not.*found.*element",
+            r"not.*exposed", r"not.*accessible", r"no.*interactive",
+            r"search.*return.*no.*result", r"Ctrl\+F.*nothing",
+            r"no.*control", r"static text",
+        ],
+        "keywords_a_reason": [
+            r"无法.*操作", r"控件.*缺失",
+        ],
+        "optimizable": "partial",
+        "desc": "页面控件（slider, 图标按钮等）在 a11y tree 中暴露不完整。",
+    },
+    # ── 交互验证不足 ──
+    {
+        "name": "交互验证薄弱",
+        "icon": "🔄",
+        "keywords_evidence": [
+            r"success", r"updated", r"changed",  # Agent 认为成功
+        ],
+        "keywords_a_reason": [
+            r"无法.*编辑", r"无法.*修改", r"无法.*打开", r"无法.*操作",
+            r"不生效", r"未保存", r"无法.*提交",
+        ],
+        "optimizable": True,
+        "desc": "Agent 报 Pass（看到文字变化就认为成功），但实际功能未真正生效。",
+    },
+    # ── 操作执行失败 ──
+    {
+        "name": "操作执行问题",
+        "icon": "⚙️",
+        "keywords_evidence": [
+            r"No functions detected", r"placeholder", r"did not.*update",
+            r"did not.*change", r"remained", r"still.*show",
+            r"no.*result", r"no.*output", r"no.*response",
+            r"failed to", r"could not",
+        ],
+        "optimizable": True,
+        "desc": "Agent 的操作没有正确执行（代码编辑器输入失败、按钮无响应等）。",
+    },
+    # ── 步数/探索不足 ──
+    {
+        "name": "步数/探索不足",
+        "icon": "⏱️",
+        "keywords_evidence": [
+            r"same ending", r"not.*consistently", r"only.*one",
+            r"insufficient", r"not.*fully",
+        ],
+        "optimizable": True,
+        "desc": "在有限步数内无法完成复杂验证（如需多次游戏 playthrough）。",
+    },
+]
+
+
+def classify_error(row, score_col, evidence_col, true_col="A 角分数"):
+    """对单个错误 case 进行自动归因分类。
+
+    Returns:
+        (category_name, icon, is_optimizable, matched_rule_detail)
+    """
+    pred = int(row[score_col])
+    truth = int(row[true_col])
+    evidence = str(row.get(evidence_col, "")).lower()
+    a_reason = str(row.get("A 角0分原因", "")).lower()
+
+    is_fp = pred == 1 and truth == 0  # Agent 报 Pass，实际 Fail
+    is_fn = pred == 0 and truth == 1  # Agent 报 Fail，实际 Pass
+
+    for rule in ERROR_CATEGORY_RULES:
+        matched = False
+
+        # 检查 evidence 关键词
+        for pat in rule.get("keywords_evidence", []):
+            if re.search(pat, evidence, re.IGNORECASE):
+                matched = True
+                break
+
+        # 检查 A角0分原因 关键词（仅 FP 时有意义：Agent 说 Pass 但实际 Fail）
+        if not matched and is_fp:
+            for pat in rule.get("keywords_a_reason", []):
+                if re.search(pat, a_reason, re.IGNORECASE):
+                    matched = True
+                    break
+
+        # 交互验证薄弱：需要 FP + evidence 包含成功词 + A角原因包含失败词
+        if rule["name"] == "交互验证薄弱" and is_fp:
+            ev_has_success = any(
+                re.search(p, evidence, re.IGNORECASE)
+                for p in rule.get("keywords_evidence", [])
+            )
+            a_has_fail = any(
+                re.search(p, a_reason, re.IGNORECASE)
+                for p in rule.get("keywords_a_reason", [])
+            )
+            matched = ev_has_success and a_has_fail
+
+        # 视觉渲染盲区 for FP only
+        if rule["name"] == "视觉渲染盲区" and not is_fp:
+            matched = False  # 只对 FP 生效（Agent 误以为功能正常）
+
+        if matched:
+            return rule["name"], rule["icon"], rule["optimizable"], rule["desc"]
+
+    return "其他/未分类", "❓", True, "无法自动归因，建议人工审查。"
+
+
+def analyze_errors(file_path, score_col, evidence_col, true_col="A 角分数",
+                   export_path=None):
+    """完整的错误归因分析。"""
+    df = pd.read_excel(file_path)
+    tested = df[df[score_col].notna()]
+    valid = tested[tested[true_col].notna()].copy()
+    valid[score_col] = valid[score_col].astype(int)
+    valid[true_col] = valid[true_col].astype(int)
+
+    wrong = valid[valid[score_col] != valid[true_col]]
+    correct = valid[valid[score_col] == valid[true_col]]
+
+    n_total = len(valid)
+    n_wrong = len(wrong)
+    n_correct = len(correct)
+    acc = 100 * n_correct / n_total if n_total > 0 else 0
+
+    tp = len(valid[(valid[score_col] == 1) & (valid[true_col] == 1)])
+    fp = len(valid[(valid[score_col] == 1) & (valid[true_col] == 0)])
+    fn = len(valid[(valid[score_col] == 0) & (valid[true_col] == 1)])
+    tn = len(valid[(valid[score_col] == 0) & (valid[true_col] == 0)])
+
+    lines = []  # for export
+
+    def out(s=""):
+        print(s)
+        lines.append(s)
+
+    out(f"{'='*90}")
+    out(f"📊 错误归因分析报告")
+    out(f"   文件: {file_path}")
+    out(f"   时间: {time.strftime('%Y-%m-%d %H:%M:%S')}")
+    out(f"{'='*90}")
+    out()
+    out(f"## 1. 总体性能")
+    out()
+    out(f"| 指标 | 数值 |")
+    out(f"|------|------|")
+    out(f"| 已评估 | {n_total} |")
+    out(f"| 正确 | {n_correct} ({acc:.1f}%) |")
+    out(f"| 错误 | {n_wrong} ({100-acc:.1f}%) |")
+    out(f"| TP (真阳) | {tp} |")
+    out(f"| FP (假阳/误报Pass) | {fp} |")
+    out(f"| FN (假阴/漏报Pass) | {fn} |")
+    out(f"| TN (真阴) | {tn} |")
+    if tp + fn > 0:
+        out(f"| Pass 召回率 | {100*tp/(tp+fn):.1f}% |")
+    if tp + fp > 0:
+        out(f"| Pass 精确率 | {100*tp/(tp+fp):.1f}% |")
+    if tn + fp > 0:
+        out(f"| Fail 召回率 | {100*tn/(tn+fp):.1f}% |")
+    out()
+
+    if n_wrong == 0:
+        out("✅ 没有错误案例！")
+        if export_path:
+            Path(export_path).write_text("\n".join(lines), encoding="utf-8")
+            out(f"\n📝 报告已导出到: {export_path}")
+        return
+
+    # ── 分类所有错误 ──
+    categories = defaultdict(list)
+    for idx, row in wrong.iterrows():
+        cat_name, icon, optimizable, desc = classify_error(
+            row, score_col, evidence_col, true_col
+        )
+        pred = "Pass" if row[score_col] == 1 else "Fail"
+        truth = "Pass" if row[true_col] == 1 else "Fail"
+        error_type = "FP" if pred == "Pass" else "FN"
+        categories[cat_name].append({
+            "idx": idx,
+            "row": row,
+            "icon": icon,
+            "optimizable": optimizable,
+            "desc": desc,
+            "pred": pred,
+            "truth": truth,
+            "error_type": error_type,
+        })
+
+    # ── 2. 分类汇总表 ──
+    out(f"## 2. 错误分类汇总")
+    out()
+    out(f"| 类别 | 数量 | 占比 | FP | FN | 可优化 |")
+    out(f"|------|------|------|----|----|--------|")
+    for cat_name in ERROR_CATEGORY_RULES:
+        name = cat_name["name"]
+        if name in categories:
+            items = categories[name]
+            icon = items[0]["icon"]
+            n_fp = sum(1 for x in items if x["error_type"] == "FP")
+            n_fn = sum(1 for x in items if x["error_type"] == "FN")
+            opt = items[0]["optimizable"]
+            opt_str = "❌ 不可" if opt is False else ("⚠️ 部分" if opt == "partial" else "✅ 可以")
+            out(f"| {icon} {name} | {len(items)} | {100*len(items)/n_wrong:.0f}% | {n_fp} | {n_fn} | {opt_str} |")
+    # 其他/未分类
+    if "其他/未分类" in categories:
+        items = categories["其他/未分类"]
+        n_fp = sum(1 for x in items if x["error_type"] == "FP")
+        n_fn = sum(1 for x in items if x["error_type"] == "FN")
+        out(f"| ❓ 其他/未分类 | {len(items)} | {100*len(items)/n_wrong:.0f}% | {n_fp} | {n_fn} | ✅ 待审查 |")
+    out()
+
+    # 可优化的比例
+    n_optimizable = sum(
+        len(items) for items in categories.values()
+        if items and items[0]["optimizable"] is not False
+    )
+    out(f"**可优化错误**: {n_optimizable}/{n_wrong} ({100*n_optimizable/n_wrong:.0f}%)")
+    if n_total > 0:
+        theoretical_acc = 100 * (n_correct + n_optimizable) / n_total
+        out(f"**理论最优准确率**: {theoretical_acc:.1f}% (修复所有可优化错误后)")
+    out()
+
+    # ── 3. 按 App 聚合 ──
+    out(f"## 3. 按 App 聚合错误")
+    out()
+    app_col = "case_name" if "case_name" in df.columns else None
+    if app_col:
+        app_errors = defaultdict(lambda: {"total": 0, "wrong": 0, "fp": 0, "fn": 0, "cats": defaultdict(int)})
+        for _, row in valid.iterrows():
+            app = row[app_col]
+            app_errors[app]["total"] += 1
+            if row[score_col] != row[true_col]:
+                app_errors[app]["wrong"] += 1
+                if row[score_col] == 1:
+                    app_errors[app]["fp"] += 1
+                else:
+                    app_errors[app]["fn"] += 1
+
+        for cat_name, items in categories.items():
+            for item in items:
+                app = item["row"].get(app_col, "N/A")
+                app_errors[app]["cats"][cat_name] += 1
+
+        # 按错误数降序
+        sorted_apps = sorted(app_errors.items(), key=lambda x: x[1]["wrong"], reverse=True)
+        out(f"| App | 评估 | 错误 | 错误率 | FP | FN | 主要错因 |")
+        out(f"|-----|------|------|--------|----|----|----------|")
+        for app, info in sorted_apps:
+            if info["wrong"] == 0:
+                continue
+            err_rate = 100 * info["wrong"] / info["total"] if info["total"] > 0 else 0
+            main_cat = max(info["cats"].items(), key=lambda x: x[1])[0] if info["cats"] else "-"
+            out(f"| {app} | {info['total']} | {info['wrong']} | {err_rate:.0f}% | {info['fp']} | {info['fn']} | {main_cat} |")
+        out()
+
+    # ── 4. 逐条错误详情（表格） ──
+    out(f"## 4. 逐条错误详情 ({n_wrong}个)")
+    out()
+
+    test_col = "test_case" if "test_case" in df.columns else None
+    test_ch_col = "测试点" if "测试点" in df.columns else None
+    a_reason_col = "A 角0分原因" if "A 角0分原因" in df.columns else None
+
+    # 收集所有分类的错误，按类别输出表格
+    all_cat_names = [r["name"] for r in ERROR_CATEGORY_RULES] + ["其他/未分类"]
+    for cat_name in all_cat_names:
+        if cat_name not in categories:
+            continue
+        items = categories[cat_name]
+        icon = items[0]["icon"]
+        desc = items[0]["desc"]
+        out(f"### {icon} {cat_name} ({len(items)}个) — {desc}")
+        out()
+
+        # 表头
+        header =  f"  {'#':<3} {'类型':<4} {'App':<28} {'测试点':<35} {'Agent证据(摘要)':<50} {'A角原因':<20}"
+        sep =     f"  {'─'*3} {'─'*4} {'─'*28} {'─'*35} {'─'*50} {'─'*20}"
+        out(header)
+        out(sep)
+
+        for i, item in enumerate(items, 1):
+            row = item["row"]
+            etype = item["error_type"]
+            app = str(row.get(app_col, ""))[:26] if app_col else ""
+            test_desc = ""
+            if test_ch_col and pd.notna(row.get(test_ch_col)):
+                test_desc = str(row.get(test_ch_col, ""))[:33]
+            elif test_col:
+                test_desc = str(row.get(test_col, ""))[:33]
+            evidence = str(row.get(evidence_col, ""))[:48].replace("\n", " ")
+            a_reason = ""
+            if a_reason_col and pd.notna(row.get(a_reason_col)) and str(row.get(a_reason_col)) != "nan":
+                a_reason = str(row.get(a_reason_col))[:18]
+            out(f"  {i:<3} {etype:<4} {app:<28} {test_desc:<35} {evidence:<50} {a_reason:<20}")
+
+        out()
+
+    # ── 5. 优化建议（表格） ──
+    out(f"## 5. 优化建议")
+    out()
+    suggestions = {
+        "视觉渲染盲区": "需截图/VLM验证视觉结果；混合模式：TextAgent操作+VLM截图验证",
+        "A11y Tree 暴露不完整": "Tab遍历获取焦点；CDP DOM.getDocument直接查询；aria-label搜索",
+        "交互验证薄弱": "prompt增加规则：操作后必须验证元素状态变化（检查value属性）",
+        "操作执行问题": "CodeMirror等用CDP Runtime.evaluate注入代码；增加输入后验证",
+        "步数/探索不足": "增加max_iters；prompt中提示高效探索策略",
+        "API/系统错误": "更换API Key；增加retry配置；降低并发数",
+    }
+    out(f"  {'类别':<22} {'数量':<6} {'建议':<70}")
+    out(f"  {'─'*22} {'─'*6} {'─'*70}")
+    for cat_name, suggestion in suggestions.items():
+        if cat_name in categories:
+            n = len(categories[cat_name])
+            out(f"  {cat_name:<22} {n:<6} {suggestion:<70}")
+    out()
+
+    # ── 导出 ──
+    if export_path:
+        Path(export_path).write_text("\n".join(lines), encoding="utf-8")
+        print(f"\n📝 报告已导出到: {export_path}")
+
+
 def watch_mode(file_path, score_col, evidence_col, true_col, interval):
     """实时监控模式。"""
     print(f"👀 监控模式: 每 {interval}s 刷新 | Ctrl+C 退出")
@@ -243,6 +603,10 @@ def main():
                         help="对比两个结果文件")
     parser.add_argument("--watch", type=int, default=0,
                         help="实时刷新间隔(秒), 0=不刷新")
+    parser.add_argument("--analyze", action="store_true",
+                        help="完整错误归因分析（分类 + 按App聚合 + 可优化建议）")
+    parser.add_argument("--export", type=str, default=None,
+                        help="导出分析报告到 markdown 文件 (配合 --analyze 使用)")
     args = parser.parse_args()
 
     # 对比模式
@@ -280,6 +644,12 @@ def main():
     # 监控模式
     if args.watch > 0:
         watch_mode(file_path, score_col, evidence_col, args.true_label, args.watch)
+        return
+
+    # 分析模式
+    if args.analyze:
+        analyze_errors(file_path, score_col, evidence_col, args.true_label,
+                       export_path=args.export)
         return
 
     # 摘要

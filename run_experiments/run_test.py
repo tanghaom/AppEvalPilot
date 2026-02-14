@@ -385,7 +385,8 @@ def main():
     parser.add_argument("--workers", type=int, default=None, help="覆盖配置中的并行数")
     parser.add_argument("--model", type=str, choices=["local", "remote", "text"], default=None, help="覆盖配置: local | remote | text")
     parser.add_argument("--resume", action="store_true", default=True, help="续跑：跳过结果表中已有分数的任务，只跑未完成的（默认启用）")
-    
+    parser.add_argument("--rerun-failed", action="store_true", default=False,
+                        help="只重跑上一轮判断错误的 case（需要结果表和真实标签列同时存在）")
     parser.add_argument("--no-cleanup", action="store_true", default=True, help="跳过启动前的残留进程清理")
 
     args = parser.parse_args()
@@ -443,8 +444,34 @@ def main():
         else:
             raise ValueError(f"Excel 中找不到 URL 列（需要 prod_id 或 prod_url），可用列: {list(dataframe.columns)}")
 
+    # --rerun-failed: 只重跑上一轮判断错误的 case
+    if args.rerun_failed and out_path.exists():
+        df = pd.read_excel(out_path)
+        url_col = _get_url_col(df)
+        valid_df = df[
+            df[url_col].notna() & df[true_label_column].notna() & df["测试点"].notna()
+        ].copy()
+        if tasks > 0:
+            valid_df = valid_df.head(tasks)
+        # 筛选判断错误的行：有预测分数、有真实标签、且两者不一致
+        if score_col in valid_df.columns:
+            has_both = valid_df[valid_df[score_col].notna() & valid_df[true_label_column].notna()]
+            wrong_mask = has_both[score_col].astype(int) != has_both[true_label_column].astype(int)
+            valid_df = has_both[wrong_mask].copy()
+            # 清除旧分数，让 worker 重跑
+            valid_df[score_col] = None
+            valid_df[evidence_col] = None
+            # 同步清除 df 中这些行的旧分数
+            for idx in valid_df.index:
+                df.at[idx, score_col] = None
+                if evidence_col in df.columns:
+                    df.at[idx, evidence_col] = None
+            df.to_excel(out_path, index=False)
+        else:
+            valid_df = valid_df.head(0)
+        print(f"[重跑失败] 结果表: {out_path}，筛选判断错误 case: {len(valid_df)} 个")
     # 续跑：从结果表恢复 df，只跑尚未有分数的任务
-    if args.resume and out_path.exists():
+    elif args.resume and out_path.exists():
         df = pd.read_excel(out_path)
         url_col = _get_url_col(df)
         valid_df = df[

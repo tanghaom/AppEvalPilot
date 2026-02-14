@@ -4,7 +4,7 @@
 
 # 运行参数
 tasks: 100          # 跑多少个任务，0=全部
-workers: 30      # 并行 worker 数
+workers: 30     # 并行 worker 数
 model: text     # local=本地模型 | remote=Gemini 远程 | text=纯文本TextAgent
 serial_per_url: true   # 同一网站串行、不同网站并行
 cuda_devices: [0, 1, 2, 3]  # OCR 使用的 GPU 列表，worker 按轮询分配（每张卡约承载 workers/len(cuda_devices) 个 OCR 模型）
@@ -71,7 +71,7 @@ text:
   max_iters: 15
   use_ocr: false               # 不需要 OCR
   debug_screenshots: true      # 截图仅存盘供人工审查，不送 LLM
-  log_dir_prefix: test2_text_agent_no_images
+  log_dir_prefix: test2_text_agent_visual_images
   result_excel: test2_text_agent_no_images_results.xlsx
   score_column: text_agent_score
   evidence_column: text_agent_evidence
