@@ -60,7 +60,9 @@ class AppEvalRole(Role):
     constraints: str = "Ensure accuracy and efficiency of test execution"
 
     rc: AppEvalContext = Field(default_factory=AppEvalContext)
-    osagent: Optional[OSAgent] = None
+    # NOTE: osagent is stored via object.__setattr__ to prevent pydantic from
+    # coercing TextAgent subclass back to OSAgent during model validation.
+    # Access via self.osagent still works normally.
 
     def __init__(self, json_file: str = "data/default_results.json", **kwargs):
         super().__init__()
@@ -144,12 +146,12 @@ Please use the Tell action to report the results of all test cases before execut
 
         if self._agent_class == "text_agent":
             # Text-only agent: uses a11y tree / DOM tree, no screenshots
-            from appeval.roles.text_agent import TextAgent
+            from appeval.roles.text_agent import create_text_agent
             agent_kwargs.update(
                 debug_screenshots=kwargs.get("debug_screenshots", True),
                 system_prompt=text_agent_system_prompt,
             )
-            self.osagent = TextAgent(**agent_kwargs)
+            object.__setattr__(self, 'osagent', create_text_agent(**agent_kwargs))
         else:
             # Default: VLM-based OSAgent with screenshots
             agent_kwargs.update(
@@ -165,7 +167,7 @@ Please use the Tell action to report the results of all test cases before execut
                 draw_text_box=False,
                 system_prompt=case_batch_check_system_prompt,
             )
-            self.osagent = OSAgent(**agent_kwargs)
+            object.__setattr__(self, 'osagent', OSAgent(**agent_kwargs))
 
     # ==================== Core Helper Methods ====================
 
