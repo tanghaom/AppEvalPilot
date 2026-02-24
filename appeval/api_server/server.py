@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """API 服务逻辑：与 test2 run_test 同套执行环境（D-Bus/AT-SPI、GPU、黑屏重试等），进程池执行。
 cd /data/zhijieliu/AppEvalPilot
-no_proxy='*' bash appeval/api_server/simulate_send.sh
+conda activate appeval
+no_proxy='*' python -m appeval.api_server.server --port 8888
 
 
 """

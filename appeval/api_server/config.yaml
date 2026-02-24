@@ -2,7 +2,7 @@
 # 启动: python appeval/api_server/server.py --port 8888 --no-callback
 
 # 并行 worker 数（建议 5~8，过大可能导致 OCR 初始化拥塞）
-workers: 5
+workers: 6
 model: remote
 
 # 本地测试不回调：设为 true 时任务完成后不 POST，仅写 /status 与 api_log（可用 --no-callback 覆盖）
