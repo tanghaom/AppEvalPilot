@@ -21,7 +21,6 @@ from typing import Any, Dict, List, Optional, Tuple
 os.environ['CONFIG_ROOT'] = str(Path(__file__).parent.parent / "config")
 
 from metagpt.const import CONFIG_ROOT
-print(CONFIG_ROOT)
 
 from metagpt.actions.action import Action
 from metagpt.logs import logger
