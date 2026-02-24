@@ -96,6 +96,47 @@ def print_summary(file_path, score_col, evidence_col, true_col="A 角分数"):
                 real_acc = 100 * real_correct / len(real_valid)
                 print(f"   剔除后真实准确率: {real_acc:.2f}% ({real_correct}/{len(real_valid)})")
 
+    # ── 🏥 页面崩溃 / A11y Tree 健康检查 ──
+    if evidence_col and evidence_col in tested.columns:
+        crash_cases = []
+        for idx, row in tested.iterrows():
+            ev_text = str(row.get(evidence_col, ""))
+            is_crash, subtype = _detect_page_crash(ev_text)
+            if is_crash:
+                crash_cases.append((idx, subtype, row))
+
+        n_crash = len(crash_cases)
+        if n_crash > 0:
+            subtypes = defaultdict(int)
+            crash_apps = set()
+            app_col = "case_name" if "case_name" in tested.columns else None
+            for idx, subtype, row in crash_cases:
+                subtypes[subtype] += 1
+                if app_col and pd.notna(row.get(app_col)):
+                    crash_apps.add(row[app_col])
+
+            print(f"\n🏥 页面崩溃 / A11y Tree 为空: {n_crash} 个 ({100*n_crash/n_tested:.1f}% of 已完成)")
+            for st, cnt in sorted(subtypes.items(), key=lambda x: -x[1]):
+                print(f"   {st}: {cnt} 个")
+            if crash_apps:
+                print(f"   涉及 App ({len(crash_apps)}): {', '.join(sorted(crash_apps)[:8])}"
+                      f"{'...' if len(crash_apps) > 8 else ''}")
+
+            # 判断是否需要增加等待时间
+            initial_fail = subtypes.get("初始加载失败", 0)
+            mid_crash = subtypes.get("操作中崩溃", 0)
+            if initial_fail > n_crash * 0.4:
+                print(f"\n   💡 建议: 初始加载失败占比高 ({initial_fail}/{n_crash}={100*initial_fail/n_crash:.0f}%)")
+                print(f"      → 可增加页面加载等待时间 (eval_runner.py SLEEP_AFTER_START_WEB, 当前=10s)")
+                print(f"      → 或降低并发 workers 数以减少 CPU/内存竞争")
+                print(f"      → 或增加 a11y tree 获取重试次数")
+            if mid_crash > n_crash * 0.3:
+                print(f"\n   💡 建议: 操作中崩溃占比高 ({mid_crash}/{n_crash}={100*mid_crash/n_crash:.0f}%)")
+                print(f"      → 可能是并发过高导致 Chrome 渲染资源不足")
+                print(f"      → 建议降低 workers 数或增加操作间 sleep 时间")
+        else:
+            print(f"\n✅ 页面健康: 未检测到页面崩溃/A11y Tree 为空")
+
     # 评分分布
     print(f"\n📊 评分分布:")
     print(f"  预测 Pass(1): {(valid[score_col]==1).sum()} | 预测 Fail(0): {(valid[score_col]==0).sum()}")
@@ -222,6 +263,64 @@ def print_compare(file1, file2, true_col="A 角分数"):
 # ── 错误归因分析 ──
 ############################################################
 
+# ── 页面崩溃 / A11y Tree 为空的检测关键词 ──
+# ⚠️ 注意：关键词要足够精确，避免匹配正常 evidence 中的 "content", "page" 等常见词
+PAGE_CRASH_KEYWORDS = [
+    # A11y Tree 明确为空
+    r"accessibility tree.*(?:is |was |became |remained |appears? )?empty",
+    r"empty accessibility tree",
+    r"a11y.*tree.*empty", r"empty.*a11y",
+    r"accessibility tree.*(?:shows?|contains?|has)\s+no\s+(?:elements|nodes|entries)",
+    # 页面崩溃/白屏（要求 page 紧邻 blank/empty/crash）
+    r"(?:page|screen)\s+(?:is|was|became|went|turned|remained)\s+(?:blank|empty|black|unresponsive)",
+    r"(?:blank|black)\s+(?:screen|page)\s+(?:after|when|during)",
+    r"render(?:ed|s)?\s+a\s+blank\s+page",
+    r"became\s+(?:blank|empty|unresponsive)",
+    # 页面整体加载失败（非图片/元素级别）
+    r"page\s+failed\s+to\s+(?:load|render)",
+    r"page\s+(?:did not|didn'?t)\s+(?:load|render)",
+    # 中文关键词
+    r"页面.*崩溃", r"页面.*(?:全部|整个|完全).*空", r"加载失败", r"a11y.*tree.*为空",
+]
+
+# 区分崩溃子类型
+_CRASH_SUBTYPE_RULES = [
+    # 操作过程中崩溃
+    ("操作中崩溃", [
+        r"became\s+(?:blank|empty|unresponsive)",
+        r"(?:after|upon)\s+(?:clicking|adjusting|attempting)",
+        r"causes?\s+(?:the\s+)?(?:application|page)\s+to\s+crash",
+        r"crashes\s+and\s+disappears",
+        r"consistently\s+crash",
+    ]),
+    # 初始加载就失败
+    ("初始加载失败", [
+        r"remained\s+empty", r"page\s+(?:is|was)\s+empty",
+        r"page\s+failed\s+to\s+(?:load|render)",
+        r"empty.*throughout",
+        r"(?:blank|black)\s+(?:screen|page)\s+(?:after|upon)\s+(?:loading|refresh|open)",
+    ]),
+]
+
+
+def _detect_page_crash(evidence_text: str) -> tuple:
+    """检测是否为页面崩溃 / A11y Tree 为空。
+
+    Returns:
+        (is_crash: bool, subtype: str)
+        subtype: "操作中崩溃" | "初始加载失败" | "其他空树" | ""
+    """
+    ev = evidence_text.lower()
+    is_crash = any(re.search(pat, ev, re.IGNORECASE) for pat in PAGE_CRASH_KEYWORDS)
+    if not is_crash:
+        return False, ""
+
+    for subtype, patterns in _CRASH_SUBTYPE_RULES:
+        if any(re.search(p, ev, re.IGNORECASE) for p in patterns):
+            return True, subtype
+    return True, "其他空树"
+
+
 # 关键词 → 错误类别映射（优先级从高到低）
 ERROR_CATEGORY_RULES = [
     # ── 系统/API 错误 ──
@@ -235,6 +334,18 @@ ERROR_CATEGORY_RULES = [
         "optimizable": False,
         "desc": "LLM API 调用失败、超时、限流等系统级错误。",
     },
+    # ── 页面崩溃 / A11y Tree 为空 ──
+    {
+        "name": "页面崩溃/A11y Tree为空",
+        "icon": "💀",
+        "keywords_evidence": PAGE_CRASH_KEYWORDS + [
+            r"consistently\s+crash", r"crashes\s+and\s+disappears",
+            r"(?:application|app|interface)\s+(?:crashed|crashes|crash\b)",
+            r"causes?\s+(?:the\s+)?(?:application|page)\s+to\s+crash",
+        ],
+        "optimizable": "partial",
+        "desc": "页面加载失败或操作过程中崩溃，A11y Tree 为空导致无法测试。",
+    },
     # ── 视觉渲染 ──
     {
         "name": "视觉渲染盲区",
@@ -242,10 +353,33 @@ ERROR_CATEGORY_RULES = [
         "keywords_a_reason": [
             r"显示失败", r"未显示", r"无法显示", r"渲染失败", r"不显示",
             r"缩略图", r"3[Dd].*模型", r"图片.*加载", r"样式.*异常",
-            r"动画.*效果", r"颜色.*不对", r"布局.*错",
+            r"动画.*效果", r"颜色.*不对", r"布局.*错", r"无法展示",
         ],
         "optimizable": False,
         "desc": "A角标注为渲染/视觉问题，TextAgent 的 a11y tree 无法感知视觉渲染结果。",
+    },
+    # ── 功能缺失误报 (FP: Agent 看到 a11y 元素就报 Pass，实际功能不存在/不可用) ──
+    {
+        "name": "功能缺失误报",
+        "icon": "🚫",
+        "keywords_a_reason": [
+            r"无此功能", r"没有此功能", r"没有该功能", r"没有该工具",
+            r"无该功能", r"无注册功能", r"缺少.*页面", r"没有.*功能",
+            r"无数据", r"搜索结果为空", r"mock数据", r"是mock",
+            r"展示原模版", r"原模版",
+            r"不可用", r"功能不可用", r"组合功能不可用",
+            r"无法正常结束", r"一直thinking",
+            r"交互后报错", r"无交互",
+            r"存在但无法访问", r"无法访问",
+            r"元素无法选择", r"点击.*无交互",
+            r"不是全屏", r"不是.*模式",
+            r"资源数量不正确", r"数量不正确",
+            r"没有信息卡片", r"没有提示",
+            r"页面上未找到", r"点击后未展示",
+            r"无法使用.*手势",
+        ],
+        "optimizable": "partial",
+        "desc": "Agent 在 a11y tree 中看到相关元素就报 Pass，但实际功能不存在、不可用或数据不正确。",
     },
     # ── 控件暴露不完整 ──
     {
@@ -256,12 +390,19 @@ ERROR_CATEGORY_RULES = [
             r"not.*exposed", r"not.*accessible", r"no.*interactive",
             r"search.*return.*no.*result", r"Ctrl\+F.*nothing",
             r"no.*control", r"static text",
+            # 标签全相同 / 内容不可区分
+            r"all.*labeled", r"all are labeled", r"does not expose",
+            r"not.*visible.*on.*page", r"not.*present.*on.*page",
+            r"not found on the page",
+            r"was not found on", r"were not found",
+            r"input.*not.*visible", r"input.*not.*present",
+            r"no.*tooltip", r"no.*text.*for",
         ],
         "keywords_a_reason": [
             r"无法.*操作", r"控件.*缺失",
         ],
         "optimizable": "partial",
-        "desc": "页面控件（slider, 图标按钮等）在 a11y tree 中暴露不完整。",
+        "desc": "页面控件（slider, 图标按钮等）在 a11y tree 中暴露不完整，或标签内容不可区分。",
     },
     # ── 交互验证不足 ──
     {
@@ -273,6 +414,7 @@ ERROR_CATEGORY_RULES = [
         "keywords_a_reason": [
             r"无法.*编辑", r"无法.*修改", r"无法.*打开", r"无法.*操作",
             r"不生效", r"未保存", r"无法.*提交",
+            r"无法添加", r"无法.*平移",
         ],
         "optimizable": True,
         "desc": "Agent 报 Pass（看到文字变化就认为成功），但实际功能未真正生效。",
@@ -286,6 +428,9 @@ ERROR_CATEGORY_RULES = [
             r"did not.*change", r"remained", r"still.*show",
             r"no.*result", r"no.*output", r"no.*response",
             r"failed to", r"could not",
+            r"does not support", r"only supports? single",
+            r"0 km/h despite", r"vehicle.*remains",
+            r"button.*not.*found", r"was interrupted",
         ],
         "optimizable": True,
         "desc": "Agent 的操作没有正确执行（代码编辑器输入失败、按钮无响应等）。",
@@ -297,9 +442,13 @@ ERROR_CATEGORY_RULES = [
         "keywords_evidence": [
             r"same ending", r"not.*consistently", r"only.*one",
             r"insufficient", r"not.*fully",
+            r"maximum steps", r"reached.*max",
+            r"did not progress beyond", r"stopped at",
+            r"not.*completed?\.?\s", r"was not complete",
+            r"waited.*\d+.*seconds.*but no",
         ],
         "optimizable": True,
-        "desc": "在有限步数内无法完成复杂验证（如需多次游戏 playthrough）。",
+        "desc": "在有限步数内无法完成复杂验证（如需多次游戏 playthrough、长时间等待）。",
     },
 ]
 
@@ -349,6 +498,10 @@ def classify_error(row, score_col, evidence_col, true_col="A 角分数"):
         # 视觉渲染盲区 for FP only
         if rule["name"] == "视觉渲染盲区" and not is_fp:
             matched = False  # 只对 FP 生效（Agent 误以为功能正常）
+
+        # 功能缺失误报 for FP only（Agent 看到元素报 Pass，实际功能不存在）
+        if rule["name"] == "功能缺失误报" and not is_fp:
+            matched = False
 
         if matched:
             return rule["name"], rule["icon"], rule["optimizable"], rule["desc"]
@@ -470,6 +623,46 @@ def analyze_errors(file_path, score_col, evidence_col, true_col="A 角分数",
         out(f"**理论最优准确率**: {theoretical_acc:.1f}% (修复所有可优化错误后)")
     out()
 
+    # ── 2.5 页面崩溃 / A11y Tree 子类型分析 ──
+    crash_cat_name = "页面崩溃/A11y Tree为空"
+    if crash_cat_name in categories:
+        crash_items = categories[crash_cat_name]
+        subtypes = defaultdict(list)
+        for item in crash_items:
+            ev_text = str(item["row"].get(evidence_col, ""))
+            _, subtype = _detect_page_crash(ev_text)
+            subtypes[subtype or "其他空树"].append(item)
+
+        out(f"### 💀 页面崩溃子类型分析 ({len(crash_items)}个)")
+        out()
+        out(f"| 子类型 | 数量 | 占比 | 涉及 App |")
+        out(f"|--------|------|------|----------|")
+        app_col = "case_name" if "case_name" in valid.columns else None
+        for st, items in sorted(subtypes.items(), key=lambda x: -len(x[1])):
+            apps = set()
+            if app_col:
+                for item in items:
+                    a = item["row"].get(app_col, "")
+                    if pd.notna(a):
+                        apps.add(str(a))
+            apps_str = ", ".join(sorted(apps)[:5]) + ("..." if len(apps) > 5 else "")
+            out(f"| {st} | {len(items)} | {100*len(items)/len(crash_items):.0f}% | {apps_str} |")
+        out()
+
+        # 延时建议
+        initial_fail = len(subtypes.get("初始加载失败", []))
+        mid_crash = len(subtypes.get("操作中崩溃", []))
+        out(f"**💡 A11y Tree 延时 / 稳定性建议:**")
+        if initial_fail > 0:
+            out(f"  - 初始加载失败 {initial_fail} 个 → 建议增加 `SLEEP_AFTER_START_WEB` (当前=10s, 建议 15~20s)")
+            out(f"    或在 Agent 首次获取空 a11y tree 时自动重试 (sleep 5s → 再取一次)")
+        if mid_crash > 0:
+            out(f"  - 操作中崩溃 {mid_crash} 个 → Chrome 渲染资源不足, 建议降低 `workers` 并发数")
+            out(f"    或增加操作后 sleep 时间让页面有足够 CPU 重新渲染")
+        if initial_fail + mid_crash == 0:
+            out(f"  - 全部为'其他空树'类型, 建议人工检查具体 evidence")
+        out()
+
     # ── 3. 按 App 聚合 ──
     out(f"## 3. 按 App 聚合错误")
     out()
@@ -549,7 +742,9 @@ def analyze_errors(file_path, score_col, evidence_col, true_col="A 角分数",
     out(f"## 5. 优化建议")
     out()
     suggestions = {
+        "页面崩溃/A11y Tree为空": "降低workers并发数；增加SLEEP_AFTER_START_WEB(当前10s)；增加a11y tree重试",
         "视觉渲染盲区": "需截图/VLM验证视觉结果；混合模式：TextAgent操作+VLM截图验证",
+        "功能缺失误报": "prompt增加规则：仅凭a11y tree有元素不能判Pass，需实际交互验证功能可用；对搜索/数据类验证内容非空",
         "A11y Tree 暴露不完整": "Tab遍历获取焦点；CDP DOM.getDocument直接查询；aria-label搜索",
         "交互验证薄弱": "prompt增加规则：操作后必须验证元素状态变化（检查value属性）",
         "操作执行问题": "CodeMirror等用CDP Runtime.evaluate注入代码；增加输入后验证",
@@ -589,7 +784,7 @@ def watch_mode(file_path, score_col, evidence_col, true_col, interval):
 
 def main():
     parser = argparse.ArgumentParser(description="跑测结果检查脚本")
-    parser.add_argument("--file", type=str, default="test2_text_agent_no_images_results.xlsx",
+    parser.add_argument("--file", type=str, default="test2_text_agent_full_visual_test_results.xlsx",
                         help="结果 Excel 文件路径")
     parser.add_argument("--score", type=str, default=None,
                         help="评分列名 (自动检测)")

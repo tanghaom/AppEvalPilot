@@ -41,13 +41,23 @@ Visual verification is needed when the test checks:
 - Font styles, syntax highlighting, or text rendering
 - Visual effects (e.g. shadows, gradients, hover effects)
 - Charts, graphs, or data visualization rendering
+- **Canvas/WebGL game content** (e.g. score, health bar, game objects, game over screen).
+  Games built with Canvas/WebGL render ALL content as pixels — scores, health, objects,
+  and UI are NOT in the accessibility tree. Any test involving a game requires visual verification.
+- Game state verification (e.g. "check score increases", "verify health decreases",
+  "check game over screen shows final score") — these values are rendered on canvas,
+  not as DOM text elements.
 
 Visual verification is NOT needed when the test only checks:
-- Functionality (click, input, navigation, form submission)
-- Text content, labels, or values
-- Element existence or absence
+- Functionality (click, input, navigation, form submission) on standard HTML pages
+- Text content, labels, or values in standard DOM elements
+- Element existence or absence in standard web pages
 - Error messages or notifications (text-based)
 - API responses or data correctness
+
+IMPORTANT: If the page title or instruction mentions "game", "shooter", "breaker",
+"puzzle", "canvas", "player", "score", "health", "level" in a gaming context,
+answer YES — game content is rendered on canvas and invisible to accessibility tools.
 
 Instruction: {instruction}
 
@@ -98,6 +108,91 @@ def create_text_agent(**kwargs) -> OSAgent:
     logger.info(f"TextAgent v2 created (factory): a11y_mode={agent.a11y_mode}, "
                 f"debug_screenshots={debug_screenshots}")
     return agent
+
+
+# ================================================================
+# Runtime Canvas/sparse tree detection
+# ================================================================
+
+# Browser chrome elements that are always present regardless of page content
+_BROWSER_CHROME_KEYWORDS = {
+    "back", "forward", "reload", "address and search bar", "bookmark",
+    "chrome", "new tab", "search tabs", "close", "separator",
+    "managed bookmarks", "saved tab groups", "tab groups",
+    "hidden toolbar buttons", "all bookmarks", "menu containing",
+    "infobar", "you are using an unsupported", "view site information",
+}
+
+# Game-related keywords in page content or title
+_GAME_CONTENT_KEYWORDS = re.compile(
+    r"game|shooter|breaker|canvas|player|score|health|level|paddle|brick|"
+    r"enemy|bullet|ship|tetris|puzzle|match|arcade|maze|snake|pong",
+    re.IGNORECASE,
+)
+
+
+def _is_sparse_a11y_tree(
+    elements: List[Dict[str, Any]], instruction: str
+) -> bool:
+    """Detect if the a11y tree is too sparse to be useful (Canvas/WebGL app).
+
+    Returns True if visual mode should be forced ON.
+
+    Heuristics:
+    1. Count "content elements" (excluding browser chrome like Back, Forward, address bar).
+    2. If content elements ≤ 5 AND there's a canvas/game-like element, it's likely a Canvas app.
+    3. If the page title or instruction contains game-related keywords, lower the threshold.
+    """
+    if not elements:
+        return False
+
+    content_elements = []
+    has_canvas_hint = False
+    page_title = ""
+
+    for el in elements:
+        text = (el.get("text") or "").strip().lower()
+        ctrl = (el.get("control_type") or "").strip().lower()
+
+        # Check for Canvas/game hints
+        if "canvas" in text or "canvas" in ctrl:
+            has_canvas_hint = True
+        if ctrl in ("document web", "frame") and _GAME_CONTENT_KEYWORDS.search(text):
+            has_canvas_hint = True
+            page_title = text
+
+        # Skip browser chrome elements
+        is_chrome = False
+        for kw in _BROWSER_CHROME_KEYWORDS:
+            if kw in text:
+                is_chrome = True
+                break
+        if ctrl in ("frame", "page tab", "tool bar", "separator", "panel", "alert"):
+            is_chrome = True
+
+        if not is_chrome and text:
+            content_elements.append(el)
+
+    # Check instruction for game keywords
+    instruction_is_game = bool(_GAME_CONTENT_KEYWORDS.search(instruction))
+
+    # Decision logic
+    n_content = len(content_elements)
+
+    if has_canvas_hint and n_content <= 10:
+        logger.info(
+            f"🎮 Sparse tree + Canvas detected: {n_content} content elements, "
+            f"page='{page_title[:60]}' → forcing visual mode"
+        )
+        return True
+
+    if instruction_is_game and n_content <= 5:
+        logger.info(
+            f"🎮 Sparse tree + game instruction: {n_content} content elements → forcing visual mode"
+        )
+        return True
+
+    return False
 
 
 # ================================================================
@@ -381,6 +476,16 @@ async def _act_text(self) -> AIMessage:
     if getattr(self, '_debug_screenshots', True):
         self._save_iteration_images(self.rc.iter)
 
+    # Runtime visual fallback: if tree became sparse after action (e.g. game started),
+    # auto-enable visual mode for remaining iterations
+    if not getattr(self, '_visual_supplement', False) and getattr(self, '_debug_screenshots', True):
+        if _is_sparse_a11y_tree(self.rc.perception_infos, self.instruction):
+            self._visual_supplement = True
+            # Also save the previous screenshot for visual diff
+            prev_origin = f"{self.save_img}/origin_{self.rc.iter - 1}.jpg"
+            if Path(prev_origin).exists():
+                self._prev_screenshot_path = prev_origin
+
     # Append to history lists (same fields as v1 for compatibility)
     self.rc.thought_history.append(self.rc.thought)
     self.rc.summary_history.append(self.rc.summary)
@@ -423,6 +528,13 @@ async def _react_text(self) -> AIMessage:
             # Visual Supplement: LLM auto-detects if visual verification is needed
             if getattr(self, '_debug_screenshots', True):
                 self._visual_supplement = await _detect_visual_need(self, self.instruction)
+
+                # Runtime fallback: if a11y tree is almost empty (Canvas/WebGL app),
+                # force visual mode regardless of LLM detection
+                if not self._visual_supplement:
+                    self._visual_supplement = _is_sparse_a11y_tree(
+                        self.rc.perception_infos, self.instruction
+                    )
 
             # Task list: generated ONCE, then kept as read-only reference
             self.rc.task_list = await self._generate_initial_task_list(
