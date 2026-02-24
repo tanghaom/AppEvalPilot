@@ -37,6 +37,7 @@ from appeval.tools.chrome_debugger import ChromeDebugger
 from appeval.tools.device_controller import ControllerTool
 from appeval.tools.icon_detect import IconDetectTool
 from appeval.tools.ocr import OCRTool
+from appeval.utils.window_utils import get_download_dir, list_new_files_since
 
 # 忽略所有警告
 warnings.filterwarnings("ignore")
@@ -147,6 +148,7 @@ class OSAgent(Role):
         # Other optional parameters
         system_prompt: str = "",
         add_info: str = "",
+        user_data_dir: str = "",
         **kwargs,
     ) -> None:
         """Initialize OSAgent.
@@ -171,6 +173,7 @@ class OSAgent(Role):
             knowledge_base_path (str): Preset knowledge base file directory path
             system_prompt (str): System prompt
             add_info (str): Additional information to add to the prompt
+            user_data_dir (str): Chrome user data directory for download result verification
             think_history_images (int): Max number of screenshots (latest-first) to include during think
         """
         super().__init__(**kwargs)
@@ -843,6 +846,47 @@ class OSAgent(Role):
             logger.error(
                 f"Platform {self.platform} not supported for opening apps")
 
+    def _context_text_for_result_check(self) -> str:
+        """Build a single string from instruction/task_list/summary for upload/download detection."""
+        parts = [self.rc.task_list or "", self.rc.summary or ""]
+        inst = getattr(self, "instruction", None)
+        if isinstance(inst, dict):
+            for v in (inst.values() if inst else []):
+                if isinstance(v, dict) and "case_desc" in v:
+                    parts.append(str(v.get("case_desc", "")))
+        else:
+            parts.append(str(inst or ""))
+        return " ".join(parts).lower()
+
+    def _is_upload_related_context(self) -> bool:
+        """True if task/instruction/summary suggests an upload action (file/avatar/image)."""
+        text = self._context_text_for_result_check()
+        kws = ("上传", "upload", "头像", "图片", "image", "file upload", "选择文件", "choose file", "选择图片", "选择视频")
+        return any(k in text for k in kws)
+
+    def _is_download_related_context(self) -> bool:
+        """True if task/instruction/summary suggests a download/export action."""
+        text = self._context_text_for_result_check()
+        kws = ("下载", "导出", "download", "export", "save as", "另存为", "导出为")
+        return any(k in text for k in kws)
+
+    def _check_upload_result_signals(self) -> bool:
+        """Check current perception for any upload result signal (filename, thumbnail, progress, success)."""
+        combined = " ".join(
+            (i.get("text") or "") for i in (self.rc.perception_infos or []) if isinstance(i, dict)
+        ).lower()
+        signals = (
+            "上传成功", "uploaded", "upload success", "success", "完成", "100%", "progress",
+            ".jpg", ".png", ".gif", ".pdf", ".csv", "thumbnail", "缩略图", "已选择", "selected file"
+        )
+        return any(s in combined for s in signals)
+
+    def _check_download_result(self, since_mtime: float) -> bool:
+        """True if at least one new file appeared in download dir after since_mtime."""
+        download_dir = get_download_dir(getattr(self, "user_data_dir", "") or "")
+        new_files = list_new_files_since(download_dir, since_mtime)
+        return len(new_files) > 0
+
     async def _act(self) -> Message:
         """Execute action step"""
         if self.use_chrome_debugger:
@@ -852,6 +896,11 @@ class OSAgent(Role):
 
         self.run_action_failed = False
         self.run_action_failed_exception = ""
+        # For download result verification: record time before action so we only count new files
+        if "Run" in self.rc.action and self._is_download_related_context():
+            self._download_check_before_time = time.time()
+        else:
+            self._download_check_before_time = None
 
         # Execute action
         if "Stop" in self.rc.action:
@@ -888,6 +937,31 @@ class OSAgent(Role):
 
         # Save images
         self._save_iteration_images(self.rc.iter)
+
+        # Result verification (not action verification): upload must show result signals; download must show new file
+        if not self.run_action_failed and "Run" in self.rc.action:
+            if self._is_upload_related_context():
+                time.sleep(1.5)
+                self._update_screenshot_files()
+                self.rc.perception_infos, self.width, self.height, self.output_image_path = await self._get_perception_infos(
+                    self.screenshot_file, self.screenshot_som_file
+                )
+                if not self._check_upload_result_signals():
+                    self.rc.error_flag = True
+                    self.rc.error_message = (
+                        "RESULT CHECK FAILED (upload): Click was executed but no upload result signal detected "
+                        "(e.g. filename, thumbnail, progress bar, or success message). Please retry or confirm the upload control."
+                    )
+                    logger.warning(self.rc.error_message)
+            elif self._is_download_related_context() and getattr(self, "_download_check_before_time", None) is not None:
+                time.sleep(2.0)
+                if not self._check_download_result(self._download_check_before_time):
+                    self.rc.error_flag = True
+                    self.rc.error_message = (
+                        "RESULT CHECK FAILED (download): Export/download was executed but no new file appeared "
+                        "in the download directory. Please retry or confirm the export control."
+                    )
+                    logger.warning(self.rc.error_message)
 
         # Verify Tell action if enabled and action is Tell
         if self.use_tell_verifier and self.rc.action.startswith("Tell"):

@@ -86,6 +86,11 @@ def _setup_chrome_preferences(user_data_dir: str) -> None:
     prefs["profile"]["content_settings"]["exceptions"]["insecure_private_network"] = {"*,*": allow_all}
     prefs["profile"]["content_settings"]["exceptions"]["private_network_request_settings"] = {"*,*": allow_all}
 
+    # Fixed download directory for result verification (export/download checks)
+    download_dir = Path(user_data_dir) / "Default" / "Downloads"
+    download_dir.mkdir(parents=True, exist_ok=True)
+    prefs.setdefault("download", {})["default_directory"] = str(download_dir)
+
     try:
         with open(prefs_file, "w") as f:
             json.dump(prefs, f, indent=2)
@@ -139,6 +144,33 @@ def _setup_chrome_preferences(user_data_dir: str) -> None:
                 json.dump(policy, f, indent=2)
         except Exception:
             pass
+
+
+def get_download_dir(user_data_dir: str) -> str:
+    """Return the Chrome download directory for result verification.
+    On Linux we set it in _setup_chrome_preferences to user_data_dir/Default/Downloads.
+    On Windows we do not set it, so use system default Downloads.
+    """
+    if os.name == "nt" or not user_data_dir:
+        return os.path.join(os.environ.get("USERPROFILE", os.path.expanduser("~")), "Downloads")
+    return str(Path(user_data_dir) / "Default" / "Downloads")
+
+
+def list_new_files_since(directory: str, since_mtime: float) -> List[Path]:
+    """List files in directory (non-recursive) with st_mtime >= since_mtime.
+    Used to detect new downloads after an export/download action.
+    """
+    out: List[Path] = []
+    try:
+        p = Path(directory)
+        if not p.is_dir():
+            return out
+        for f in p.iterdir():
+            if f.is_file() and f.stat().st_mtime >= since_mtime:
+                out.append(f)
+    except Exception as e:
+        logger.warning(f"list_new_files_since failed: {e}")
+    return out
 
 
 def match_name(window_name: List[str], patterns: List[str]) -> bool:
