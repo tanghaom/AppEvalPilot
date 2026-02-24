@@ -1084,7 +1084,7 @@ Please use the Tell action to report the results of all test cases before execut
 
             # Prepare test cases
             case_result = await self._prepare_batch_test_cases(project_excel_path, operation_type, json_converter)
-            import pdb; pdb.set_trace()
+            
             # Return early if only generating cases (mini mode only)
             if generate_case_only:
                 if not is_mini:
