@@ -255,7 +255,8 @@ Workflow:
 
 Principles:
 - The element tree is your primary source of truth for structure and coordinates.
-- When screenshots are provided, use them to verify visual rendering that the element tree cannot capture.
+- When screenshots are provided, use them to verify visual rendering that the element tree cannot capture (e.g., colors, layout, animations, Canvas/WebGL game content like scores, health bars, game objects).
+- **Canvas/WebGL content**: Games and canvas-based apps render content as pixels. Scores, health bars, game objects, and UI elements are NOT in the accessibility tree. For canvas/game testing, rely on screenshots for verification.
 - After modifying a value, always check the element tree to confirm the change took effect.
 - If an element is missing, try scrolling (PageDown) before concluding it doesn't exist.
 - Compare element trees between steps to detect changes.
