@@ -93,7 +93,9 @@ class AppEvalRole(Role):
         self._agent_class = kwargs.get("agent_class", "osagent")
 
         # Initialize CaseGenerator Action
-        self.test_generator = CaseGenerator()
+        self.test_generator = CaseGenerator(
+            config_path=kwargs.get("config_file", "config/config2.yaml")
+        )
 
         # Initialize OSAgent (or TextAgent)
         self._init_osagent(**kwargs)
@@ -147,7 +149,7 @@ Please use the Tell action to report the results of all test cases before execut
                 osagent_config = Config.from_llm_config(_llm_cfg)
                 logger.info(f"OSAgent LLM config from {config_file}: {_llm_cfg.get('model')} @ {_llm_cfg.get('base_url')}")
 
-        self.osagent = OSAgent(
+        agent_kwargs = dict(
             platform=kwargs.get("os_type", kwargs.get("platform", default_platform)),
             max_iters=self.rc.agent_params["max_iters"],
             extend_xml_infos=self.rc.agent_params["extend_xml_infos"],
@@ -158,9 +160,9 @@ Please use the Tell action to report the results of all test cases before execut
             use_timestamp_log_dir=self.rc.agent_params["use_timestamp_log_dir"],
             config_file=kwargs.get("config_file", ""),
             add_info=add_info,
-            system_prompt=case_batch_check_system_prompt,
-            **({"config": osagent_config} if osagent_config else {}),
         )
+        if osagent_config:
+            agent_kwargs["config"] = osagent_config
 
         if self._agent_class == "text_agent":
             # Text-only agent: uses a11y tree / DOM tree, no screenshots
@@ -953,6 +955,25 @@ Please use the Tell action to report the results of all test cases before execut
         result = await self._retry_uncertain_cases(result, max_retry_uncertain, task_name=task_name, start_func=start_func)
 
         final_test_cases = result[task_name]["test_cases"]
+
+        # Compute cost from LLM instances and inject into each case
+        try:
+            total_cost = 0.0
+            prompt_tokens = completion_tokens = 0
+            for llm_source in (
+                getattr(self.test_generator, "llm", None),
+                getattr(self.osagent, "llm", None),
+            ):
+                if llm_source and hasattr(llm_source, "get_costs"):
+                    c = llm_source.get_costs()
+                    prompt_tokens += getattr(c, "total_prompt_tokens", 0) or 0
+                    completion_tokens += getattr(c, "total_completion_tokens", 0) or 0
+                    total_cost += getattr(c, "total_cost", 0) or 0
+            cost_str = f"${total_cost:.4f} (prompt:{prompt_tokens}, completion:{completion_tokens})"
+            for case_data in final_test_cases.values():
+                case_data["cost"] = cost_str
+        except Exception:
+            pass
 
         # Save to file if needed
         if save_to_file:

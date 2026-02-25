@@ -345,11 +345,11 @@ def make_work_path(excel_file: str, project_path: str) -> None:
         if "work_path" not in df.columns:
             df["work_path"] = ""
 
+        start_script = "start.bat" if os.name == "nt" else "start.sh"
         # Update work_path for each row
         for index, row in df.iterrows():
             if "id" in row and not pd.isna(row["id"]):
-                # Construct work_path as project_path/id/start.bat
-                work_path = os.path.join(project_path, str(row["id"]), "start.bat")
+                work_path = os.path.join(project_path, str(row["id"]), start_script)
                 df.at[index, "work_path"] = work_path
 
         # Save back to Excel

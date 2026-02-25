@@ -1,3 +1,4 @@
+import os
 from typing import Dict, List
 
 from pydantic import BaseModel
@@ -408,15 +409,17 @@ class PC_prompt(BasePrompt):
     def __init__(self):
         super().__init__("PC")
 
+        test_data_dir = "/tmp/test_data" if os.name != "nt" else "C:/test_data"
+
         # PC-specific hints
-        self.hints += r"""
+        self.hints += rf"""
 If Tell action was used in the previous round, it cannot be used again this time.
 To fully view webpage content, you must use the 'pagedown' key to scroll. Note that you can only advance one page at a time.
 If you need to change the size of the webpage, you can do so by simultaneously pressing the ctrl and + or - keys.
 The webpage you need to test is already displayed in front of you, so you don't need to open a browser.
-If the target application requires uploading an image for testing, please upload the image located in "C:/test_data".
-If the target application needs to upload a video for testing, please upload the video located in "C:/test_data".
-If the target application needs to upload other files, please use the files in the "C:/test_data" directory as the main source.
+If the target application requires uploading an image for testing, please upload the image located in "{test_data_dir}".
+If the target application needs to upload a video for testing, please upload the video located in "{test_data_dir}".
+If the target application needs to upload other files, please use the files in the "{test_data_dir}" directory as the main source.
 If the target application requires login or registration, use the following pre-registered account to log in directly instead of creating a new account: Email: press_test8@mgx.dev, Password: 123456. If the login page shows a "Log in" option, use it directly with these credentials. Do NOT attempt to register a new account or go through the sign-up flow.
 """
 

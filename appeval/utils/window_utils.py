@@ -280,7 +280,10 @@ async def start_windows(
         work_dir = work_path.parent
         logger.info(f"Working directory: {work_dir}")
         if work_dir:
-            cmd = f'cd /d "{work_dir}" && "{work_path.name}"'
+            if os.name == "nt":
+                cmd = f'cd /d "{work_dir}" && "{work_path.name}"'
+            else:
+                cmd = f'cd "{work_dir}" && "./{work_path.name}"'
         else:
             cmd = f'"{work_path}"'
         logger.info(f"Command: {cmd}")

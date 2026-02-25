@@ -841,9 +841,36 @@ async def batch_tasks(request: Request):
                     form_dict[key] = value
                 print(f"    {key}: {str(form_dict[key])[:200]}")
             
+            # 优先：JSON 文件上传（对方传 json 文件，文件内包含 tasks 等）
+            _json_file_keys = ('file', 'json_file', 'json', 'tasks_file', 'tasks_json')
+            for fkey in _json_file_keys:
+                if fkey not in form_dict:
+                    continue
+                raw = form_dict[fkey]
+                if not raw or not isinstance(raw, str):
+                    continue
+                raw = raw.strip()
+                if not (raw.startswith('{') or raw.startswith('[')):
+                    continue
+                try:
+                    data = json.loads(raw)
+                    if isinstance(data, list):
+                        req = BatchRequest(tasks=data, callback_url=form_dict.get('callback_url'))
+                    else:
+                        req = BatchRequest(
+                            tasks=data.get('tasks', []),
+                            callback_url=data.get('callback_url') or form_dict.get('callback_url'),
+                        )
+                    if req.tasks:
+                        print(f"  ✓ 从 form-data 文件字段 '{fkey}' 解析 JSON 成功: {len(req.tasks)} 个任务")
+                        break
+                except Exception as e:
+                    print(f"  解析 form 字段 '{fkey}' 为 JSON 失败: {e}")
+            else:
+                req = None
+            
             # 对方发送的格式：分散的字段，不是 tasks 数组
-            # 检查必填字段
-            if all(k in form_dict for k in ['task_id', 'case_name', 'prod_url']):
+            if not req and all(k in form_dict for k in ['task_id', 'case_name', 'prod_url']):
                 # detail_id 可选，如果没有就用 task_id
                 detail_id = form_dict.get('detail_id', form_dict.get('task_id'))
                 
@@ -882,7 +909,7 @@ async def batch_tasks(request: Request):
                 print(f"    task_id={task.task_id}, detail_id={task.detail_id}")
                 print(f"    case_name={task.case_name}")
                 print(f"    test_arry={task.test_arry}")
-            elif 'tasks' in form_dict:
+            elif not req and 'tasks' in form_dict:
                 # tasks 字段包含 JSON 字符串
                 tasks_json = json.loads(form_dict['tasks'])
                 callback_url = form_dict.get('callback_url')
