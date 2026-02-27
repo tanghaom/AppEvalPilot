@@ -1,0 +1,19 @@
+{
+  "callback_url": "http://127.0.0.1:9999/api/v1/agent-eval/notice/detail",
+  "tasks": [
+    {
+      "task_id": 1001,
+      "detail_id": 1001,
+      "case_name": "Block Breaker_8",
+      "prod_url": "https://example-mgx.app.beta.mgx.dev",
+      "test_arry": ["确保不可破坏的砖块被击中后不消失", "验证击碎所有可破坏砖块后游戏进入下一关"]
+    },
+    {
+      "task_id": 1002,
+      "detail_id": 1002,
+      "case_name": "Booking Calendar_4",
+      "prod_url": "https://45749-06b1ae1c7f1b4c39ba17690d360a0cd7-3-latest.app.beta.mgx.dev",
+      "test_arry": ["确认展示信息随选中的日期范围同步更新", "确认页面上存在时间段列表"]
+    }
+  ]
+}

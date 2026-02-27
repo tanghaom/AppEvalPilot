@@ -27,7 +27,8 @@ import httpx
 import uvicorn
 import yaml
 from fastapi import FastAPI, HTTPException, Request, Form, File, UploadFile
-from pydantic import BaseModel
+from loguru import logger
+from pydantic import BaseModel, model_validator
 
 PROJECT_DIR = Path(__file__).resolve().parent.parent.parent
 API_LOG_BASE = PROJECT_DIR / "appeval" / "api_log"
@@ -42,6 +43,14 @@ class StartRequest(BaseModel):
     case_name: str
     test_arry: List[str]
     prod_url: str
+
+    @model_validator(mode="before")
+    @classmethod
+    def accept_test_array(cls, data):
+        """兼容对方传 test_array 或 test_arry"""
+        if isinstance(data, dict) and "test_array" in data and "test_arry" not in data:
+            data = {**data, "test_arry": data["test_array"]}
+        return data
 
 
 class BatchRequest(BaseModel):
@@ -63,6 +72,7 @@ _preset: dict = {}
 _full_cfg: dict = {}
 _case_counter: Dict[str, int] = {}   # "{task_id}/{case_name}" -> 下一个可用编号
 _counter_lock = asyncio.Lock()   # 分配 start_index 时加锁，避免并发都拿到 0
+_worker_slots: Optional[asyncio.Queue] = None
 
 
 def load_config(path: str) -> tuple:
@@ -200,6 +210,51 @@ class _StderrFilter:
         return getattr(self._stream, name)
 
 
+def _do_callback_sync(url: str, payload: dict, retry_times: int = 3, retry_interval: int = 30):
+    """子进程内同步回调：落盘后立即 POST，不依赖主进程。"""
+    import httpx as _httpx
+    detail_id = payload.get("detail_id", "")
+    for attempt in range(1, retry_times + 1):
+        try:
+            with _httpx.Client(timeout=_httpx.Timeout(30.0, connect=10.0)) as c:
+                resp = c.post(url, json=payload)
+            if resp.status_code >= 400:
+                logger.warning(f"[Worker-CB] detail_id={detail_id} 第{attempt}/{retry_times}次失败: HTTP {resp.status_code}")
+            else:
+                cb_ok = False
+                try:
+                    rj = resp.json()
+                    if isinstance(rj, dict):
+                        d = rj.get("data", {})
+                        cb_ok = d.get("success") is True or rj.get("ok") is True or rj.get("success") is True
+                except Exception:
+                    pass
+                if cb_ok:
+                    logger.info(f"[Worker-CB] detail_id={detail_id} 回调成功: HTTP {resp.status_code}")
+                    return
+                logger.warning(f"[Worker-CB] detail_id={detail_id} 第{attempt}/{retry_times}次 data.success!=true")
+        except Exception as e:
+            logger.error(f"[Worker-CB] detail_id={detail_id} 第{attempt}/{retry_times}次异常: {type(e).__name__} {e}")
+        if attempt < retry_times:
+            time.sleep(retry_interval)
+    logger.error(f"[Worker-CB] detail_id={detail_id} 回调最终失败")
+
+
+def _worker_callback(callback_url: str, full_cfg: dict, result: dict):
+    """在子进程内执行回调，落盘后立即调用，不依赖主进程存活。"""
+    if not callback_url or full_cfg.get("skip_callback"):
+        logger.info(f"[Worker-CB] detail_id={result.get('detail_id')} 跳过回调")
+        return
+    try:
+        transformed = _transform_result_for_callback(result)
+        url = _callback_url_with_detail_id(callback_url, result.get("detail_id", ""))
+        retry_times = max(1, int(full_cfg.get("callback_retry_times", 3) or 3))
+        retry_interval = max(1, int(full_cfg.get("callback_retry_interval_sec", 30) or 30))
+        _do_callback_sync(url, transformed, retry_times, retry_interval)
+    except Exception as e:
+        logger.error(f"[Worker-CB] 子进程内回调失败: {e}")
+
+
 def _run_task_in_process(
     worker_id: int,
     detail_id: int,
@@ -211,9 +266,10 @@ def _run_task_in_process(
     full_cfg: dict,
     start_index: int = 0,
     run_group_ts: Optional[str] = None,
+    callback_url: str = "",
 ) -> dict:
-    """单任务在子进程中执行，环境与 test2 run_test worker 一致。"""
-    print(f"[Worker] pid={os.getpid()} worker_id={worker_id} detail_id={detail_id} 开始执行", flush=True)
+    """单任务在子进程中执行，落盘后立即在子进程内回调，不依赖主进程。"""
+    logger.info(f"[Worker] pid={os.getpid()} worker_id={worker_id} detail_id={detail_id} 开始执行")
     warnings.filterwarnings("ignore", message=".*xauthority.*")
     sys.stderr = _StderrFilter(sys.stderr)
 
@@ -279,6 +335,56 @@ def _run_task_in_process(
     if not run_group_ts:
         run_group_ts = datetime.now().strftime("%Y%m%d%H%M")
     test_cases = {str(start_index + i): {"case_desc": desc, "result": "", "evidence": ""} for i, desc in enumerate(test_arry)}
+
+    def _default_case_item(i: int, err: str) -> dict:
+        return {
+            "test_id": f"{case_name}{start_index + i}",
+            "case_desc": test_arry[i],
+            "evidence": f"Error: {err}",
+            "result": False,
+            "cost": "time=0.0s, usd=$0.000000",
+        }
+
+    def _load_partial_cases(err: str) -> list:
+        """Load per-case results from api_log to preserve completed cases on late exceptions."""
+        partial = []
+        for i, _desc in enumerate(test_arry):
+            case_num = start_index + i
+            case_dir = API_LOG_BASE / str(task_id) / run_group_ts / case_name / f"{case_name}{case_num}"
+            candidates = []
+            try:
+                ts_dirs = [p for p in case_dir.iterdir() if p.is_dir() and re.fullmatch(r"\d{12,}", p.name)]
+                ts_dirs = sorted(ts_dirs, key=lambda p: p.name, reverse=True)
+                candidates.extend([p / "test_case.json" for p in ts_dirs])
+            except Exception:
+                pass
+            candidates.append(case_dir / "test_case.json")
+
+            loaded = None
+            for fp in candidates:
+                try:
+                    if not fp.exists():
+                        continue
+                    with open(fp, "r", encoding="utf-8") as f:
+                        data = json.load(f)
+                    arr = data.get("test_cases", [])
+                    if arr and isinstance(arr[0], dict):
+                        loaded = dict(arr[0])
+                        break
+                except Exception:
+                    continue
+
+            if loaded:
+                loaded.setdefault("test_id", f"{case_name}{case_num}")
+                loaded.setdefault("case_desc", test_arry[i])
+                loaded.setdefault("evidence", f"Error: {err}")
+                loaded.setdefault("result", False)
+                loaded.setdefault("cost", "time=0.0s, usd=$0.000000")
+                partial.append(loaded)
+            else:
+                partial.append(_default_case_item(i, err))
+        return partial
+
     try:
         from appeval.roles.eval_runner import AppEvalRole
 
@@ -362,16 +468,23 @@ def _run_task_in_process(
             if isinstance(res, dict):
                 result_value = res.get("result", "Fail")
                 evidence = res.get("evidence", "")
+                # Use per-case cost from runner when present (sequential mode), else fallback to avg
+                res_cost = res.get("cost", "")
+                if res_cost and "time=" in str(res_cost) and "usd=" in str(res_cost):
+                    cost_str = res_cost
+                else:
+                    cost_str = f"time={avg_time:.1f}s, usd=${avg_usd:.6f}"
             else:
                 result_value = str(res)
                 evidence = str(res)
+                cost_str = f"time={avg_time:.1f}s, usd=${avg_usd:.6f}"
             passed = result_value.lower().strip() in ("pass", "true", "1")
             cases.append({
                 "test_id": f"{case_name}{key}",
                 "case_desc": desc,
                 "evidence": evidence,
                 "result": passed,
-                "cost": f"time={avg_time:.1f}s, usd=${avg_usd:.6f}",
+                "cost": cost_str,
             })
 
         black_kws = ["black screen", "blank screen", "black page", "blank page"]
@@ -417,14 +530,17 @@ def _run_task_in_process(
                         r2 = result2.get(key2, {})
                         if isinstance(r2, dict):
                             rv, ev = r2.get("result", "Fail"), r2.get("evidence", "")
+                            rc = r2.get("cost", "")
+                            cost_str2 = rc if (rc and "time=" in str(rc) and "usd=" in str(rc)) else f"time={avg_time:.1f}s, usd=${avg_usd:.6f}"
                         else:
                             rv, ev = str(r2), str(r2)
+                            cost_str2 = f"time={avg_time:.1f}s, usd=${avg_usd:.6f}"
                         cases.append({
                             "test_id": f"{case_name}{key2}",
                             "case_desc": desc,
                             "evidence": ev,
                             "result": rv.lower().strip() in ("pass", "true", "1"),
-                            "cost": f"time={avg_time:.1f}s, usd=${avg_usd:.6f}",
+                            "cost": cost_str2,
                         })
             except Exception:
                 pass
@@ -446,22 +562,25 @@ def _run_task_in_process(
         except Exception:
             pass
 
-        return {
+        final_result = {
             "detail_id": str(detail_id),
             "case_name": case_name,
             "eval_cost": f"avg_time={avg_time:.1f}s, avg_usd=${avg_usd:.6f}",
             "version": llm_cfg.get("model", ""),
             "test_cases": cases,
         }
+
+        # 子进程内直接回调，不再依赖主进程
+        _worker_callback(callback_url, full_cfg, final_result)
+
+        return final_result
     except Exception as e:
         traceback.print_exc()
-        cases = [{
-            "test_id": f"{case_name}{start_index + i}",
-            "case_desc": d,
-            "evidence": f"Error: {e}",
-            "result": False,
-            "cost": "time=0.0s, usd=$0.000000",
-        } for i, d in enumerate(test_arry)]
+        err_msg = str(e).strip() or repr(e)
+        cases = _load_partial_cases(err_msg)
+        times = [_parse_cost_to_seconds(str(c.get("cost", ""))) for c in cases]
+        avg_time = (sum(times) / max(1, len(times))) if times else 0.0
+        avg_usd = 0.0
 
         # 异常场景也回写文件，避免 test_case.json 缺少 cost/result 规范字段
         try:
@@ -480,13 +599,18 @@ def _run_task_in_process(
         except Exception:
             pass
 
-        return {
+        err_result = {
             "detail_id": str(detail_id),
             "case_name": case_name,
-            "eval_cost": "avg_time=0.0s, avg_usd=$0.000000",
+            "eval_cost": f"avg_time={avg_time:.1f}s, avg_usd=$0.000000",
             "version": llm_cfg.get("model", ""),
             "test_cases": cases,
         }
+
+        # 异常分支也在子进程内回调
+        _worker_callback(callback_url, full_cfg, err_result)
+
+        return err_result
     finally:
         _stop_atspi(dbus_proc, atspi_launcher, atspi_registryd, worker_id)
         xvfb.terminate()
@@ -511,7 +635,7 @@ def _should_skip_callback() -> bool:
 
 async def _callback(detail_id: int, result: dict):
     if _should_skip_callback():
-        print(f"[Callback] detail_id={detail_id} 已跳过（本地测试，不回调对方）")
+        logger.info(f"[Callback] detail_id={detail_id} 已跳过（本地测试，不回调对方）")
         return
     url = f"{CALLBACK_BASE_URL}/{detail_id}"
     payload = [result]
@@ -519,14 +643,14 @@ async def _callback(detail_id: int, result: dict):
     retry_interval_sec = int(_full_cfg.get("callback_retry_interval_sec", 300) or 300)
     retry_times = max(1, retry_times)
     retry_interval_sec = max(1, retry_interval_sec)
-    print(f"[Callback] POST {url} | body 前 300 字: {json.dumps(payload, ensure_ascii=False)[:300]}")
+    logger.info(f"[Callback] POST {url} | body 前 300 字: {json.dumps(payload, ensure_ascii=False)[:300]}")
 
     for attempt in range(1, retry_times + 1):
         try:
             async with httpx.AsyncClient(timeout=30) as c:
                 resp = await c.post(url, json=payload)
                 if resp.status_code >= 400:
-                    print(
+                    logger.warning(
                         f"[Callback] detail_id={detail_id} 第{attempt}/{retry_times}次失败: "
                         f"HTTP {resp.status_code} | {resp.text[:500]}"
                     )
@@ -545,24 +669,24 @@ async def _callback(detail_id: int, result: dict):
                         callback_msg = "回调响应非 JSON 或缺少 data.success"
 
                     if callback_ok:
-                        print(
+                        logger.info(
                             f"[Callback] detail_id={detail_id} 成功: HTTP {resp.status_code} "
                             f"| code={callback_code} msg={callback_msg}"
                         )
                         return
-                    print(
+                    logger.warning(
                         f"[Callback] detail_id={detail_id} 第{attempt}/{retry_times}次失败: "
                         f"回调响应 data.success!=true | HTTP {resp.status_code} | body={resp.text[:500]}"
                     )
         except Exception as e:
             err_msg = str(e).strip() or repr(e)
-            print(f"[Callback] detail_id={detail_id} 第{attempt}/{retry_times}次异常: {type(e).__name__} {err_msg}")
+            logger.error(f"[Callback] detail_id={detail_id} 第{attempt}/{retry_times}次异常: {type(e).__name__} {err_msg}")
 
         if attempt < retry_times:
-            print(f"[Callback] detail_id={detail_id} {retry_interval_sec}s 后重试...")
+            logger.warning(f"[Callback] detail_id={detail_id} {retry_interval_sec}s 后重试...")
             await asyncio.sleep(retry_interval_sec)
 
-    print(f"[Callback] detail_id={detail_id} 回调最终失败，已达最大重试次数 {retry_times}")
+    logger.error(f"[Callback] detail_id={detail_id} 回调最终失败，已达最大重试次数 {retry_times}")
 
 
 def _callback_url_with_detail_id(base_url: str, detail_id) -> str:
@@ -614,97 +738,82 @@ def _transform_result_for_callback(result: dict) -> dict:
     return out
 
 
-async def _callback_batch(callback_url: str, results: list):
-    """batch 专用：全部任务完成后，按条回调；每条 POST 到 .../detail/{detail_id}，body 为 {"results": [单条]}。"""
+async def _callback_one(callback_url: str, result: dict):
+    """单条结果立即回调：POST 到 .../detail/{detail_id}，任务完成即触发，不等其他任务。"""
+    detail_id = result.get("detail_id", "")
     if _should_skip_callback():
-        print("[Callback] batch 已跳过（本地测试不回调）")
+        logger.info(f"[Callback] detail_id={detail_id} 已跳过（本地测试不回调）")
         return
     retry_times = int(_full_cfg.get("callback_retry_times", 3) or 3)
     retry_interval_sec = int(_full_cfg.get("callback_retry_interval_sec", 300) or 300)
     retry_times = max(1, retry_times)
     retry_interval_sec = max(1, retry_interval_sec)
-    base_url = callback_url.strip()
-    print(f"[Callback] batch 全部完成，按 detail_id 分别回调共 {len(results)} 条")
-    async with httpx.AsyncClient(timeout=httpx.Timeout(30.0, connect=10.0), trust_env=True) as c:
-        for result in results:
-            detail_id = result.get("detail_id", "")
-            url = _callback_url_with_detail_id(base_url, detail_id)
-            # 对方接口要求 eval_cost、test_id、cost 为整数，先做转换
-            payload = _transform_result_for_callback(result)
-            for attempt in range(1, retry_times + 1):
-                try:
-                    resp = await c.post(url, json=payload)
-                    if resp.status_code >= 400:
-                        print(f"[Callback] detail_id={detail_id} 第{attempt}/{retry_times}次失败: HTTP {resp.status_code} | {resp.text[:500]}")
-                    else:
-                        callback_ok = False
-                        try:
-                            resp_json = resp.json()
-                            if isinstance(resp_json, dict):
-                                data = resp_json.get("data", {})
-                                callback_ok = (
-                                    data.get("success") is True
-                                    or resp_json.get("ok") is True
-                                    or resp_json.get("success") is True
-                                )
-                        except Exception:
-                            pass
-                        if callback_ok:
-                            print(f"[Callback] detail_id={detail_id} 成功: HTTP {resp.status_code}")
-                            break
-                        print(f"[Callback] detail_id={detail_id} 第{attempt}/{retry_times}次失败: 回调需 data.success 或 ok=true | {resp.text[:500]}")
-                except Exception as e:
-                    print(f"[Callback] detail_id={detail_id} 第{attempt}/{retry_times}次异常: {type(e).__name__} {e}")
-                if attempt < retry_times:
-                    await asyncio.sleep(retry_interval_sec)
+    url = _callback_url_with_detail_id(callback_url.strip(), detail_id)
+    payload = _transform_result_for_callback(result)
+    logger.info(f"[Callback] POST {url} | body 前 300 字: {json.dumps(payload, ensure_ascii=False)[:300]}")
+    for attempt in range(1, retry_times + 1):
+        try:
+            async with httpx.AsyncClient(timeout=httpx.Timeout(30.0, connect=10.0), trust_env=False) as c:
+                resp = await c.post(url, json=payload)
+            if resp.status_code >= 400:
+                logger.warning(f"[Callback] detail_id={detail_id} 第{attempt}/{retry_times}次失败: HTTP {resp.status_code} | {resp.text[:500]}")
             else:
-                print(f"[Callback] detail_id={detail_id} 回调最终失败，已达最大重试次数 {retry_times}")
+                callback_ok = False
+                try:
+                    resp_json = resp.json()
+                    if isinstance(resp_json, dict):
+                        data = resp_json.get("data", {})
+                        callback_ok = (
+                            data.get("success") is True
+                            or resp_json.get("ok") is True
+                            or resp_json.get("success") is True
+                        )
+                except Exception:
+                    pass
+                if callback_ok:
+                    logger.info(f"[Callback] detail_id={detail_id} 成功: HTTP {resp.status_code}")
+                    return
+                logger.warning(f"[Callback] detail_id={detail_id} 第{attempt}/{retry_times}次失败: 回调需 data.success 或 ok=true | {resp.text[:500]}")
+        except Exception as e:
+            logger.error(f"[Callback] detail_id={detail_id} 第{attempt}/{retry_times}次异常: {type(e).__name__} {e}")
+        if attempt < retry_times:
+            await asyncio.sleep(retry_interval_sec)
+    logger.error(f"[Callback] detail_id={detail_id} 回调最终失败，已达最大重试次数 {retry_times}")
 
 
 async def _dispatch(req: StartRequest, start_index: int, run_group_ts: Optional[str] = None):
-    max_workers = _executor._max_workers if _executor else 1
-    worker_id = hash(str(req.detail_id)) % max_workers
     _task_status[req.detail_id] = {"status": "running", "case_name": req.case_name}
-    print(f"[API] 提交任务 detail_id={req.detail_id} worker_id={worker_id} "
-          f"start_index={start_index} (并行槽位 0~{max_workers - 1})", flush=True)
-    loop = asyncio.get_event_loop()
-    args_tuple = (
-        worker_id, req.detail_id, req.task_id, req.case_name,
-        req.prod_url, req.test_arry,
-        dict(_preset), dict(_full_cfg), start_index, run_group_ts,
-    )
+    cb_url = (_full_cfg.get("callback_base_url") or CALLBACK_BASE_URL or "").strip().rstrip("/")
+
+    worker_id = await _worker_slots.get()
     try:
+        logger.info(f"[API] 提交任务 detail_id={req.detail_id} worker_id={worker_id} "
+                    f"start_index={start_index}")
+        loop = asyncio.get_event_loop()
+        args_tuple = (
+            worker_id, req.detail_id, req.task_id, req.case_name,
+            req.prod_url, req.test_arry,
+            dict(_preset), dict(_full_cfg), start_index, run_group_ts,
+            cb_url,
+        )
         result = await loop.run_in_executor(
             _executor,
             _run_task_in_process_wrapper,
             args_tuple,
         )
         _task_status[req.detail_id] = {"status": "done", "result": result}
-        print(f"[API] detail_id={req.detail_id} 任务完成，准备回调")
+        logger.info(f"[API] detail_id={req.detail_id} 任务完成（回调已在子进程内执行）")
     except Exception as e:
         _task_status[req.detail_id] = {"status": "error", "error": str(e)}
-        result = {
-            "detail_id": str(req.detail_id), "case_name": req.case_name,
-            "eval_cost": "avg_time=0.0s, avg_usd=$0.000000", "version": "",
-            "test_cases": [
-                {
-                    "test_id": f"{req.case_name}{start_index + i}",
-                    "case_desc": d,
-                    "evidence": f"Error: {e}",
-                    "result": False,
-                    "cost": "time=0.0s, usd=$0.000000",
-                }
-                for i, d in enumerate(req.test_arry)
-            ],
-        }
-        print(f"[API] detail_id={req.detail_id} 任务异常: {e}，准备回调")
-    await _callback(req.detail_id, result)
+        logger.error(f"[API] detail_id={req.detail_id} 子进程异常: {e}（回调已在子进程内执行或进程被杀）")
+    finally:
+        _worker_slots.put_nowait(worker_id)
 
 
 @app.post("/start", response_model=StartResponse)
 async def start_task(req: StartRequest):
-    print(f"[API] task_id={req.task_id} detail_id={req.detail_id} "
-          f"case={req.case_name} tests={len(req.test_arry)} url={req.prod_url}")
+    logger.info(f"[API] task_id={req.task_id} detail_id={req.detail_id} "
+                f"case={req.case_name} tests={len(req.test_arry)} url={req.prod_url}")
 
     if _task_status.get(req.detail_id, {}).get("status") == "running":
         return StartResponse(code=1, message="任务执行中", data={"success": False})
@@ -733,84 +842,39 @@ async def _run_batch_then_callback(
     callback_url: str,
     run_group_ts: str,
 ):
-    """后台执行本批全部任务，完成后一次性回调推送完整 results。"""
+    """后台并发执行本批所有任务，回调在子进程内完成，主进程仅更新状态。"""
     loop = asyncio.get_event_loop()
-    max_workers = _executor._max_workers if _executor else 1
     for t in req.tasks:
         _task_status[t.detail_id] = {"status": "running", "case_name": t.case_name}
-    futures = []
-    for t in req.tasks:
-        worker_id = hash(str(t.detail_id)) % max_workers
-        args_tuple = (
-            worker_id, t.detail_id, t.task_id, t.case_name,
-            t.prod_url, t.test_arry,
-            dict(_preset), dict(_full_cfg), start_index_map[t.detail_id], run_group_ts,
-        )
-        fut = loop.run_in_executor(_executor, _run_task_in_process_wrapper, args_tuple)
-        futures.append((t.detail_id, fut))
-    results = []
-    for detail_id, fut in futures:
+
+    async def _run_one(t: StartRequest):
+        start_index = start_index_map[t.detail_id]
+
+        worker_id = await _worker_slots.get()
         try:
-            result = await fut
-            _task_status[detail_id] = {"status": "done", "result": result}
-            results.append(result)
+            logger.info(f"[API] /batch detail_id={t.detail_id} worker_id={worker_id} 开始执行")
+            args_tuple = (
+                worker_id, t.detail_id, t.task_id, t.case_name,
+                t.prod_url, t.test_arry,
+                dict(_preset), dict(_full_cfg), start_index, run_group_ts,
+                callback_url,
+            )
+            result = await loop.run_in_executor(_executor, _run_task_in_process_wrapper, args_tuple)
+            _task_status[t.detail_id] = {"status": "done", "result": result}
+            logger.info(f"[API] /batch detail_id={t.detail_id} 完成（回调已在子进程内执行）")
         except Exception as e:
-            t = next((x for x in req.tasks if x.detail_id == detail_id), None)
-            test_arry = t.test_arry if t else []
-            start_index = start_index_map.get(detail_id, 0)
-            _task_status[detail_id] = {"status": "error", "error": str(e)}
-            results.append({
-                "detail_id": str(detail_id),
-                "case_name": t.case_name if t else "",
-                "eval_cost": "avg_time=0.0s, avg_usd=$0.000000",
-                "version": "",
-                "test_cases": [
-                    {
-                        "test_id": f"{t.case_name}{start_index + i}" if t else str(start_index + i),
-                        "case_desc": d,
-                        "evidence": f"Error: {e}",
-                        "result": False,
-                        "cost": "time=0.0s, usd=$0.000000",
-                    }
-                    for i, d in enumerate(test_arry)
-                ],
-            })
-        print(f"[API] /batch detail_id={detail_id} 完成")
-    detail_to_group = {t.detail_id: (t.task_id, t.case_name) for t in req.tasks}
-    group_cost_acc = {}
-    for r in results:
-        try:
-            detail_id = int(str(r.get("detail_id", "0")))
-        except Exception:
-            continue
-        group_key = detail_to_group.get(detail_id)
-        if not group_key:
-            continue
-        t_cost, u_cost = _parse_eval_cost(r.get("eval_cost", ""))
-        if group_key not in group_cost_acc:
-            group_cost_acc[group_key] = [0.0, 0.0, 0]
-        group_cost_acc[group_key][0] += t_cost
-        group_cost_acc[group_key][1] += u_cost
-        group_cost_acc[group_key][2] += 1
-    for r in results:
-        try:
-            detail_id = int(str(r.get("detail_id", "0")))
-        except Exception:
-            continue
-        group_key = detail_to_group.get(detail_id)
-        if not group_key or group_key not in group_cost_acc:
-            continue
-        sum_t, sum_u, cnt = group_cost_acc[group_key]
-        if cnt <= 0:
-            continue
-        r["eval_cost"] = f"avg_time={sum_t / cnt:.1f}s, avg_usd=${sum_u / cnt:.6f}"
-    print(f"[API] /batch 全部 {len(results)} 个任务完成，一次性回调")
-    await _callback_batch(callback_url, results)
+            _task_status[t.detail_id] = {"status": "error", "error": str(e)}
+            logger.error(f"[API] /batch detail_id={t.detail_id} 子进程异常: {e}（回调已在子进程内执行或进程被杀）")
+        finally:
+            _worker_slots.put_nowait(worker_id)
+
+    await asyncio.gather(*[_run_one(t) for t in req.tasks])
+    logger.info(f"[API] /batch 全部 {len(req.tasks)} 个任务已完成")
 
 
 @app.post("/batch")
 async def batch_tasks(request: Request):
-    """接收一批任务，仅返回接单结果；全部任务完成后一次性回调推送完整结果数组。
+    """接收一批任务（JSON 文件或 JSON body），仅返回接单结果；每个 detail_id 完成后立即单独回调。
     支持三种方式：
     1. POST body (JSON) - 标准方式
     2. multipart/form-data - 对方使用的方式
@@ -818,19 +882,19 @@ async def batch_tasks(request: Request):
     """
     req = None
     
-    # 打印调试信息
+    # 请求调试日志
     content_type = request.headers.get('content-type', '').lower()
-    print(f"[API] /batch 收到请求:")
-    print(f"  Method: {request.method}")
-    print(f"  URL: {request.url}")
-    print(f"  Query params: {dict(request.query_params)}")
-    print(f"  Content-Type: {content_type}")
+    logger.info("[API] /batch 收到请求")
+    logger.debug(f"  Method: {request.method}")
+    logger.debug(f"  URL: {request.url}")
+    logger.debug(f"  Query params: {dict(request.query_params)}")
+    logger.debug(f"  Content-Type: {content_type}")
     
     # 1. 尝试 multipart/form-data
     if 'multipart/form-data' in content_type:
         try:
             form = await request.form()
-            print(f"  Form fields: {list(form.keys())}")
+            logger.debug(f"  Form fields: {list(form.keys())}")
             form_dict = {}
             for key, value in form.items():
                 # 如果是文件对象，读取内容
@@ -839,7 +903,7 @@ async def batch_tasks(request: Request):
                     form_dict[key] = content.decode('utf-8')
                 else:
                     form_dict[key] = value
-                print(f"    {key}: {str(form_dict[key])[:200]}")
+                logger.debug(f"    {key}: {str(form_dict[key])[:200]}")
             
             # 优先：JSON 文件上传（对方传 json 文件，文件内包含 tasks 等）
             _json_file_keys = ('file', 'json_file', 'json', 'tasks_file', 'tasks_json')
@@ -862,10 +926,10 @@ async def batch_tasks(request: Request):
                             callback_url=data.get('callback_url') or form_dict.get('callback_url'),
                         )
                     if req.tasks:
-                        print(f"  ✓ 从 form-data 文件字段 '{fkey}' 解析 JSON 成功: {len(req.tasks)} 个任务")
+                        logger.info(f"  ✓ 从 form-data 文件字段 '{fkey}' 解析 JSON 成功: {len(req.tasks)} 个任务")
                         break
                 except Exception as e:
-                    print(f"  解析 form 字段 '{fkey}' 为 JSON 失败: {e}")
+                    logger.warning(f"  解析 form 字段 '{fkey}' 为 JSON 失败: {e}")
             else:
                 req = None
             
@@ -905,33 +969,31 @@ async def batch_tasks(request: Request):
                 )
                 callback_url = form_dict.get('callback_url')
                 req = BatchRequest(tasks=[task], callback_url=callback_url)
-                print(f"  ✓ 从 form-data 解析成功: 1 个任务")
-                print(f"    task_id={task.task_id}, detail_id={task.detail_id}")
-                print(f"    case_name={task.case_name}")
-                print(f"    test_arry={task.test_arry}")
+                logger.info("  ✓ 从 form-data 解析成功: 1 个任务")
+                logger.debug(f"    task_id={task.task_id}, detail_id={task.detail_id}")
+                logger.debug(f"    case_name={task.case_name}")
+                logger.debug(f"    test_arry={task.test_arry}")
             elif not req and 'tasks' in form_dict:
                 # tasks 字段包含 JSON 字符串
                 tasks_json = json.loads(form_dict['tasks'])
                 callback_url = form_dict.get('callback_url')
                 req = BatchRequest(tasks=tasks_json, callback_url=callback_url)
-                print(f"  ✓ 从 form-data (tasks JSON) 解析成功: {len(req.tasks)} 个任务")
+                logger.info(f"  ✓ 从 form-data (tasks JSON) 解析成功: {len(req.tasks)} 个任务")
             
             if req:
-                print(f"  最终解析: {len(req.tasks)} 个任务, callback={req.callback_url}")
+                logger.info(f"  最终解析: {len(req.tasks)} 个任务, callback={req.callback_url}")
         except Exception as e:
-            print(f"  Form-data 解析失败: {e}")
-            import traceback
-            traceback.print_exc()
+            logger.exception(f"  Form-data 解析失败: {e}")
     
     # 2. 尝试从 JSON body 解析
     if not req and 'application/json' in content_type:
         try:
             body = await request.json()
-            print(f"  Body (JSON): {json.dumps(body, ensure_ascii=False)[:200]}")
+            logger.debug(f"  Body (JSON): {json.dumps(body, ensure_ascii=False)[:200]}")
             req = BatchRequest(**body)
-            print(f"  ✓ 从 JSON 解析成功")
+            logger.info("  ✓ 从 JSON 解析成功")
         except Exception as e:
-            print(f"  JSON 解析失败: {e}")
+            logger.debug(f"  JSON 解析失败: {e}")
     
     # 3. 尝试从原始 body 解析
     if not req:
@@ -939,12 +1001,12 @@ async def batch_tasks(request: Request):
             body_bytes = await request.body()
             body_text = body_bytes.decode('utf-8')
             if body_text:
-                print(f"  Body (raw): {body_text[:500]}")
+                logger.debug(f"  Body (raw): {body_text[:500]}")
                 body_data = json.loads(body_text)
                 req = BatchRequest(**body_data)
-                print(f"  ✓ 从原始 body 解析成功")
+                logger.info("  ✓ 从原始 body 解析成功")
         except Exception as e:
-            print(f"  原始 body 解析失败: {e}")
+            logger.debug(f"  原始 body 解析失败: {e}")
     
     # 4. 尝试从 query parameters 读取
     if not req:
@@ -955,9 +1017,9 @@ async def batch_tasks(request: Request):
                     tasks_json = json.loads(query_params["tasks"])
                     callback_url = query_params.get("callback_url")
                     req = BatchRequest(tasks=tasks_json, callback_url=callback_url)
-                    print(f"  ✓ 从 query 参数解析成功")
+                    logger.info("  ✓ 从 query 参数解析成功")
             except Exception as e:
-                print(f"  Query 参数解析失败: {e}")
+                logger.debug(f"  Query 参数解析失败: {e}")
     
     if not req or not req.tasks:
         return {
@@ -974,11 +1036,11 @@ async def batch_tasks(request: Request):
             "data": {"success": False},
         }
 
-    callback_url = (req.callback_url or _full_cfg.get("callback_base_url") or CALLBACK_BASE_URL or "").strip().rstrip("/")
+    callback_url = (_full_cfg.get("callback_base_url") or CALLBACK_BASE_URL or req.callback_url or "").strip().rstrip("/")
     if not callback_url:
         return {"code": 1, "message": "未配置 callback_base_url 或 callback-url", "data": {"success": False}}
 
-    print(f"[API] /batch 收到 {len(req.tasks)} 个任务，已接单并后台执行（全部完成后一次性回调）")
+    logger.info(f"[API] /batch 收到 {len(req.tasks)} 个任务，已接单并后台执行（全部完成后一次性回调）")
     run_group_ts = datetime.now().strftime("%Y%m%d%H%M")
     start_index_map = {}
     async with _counter_lock:
@@ -1008,8 +1070,27 @@ async def health():
     return {"status": "ok", "workers": _executor._max_workers if _executor else 0}
 
 
+# 本地测试用：接收自身回调，直接存到 _callback_results，无需启动 receive_callback.py
+_callback_results: Dict[str, dict] = {}
+
+@app.post("/api/v1/agent-eval/notice/detail/{detail_id}")
+async def receive_callback(detail_id: str, request: Request):
+    try:
+        body = await request.json()
+    except Exception:
+        body = {}
+    _callback_results[detail_id] = body
+    logger.info(f"[LocalCallback] detail_id={detail_id} 回调已接收，test_cases={len(body.get('test_cases', []))}")
+    return {"data": {"success": True}, "code": 0, "msg": "ok"}
+
+
+@app.get("/callback_results")
+async def list_callback_results():
+    return {"total": len(_callback_results), "results": _callback_results}
+
+
 def main():
-    global _executor, _preset, _full_cfg, CALLBACK_BASE_URL
+    global _executor, _preset, _full_cfg, CALLBACK_BASE_URL, _worker_slots
 
     parser = argparse.ArgumentParser(description="AppEval API Server")
     parser.add_argument("--port", type=int, default=8888)
@@ -1040,14 +1121,28 @@ def main():
     _apply_llm_env(_preset, for_local=(_full_cfg.get("model") == "local"))
 
     _executor = ProcessPoolExecutor(max_workers=workers)
+    _worker_slots = asyncio.Queue(maxsize=workers)
+    for _i in range(workers):
+        _worker_slots.put_nowait(_i)
     API_LOG_BASE.mkdir(parents=True, exist_ok=True)
     callback_hint = "已关闭(本地)" if _full_cfg.get("skip_callback") else CALLBACK_BASE_URL
-    print(f"AppEval API | port={args.port} workers={workers} model={_full_cfg.get('model','?')} callback={callback_hint}")
-    print(f"  并行: 最多 {workers} 个任务同时执行 (ProcessPoolExecutor)")
-    print(f"  api_log: {API_LOG_BASE}")
+    _lan_ip = "127.0.0.1"
+    try:
+        import socket
+        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        s.settimeout(0.5)
+        s.connect(("8.8.8.8", 80))
+        _lan_ip = s.getsockname()[0]
+        s.close()
+    except Exception:
+        pass
+    logger.info(f"AppEval API | port={args.port} workers={workers} model={_full_cfg.get('model','?')} callback={callback_hint}")
+    logger.info(f"  内网服务地址: http://{_lan_ip}:{args.port}")
+    logger.info(f"  并行: 最多 {workers} 个任务同时执行 (ProcessPoolExecutor)")
+    logger.info(f"  api_log: {API_LOG_BASE}")
     for r in app.routes:
         if hasattr(r, "methods") and hasattr(r, "path"):
-            print(f"  注册路由: {list(r.methods)} {r.path}")
+            logger.info(f"  注册路由: {list(r.methods)} {r.path}")
 
     uvicorn.run(app, host="0.0.0.0", port=args.port, log_level="info")
 

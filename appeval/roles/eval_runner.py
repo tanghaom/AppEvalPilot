@@ -10,6 +10,7 @@ import asyncio
 import copy
 import json
 import os
+import time
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Union
 
@@ -107,7 +108,7 @@ class AppEvalRole(Role):
             agent_class: "osagent" (default, VLM + screenshots) or "text_agent" (text-only, a11y tree)
         """
         add_info = """**[CRITICAL - Login Credentials]** If the application requires login or registration (e.g. you see a login page, "Welcome Back", "Sign Up", or "Create your account"), use these credentials to LOG IN directly:
-  - Email: press_test8@mgx.dev
+  - Email: algo_020@qq.com
   - Password: 123456
 Click the email field, type the email using pyautogui.write(), then click the password field and type the password. Then click the "Log in" button. Do NOT register a new account. Do NOT click "Create your account" or "Sign up".
 If you see an "Authorize Application" page requesting permissions (OpenID, Email etc.), click the "Allow" button immediately.
@@ -343,10 +344,16 @@ Please use the Tell action to report the results of all test cases before execut
         for key, value in results_dict.items():
             matching_key = self._find_matching_key(key, data[task_id]["test_cases"])
             if matching_key is not None:
-                data[task_id]["test_cases"][matching_key].update({
-                    "result": value.get("result", ""),
-                    "evidence": value.get("evidence", "")
-                })
+                if isinstance(value, dict):
+                    data[task_id]["test_cases"][matching_key].update({
+                        "result": value.get("result", ""),
+                        "evidence": value.get("evidence", "")
+                    })
+                else:
+                    data[task_id]["test_cases"][matching_key].update({
+                        "result": str(value),
+                        "evidence": ""
+                    })
         write_json_file(self.rc.json_file, data, indent=4)
         return None
 
@@ -421,6 +428,11 @@ Please use the Tell action to report the results of all test cases before execut
         uncertain_test_cases = uncertain_cases[task_name]["test_cases"]
 
         logger.info(f"Restarting environment for retry {retry_count}...")
+        try:
+            if hasattr(self.osagent, "controller") and hasattr(self.osagent.controller, "set_expected_url"):
+                self.osagent.controller.set_expected_url(start_func if is_web else "")
+        except Exception as e:
+            logger.debug(f"Failed to bind expected URL before retry: {e}")
         await self._start_environment(url=start_func if is_web else None, work_path=start_func if not is_web else None)
         await asyncio.sleep(SLEEP_BEFORE_EXECUTE)
 
@@ -432,12 +444,16 @@ Please use the Tell action to report the results of all test cases before execut
         await self._cleanup_environment(is_web)
         await asyncio.sleep(SLEEP_AFTER_CLEANUP)
 
-        # Construct and return retry result
+        # Construct and return retry result; value may be dict or bare str
+        normalized = {}
+        for key, value in retry_result_dict.items():
+            if isinstance(value, dict):
+                normalized[key] = {"result": value.get("result", ""), "evidence": value.get("evidence", "")}
+            else:
+                normalized[key] = {"result": str(value), "evidence": ""}
         return {
             task_name: {
-                "test_cases": {
-                    key: {"result": value.get("result", ""), "evidence": value.get("evidence", "")} for key, value in retry_result_dict.items()
-                }
+                "test_cases": normalized
             }
         }
 
@@ -669,6 +685,11 @@ Please use the Tell action to report the results of all test cases before execut
         uncertain_test_cases = uncertain_cases[task_name]["test_cases"]
 
         logger.info(f"Restarting environment for retry {retry_count}...")
+        try:
+            if hasattr(self.osagent, "controller") and hasattr(self.osagent.controller, "set_expected_url"):
+                self.osagent.controller.set_expected_url(start_func if is_web else "")
+        except Exception as e:
+            logger.debug(f"Failed to bind expected URL before retry: {e}")
         await self._start_environment(url=start_func if is_web else None, work_path=start_func if not is_web else None)
         await asyncio.sleep(SLEEP_BEFORE_EXECUTE)
 
@@ -681,12 +702,16 @@ Please use the Tell action to report the results of all test cases before execut
         await self._cleanup_environment(is_web)
         await asyncio.sleep(SLEEP_AFTER_CLEANUP)
 
-        # Construct and return retry result
+        # Construct and return retry result; value may be dict or bare str
+        normalized = {}
+        for key, value in retry_result_dict.items():
+            if isinstance(value, dict):
+                normalized[key] = {"result": value.get("result", ""), "evidence": value.get("evidence", "")}
+            else:
+                normalized[key] = {"result": str(value), "evidence": ""}
         return {
             task_name: {
-                "test_cases": {
-                    key: {"result": value.get("result", ""), "evidence": value.get("evidence", "")} for key, value in retry_result_dict.items()
-                }
+                "test_cases": normalized
             }
         }
 
@@ -877,49 +902,166 @@ Please use the Tell action to report the results of all test cases before execut
         is_web = start_func.startswith(
             "http://") or start_func.startswith("https://")
 
-        # Start environment
-        await self._start_environment(url=start_func if is_web else None, work_path=start_func if not is_web else None)
-        await asyncio.sleep(SLEEP_BEFORE_EXECUTE)
+        # Start environment once for batch mode; sequential mode rebuilds fresh session per case.
+        if not sequential_mode:
+            try:
+                if hasattr(self.osagent, "controller") and hasattr(self.osagent.controller, "set_expected_url"):
+                    self.osagent.controller.set_expected_url(start_func if is_web else "")
+            except Exception as e:
+                logger.debug(f"Failed to bind expected URL before start: {e}")
+            await self._start_environment(url=start_func if is_web else None, work_path=start_func if not is_web else None)
+            await asyncio.sleep(SLEEP_BEFORE_EXECUTE)
+
+        def _get_llm_total_usd() -> float:
+            # Fallback pricing by model when upstream TOKEN_COSTS misses model entries.
+            fallback_pricing = {
+                # USD / 1K tokens
+                "gemini-3-flash-preview": {"prompt": 0.0005, "completion": 0.003},
+            }
+
+            def _cost_to_usd(cost_obj: Any, model_name: str) -> float:
+                direct = float(
+                    getattr(cost_obj, "total_cost_usd", None)
+                    or getattr(cost_obj, "total_cost", None)
+                    or getattr(cost_obj, "cost", None)
+                    or 0.0
+                )
+                if direct > 0:
+                    return direct
+                prompt_tokens = int(getattr(cost_obj, "total_prompt_tokens", 0) or 0)
+                completion_tokens = int(getattr(cost_obj, "total_completion_tokens", 0) or 0)
+                if prompt_tokens == 0 and completion_tokens == 0:
+                    return 0.0
+                price = fallback_pricing.get(model_name or "")
+                if not price:
+                    return 0.0
+                return (
+                    prompt_tokens * float(price["prompt"])
+                    + completion_tokens * float(price["completion"])
+                ) / 1000.0
+
+            total = 0.0
+            for llm_source in (
+                getattr(self.test_generator, "llm", None),
+                getattr(self.osagent, "llm", None),
+            ):
+                if llm_source and hasattr(llm_source, "get_costs"):
+                    c = llm_source.get_costs()
+                    model_name = getattr(llm_source, "model", "") or ""
+                    total += _cost_to_usd(c, model_name)
+            return total
+
+        def _to_bool_result(v) -> bool:
+            if isinstance(v, bool):
+                return v
+            if isinstance(v, (int, float)):
+                return bool(v)
+            s = str(v).strip().lower()
+            return s in ("pass", "true", "1", "yes", "y")
+
+        def _build_case_item(case_id, case_data, case_name: Optional[str] = None) -> dict:
+            return {
+                "test_id": f"{case_name}{case_id}" if case_name else str(case_id),
+                "case_desc": case_data.get("case_desc", ""),
+                "evidence": case_data.get("evidence", ""),
+                "result": _to_bool_result(case_data.get("result", "")),
+                "cost": case_data.get("cost", ""),
+            }
+
+        def _save_incremental_case_json(case_id, case_data) -> None:
+            """Persist one case result immediately so partial progress survives interruptions."""
+            if not save_to_file:
+                return
+            try:
+                log_base = self.rc.agent_params.get("log_dirs", "work_dirs")
+                if case_name_for_log is not None:
+                    case_dir = Path(log_base) / log_dir / f"{case_name_for_log}{case_id}"
+                    case_dir.mkdir(parents=True, exist_ok=True)
+                    ts_dirs = [
+                        p for p in case_dir.iterdir()
+                        if p.is_dir() and p.name.isdigit() and len(p.name) >= 12
+                    ]
+                    output_dir = sorted(ts_dirs, key=lambda p: p.name)[-1] if ts_dirs else case_dir
+                    output_file = output_dir / "test_case.json"
+                    with open(output_file, "w", encoding="utf-8") as f:
+                        json.dump(
+                            {"test_cases": [_build_case_item(case_id, case_data, case_name_for_log)]},
+                            f,
+                            indent=4,
+                            ensure_ascii=False,
+                        )
+                    logger.info(f"Incremental results saved to {output_file}")
+            except Exception as e:
+                logger.warning(f"Failed to save incremental result for case {case_id}: {e}")
 
         if sequential_mode:
-            # Sequential mode: execute test cases one by one
+            # Sequential mode: execute test cases one by one, record per-case time and cost
             logger.info(
                 f"Start executing automated testing in sequential mode ({len(test_cases)} cases)...")
             all_results = {}
             base_log_dir = self.osagent.log_dirs
+            cost_before = _get_llm_total_usd()
 
             for idx, (case_id, case_info) in enumerate(test_cases.items(), 1):
                 logger.info(
                     f"Executing test case {idx}/{len(test_cases)}: {case_id}")
 
-                # Set case-specific log directory to avoid overwriting
-                if case_name_for_log is not None:
-                    self.osagent.log_dirs = f"{base_log_dir}/{case_name_for_log}{case_id}"
-                else:
-                    self.osagent.log_dirs = f"{base_log_dir}/{case_id}"
-                self.osagent._get_timestamped_paths()
-                # Lock timestamped paths so _reset_state won't regenerate a new timestamp dir
-                self.osagent._lock_timestamped_paths = True
+                t0 = time.perf_counter()
+                try:
+                    # Rebuild a clean browser/app session before each case.
+                    try:
+                        if hasattr(self.osagent, "controller") and hasattr(self.osagent.controller, "set_expected_url"):
+                            self.osagent.controller.set_expected_url(start_func if is_web else "")
+                    except Exception as e:
+                        logger.debug(f"Failed to bind expected URL before case {case_id}: {e}")
+                    await self._cleanup_environment(is_web)
+                    await asyncio.sleep(SLEEP_AFTER_CLEANUP)
+                    await self._start_environment(url=start_func if is_web else None, work_path=start_func if not is_web else None)
+                    await asyncio.sleep(SLEEP_BEFORE_EXECUTE)
 
-                # Create single case dict for execution
-                single_case = {case_id: case_info}
+                    # Set case-specific log directory to avoid overwriting
+                    if case_name_for_log is not None:
+                        self.osagent.log_dirs = f"{base_log_dir}/{case_name_for_log}{case_id}"
+                    else:
+                        self.osagent.log_dirs = f"{base_log_dir}/{case_id}"
+                    self.osagent._get_timestamped_paths()
+                    # Lock timestamped paths so _reset_state won't regenerate a new timestamp dir
+                    self.osagent._lock_timestamped_paths = True
 
-                # Execute single test case
-                result_dict = await self.execute_api_check(task_name, 1, single_case)
+                    # Create single case dict for execution
+                    single_case = {case_id: case_info}
 
-                # Unlock after execution
-                self.osagent._lock_timestamped_paths = False
+                    # Execute single test case
+                    result_dict = await self.execute_api_check(task_name, 1, single_case)
+                    elapsed = time.perf_counter() - t0
+                    cost_after = _get_llm_total_usd()
+                    delta_usd = max(0.0, cost_after - cost_before)
+                    cost_before = cost_after
 
-                # Merge result
-                matched_key = self._find_matching_key(case_id, result_dict)
-                if matched_key is not None:
-                    all_results[case_id] = result_dict[matched_key]
-                    test_cases[case_id].update(
-                        {"result": result_dict[matched_key].get(
-                            "result", ""), "evidence": result_dict[matched_key].get("evidence", "")}
-                    )
+                    # Unlock after execution
+                    self.osagent._lock_timestamped_paths = False
 
-                # Reset osagent state for next case (no browser cleanup)
+                    # Merge result and set per-case cost (time=...s, usd=$... for server compatibility)
+                    test_cases[case_id]["cost"] = f"time={elapsed:.1f}s, usd=${delta_usd:.6f}"
+                    matched_key = self._find_matching_key(case_id, result_dict)
+                    if matched_key is not None:
+                        all_results[case_id] = result_dict[matched_key]
+                        test_cases[case_id].update(
+                            {"result": result_dict[matched_key].get(
+                                "result", ""), "evidence": result_dict[matched_key].get("evidence", "")}
+                        )
+                except Exception as case_err:
+                    logger.error(f"Case {case_id} failed with error: {case_err}")
+                    self.osagent._lock_timestamped_paths = False
+                    elapsed = time.perf_counter() - t0
+                    test_cases[case_id]["cost"] = f"time={elapsed:.1f}s, usd=$0.000000"
+                    test_cases[case_id]["result"] = False
+                    test_cases[case_id]["evidence"] = f"Error: {case_err}"
+
+                # Persist each case immediately so interrupted runs still have partial JSON outputs.
+                _save_incremental_case_json(case_id, test_cases[case_id])
+
+                # Reset in-memory agent state for next case; browser session is rebuilt at case start.
                 if idx < len(test_cases):
                     logger.info("Resetting osagent state for next case...")
                     self.osagent.rc.reset()
@@ -971,29 +1113,16 @@ Please use the Tell action to report the results of all test cases before execut
                     total_cost += getattr(c, "total_cost", 0) or 0
             cost_str = f"${total_cost:.4f} (prompt:{prompt_tokens}, completion:{completion_tokens})"
             for case_data in final_test_cases.values():
+                existing = str(case_data.get("cost", ""))
+                # Preserve per-case cost from sequential mode (format: "time=...s, usd=$...")
+                if "time=" in existing and "usd=" in existing:
+                    continue
                 case_data["cost"] = cost_str
         except Exception:
             pass
 
         # Save to file if needed
         if save_to_file:
-            def _to_bool_result(v) -> bool:
-                if isinstance(v, bool):
-                    return v
-                if isinstance(v, (int, float)):
-                    return bool(v)
-                s = str(v).strip().lower()
-                return s in ("pass", "true", "1", "yes", "y")
-
-            def _build_case_item(case_id, case_data, case_name: Optional[str] = None) -> dict:
-                return {
-                    "test_id": f"{case_name}{case_id}" if case_name else str(case_id),
-                    "case_desc": case_data.get("case_desc", ""),
-                    "evidence": case_data.get("evidence", ""),
-                    "result": _to_bool_result(case_data.get("result", "")),
-                    "cost": case_data.get("cost", ""),
-                }
-
             log_base = self.rc.agent_params.get("log_dirs", "work_dirs")
             if case_name_for_log is not None:
                 # 每个任务一个目录（3D Showcase0, 3D Showcase1, ...），各写一份 test_case.json

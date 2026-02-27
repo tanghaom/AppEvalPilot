@@ -1,0 +1,13 @@
+llm:
+  api_type: "openai"
+  model: "checkpoint-13-merged"
+  base_url: "http://localhost:8001/v1"
+  api_key: "not-needed"
+  stream: false
+
+case_generator:
+  api_type: "openai"
+  model: "checkpoint-13-merged"
+  base_url: "http://localhost:8001/v1"
+  api_key: "not-needed"
+  stream: false

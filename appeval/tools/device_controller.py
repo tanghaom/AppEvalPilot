@@ -16,6 +16,7 @@ import time
 import xml.etree.ElementTree as ET
 from pathlib import Path
 from typing import Dict, List, Optional, Set, Tuple, Union
+from urllib.parse import urlparse
 
 # Import logger first
 from loguru import logger
@@ -113,6 +114,9 @@ class BaseController:
 
         Args:
             filepath: Path to save the screenshot
+
+        Raises:
+            RuntimeError: If the screenshot cannot be taken or saved.
         """
         try:
             Path(filepath).parent.mkdir(parents=True, exist_ok=True)
@@ -120,6 +124,7 @@ class BaseController:
             logger.info(f"Screenshot saved to: {filepath}")
         except Exception as e:
             logger.error(f"Screenshot failed: {str(e)}")
+            raise RuntimeError(f"Screenshot failed: {e}") from e
 
     def _take_screenshot(self, filepath: str) -> None:
         """Implementation method for taking screenshots, to be implemented by subclasses"""
@@ -341,6 +346,7 @@ class PCController(BaseController):
         max_tokens: int = 1000,
         a11y_mode: str = "atspi",
         remote_debugging_port: int = 9222,
+        expected_domain: str = "",
     ):
         """Initialize PC controller
 
@@ -359,6 +365,9 @@ class PCController(BaseController):
             self.max_tokens = max_tokens
             self.a11y_mode = a11y_mode.lower()
             self.remote_debugging_port = remote_debugging_port
+            self.expected_url = ""
+            self.expected_domain = expected_domain.lower().strip()
+            self._last_domain_recover_ts = 0.0
             if self.a11y_mode not in ("atspi", "cdp"):
                 logger.warning(f"Unknown a11y_mode '{a11y_mode}', falling back to 'atspi'")
                 self.a11y_mode = "atspi"
@@ -426,7 +435,13 @@ class PCController(BaseController):
                         logger.debug("pyatspi is not available; AT-SPI XML features disabled. "
                                      "Try a11y_mode='cdp' for lightweight alternative.")
                         return []
-                    processor = LinuxElementProcessor(location_info, self.max_tokens)
+                    processor = LinuxElementProcessor(
+                        location_info,
+                        self.max_tokens,
+                        self.remote_debugging_port,
+                        self.expected_domain,
+                        getattr(self, "expected_url", "") or "",
+                    )
                     elements = processor.collect_elements()
                 t2 = time.time()
                 logger.info(f"Time taken to get Linux screen element info ({self.a11y_mode}): {t2 - t1} seconds")
@@ -462,6 +477,22 @@ class PCController(BaseController):
         code = self._extract_code(action)
         logger.info(f"Executing code: {code}")
         exec(code)
+
+    def set_expected_url(self, expected_url: str = "") -> None:
+        """Bind current task URL to controller for tab-domain validation."""
+        self.expected_url = (expected_url or "").strip()
+        domain = ""
+        if self.expected_url:
+            try:
+                domain = (urlparse(self.expected_url).hostname or "").lower().strip()
+            except Exception:
+                domain = ""
+        self.expected_domain = domain
+        self._last_domain_recover_ts = 0.0
+        logger.info(
+            f"Expected domain set to: {self.expected_domain or '(none)'}"
+            f" | expected_url={self.expected_url or '(none)'}"
+        )
 
     # -------------------- Linux/Ubuntu helpers --------------------
     def _open_app_linux(self, name: str) -> None:
@@ -645,15 +676,29 @@ class LinuxElementProcessor:
     Traverse accessible tree and extract visible elements with geometry.
     """
 
-    def __init__(self, location_info: str = "center", max_tokens: int = 1000):
+    def __init__(
+        self,
+        location_info: str = "center",
+        max_tokens: int = 1000,
+        remote_debugging_port: int = 9222,
+        expected_domain: str = "",
+        expected_url: str = "",
+    ):
         """Initialize Linux element processor.
 
         Args:
             location_info: 'center' to return center point, 'bbox' to return bounding box
             max_tokens: maximum token count for element text
+            remote_debugging_port: Chrome CDP port for tab recovery
+            expected_domain: target tab domain for validation
+            expected_url: full URL to open when no tab matches expected_domain
         """
         self.location_info = location_info
         self.max_tokens = max_tokens
+        self.remote_debugging_port = remote_debugging_port
+        self.expected_domain = (expected_domain or "").lower().strip()
+        self.expected_url = (expected_url or "").strip()
+        self._last_domain_recover_ts = 0.0
         self.max_nodes = 3000  # safety cap to avoid excessive traversal
         # Blacklist system UI applications and window managers to avoid desktop components
         self.system_app_blacklist = {
@@ -734,6 +779,83 @@ class LinuxElementProcessor:
             "layered pane",
         }
 
+    def _domain_matches(self, url: str, expected_domain: str) -> bool:
+        """Check whether URL host matches expected domain (supports subdomains)."""
+        if not url or not expected_domain:
+            return False
+        try:
+            host = (urlparse(url).hostname or "").lower().strip()
+        except Exception:
+            return False
+        return host == expected_domain or host.endswith(f".{expected_domain}")
+
+    def _ensure_expected_tab_active(self) -> None:
+        """Switch Chrome to expected-domain tab before collecting AT-SPI elements."""
+        if not self.expected_domain:
+            return
+        try:
+            import requests
+            tabs = requests.get(
+                f"http://127.0.0.1:{self.remote_debugging_port}/json",
+                timeout=1.5,
+            ).json()
+        except Exception as e:
+            logger.debug(f"Tab activation skipped (CDP unavailable): {e}")
+            return
+
+        page_tabs = [t for t in tabs if t.get("type") == "page"]
+        if not page_tabs:
+            return
+
+        target_tab = None
+        for t in page_tabs:
+            if self._domain_matches(str(t.get("url", "")), self.expected_domain):
+                target_tab = t
+                break
+        if target_tab is None:
+            logger.debug(f"No tab matches expected domain: {self.expected_domain}")
+            # Domain drift guard: pull browser back to expected URL immediately.
+            expected_url = getattr(self, "expected_url", "") or ""
+            if expected_url:
+                now = time.time()
+                if now - float(getattr(self, "_last_domain_recover_ts", 0.0)) >= 2.0:
+                    try:
+                        import requests
+                        from urllib.parse import quote
+                        requests.get(
+                            f"http://127.0.0.1:{self.remote_debugging_port}/json/new?{quote(expected_url, safe=':/?&=%')}",
+                            timeout=2.0,
+                        )
+                        self._last_domain_recover_ts = now
+                        logger.warning(
+                            f"Expected domain missing, opened recovery tab: {expected_url}"
+                        )
+                    except Exception as e:
+                        logger.debug(f"Failed to open recovery tab for expected URL: {e}")
+            return
+
+        active_tab = next((t for t in page_tabs if t.get("active") is True), None)
+        active_url = str((active_tab or {}).get("url", ""))
+        if self._domain_matches(active_url, self.expected_domain):
+            return
+
+        tab_id = str(target_tab.get("id", "")).strip()
+        if not tab_id:
+            return
+        try:
+            import requests
+            requests.get(
+                f"http://127.0.0.1:{self.remote_debugging_port}/json/activate/{tab_id}",
+                timeout=1.5,
+            )
+            time.sleep(0.2)
+            logger.info(
+                f"Switched to expected tab for domain={self.expected_domain} "
+                f"(from {active_url or 'unknown'})"
+            )
+        except Exception as e:
+            logger.debug(f"Failed to activate expected tab: {e}")
+
     def collect_elements(self) -> List[Dict]:
         """Collect elements from the active (foreground) window only.
 
@@ -741,6 +863,8 @@ class LinuxElementProcessor:
             List of dicts with 'coordinates' and 'text'
         """
         elements: List[Dict] = []
+        # Before trusting active window, ensure Chrome is focused on expected prod domain.
+        self._ensure_expected_tab_active()
         try:
             desktop = pyatspi.Registry.getDesktop(0)
         except Exception as e:
