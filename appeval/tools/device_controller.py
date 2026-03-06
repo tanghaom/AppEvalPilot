@@ -7,6 +7,9 @@
 @Desc    : Device control utility class for operating Android and PC devices
 """
 
+import base64
+import io
+import json
 import os
 import re
 import shlex
@@ -86,11 +89,14 @@ try:
         except OSError:
             pass
 
-    # Try importing from system dist-packages if not available in venv
     import sys
-    if '/usr/lib/python3/dist-packages' not in sys.path:
-        sys.path.insert(0, '/usr/lib/python3/dist-packages')
-    import pyatspi  # type: ignore
+    # Prefer current env (e.g. conda fullstack-bench) so env-installed pyatspi is used first
+    try:
+        import pyatspi  # type: ignore
+    except ImportError:
+        if "/usr/lib/python3/dist-packages" not in sys.path:
+            sys.path.insert(0, "/usr/lib/python3/dist-packages")
+        import pyatspi  # type: ignore
 
     _HAS_PYATSPI = True
 except ImportError as e:
@@ -376,8 +382,58 @@ class PCController(BaseController):
             logger.error(f"Failed to initialize PC controller: {str(e)}")
             raise
 
+    def _take_screenshot_cdp(self, filepath: str) -> bool:
+        """Capture the active Chrome tab via CDP Page.captureScreenshot and save to filepath.
+
+        Returns True if successful, False otherwise (caller should fall back to pyautogui).
+        """
+        port = getattr(self, "remote_debugging_port", None) or 0
+        if not port:
+            return False
+        try:
+            tabs, _ = self._fetch_cdp_tabs(timeout=3.0)
+            target = self._pick_cdp_page_tab(tabs)
+            if not target:
+                return False
+            ws_url = target.get("webSocketDebuggerUrl", "")
+            if not ws_url:
+                return False
+            conn = self._cdp_ws_connect(ws_url, timeout=5)
+            conn.send(json.dumps({"id": 1, "method": "Page.captureScreenshot", "params": {}}))
+            ws_resp = self._cdp_ws_recv_result(conn, request_id=1, timeout_sec=10.0)
+            conn.close()
+            data_b64 = (ws_resp.get("result") or {}).get("data")
+            if not data_b64:
+                return False
+            raw = base64.b64decode(data_b64)
+            # Save as requested format; CDP returns PNG
+            path_lower = filepath.lower()
+            if path_lower.endswith(".png"):
+                Path(filepath).write_bytes(raw)
+            else:
+                try:
+                    from PIL import Image
+                    img = Image.open(io.BytesIO(raw))
+                    if img.mode == "RGBA":
+                        img = img.convert("RGB")
+                    img.save(filepath, "JPEG", quality=95)
+                except Exception as e:
+                    logger.debug(f"CDP screenshot PIL save failed: {e}, writing PNG bytes as-is")
+                    Path(filepath).write_bytes(raw)
+            return True
+        except Exception as exc:
+            logger.debug(f"CDP screenshot failed on port {port}: {type(exc).__name__}: {exc}")
+            return False
+
     def _take_screenshot(self, filepath: str) -> None:
-        """Implement screenshot function for PC device"""
+        """Implement screenshot function for PC device.
+
+        Prefer CDP Page.captureScreenshot when remote_debugging_port is set (captures
+        the current tab content and avoids Xvfb/display issues). Fall back to pyautogui
+        when CDP is unavailable.
+        """
+        if getattr(self, "remote_debugging_port", None) and self._take_screenshot_cdp(filepath):
+            return
         if pyautogui is None:
             raise RuntimeError("pyautogui is not available. Please ensure DISPLAY is set or use Xvfb for headless servers.")
         screenshot = pyautogui.screenshot()
@@ -494,6 +550,254 @@ class PCController(BaseController):
             f" | expected_url={self.expected_url or '(none)'}"
         )
 
+    # -------------------- Resume / checkpoint helpers --------------------
+
+    # Bypass HTTP/HTTPS proxy for all CDP localhost calls (proxy causes 503).
+    _NO_PROXY = {"http": None, "https": None}
+
+    def _fetch_cdp_tabs(self, timeout: float = 3.0) -> tuple[list, str]:
+        """Fetch tab list from CDP via /json, bypassing any HTTP proxy.
+
+        Returns:
+            tuple[list, str]: (tabs, endpoint). tabs is empty on failure.
+        """
+        import requests as _req
+        port = self.remote_debugging_port
+        url = f"http://127.0.0.1:{port}/json"
+        try:
+            resp = _req.get(url, timeout=timeout, proxies=self._NO_PROXY)
+            if resp.status_code == 200:
+                tabs = resp.json() or []
+                if isinstance(tabs, list):
+                    return tabs, "/json"
+            logger.warning(
+                f"_fetch_cdp_tabs: CDP on port {port} returned HTTP {resp.status_code}"
+            )
+        except Exception as exc:
+            logger.warning(
+                f"_fetch_cdp_tabs: CDP on port {port} failed: "
+                f"{type(exc).__name__}: {exc}"
+            )
+        return [], ""
+
+    @staticmethod
+    def _pick_cdp_page_tab(tabs: list) -> dict:
+        """Pick active page tab first, then any page tab."""
+        if not tabs:
+            return {}
+        target = next((t for t in tabs if t.get("type") == "page" and t.get("active") is True), None)
+        if target:
+            return target
+        target = next((t for t in tabs if t.get("type") == "page"), None)
+        return target or {}
+
+    @staticmethod
+    def _cdp_ws_connect(ws_url: str, timeout: int = 5):
+        """Create a CDP WebSocket connection bypassing any HTTP proxy.
+
+        websocket-client reads http_proxy/https_proxy env vars; temporarily clearing
+        them ensures the local Chrome DevTools WebSocket is reached directly.
+        """
+        import websocket as _ws
+        _PROXY_KEYS = ("http_proxy", "https_proxy", "HTTP_PROXY", "HTTPS_PROXY",
+                       "ws_proxy", "wss_proxy")
+        saved = {k: os.environ.pop(k, None) for k in _PROXY_KEYS}
+        try:
+            return _ws.create_connection(ws_url, timeout=timeout)
+        finally:
+            for k, v in saved.items():
+                if v is not None:
+                    os.environ[k] = v
+
+    @staticmethod
+    def _cdp_ws_recv_result(conn, request_id: int = 1, timeout_sec: float = 5.0) -> dict:
+        """Receive CDP WebSocket response with given id; skip events (no id)."""
+        deadline = time.time() + timeout_sec
+        while time.time() < deadline:
+            raw = conn.recv()
+            if not raw:
+                return {}
+            try:
+                msg = json.loads(raw)
+            except Exception:
+                continue
+            if msg.get("id") == request_id:
+                return msg
+        return {}
+
+    def get_viewport(self) -> dict:
+        """Return the active tab's viewport size and device-pixel-ratio as
+        ``{"w": int, "h": int, "dpr": float}``.
+
+        Returns ``{"w": 0, "h": 0, "dpr": 1}`` on failure.
+        """
+        port = self.remote_debugging_port
+        try:
+            import websocket as _ws
+            tabs, endpoint = self._fetch_cdp_tabs(timeout=3.0)
+            target = self._pick_cdp_page_tab(tabs)
+            if not target:
+                logger.warning(f"get_viewport: no page tab on port {port} (endpoint={endpoint or 'n/a'})")
+                return {"w": 0, "h": 0, "dpr": 1}
+            ws_url = target.get("webSocketDebuggerUrl", "")
+            if not ws_url:
+                logger.warning(f"get_viewport: page tab has no webSocketDebuggerUrl on port {port}")
+                return {"w": 0, "h": 0, "dpr": 1}
+            conn = self._cdp_ws_connect(ws_url, timeout=5)
+            # Use JSON.stringify so Chrome returns inline string, not remote object (objectId)
+            conn.send(json.dumps({
+                "id": 1,
+                "method": "Runtime.evaluate",
+                "params": {
+                    "expression": (
+                        "JSON.stringify({w: window.innerWidth, h: window.innerHeight, "
+                        "dpr: window.devicePixelRatio || 1})"
+                    ),
+                },
+            }))
+            ws_resp = self._cdp_ws_recv_result(conn, request_id=1)
+            conn.close()
+            res = ws_resp.get("result", {}).get("result", {})
+            val = {}
+            if res.get("value"):
+                try:
+                    val = json.loads(res["value"])
+                except Exception:
+                    pass
+            w, h = int(val.get("w", 0)), int(val.get("h", 0))
+            if w <= 0 or h <= 0:
+                logger.debug(f"get_viewport: CDP returned w={w} h={h}, check response: {ws_resp.get('result')}")
+            return {
+                "w": w,
+                "h": h,
+                "dpr": float(val.get("dpr", 1)),
+            }
+        except Exception as exc:
+            logger.warning(f"get_viewport failed on port {port}: {type(exc).__name__}: {exc}")
+        return {"w": 0, "h": 0, "dpr": 1}
+
+    def get_current_tab_url(self) -> str:
+        """Return the URL of the active Chrome tab via CDP /json endpoint.
+
+        Returns empty string on any failure (port not open, no active tab, etc.).
+        """
+        port = self.remote_debugging_port
+        try:
+            tabs, endpoint = self._fetch_cdp_tabs(timeout=3.0)
+            if not tabs:
+                logger.warning(
+                    f"get_current_tab_url: CDP tabs empty on port {port} (endpoint={endpoint or 'n/a'})"
+                )
+                return ""
+            for t in tabs:
+                if t.get("type") == "page":
+                    url = str(t.get("url", "") or "")
+                    if url:
+                        return url
+            logger.warning(
+                f"get_current_tab_url: no page tab with URL found on port {port}, "
+                f"tab types: {[t.get('type') for t in tabs]}"
+            )
+        except Exception as exc:
+            logger.warning(f"get_current_tab_url failed on port {port}: {type(exc).__name__}: {exc}")
+        return ""
+
+    def navigate(self, url: str, wait_sec: float = 2.0) -> None:
+        """Navigate the active Chrome tab to *url* via CDP Page.navigate.
+
+        Falls back gracefully if the DevTools socket is unavailable.
+        """
+        try:
+            import websocket as _ws
+            tabs, endpoint = self._fetch_cdp_tabs(timeout=2.0)
+            target = self._pick_cdp_page_tab(tabs)
+            if not target:
+                logger.warning(f"navigate: no Chrome page tab found (endpoint={endpoint or 'n/a'})")
+                return
+            ws_url = target.get("webSocketDebuggerUrl", "")
+            if not ws_url:
+                logger.warning("navigate: webSocketDebuggerUrl missing")
+                return
+            conn = self._cdp_ws_connect(ws_url, timeout=5)
+            conn.send(json.dumps({"id": 1, "method": "Page.navigate", "params": {"url": url}}))
+            self._cdp_ws_recv_result(conn, request_id=1)
+            conn.close()
+            time.sleep(wait_sec)
+            logger.info(f"Navigated active tab to: {url}")
+        except Exception as exc:
+            logger.warning(f"navigate failed: {exc}")
+
+    def get_scroll(self) -> dict:
+        """Return the active tab's scroll position as ``{"x": int, "y": int}``.
+
+        Returns ``{"x": 0, "y": 0}`` on failure.
+        """
+        port = self.remote_debugging_port
+        try:
+            import websocket as _ws
+            tabs, endpoint = self._fetch_cdp_tabs(timeout=3.0)
+            target = self._pick_cdp_page_tab(tabs)
+            if not target:
+                logger.warning(f"get_scroll: no page tab on port {port} (endpoint={endpoint or 'n/a'})")
+                return {"x": 0, "y": 0}
+            ws_url = target.get("webSocketDebuggerUrl", "")
+            if not ws_url:
+                logger.warning(f"get_scroll: page tab has no webSocketDebuggerUrl on port {port}")
+                return {"x": 0, "y": 0}
+            conn = self._cdp_ws_connect(ws_url, timeout=5)
+            # Include both window and document.documentElement scroll (some pages use doc scroll)
+            conn.send(json.dumps({
+                "id": 1,
+                "method": "Runtime.evaluate",
+                "params": {
+                    "expression": (
+                        "JSON.stringify({"
+                        "x: Math.max(window.scrollX || 0, document.documentElement.scrollLeft || 0), "
+                        "y: Math.max(window.scrollY || 0, document.documentElement.scrollTop || 0)"
+                        "})"
+                    ),
+                },
+            }))
+            ws_resp = self._cdp_ws_recv_result(conn, request_id=1)
+            conn.close()
+            res = ws_resp.get("result", {}).get("result", {})
+            val = {}
+            if res.get("value"):
+                try:
+                    val = json.loads(res["value"])
+                except Exception:
+                    pass
+            return {"x": int(val.get("x", 0)), "y": int(val.get("y", 0))}
+        except Exception as exc:
+            logger.warning(f"get_scroll failed on port {port}: {type(exc).__name__}: {exc}")
+        return {"x": 0, "y": 0}
+
+    def set_scroll(self, x: int = 0, y: int = 0) -> None:
+        """Scroll the active Chrome tab to position (*x*, *y*) via CDP.
+
+        Fails silently if DevTools is unavailable.
+        """
+        try:
+            import websocket as _ws
+            tabs, _ = self._fetch_cdp_tabs(timeout=2.0)
+            target = self._pick_cdp_page_tab(tabs)
+            if not target:
+                return
+            ws_url = target.get("webSocketDebuggerUrl", "")
+            if not ws_url:
+                return
+            conn = self._cdp_ws_connect(ws_url, timeout=5)
+            conn.send(json.dumps({
+                "id": 1,
+                "method": "Runtime.evaluate",
+                "params": {"expression": f"window.scrollTo({x}, {y})"},
+            }))
+            self._cdp_ws_recv_result(conn, request_id=1)
+            conn.close()
+            logger.info(f"Scroll set to x={x}, y={y}")
+        except Exception as exc:
+            logger.debug(f"set_scroll failed: {exc}")
+
     # -------------------- Linux/Ubuntu helpers --------------------
     def _open_app_linux(self, name: str) -> None:
         """Open application on Linux/Ubuntu.
@@ -559,7 +863,7 @@ class CDPElementProcessor:
 
         try:
             import requests
-            tabs = requests.get(f"http://127.0.0.1:{self.port}/json", timeout=5).json()
+            tabs = requests.get(f"http://127.0.0.1:{self.port}/json", timeout=5, proxies={"http": None, "https": None}).json()
         except Exception as e:
             logger.warning(f"CDP: Cannot connect to Chrome on port {self.port}: {e}")
             return elements
@@ -577,7 +881,7 @@ class CDPElementProcessor:
         ws = None
         try:
             import websocket
-            ws = websocket.create_connection(ws_url, timeout=10)
+            ws = PCController._cdp_ws_connect(ws_url, timeout=10)
             msg_id = 1
 
             def _send(method, params=None):
@@ -797,7 +1101,7 @@ class LinuxElementProcessor:
             import requests
             tabs = requests.get(
                 f"http://127.0.0.1:{self.remote_debugging_port}/json",
-                timeout=1.5,
+                timeout=1.5, proxies={"http": None, "https": None},
             ).json()
         except Exception as e:
             logger.debug(f"Tab activation skipped (CDP unavailable): {e}")
@@ -824,7 +1128,7 @@ class LinuxElementProcessor:
                         from urllib.parse import quote
                         requests.get(
                             f"http://127.0.0.1:{self.remote_debugging_port}/json/new?{quote(expected_url, safe=':/?&=%')}",
-                            timeout=2.0,
+                            timeout=2.0, proxies={"http": None, "https": None},
                         )
                         self._last_domain_recover_ts = now
                         logger.warning(
@@ -846,7 +1150,7 @@ class LinuxElementProcessor:
             import requests
             requests.get(
                 f"http://127.0.0.1:{self.remote_debugging_port}/json/activate/{tab_id}",
-                timeout=1.5,
+                timeout=1.5, proxies={"http": None, "https": None},
             )
             time.sleep(0.2)
             logger.info(

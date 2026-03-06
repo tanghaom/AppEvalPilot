@@ -42,8 +42,10 @@ local:
   max_iters: 20
   post_action_wait_sec: 2
 
+# agent_class: osagent（默认）| text_agent（仅 a11y tree，无截图）
 remote:
   config_file: ""
+  # agent_class: text_agent
   llm:
     api_type: openai
     model: gemini-3-flash-preview

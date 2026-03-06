@@ -8,8 +8,10 @@
 """
 import asyncio
 import copy
+import datetime
 import json
 import os
+import shutil
 import time
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Union
@@ -24,7 +26,12 @@ from pydantic import ConfigDict, Field
 from appeval.actions.case_generator import CaseGenerator, OperationType
 from appeval.prompts.osagent import case_batch_check_system_prompt
 from appeval.prompts.text_agent import text_agent_system_prompt
+from appeval.judges.supervisor_judge import analyze_trajectory_async as supervisor_analyze_trajectory_async
 from appeval.roles.osagent import OSAgent
+from appeval.roles.osagent import (
+    CHECKPOINT_ACTION_TAIL_LEN,
+    CHECKPOINT_SUMMARY_TAIL_LEN,
+)
 from appeval.utils.excel_json_converter import (
     convert_json_to_excel,
     list_to_json,
@@ -41,6 +48,265 @@ SLEEP_AFTER_START_APP = 20
 SLEEP_AFTER_CLEANUP = 5
 SLEEP_BEFORE_EXECUTE = 30
 SLEEP_BETWEEN_RETRIES = 5
+
+
+async def _wait_for_cdp(port: int, max_wait: float = 20.0, interval: float = 1.0) -> bool:
+    """Poll Chrome CDP /json until it returns a valid list or timeout. Used when a11y_mode=cdp."""
+    import requests
+    url = f"http://127.0.0.1:{port}/json"
+    deadline = time.perf_counter() + max_wait
+    while time.perf_counter() < deadline:
+        try:
+            r = requests.get(url, timeout=2, proxies={"http": None, "https": None})
+            if r.status_code == 200 and r.content:
+                data = r.json()
+                if isinstance(data, list):
+                    logger.debug(f"CDP on port {port} ready with {len(data)} tab(s)")
+                    return True
+        except Exception as e:
+            logger.debug(f"CDP port {port} not ready yet: {e}")
+        await asyncio.sleep(interval)
+    logger.warning(f"CDP on port {port} did not become ready within {max_wait}s")
+    return False
+
+
+def _save_resume_checkpoint(
+    osagent,
+    save_dir: str,
+    chrome_profile_src: str = "",
+    run_id: str = "",
+    worker_id: str = "",
+    remote_debugging_port: int = 0,
+) -> str:
+    """Serialize current osagent state into a resume_checkpoint.json file.
+
+    The saved profile strategy is always ``base_to_work_copy``:  the live
+    ``chrome_profile_src`` directory is copied to
+    ``{save_dir}/chrome_profile_round1_base`` and stored as the base.  Round-2
+    startup should copy that base into a fresh working directory before
+    launching Chrome (so the original base is never mutated).
+
+    Args:
+        osagent:                  OSAgent instance after a completed run.
+        save_dir:                 Directory where the checkpoint file is written.
+        chrome_profile_src:       Path to the live user_data_dir for this run.
+        run_id:                   Run identifier (for concurrent-worker diagnostics).
+        worker_id:                Worker identifier.
+        remote_debugging_port:    Chrome DevTools port (for diagnostics).
+
+    Returns:
+        Absolute path to the written checkpoint JSON, or "" on failure.
+    """
+    try:
+        rc = osagent.rc
+        controller = getattr(osagent, "controller", None)
+
+        def _safe_list(val):
+            try:
+                return [str(x) for x in (val or [])]
+            except Exception:
+                return []
+
+        # ── Page state ──────────────────────────────────────────────
+        current_url = ""
+        scroll = {"x": 0, "y": 0}
+        viewport = {"w": 0, "h": 0, "dpr": 1}
+        if controller:
+            if hasattr(controller, "get_current_tab_url"):
+                current_url = controller.get_current_tab_url()
+            if hasattr(controller, "get_scroll"):
+                scroll = controller.get_scroll()
+            if hasattr(controller, "get_viewport"):
+                viewport = controller.get_viewport()
+
+        # ── Screenshot ──────────────────────────────────────────────
+        last_iter = int(rc.iter)
+        save_img = getattr(osagent, "save_img", "")
+        last_screenshot_path = ""
+        if save_img:
+            candidate = Path(save_img) / f"origin_{last_iter}.jpg"
+            if candidate.exists():
+                last_screenshot_path = str(candidate)
+
+        # ── History: decision payload only (action_tail + summary_tail), no thought/reflection/memory ───
+        raw_history = _safe_list(rc.action_history)
+        action_only = [a for a in raw_history if not a.startswith("Tell ")]
+        result_history = []
+        for i, a in enumerate(raw_history):
+            if a.startswith("Tell "):
+                result_history.append({"iter": i + 1, "action": a})
+        action_tail = action_only[-CHECKPOINT_ACTION_TAIL_LEN:] if action_only else []
+        summary_tail = _safe_list(rc.summary_history)[-CHECKPOINT_SUMMARY_TAIL_LEN:]
+
+        # ── Chrome profile (base_to_work_copy strategy) ─────────────
+        base_path = ""
+        profile_copy_ok = False
+        if chrome_profile_src and Path(chrome_profile_src).exists():
+            base_path = str(Path(save_dir) / "chrome_profile_round1_base")
+
+            def _ignore_singleton_and_lock(_dir: str, names: list) -> list:
+                ignored = []
+                for n in names:
+                    if (
+                        n in {"SingletonLock", "SingletonCookie", "SingletonSocket", "LOCK"}
+                        or n.endswith(".tmp")
+                        or n.endswith(".TMP")
+                    ):
+                        ignored.append(n)
+                return ignored
+
+            try:
+                if Path(base_path).exists():
+                    shutil.rmtree(base_path, ignore_errors=True)
+                shutil.copytree(chrome_profile_src, base_path, ignore=_ignore_singleton_and_lock)
+                profile_copy_ok = True
+                logger.info(f"Chrome profile base saved: {base_path}")
+            except Exception as copy_exc:
+                base_path = ""
+                logger.warning(f"Failed to copy Chrome profile: {copy_exc}")
+
+        # ── Integrity metadata ───────────────────────────────────────
+        path_checks = []
+        if last_screenshot_path:
+            path_checks.append({"path": last_screenshot_path, "must_exist": True, "exists": Path(last_screenshot_path).exists()})
+        if base_path:
+            path_checks.append({"path": base_path, "must_exist": True, "exists": Path(base_path).exists()})
+
+        resume_degraded = not bool(current_url) or (bool(chrome_profile_src) and not profile_copy_ok)
+        degrade_reason = ""
+        if not current_url:
+            degrade_reason += "resume_from_url is empty; "
+        if chrome_profile_src and not profile_copy_ok:
+            degrade_reason += "profile copy failed; "
+
+        replay_core = {
+            "mode": "resume",
+            "run_id": run_id or "",
+            "worker_id": str(worker_id) if worker_id else "",
+            "remote_debugging_port": remote_debugging_port or 0,
+            "timestamp": datetime.datetime.utcnow().isoformat() + "Z",
+            "resume_from_url": current_url,
+            "guard_policy": {
+                "expected_url_mode": "set_to_resume_from_url",
+                "expected_domain_mode": "restrict_to_resume_domain",
+            },
+            "viewport": viewport,
+            "scroll": scroll,
+            "restore_order": ["copy_profile", "start_chrome", "navigate", "wait_stable", "set_scroll", "confirm_screenshot"],
+            "last_completed_iter": last_iter,
+            "last_screenshot_path": last_screenshot_path,
+            "resume_confirm_screenshot_path": "",
+            "profile": {
+                "strategy": "base_to_work_copy",
+                "base_path": base_path,
+                "work_path_round2": "",
+            },
+        }
+        decision_payload = {
+            "action_tail": action_tail,
+            "summary_tail": summary_tail,
+            "result_history": result_history,
+        }
+        checkpoint = {
+            "replay_core": replay_core,
+            "decision_payload": decision_payload,
+            "integrity": {
+                "required_fields": ["resume_from_url", "last_completed_iter", "profile.base_path"],
+                "path_checks": path_checks,
+                "resume_degraded": resume_degraded,
+                "degrade_reason": degrade_reason.strip(),
+            },
+        }
+
+        out_path = Path(save_dir) / "resume_checkpoint.json"
+        out_path.parent.mkdir(parents=True, exist_ok=True)
+        with open(out_path, "w", encoding="utf-8") as f:
+            json.dump(checkpoint, f, indent=2, ensure_ascii=False)
+        logger.info(f"Resume checkpoint saved: {out_path} | degraded={resume_degraded}")
+        return str(out_path)
+    except Exception as exc:
+        logger.warning(f"Failed to save resume checkpoint: {exc}")
+        return ""
+
+
+def _load_resume_checkpoint(path: str) -> Optional[dict]:
+    """Load and validate a resume checkpoint JSON.
+
+    Always returns a dict (never None) so the caller can inspect
+    ``integrity.resume_degraded`` and decide whether to fallback.
+    Returns None only if the file is completely unreadable.
+
+    Degradation rules (sets ``integrity.resume_degraded = True``):
+    - Missing top-level required fields
+    - ``profile.base_path`` missing or directory does not exist
+    - ``resume_from_url`` empty
+    """
+    if not path:
+        return None
+    try:
+        with open(path, "r", encoding="utf-8") as f:
+            cp = json.load(f)
+    except Exception as exc:
+        logger.warning(f"Cannot load resume checkpoint '{path}': {exc}")
+        return None
+
+    _apply_replay_core_to_checkpoint(cp)
+
+    integrity = cp.setdefault("integrity", {})
+    degrade_reasons = []
+
+    # ── Required top-level fields ────────────────────────────────────
+    for field in ("resume_from_url", "last_completed_iter"):
+        if not cp.get(field) and cp.get(field) != 0:
+            degrade_reasons.append(f"missing or empty required field: {field}")
+
+    # ── Profile validation ───────────────────────────────────────────
+    profile = cp.get("profile", {})
+    base_path = profile.get("base_path", "")
+    if not base_path:
+        degrade_reasons.append("profile.base_path is empty")
+    elif not Path(base_path).exists():
+        degrade_reasons.append(f"profile.base_path does not exist: {base_path}")
+
+    # ── Path existence checks ────────────────────────────────────────
+    for pc in integrity.get("path_checks", []):
+        if pc.get("must_exist") and not Path(pc.get("path", "")).exists():
+            pc["exists"] = False
+            degrade_reasons.append(f"required path missing: {pc.get('path')}")
+
+    if degrade_reasons:
+        integrity["resume_degraded"] = True
+        integrity["degrade_reason"] = "; ".join(degrade_reasons)
+        logger.warning(
+            f"Resume checkpoint degraded ({len(degrade_reasons)} issue(s)): "
+            + integrity["degrade_reason"]
+            + " — will fall back to baseline mode."
+        )
+    else:
+        integrity.setdefault("resume_degraded", False)
+        integrity.setdefault("degrade_reason", "")
+        logger.info(
+            f"Resume checkpoint OK: url={cp.get('resume_from_url')} "
+            f"iter={cp.get('last_completed_iter')} "
+            f"profile={base_path or '(none)'}"
+        )
+
+    return cp
+
+
+def _apply_replay_core_to_checkpoint(cp: dict) -> None:
+    """Copy replay_core fields to top level so existing code can use cp.get('resume_from_url') etc."""
+    if "replay_core" not in cp:
+        return
+    core = cp["replay_core"]
+    cp["resume_from_url"] = core.get("resume_from_url")
+    cp["last_completed_iter"] = core.get("last_completed_iter")
+    cp["guard_policy"] = core.get("guard_policy", {})
+    cp["viewport"] = core.get("viewport", {})
+    cp["scroll"] = core.get("scroll", {})
+    cp["restore_order"] = core.get("restore_order", [])
+    cp["last_screenshot_path"] = core.get("last_screenshot_path", "")
+    cp["profile"] = core.get("profile", {})
 
 
 class AppEvalContext(RoleContext):
@@ -74,6 +340,9 @@ class AppEvalRole(Role):
         # Chrome launch params for multi-worker isolation
         self._remote_debugging_port = kwargs.get("remote_debugging_port", 9222)
         self._user_data_dir = kwargs.get("user_data_dir", "")
+        self._run_id = kwargs.get("run_id", "")
+        self._worker_id = kwargs.get("worker_id", "")
+        self._config_file = kwargs.get("config_file", "")
 
         # Initialize agent_params
         self.rc.agent_params = {
@@ -88,6 +357,8 @@ class AppEvalRole(Role):
             "log_dirs": kwargs.get("log_dirs", "work_dirs"),
             "use_timestamp_log_dir": kwargs.get("use_timestamp_log_dir", True),
             "max_iters": kwargs.get("max_iters", 20),
+            "save_checkpoint_per_step": kwargs.get("save_checkpoint_per_step", False),
+            "save_profile_per_step": kwargs.get("save_profile_per_step", False),
         }
 
         # Store agent_class for _init_osagent
@@ -156,11 +427,14 @@ Please use the Tell action to report the results of all test cases before execut
             extend_xml_infos=self.rc.agent_params["extend_xml_infos"],
             a11y_mode=self.rc.agent_params["a11y_mode"],
             remote_debugging_port=self._remote_debugging_port,
+            user_data_dir=self._user_data_dir,
             location_info="center",
             log_dirs=self.rc.agent_params["log_dirs"],
             use_timestamp_log_dir=self.rc.agent_params["use_timestamp_log_dir"],
             config_file=kwargs.get("config_file", ""),
             add_info=add_info,
+            run_id=kwargs.get("run_id", ""),
+            worker_id=kwargs.get("worker_id", ""),
         )
         if osagent_config:
             agent_kwargs["config"] = osagent_config
@@ -185,6 +459,8 @@ Please use the Tell action to report the results of all test cases before execut
                 use_som=False,
                 use_chrome_debugger=self.rc.agent_params["use_chrome_debugger"],
                 use_tell_verifier=self.rc.agent_params["use_tell_verifier"],
+                save_checkpoint_per_step=self.rc.agent_params["save_checkpoint_per_step"],
+                save_profile_per_step=self.rc.agent_params["save_profile_per_step"],
                 draw_text_box=False,
                 system_prompt=case_batch_check_system_prompt,
             )
@@ -293,9 +569,19 @@ Please use the Tell action to report the results of all test cases before execut
         return None
 
     async def _execute_test_with_retry(
-        self, task_id: str, task_id_case_number: int, check_list: dict, max_retries: int = 2
+        self,
+        task_id: str,
+        task_id_case_number: int,
+        check_list: dict,
+        max_retries: int = 2,
+        soft_reset: bool = False,
     ) -> tuple[List[str], str, List[str], str]:
-        """Execute test with retry mechanism"""
+        """Execute test with retry mechanism.
+
+        Args:
+            soft_reset: Passed through to osagent.run(); True in resume mode so
+                        history / iter prefix loaded from checkpoint are preserved.
+        """
         instruction = (
             "Please complete the following tasks，And after completion, use the Tell action to "
             f"inform me of the results of all the test cases at once: {check_list}\n"
@@ -303,7 +589,7 @@ Please use the Tell action to report the results of all test cases before execut
 
         for attempt in range(max_retries + 1):
             try:
-                await self.osagent.run(instruction)
+                await self.osagent.run(instruction, soft_reset=(soft_reset and attempt == 0))
                 return (self.osagent.rc.action_history, self.osagent.rc.task_list, self.osagent.rc.memory, self.osagent.rc.iter)
             except Exception as e:
                 if attempt < max_retries:
@@ -373,11 +659,19 @@ Please use the Tell action to report the results of all test cases before execut
                 logger.error(f"Failed to write error result to JSON: {str(write_error)}")
                 raise
 
-    async def execute_api_check(self, task_id: str, task_id_case_number: int, check_list: dict) -> dict:
-        """Execute test and return results as dictionary"""
+    async def execute_api_check(
+        self,
+        task_id: str,
+        task_id_case_number: int,
+        check_list: dict,
+        soft_reset: bool = False,
+    ) -> dict:
+        """Execute test and return results as dictionary."""
         logger.info(f"Start testing project {task_id}, log_dirs: {self.osagent.log_dirs}")
 
-        action_history, task_list, memory, iter_num = await self._execute_test_with_retry(task_id, task_id_case_number, check_list)
+        action_history, task_list, memory, iter_num = await self._execute_test_with_retry(
+            task_id, task_id_case_number, check_list, soft_reset=soft_reset
+        )
         return await self._process_test_results(
             task_id, task_id_case_number, action_history, task_list, memory, iter_num, check_list, return_dict=True
         )
@@ -521,7 +815,7 @@ Please use the Tell action to report the results of all test cases before execut
 
             uncertain_test_cases = {}
             for case_id, case_info in task_info["test_cases"].items():
-                if case_info.get("result", "").lower() == "uncertain":
+                if str(case_info.get("result") or "").strip().lower() == "uncertain":
                     # Deep copy and clear result/evidence to treat as fresh test
                     clean_case = copy.deepcopy(case_info)
                     clean_case.pop("result", None)
@@ -618,12 +912,20 @@ Please use the Tell action to report the results of all test cases before execut
                     f"Failed to write error result to JSON: {str(write_error)}")
                 raise
 
-    async def execute_api_check(self, task_id: str, task_id_case_number: int, check_list: dict) -> dict:
+    async def execute_api_check(
+        self,
+        task_id: str,
+        task_id_case_number: int,
+        check_list: dict,
+        soft_reset: bool = False,
+    ) -> dict:
         """Execute test and return results as dictionary"""
         logger.info(
             f"Start testing project {task_id}, log_dirs: {self.osagent.log_dirs}")
 
-        action_history, task_list, memory, iter_num = await self._execute_test_with_retry(task_id, task_id_case_number, check_list)
+        action_history, task_list, memory, iter_num = await self._execute_test_with_retry(
+            task_id, task_id_case_number, check_list, soft_reset=soft_reset
+        )
         return await self._process_test_results(
             task_id, task_id_case_number, action_history, task_list, memory, iter_num, check_list, return_dict=True
         )
@@ -783,7 +1085,7 @@ Please use the Tell action to report the results of all test cases before execut
 
             uncertain_test_cases = {}
             for case_id, case_info in task_info["test_cases"].items():
-                if case_info.get("result", "").lower() == "uncertain":
+                if str(case_info.get("result") or "").strip().lower() == "uncertain":
                     # Deep copy and clear result/evidence to treat as fresh test
                     clean_case = copy.deepcopy(case_info)
                     clean_case.pop("result", None)
@@ -880,6 +1182,9 @@ Please use the Tell action to report the results of all test cases before execut
         save_to_file: bool = True,
         sequential_mode: bool = False,
         case_name_for_log: Optional[str] = None,
+        resume_checkpoint_path: str = "",
+        save_checkpoint: bool = False,
+        chrome_profile_src: str = "",
     ) -> tuple[dict, bool]:
         """Core test execution logic with retry mechanism
 
@@ -893,6 +1198,13 @@ Please use the Tell action to report the results of all test cases before execut
             sequential_mode: If True, execute test cases one by one without browser cleanup between cases,
                            only reset osagent state. If False, execute all test cases at once (default).
             case_name_for_log: If set, log subdirs are {case_name_for_log}0, {case_name_for_log}1, ... (no task_name level).
+            resume_checkpoint_path: Path to a resume_checkpoint.json from a previous round.
+                When set (resume_mode), the first case navigates to the saved URL and
+                restores agent context rather than starting fresh from start_func.
+            save_checkpoint: If True, write a resume_checkpoint.json after the last
+                sequential case (for use as round-2 input).
+            chrome_profile_src: live user_data_dir; copied into checkpoint dir when
+                save_checkpoint=True.
         """
         log_base = self.rc.agent_params.get("log_dirs", "work_dirs")
         if case_name_for_log is not None:
@@ -910,6 +1222,8 @@ Please use the Tell action to report the results of all test cases before execut
             except Exception as e:
                 logger.debug(f"Failed to bind expected URL before start: {e}")
             await self._start_environment(url=start_func if is_web else None, work_path=start_func if not is_web else None)
+            if is_web and self.rc.agent_params.get("a11y_mode") == "cdp" and self._remote_debugging_port:
+                await _wait_for_cdp(self._remote_debugging_port, max_wait=20.0)
             await asyncio.sleep(SLEEP_BEFORE_EXECUTE)
 
         def _get_llm_total_usd() -> float:
@@ -994,6 +1308,46 @@ Please use the Tell action to report the results of all test cases before execut
             except Exception as e:
                 logger.warning(f"Failed to save incremental result for case {case_id}: {e}")
 
+        # ── Resume mode: load and validate checkpoint (sequential_mode only) ──
+        resume_cp: Optional[dict] = None
+        if sequential_mode and resume_checkpoint_path:
+            _cp = _load_resume_checkpoint(resume_checkpoint_path)
+            if _cp is None:
+                logger.warning("resume_checkpoint_path unreadable; falling back to baseline.")
+            else:
+                # If SupervisorJudge recommended a specific step, load that step's checkpoint for replay state
+                rr = _cp.get("restart_recommendation") or {}
+                restart_iter = rr.get("restart_from_iter")
+                if restart_iter is not None:
+                    step_path = Path(resume_checkpoint_path).parent / "checkpoints" / f"step_{int(restart_iter):03d}.json"
+                    if step_path.exists():
+                        step_cp = _load_resume_checkpoint(str(step_path))
+                        if step_cp and step_cp.get("replay_core"):
+                            _cp["replay_core"] = step_cp["replay_core"]
+                            _cp["decision_payload"] = step_cp.get("decision_payload") or _cp.get("decision_payload")
+                            _apply_replay_core_to_checkpoint(_cp)
+                            logger.info(f"[resume] Using restart_recommendation: step {restart_iter} → {step_path}")
+
+                _degraded = _cp.get("integrity", {}).get("resume_degraded", False)
+                _reason = _cp.get("integrity", {}).get("degrade_reason", "")
+                _profile_base = (_cp.get("profile", {}).get("base_path", "") or "").strip()
+                _profile_ok = bool(_profile_base and Path(_profile_base).exists())
+
+                if _degraded and not _profile_ok:
+                    logger.warning(
+                        f"Resume checkpoint degraded AND profile missing → baseline fallback. "
+                        f"Reason: {_reason} | profile.base_path={_profile_base!r}"
+                    )
+                else:
+                    if _degraded:
+                        logger.warning(
+                            f"[resume] Checkpoint partially degraded ({_reason}), "
+                            f"but profile exists → proceeding with resume "
+                            f"(URL will fall back to start_func if empty)."
+                        )
+                    resume_cp = _cp
+                    logger.info("Resume mode ENABLED: first case will start from checkpoint.")
+
         if sequential_mode:
             # Sequential mode: execute test cases one by one, record per-case time and cost
             logger.info(
@@ -1006,18 +1360,74 @@ Please use the Tell action to report the results of all test cases before execut
                 logger.info(
                     f"Executing test case {idx}/{len(test_cases)}: {case_id}")
 
+                # Determine if this case should use resume mode (first case only)
+                use_resume_this_case = (resume_cp is not None and idx == 1)
+
                 t0 = time.perf_counter()
                 try:
-                    # Rebuild a clean browser/app session before each case.
-                    try:
-                        if hasattr(self.osagent, "controller") and hasattr(self.osagent.controller, "set_expected_url"):
-                            self.osagent.controller.set_expected_url(start_func if is_web else "")
-                    except Exception as e:
-                        logger.debug(f"Failed to bind expected URL before case {case_id}: {e}")
-                    await self._cleanup_environment(is_web)
-                    await asyncio.sleep(SLEEP_AFTER_CLEANUP)
-                    await self._start_environment(url=start_func if is_web else None, work_path=start_func if not is_web else None)
-                    await asyncio.sleep(SLEEP_BEFORE_EXECUTE)
+                    if use_resume_this_case:
+                        # ── Resume mode startup (restore_order: copy_profile → start_chrome
+                        #    → navigate → wait_stable → set_scroll → confirm_screenshot) ──
+                        resume_url = resume_cp.get("resume_from_url", "") or start_func
+                        logger.info(f"[resume] Starting from checkpoint URL: {resume_url}")
+
+                        # Step 1: copy_profile — copy base profile into live user_data_dir
+                        profile_info = resume_cp.get("profile", {})
+                        base_path = profile_info.get("base_path", "")
+                        if base_path and Path(base_path).exists() and self._user_data_dir:
+                            try:
+                                if Path(self._user_data_dir).exists():
+                                    shutil.rmtree(self._user_data_dir, ignore_errors=True)
+                                shutil.copytree(base_path, self._user_data_dir)
+                                logger.info(f"[resume] Profile copied: {base_path} → {self._user_data_dir}")
+                            except Exception as pe:
+                                logger.warning(f"[resume] Profile copy failed: {pe}")
+
+                        # Step 2: apply guard_policy — set expected_url to resume URL
+                        # (prevents domain-drift guard from pulling back to prod_url)
+                        guard = resume_cp.get("guard_policy", {})
+                        expected_url_mode = guard.get("expected_url_mode", "set_to_resume_from_url")
+                        try:
+                            if hasattr(self.osagent, "controller") and hasattr(self.osagent.controller, "set_expected_url"):
+                                url_for_guard = resume_url if expected_url_mode == "set_to_resume_from_url" else start_func
+                                self.osagent.controller.set_expected_url(url_for_guard if is_web else "")
+                        except Exception as e:
+                            logger.debug(f"[resume] set_expected_url failed: {e}")
+
+                        # Step 3: start_chrome + navigate — launch Chrome with profile and open resume URL
+                        await self._cleanup_environment(is_web)
+                        await asyncio.sleep(SLEEP_AFTER_CLEANUP)
+                        await self._start_environment(
+                            url=resume_url if is_web else None,
+                            work_path=resume_url if not is_web else None,
+                        )
+                        # Step 4: wait_stable
+                        await asyncio.sleep(SLEEP_BEFORE_EXECUTE)
+
+                        # Step 5: set_scroll (after page is stable)
+                        scroll_pos = resume_cp.get("scroll", {})
+                        if (scroll_pos.get("y", 0) or scroll_pos.get("x", 0)) and \
+                                hasattr(self.osagent, "controller") and \
+                                hasattr(self.osagent.controller, "set_scroll"):
+                            try:
+                                self.osagent.controller.set_scroll(
+                                    x=int(scroll_pos.get("x", 0)),
+                                    y=int(scroll_pos.get("y", 0)),
+                                )
+                                logger.info(f"[resume] Scroll restored: {scroll_pos}")
+                            except Exception as e:
+                                logger.debug(f"[resume] set_scroll failed: {e}")
+                    else:
+                        # ── Baseline mode: rebuild a clean browser session ──
+                        try:
+                            if hasattr(self.osagent, "controller") and hasattr(self.osagent.controller, "set_expected_url"):
+                                self.osagent.controller.set_expected_url(start_func if is_web else "")
+                        except Exception as e:
+                            logger.debug(f"Failed to bind expected URL before case {case_id}: {e}")
+                        await self._cleanup_environment(is_web)
+                        await asyncio.sleep(SLEEP_AFTER_CLEANUP)
+                        await self._start_environment(url=start_func if is_web else None, work_path=start_func if not is_web else None)
+                        await asyncio.sleep(SLEEP_BEFORE_EXECUTE)
 
                     # Set case-specific log directory to avoid overwriting
                     if case_name_for_log is not None:
@@ -1028,11 +1438,19 @@ Please use the Tell action to report the results of all test cases before execut
                     # Lock timestamped paths so _reset_state won't regenerate a new timestamp dir
                     self.osagent._lock_timestamped_paths = True
 
+                    # Restore agent history from checkpoint before first case
+                    if use_resume_this_case:
+                        self.osagent.rc.restore_from_checkpoint(resume_cp)
+                        logger.info(
+                            f"[resume] Agent context restored: iter={self.osagent.rc.iter}, "
+                            f"history_len={len(self.osagent.rc.action_history)}"
+                        )
+
                     # Create single case dict for execution
                     single_case = {case_id: case_info}
 
-                    # Execute single test case
-                    result_dict = await self.execute_api_check(task_name, 1, single_case)
+                    # Execute single test case (soft_reset=True preserves checkpoint history)
+                    result_dict = await self.execute_api_check(task_name, 1, single_case, soft_reset=use_resume_this_case)
                     elapsed = time.perf_counter() - t0
                     cost_after = _get_llm_total_usd()
                     delta_usd = max(0.0, cost_after - cost_before)
@@ -1061,6 +1479,47 @@ Please use the Tell action to report the results of all test cases before execut
                 # Persist each case immediately so interrupted runs still have partial JSON outputs.
                 _save_incremental_case_json(case_id, test_cases[case_id])
 
+                # After last case: optionally write resume checkpoint for the next round.
+                if save_checkpoint and idx == len(test_cases):
+                    log_base = self.rc.agent_params.get("log_dirs", "work_dirs")
+                    checkpoint_dir = str(Path(log_base) / log_dir)
+                    _save_resume_checkpoint(
+                        osagent=self.osagent,
+                        save_dir=checkpoint_dir,
+                        chrome_profile_src=chrome_profile_src,
+                        run_id=getattr(self, "_run_id", ""),
+                        worker_id=str(getattr(self, "_worker_id", "")),
+                        remote_debugging_port=self._remote_debugging_port,
+                    )
+                    self._last_checkpoint_path = str(Path(checkpoint_dir) / "resume_checkpoint.json")
+                    # On first-round failure, SupervisorJudge recommends restart step for round-2
+                    last_failed = not _to_bool_result(test_cases.get(case_id, {}).get("result", ""))
+                    if last_failed and self._last_checkpoint_path:
+                        try:
+                            with open(self._last_checkpoint_path, "r", encoding="utf-8") as f:
+                                cp = json.load(f)
+                            config_file = str(getattr(self, "_config_file", "") or "")
+                            case_desc = test_cases.get(case_id, {}).get("case_desc", "")
+                            rec = await supervisor_analyze_trajectory_async(
+                                checkpoint_dict=cp,
+                                config_path=config_file,
+                                task_desc=case_desc,
+                            )
+                            if rec:
+                                cp["restart_recommendation"] = rec
+                                with open(self._last_checkpoint_path, "w", encoding="utf-8") as f:
+                                    json.dump(cp, f, indent=2, ensure_ascii=False)
+                                logger.info(f"Wrote restart_recommendation into checkpoint: {rec}")
+                                save_img = getattr(self.osagent, "save_img", "")
+                                if save_img:
+                                    ts_path = Path(save_img) / "resume_checkpoint.json"
+                                    if ts_path.parent.exists():
+                                        with open(ts_path, "w", encoding="utf-8") as f:
+                                            json.dump(cp, f, indent=2, ensure_ascii=False)
+                                        logger.debug(f"Synced restart_recommendation to {ts_path}")
+                        except Exception as e:
+                            logger.warning(f"Failed to add restart_recommendation: {e}")
+
                 # Reset in-memory agent state for next case; browser session is rebuilt at case start.
                 if idx < len(test_cases):
                     logger.info("Resetting osagent state for next case...")
@@ -1085,6 +1544,48 @@ Please use the Tell action to report the results of all test cases before execut
                 if matched_key is not None:
                     test_cases[matched_key].update({"result": value.get(
                         "result", ""), "evidence": value.get("evidence", "")})
+
+            # After batch run: save checkpoint and restart_recommendation when save_checkpoint=True
+            # (first-round run uses sequential_mode=False, so this is the only path that writes them)
+            if save_checkpoint and test_cases:
+                log_base = self.rc.agent_params.get("log_dirs", "work_dirs")
+                checkpoint_dir = str(Path(log_base) / log_dir)
+                _save_resume_checkpoint(
+                    osagent=self.osagent,
+                    save_dir=checkpoint_dir,
+                    chrome_profile_src=chrome_profile_src,
+                    run_id=getattr(self, "_run_id", ""),
+                    worker_id=str(getattr(self, "_worker_id", "")),
+                    remote_debugging_port=self._remote_debugging_port,
+                )
+                self._last_checkpoint_path = str(Path(checkpoint_dir) / "resume_checkpoint.json")
+                last_case_id = next(reversed(test_cases))
+                last_failed = not _to_bool_result(test_cases.get(last_case_id, {}).get("result", ""))
+                if last_failed and self._last_checkpoint_path:
+                    try:
+                        with open(self._last_checkpoint_path, "r", encoding="utf-8") as f:
+                            cp = json.load(f)
+                        config_file = str(getattr(self, "_config_file", "") or "")
+                        last_case_desc = test_cases.get(last_case_id, {}).get("case_desc", "")
+                        rec = await supervisor_analyze_trajectory_async(
+                            checkpoint_dict=cp,
+                            config_path=config_file,
+                            task_desc=last_case_desc,
+                        )
+                        if rec:
+                            cp["restart_recommendation"] = rec
+                            with open(self._last_checkpoint_path, "w", encoding="utf-8") as f:
+                                json.dump(cp, f, indent=2, ensure_ascii=False)
+                            logger.info(f"Wrote restart_recommendation into checkpoint: {rec}")
+                            save_img = getattr(self.osagent, "save_img", "")
+                            if save_img:
+                                ts_path = Path(save_img) / "resume_checkpoint.json"
+                                if ts_path.parent.exists():
+                                    with open(ts_path, "w", encoding="utf-8") as f:
+                                        json.dump(cp, f, indent=2, ensure_ascii=False)
+                                    logger.debug(f"Synced restart_recommendation to {ts_path}")
+                    except Exception as e:
+                        logger.warning(f"Failed to add restart_recommendation: {e}")
 
         result = {task_name: {"test_cases": test_cases}}
 
@@ -1175,6 +1676,9 @@ Please use the Tell action to report the results of all test cases before execut
         max_retry_uncertain: int = 1,
         sequential_mode: bool = False,
         case_name_for_log: Optional[str] = None,
+        resume_checkpoint_path: str = "",
+        save_checkpoint: bool = False,
+        chrome_profile_src: str = "",
     ) -> tuple[dict, bool]:
         """Run API testing with retry mechanism for uncertain results
 
@@ -1187,6 +1691,13 @@ Please use the Tell action to report the results of all test cases before execut
             sequential_mode: If True, execute test cases one by one without browser cleanup between cases,
                            only reset osagent state. If False, execute all test cases at once (default).
             case_name_for_log: If set, log subdirs become {case_name_for_log}0, {case_name_for_log}1, ...
+            resume_checkpoint_path: Path to a previously saved resume_checkpoint.json.
+                If provided, the first case is started from the checkpoint URL / state
+                (resume_mode).  Subsequent cases use normal baseline behaviour.
+            save_checkpoint: If True, write a resume_checkpoint.json after the last
+                sequential case so the caller can resume in a later round.
+            chrome_profile_src: live user_data_dir path; used when save_checkpoint=True
+                to copy the profile alongside the checkpoint.
         """
         try:
             final_test_cases, executability = await self._run_test_with_retry(
@@ -1198,6 +1709,9 @@ Please use the Tell action to report the results of all test cases before execut
                 save_to_file=True,
                 sequential_mode=sequential_mode,
                 case_name_for_log=case_name_for_log,
+                resume_checkpoint_path=resume_checkpoint_path,
+                save_checkpoint=save_checkpoint,
+                chrome_profile_src=chrome_profile_src,
             )
             logger.info("Test process completed")
             return final_test_cases, executability

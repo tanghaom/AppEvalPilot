@@ -42,6 +42,10 @@ from appeval.utils.window_utils import get_download_dir, list_new_files_since
 # 忽略所有警告
 warnings.filterwarnings("ignore")
 
+# Checkpoint decision payload: tail lengths (no full thought/reflection/memory to reduce storage and noise)
+CHECKPOINT_ACTION_TAIL_LEN = 10
+CHECKPOINT_SUMMARY_TAIL_LEN = 12
+
 
 class OSAgentContext(RoleContext):
     """Runtime context for OSAgent"""
@@ -84,7 +88,7 @@ class OSAgentContext(RoleContext):
         default_factory=list)  # Historical confidence records list
 
     def reset(self) -> None:
-        """Reset all states to initial values"""
+        """Hard reset: clear all states including history / iter prefix."""
         self.thought = ""
         self.thought_history = []
         self.summary_history = []
@@ -108,6 +112,49 @@ class OSAgentContext(RoleContext):
         self.confidence = 0.0
         self.assumption_history = []
         self.confidence_history = []
+
+    def soft_reset(self) -> None:
+        """Soft reset for resume mode: preserve history / iter prefix, clear only transient per-step state."""
+        self.thought = ""
+        self.reflection_thought = ""
+        self.summary = ""
+        self.action = ""
+        self.completed_requirements = ""
+        self.error_flag = False
+        self.error_message = ""
+        self.perception_infos = []
+        self.last_perception_infos = []
+        self.width = 0
+        self.height = 0
+        self.webbrowser_console_logs = []
+        self.assumption = ""
+        self.confidence = 0.0
+
+    def restore_from_checkpoint(self, checkpoint: dict) -> None:
+        """Populate history / iter from a resume checkpoint dict (slim: Replay Core + Decision Payload).
+
+        Prefers replay_core + decision_payload: only restores iter, action_tail, summary_tail;
+        thought/reflection/memory are left empty to avoid first-round noise in round-2.
+        Falls back to legacy top-level fields if replay_core is absent.
+        """
+        if checkpoint.get("replay_core"):
+            core = checkpoint["replay_core"]
+            self.iter = int(core.get("last_completed_iter", 0))
+            payload = checkpoint.get("decision_payload") or {}
+            self.action_history = list(payload.get("action_tail", []))
+            self.summary_history = list(payload.get("summary_tail", []))
+            self.thought_history = []
+            self.reflection_thought_history = []
+            self.task_list = ""
+            self.memory = []
+        else:
+            self.iter = int(checkpoint.get("last_completed_iter", 0))
+            self.action_history = list(checkpoint.get("action_history_prefix", []))
+            self.thought_history = list(checkpoint.get("thought_history_prefix", []))
+            self.summary_history = list(checkpoint.get("summary_history_prefix", []))
+            self.reflection_thought_history = list(checkpoint.get("reflection_thought_history_prefix", []))
+            self.task_list = str(checkpoint.get("task_list", ""))
+            self.memory = list(checkpoint.get("memory", []))
 
 
 class OSAgent(Role):
@@ -149,6 +196,8 @@ class OSAgent(Role):
         system_prompt: str = "",
         add_info: str = "",
         user_data_dir: str = "",
+        save_checkpoint_per_step: bool = False,
+        save_profile_per_step: bool = False,
         **kwargs,
     ) -> None:
         """Initialize OSAgent.
@@ -174,6 +223,8 @@ class OSAgent(Role):
             system_prompt (str): System prompt
             add_info (str): Additional information to add to the prompt
             user_data_dir (str): Chrome user data directory for download result verification
+            save_checkpoint_per_step (bool): Whether to save a resume checkpoint at each iter.
+            save_profile_per_step (bool): Whether to snapshot Chrome profile for each step checkpoint.
             think_history_images (int): Max number of screenshots (latest-first) to include during think
         """
         super().__init__(**kwargs)
@@ -319,10 +370,19 @@ class OSAgent(Role):
         self.controller = ControllerTool(**config["controller_args"])
         self.prompt_utils = config["prompt_class"]()
 
-    def _reset_state(self) -> None:
-        """Reset state, clear previous records when running new tasks"""
-        # Reset state in rc
-        self.rc.reset()
+    def _reset_state(self, soft: bool = False) -> None:
+        """Reset state before running a new task.
+
+        Args:
+            soft: If True (resume mode), only clear transient per-step fields while
+                  preserving action / thought history and iter already loaded from a
+                  checkpoint.  If False (default / baseline mode), perform a full hard
+                  reset that clears all history.
+        """
+        if soft:
+            self.rc.soft_reset()
+        else:
+            self.rc.reset()
 
         # Reset temporary files and directories (skip if paths were locked externally,
         # e.g. eval_runner sequential mode already set the timestamped path)
@@ -422,6 +482,205 @@ class OSAgent(Role):
         # Copy image files
         shutil.copy2(self.screenshot_file, origin_path)
         shutil.copy2(self.output_image_path, draw_path)
+
+    def _build_step_checkpoint_payload(self, iter_num: int, profile_base_path: str = "") -> dict:
+        """Build checkpoint payload for a specific iteration."""
+        current_url = ""
+        scroll = {"x": 0, "y": 0}
+        viewport = {"w": 0, "h": 0, "dpr": 1}
+        if hasattr(self, "controller") and self.controller:
+            cdp_port = getattr(self.controller, "remote_debugging_port", None)
+            max_cdp_retries = 3
+            # Fetch scroll/viewport once; only retry URL if it's empty.
+            if hasattr(self.controller, "get_scroll"):
+                scroll = self.controller.get_scroll()
+            if hasattr(self.controller, "get_viewport"):
+                viewport = self.controller.get_viewport()
+            for attempt in range(1, max_cdp_retries + 1):
+                if hasattr(self.controller, "get_current_tab_url"):
+                    current_url = self.controller.get_current_tab_url()
+                if current_url:
+                    break
+                if attempt < max_cdp_retries:
+                    logger.warning(
+                        f"[checkpoint] CDP attempt {attempt}/{max_cdp_retries} returned empty URL "
+                        f"(port={cdp_port}), retrying in {attempt}s..."
+                    )
+                    time.sleep(attempt)
+            if not current_url:
+                fallback_url = str(
+                    getattr(self.controller, "expected_url", "") or ""
+                ).strip()
+                if fallback_url:
+                    current_url = fallback_url
+                    logger.warning(
+                        f"[checkpoint] CDP failed to get URL after {max_cdp_retries} attempts "
+                        f"(port={cdp_port}, iter={iter_num}). "
+                        f"Using expected_url as fallback: {fallback_url}"
+                    )
+                else:
+                    logger.warning(
+                        f"[checkpoint] CDP failed to get URL after {max_cdp_retries} attempts "
+                        f"(port={cdp_port}, iter={iter_num}), no fallback URL available. "
+                        f"Checkpoint will be saved with resume_degraded=true."
+                    )
+        # Fallback viewport when CDP returned 0,0 (e.g. 503); match Chrome --window-size=1920,1080
+        if (viewport.get("w") == 0 and viewport.get("h") == 0):
+            viewport = {"w": 1920, "h": 1080, "dpr": float(viewport.get("dpr", 1))}
+            logger.debug("[checkpoint] viewport was 0,0; using fallback 1920x1080")
+
+        raw_history = [str(x) for x in (self.rc.action_history or [])]
+        action_only = [a for a in raw_history if not a.startswith("Tell ")]
+        result_history = []
+        for i, action in enumerate(raw_history):
+            if action.startswith("Tell "):
+                result_history.append({"iter": i + 1, "action": action})
+
+        action_tail = action_only[-CHECKPOINT_ACTION_TAIL_LEN:] if action_only else []
+        summary_tail = [str(x) for x in (self.rc.summary_history or [])][-CHECKPOINT_SUMMARY_TAIL_LEN:]
+
+        screenshot_path = str(Path(self.save_img) / f"origin_{iter_num}.jpg")
+        if not Path(screenshot_path).exists():
+            screenshot_path = ""
+
+        replay_core = {
+            "mode": "resume",
+            "run_id": str(getattr(self, "run_id", "") or ""),
+            "worker_id": str(getattr(self, "worker_id", "") or ""),
+            "remote_debugging_port": int(getattr(self, "remote_debugging_port", 0) or 0),
+            "timestamp": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+            "resume_from_url": current_url,
+            "guard_policy": {
+                "expected_url_mode": "set_to_resume_from_url",
+                "expected_domain_mode": "restrict_to_resume_domain",
+            },
+            "viewport": viewport,
+            "scroll": scroll,
+            "restore_order": ["copy_profile", "start_chrome", "navigate", "wait_stable", "set_scroll", "confirm_screenshot"],
+            "last_completed_iter": int(iter_num),
+            "last_screenshot_path": screenshot_path,
+            "resume_confirm_screenshot_path": "",
+            "profile": {
+                "strategy": "base_to_work_copy",
+                "base_path": profile_base_path,
+                "work_path_round2": "",
+            },
+        }
+        decision_payload = {
+            "action_tail": action_tail,
+            "summary_tail": summary_tail,
+            "result_history": result_history,
+        }
+        integrity = {
+            "required_fields": ["resume_from_url", "last_completed_iter", "profile.base_path"],
+            "path_checks": [
+                {"path": screenshot_path, "must_exist": bool(screenshot_path), "exists": bool(screenshot_path and Path(screenshot_path).exists())},
+                {"path": profile_base_path, "must_exist": bool(profile_base_path), "exists": bool(profile_base_path and Path(profile_base_path).exists())},
+            ],
+            "resume_degraded": not bool(current_url),
+            "degrade_reason": "" if current_url else "resume_from_url is empty",
+        }
+        return {
+            "replay_core": replay_core,
+            "decision_payload": decision_payload,
+            "integrity": integrity,
+        }
+
+    def _save_step_checkpoint(self, iter_num: int) -> None:
+        """Save one checkpoint for current iter (and optional profile snapshot)."""
+        if not getattr(self, "save_checkpoint_per_step", False):
+            return
+
+        try:
+            checkpoint_root = Path(self.save_img) / "checkpoints"
+            profile_root = Path(self.save_img) / "profiles"
+            checkpoint_root.mkdir(parents=True, exist_ok=True)
+            profile_root.mkdir(parents=True, exist_ok=True)
+
+            step_name = f"step_{int(iter_num):03d}"
+            profile_base_path = ""
+            profile_copy_error = ""
+            if getattr(self, "save_profile_per_step", False):
+                src_raw = str(getattr(self, "user_data_dir", "") or "").strip()
+                src = Path(src_raw) if src_raw else None
+                dst = profile_root / f"{step_name}_base"
+                if src and src.exists():
+                    # Guard against recursive copy:
+                    # if source is current project/work directory and destination is
+                    # inside it, skip profile snapshot to avoid path explosion.
+                    src_resolved = src.resolve()
+                    dst_resolved = dst.resolve()
+                    if src_resolved == dst_resolved or src_resolved in dst_resolved.parents:
+                        logger.warning(
+                            f"Skip profile snapshot to avoid recursive copy: src={src_resolved}, dst={dst_resolved}"
+                        )
+                        profile_copy_error = "profile snapshot skipped to avoid recursive copy"
+                    else:
+                        def _ignore_profile_copy(_dir, names):
+                            ignored = set()
+                            for n in names:
+                                # Chrome runtime singleton/lock/temp files are highly volatile
+                                # and frequently disappear during copy. Ignore them so checkpoint
+                                # JSON can still be saved reliably.
+                                if (
+                                    n in {"SingletonLock", "SingletonCookie", "SingletonSocket", "LOCK"}
+                                    or n.endswith(".tmp")
+                                    or n.endswith(".TMP")
+                                ):
+                                    ignored.add(n)
+                            return ignored
+
+                        try:
+                            if dst.exists():
+                                shutil.rmtree(dst, ignore_errors=True)
+                            shutil.copytree(src, dst, ignore=_ignore_profile_copy)
+                            profile_base_path = str(dst)
+                        except Exception as copy_exc:
+                            profile_copy_error = str(copy_exc)
+                            logger.warning(
+                                f"Profile snapshot failed iter={iter_num}, continue writing checkpoint JSON: {copy_exc}"
+                            )
+                else:
+                    profile_copy_error = "user_data_dir not found for profile snapshot"
+
+            payload = self._build_step_checkpoint_payload(iter_num, profile_base_path=profile_base_path)
+            if profile_copy_error:
+                integrity = payload.setdefault("integrity", {})
+                prev_reason = str(integrity.get("degrade_reason", "") or "").strip()
+                combined_reason = "; ".join(
+                    [x for x in [prev_reason, f"profile snapshot issue: {profile_copy_error}"] if x]
+                )
+                integrity["resume_degraded"] = True
+                integrity["degrade_reason"] = combined_reason
+            step_path = checkpoint_root / f"{step_name}.json"
+            step_path.write_text(json.dumps(payload, indent=2, ensure_ascii=False), encoding="utf-8")
+
+            # Update index for quick lookup by target step
+            index_path = checkpoint_root / "checkpoint_index.json"
+            if index_path.exists():
+                try:
+                    index_data = json.loads(index_path.read_text(encoding="utf-8"))
+                except Exception:
+                    index_data = {}
+            else:
+                index_data = {}
+            steps = index_data.get("steps", {})
+            steps[str(iter_num)] = {
+                "checkpoint": str(step_path),
+                "profile_base": profile_base_path,
+            }
+            index_data["steps"] = steps
+            index_data["latest_step"] = int(iter_num)
+            index_data["updated_at"] = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
+            index_path.write_text(json.dumps(index_data, indent=2, ensure_ascii=False), encoding="utf-8")
+
+            # Keep compatibility: point resume_checkpoint.json to latest step checkpoint.
+            latest_path = Path(self.save_img) / "resume_checkpoint.json"
+            latest_path.write_text(json.dumps(payload, indent=2, ensure_ascii=False), encoding="utf-8")
+
+            logger.info(f"Saved step checkpoint: {step_path}")
+        except Exception as exc:
+            logger.warning(f"Failed to save step checkpoint iter={iter_num}: {exc}")
 
     def _update_screenshot_files(self) -> None:
         """Update screenshot files"""
@@ -1105,9 +1364,29 @@ class OSAgent(Role):
         return task_list
 
     async def _react(self) -> Message:
-        self.rc.iter = 0
+        _is_resume = getattr(self, '_resume_mode', False)
+        if _is_resume:
+            logger.info(
+                f"[resume] Continuing from iter={self.rc.iter}, "
+                f"history_len={len(self.rc.action_history)}"
+            )
+            self._resume_mode = False
+        else:
+            self.rc.iter = 0
         # will be overwritten after Role _act
         rsp = AIMessage(content="No actions taken yet", cause_by=Action)
+
+        # Resume mode: take a fresh screenshot so the first _think() is not blind
+        if _is_resume:
+            (
+                self.rc.perception_infos,
+                self.width,
+                self.height,
+                self.output_image_path,
+            ) = await self._get_perception_infos(self.screenshot_file, self.screenshot_som_file)
+            self._save_iteration_images(self.rc.iter)
+            logger.info(f"[resume] Initial perception captured: {len(self.rc.perception_infos)} elements")
+
         while self.rc.iter < self.max_iters and not self._check_last_three_start_with_wait(self.rc.action_history):
             self.rc.iter += 1
 
@@ -1141,6 +1420,8 @@ class OSAgent(Role):
             logger.debug(
                 f"{self._setting}: {self.rc.state=}, will do {self.rc.todo}")
             rsp = await self._act()
+            # Save per-step checkpoint after each action (if enabled).
+            self._save_step_checkpoint(self.rc.iter)
 
             # Exit loop after Tell action, unless it was an action error (W4/W6)
             # In case of action error, the agent should continue with corrective guidance
@@ -1292,17 +1573,23 @@ class OSAgent(Role):
         if self.use_chrome_debugger:
             self.chrome_debugger.stop_monitoring()
 
+        # Ensure latest state is persisted (covers max-iter forced Tell path too).
+        self._save_step_checkpoint(self.rc.iter)
         return rsp
 
-    async def run(self, instruction: str) -> Message:
+    async def run(self, instruction: str, soft_reset: bool = False) -> Message:
         """Run main loop.
 
         Args:
             instruction (str): User instruction.
+            soft_reset (bool): If True (resume mode), perform a soft reset that
+                preserves history / iter already loaded from a checkpoint instead
+                of clearing everything.
         """
-        self._reset_state()  # Reset state for each run
-        self._setup_logs()  # Reset logs for each run
+        self._reset_state(soft=soft_reset)
+        self._setup_logs()
         self.instruction = instruction
+        self._resume_mode = soft_reset
 
         rsp = await self.react()
         return rsp

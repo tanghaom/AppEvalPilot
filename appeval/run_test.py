@@ -76,6 +76,44 @@ def _apply_llm_env(preset: dict, for_local: bool = False):
             os.environ[k] = ""
 
 
+def _resolve_resume_checkpoint_path(path: str, target_step: Optional[int]) -> str:
+    """Resolve resume checkpoint path for per-step rollback.
+
+    Supports:
+    - direct step json: /.../checkpoints/step_005.json
+    - checkpoint index: /.../checkpoints/checkpoint_index.json + target_step
+    - run dir: /.../<case>/<timestamp>/ + target_step
+    - legacy latest: /.../resume_checkpoint.json (when target_step is None)
+    """
+    if not path:
+        return ""
+
+    p = Path(path)
+    if p.is_file():
+        if p.name == "checkpoint_index.json" and target_step is not None:
+            try:
+                idx = json.loads(p.read_text(encoding="utf-8"))
+                steps = idx.get("steps", {})
+                step_item = steps.get(str(int(target_step)), {})
+                resolved = str(step_item.get("checkpoint", "") or "")
+                if resolved:
+                    return resolved
+            except Exception:
+                pass
+        return str(p)
+
+    if p.is_dir():
+        if target_step is not None:
+            step_file = p / "checkpoints" / f"step_{int(target_step):03d}.json"
+            if step_file.exists():
+                return str(step_file)
+        legacy = p / "resume_checkpoint.json"
+        if legacy.exists():
+            return str(legacy)
+
+    return str(p)
+
+
 # ---------------------------------------------------------------------------
 #  Environment setup helpers (Xvfb / D-Bus / AT-SPI / WM / Xauthority)
 # ---------------------------------------------------------------------------
@@ -372,6 +410,19 @@ def run_single_task(
     run_group_ts: str = task.get("run_group_ts") or datetime.now().strftime("%Y%m%d%H%M")
     callback_url: str = task.get("callback_url", "")
 
+    # resume_mode: read from task JSON
+    #   "resume_mode": true             → save checkpoint at end (round 1)
+    #   "resume_checkpoint_path": "..."  → load checkpoint from previous round (round 2)
+    resume_mode: bool = bool(task.get("resume_mode", False))
+    resume_checkpoint_path: str = str(task.get("resume_checkpoint_path", "") or "")
+    resume_target_step = task.get("resume_target_step", None)
+    save_checkpoint_per_step: bool = bool(task.get("save_checkpoint_per_step", False))
+    save_profile_per_step: bool = bool(task.get("save_profile_per_step", False))
+    resume_checkpoint_path = _resolve_resume_checkpoint_path(
+        resume_checkpoint_path,
+        int(resume_target_step) if resume_target_step is not None else None,
+    )
+
     # ---- 加载配置 ----
     preset, full_cfg = load_config(config_path)
     llm_config = preset.get("llm", {})
@@ -514,8 +565,13 @@ def run_single_task(
             remote_debugging_port=port,
             user_data_dir=user_data_dir,
             use_chrome_debugger=False,
+            agent_class=preset.get("agent_class", "osagent"),
             a11y_mode=preset.get("a11y_mode", "atspi"),
             max_iters=preset.get("max_iters", 15),
+            run_id=f"run_{run_group_ts}_d{detail_id}",
+            worker_id=worker_id,
+            save_checkpoint_per_step=save_checkpoint_per_step,
+            save_profile_per_step=save_profile_per_step,
             use_ocr=True,
             post_action_wait_sec=preset.get("post_action_wait_sec", 1.5),
             log_dirs=api_log_dir,
@@ -525,6 +581,9 @@ def run_single_task(
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
         t0 = time.perf_counter()
+
+        # resume_mode=True  → round 1: save checkpoint after last case, keep profile
+        # resume_checkpoint_path set → round 2: restore from checkpoint
         result, _ = loop.run_until_complete(
             role.run_api(
                 task_name="test_case",
@@ -533,6 +592,9 @@ def run_single_task(
                 log_dir=f"{task_id}/{run_group_ts}/{case_name}",
                 sequential_mode=True,
                 case_name_for_log=case_name,
+                resume_checkpoint_path=resume_checkpoint_path,
+                save_checkpoint=resume_mode,
+                chrome_profile_src=user_data_dir if resume_mode else "",
             )
         )
         elapsed = time.perf_counter() - t0
@@ -553,6 +615,7 @@ def run_single_task(
                     config_file=temp_config_file,
                     remote_debugging_port=port,
                     user_data_dir=user_data_dir,
+                    agent_class=preset.get("agent_class", "osagent"),
                     a11y_mode=preset.get("a11y_mode", "atspi"),
                     max_iters=preset.get("max_iters", 15),
                     post_action_wait_sec=preset.get("post_action_wait_sec", 1.5),
@@ -607,6 +670,10 @@ def run_single_task(
         _stop_atspi(dbus_proc, atspi_launcher, atspi_registryd, worker_id)
         xvfb.terminate()
         xvfb.wait()
+        # In resume_mode (round 1): profile is copied inside eval_runner before cleanup,
+        # so we still delete the live working directory here.
+        # In round 2 (resume_checkpoint_path set): the profile is already a copy;
+        # delete the working dir as usual.
         shutil.rmtree(user_data_dir, ignore_errors=True)
         try:
             from appeval.tools.ocr import release_ocr_memory

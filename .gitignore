@@ -170,3 +170,14 @@ cov.xml
 .python-version
 run_experiments/
 .env.example
+
+# AppEval run outputs & logs (reduces "too many active changes" in IDE)
+appeval/api_log/
+appeval/[0-9][0-9][0-9]/
+test2_gemini_withcritic/
+test2_gemini_without_critic/
+test2_local/
+test2_local_osagent-sft/
+run/
+test/
+C:/
