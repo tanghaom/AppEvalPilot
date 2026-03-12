@@ -674,10 +674,6 @@ class OSAgent(Role):
             index_data["updated_at"] = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
             index_path.write_text(json.dumps(index_data, indent=2, ensure_ascii=False), encoding="utf-8")
 
-            # Keep compatibility: point resume_checkpoint.json to latest step checkpoint.
-            latest_path = Path(self.save_img) / "resume_checkpoint.json"
-            latest_path.write_text(json.dumps(payload, indent=2, ensure_ascii=False), encoding="utf-8")
-
             logger.info(f"Saved step checkpoint: {step_path}")
         except Exception as exc:
             logger.warning(f"Failed to save step checkpoint iter={iter_num}: {exc}")
@@ -891,6 +887,176 @@ class OSAgent(Role):
             }
             outputs.append(output)
         return outputs
+
+    # ------------------------------------------------------------------
+    #  Branching retry: generate N candidate retry plans (text, no exec)
+    # ------------------------------------------------------------------
+
+    _RETRY_PLAN_PROMPT = """\
+You are a GUI test agent. Your previous attempt at this task FAILED.
+Generate diversified retry plans under the required divergence dimensions.
+
+## Task
+{task_desc}
+
+## Why the previous attempt failed
+{fail_reason}
+
+## Supervisor advice (what to do differently)
+{restart_explanation}
+
+## Action history near the retry point (last steps before failure)
+{trajectory_tail}
+
+## Current screen
+[See attached screenshot]
+
+## Required divergence dimensions
+- Dimension A (Action-Form Hypothesis): same goal, different trigger forms.
+  Examples: single-click vs double-click; text-area click vs icon click; hotkey fallback.
+- Dimension B (Visibility/Reachability Hypothesis): target may be outside current viewport.
+  Must include scroll/re-locate style candidate.
+- Dimension C (Diagnostic Hypothesis): low-risk probes to validate interactability.
+  Must include a diagnostic candidate (hover/small scroll/focus probe).
+
+## Count requirements for this generation
+- Total plans required: {n}
+- Dimension A minimum: {min_a}
+- Dimension B minimum: {min_b}
+- Dimension C minimum: {min_c}
+
+## Output format (STRICT JSON, no markdown)
+{{
+  "plans": [
+    {{
+      "dimension": "A|B|C",
+      "title": "short plan title",
+      "plan": "step-by-step concrete retry strategy",
+      "reason": "why this plan is likely to work for this failure"
+    }}
+  ]
+}}
+
+Rules:
+1) Return exactly {n} plans.
+2) Respect the minimum count per dimension above.
+3) Every plan must be actionable from current state and avoid repeating known failed actions.
+4) Keep each plan concise and concrete.
+"""
+
+    async def generate_retry_plans(
+        self,
+        n: int,
+        task_desc: str = "",
+        fail_reason: str = "",
+        restart_explanation: str = "",
+        trajectory_tail: str = "",
+        screenshot_b64: str = "",
+    ) -> List[Dict[str, str]]:
+        """Generate N candidate retry plans (text strategies) without executing anything.
+
+        Each plan is produced by an independent LLM call so that the outputs naturally
+        diverge. The plans are returned as plain strings and should be ranked by
+        SupervisorJudge (select_plans) before the best ones are injected into the agent.
+
+        Args:
+            n: Number of candidate plans to generate.
+            task_desc: Full task / test-point description.
+            fail_reason: Why the first round failed (from restart_recommendation).
+            restart_explanation: Supervisor guidance on what to do differently.
+            trajectory_tail: Formatted text of recent action steps near the retry node.
+            screenshot_b64: Base64-encoded screenshot at the retry node.
+        Returns:
+            List of plan dicts:
+                {
+                  "dimension": "A|B|C",
+                  "title": "...",
+                  "plan": "...",
+                  "reason": "..."
+                }
+        """
+        if n <= 0:
+            return []
+
+        # Enforce requested divergence quotas:
+        # priority: A(>=2 if possible), then B/C at least 1 if possible.
+        min_a, min_b, min_c = 0, 0, 0
+        if n == 1:
+            min_a = 1
+        elif n == 2:
+            min_a, min_b = 1, 1
+        elif n == 3:
+            min_a, min_b, min_c = 1, 1, 1
+        else:
+            min_a, min_b, min_c = 2, 1, 1
+
+        prompt = self._RETRY_PLAN_PROMPT.format(
+            task_desc=task_desc or "(not provided)",
+            fail_reason=fail_reason or "(not provided)",
+            restart_explanation=restart_explanation or "(not provided)",
+            trajectory_tail=trajectory_tail or "(not provided)",
+            n=int(n),
+            min_a=int(min_a),
+            min_b=int(min_b),
+            min_c=int(min_c),
+        )
+        images = [screenshot_b64] if screenshot_b64 else []
+        # Take a fresh screenshot if none supplied
+        if not images and hasattr(self, "screenshot_file") and Path(self.screenshot_file).exists():
+            images = [encode_image(self.screenshot_file)]
+
+        plans: List[Dict[str, str]] = []
+        try:
+            raw = await self.llm.aask(prompt, images=images, stream=False)
+            cleaned = re.sub(r"```(?:json)?\s*", "", str(raw).strip())
+            cleaned = re.sub(r"```", "", cleaned).strip()
+            payload = json.loads(cleaned)
+            items = payload.get("plans", []) if isinstance(payload, dict) else []
+            used = 0
+            for item in items:
+                if used >= n:
+                    break
+                if not isinstance(item, dict):
+                    continue
+                dim = str(item.get("dimension", "")).strip().upper()[:1]
+                if dim not in ("A", "B", "C"):
+                    continue
+                title = str(item.get("title", "")).strip()
+                body = str(item.get("plan", "")).strip()
+                if not body:
+                    continue
+                reason = str(item.get("reason", "")).strip()
+                plans.append(
+                    {
+                        "dimension": dim,
+                        "title": title,
+                        "plan": body,
+                        "reason": reason,
+                    }
+                )
+                used += 1
+        except Exception as e:
+            logger.warning(f"[branching] Structured retry plan generation failed, fallback to simple generation: {e}")
+
+        # Fallback fill: keep output count stable for downstream selection.
+        fallback_order = (["A", "A", "B", "C"] + ["A"] * max(0, n - 4))[:n]
+        while len(plans) < n:
+            dim = fallback_order[len(plans)] if len(plans) < len(fallback_order) else "A"
+            plans.append(
+                {
+                    "dimension": dim,
+                    "title": f"Fallback plan {len(plans) + 1}",
+                    "plan": f"Retry with a concrete {dim}-style strategy based on current screen and failure context.",
+                    "reason": "Fallback generated because structured output parsing failed or was incomplete.",
+                }
+            )
+
+        for i, p in enumerate(plans[:n], 1):
+            logger.info(
+                f"[branching] Generated retry plan {i}/{n} "
+                f"(dim={p.get('dimension', '')}, plan_chars={len(str(p.get('plan', '')))})"
+            )
+        return plans[:n]
 
     @retry(
         stop=stop_after_attempt(10),
@@ -1140,6 +1306,57 @@ class OSAgent(Role):
         )
         return any(s in combined for s in signals)
 
+    def _get_upload_test_file_path(self) -> Optional[str]:
+        """Return a path to a suitable test file under test_data_dir.
+
+        Picks by task context: video tasks → .mp4; code tasks → .js/.txt; image → .jpg/.png.
+        Falls back to any uploadable file if nothing specific found.
+        """
+        test_dir = getattr(self, "test_data_dir", None) or "/tmp/test_data"
+        if os.name == "nt":
+            test_dir = getattr(self, "test_data_dir", None) or "C:\\test_data"
+        p = Path(test_dir)
+        if not p.is_dir():
+            return None
+
+        ctx = self._context_text_for_result_check()
+
+        # Prefer by task type
+        if any(k in ctx for k in ("video", "视频", "clip", "mp4")):
+            preferred = (".mp4",)
+        elif any(k in ctx for k in ("code", "代码", ".js", "javascript", "python", "script")):
+            preferred = (".js", ".py", ".txt", ".csv")
+        else:
+            # Default: image tasks
+            preferred = (".jpg", ".jpeg", ".png", ".gif", ".webp", ".tiff")
+
+        fallback_exts = (".jpg", ".jpeg", ".png", ".gif", ".webp", ".pdf", ".csv", ".mp4", ".js", ".txt", ".zip", ".tiff")
+
+        # First pass: preferred type — iterate by extension priority so that e.g. .js
+        # is always chosen before .txt regardless of filename alphabetical order.
+        files = sorted(p.iterdir())
+        for ext in preferred:
+            for f in files:
+                if f.is_file() and f.suffix.lower() == ext:
+                    return str(f)
+        # Second pass: any uploadable file
+        for ext in fallback_exts:
+            for f in files:
+                if f.is_file() and f.suffix.lower() == ext:
+                    return str(f)
+        return None
+
+    def _set_upload_result_check_error(self) -> None:
+        """Set error flag and message for upload result check failure."""
+        self.rc.error_flag = True
+        self.rc.error_message = (
+            "RESULT CHECK FAILED (upload): Click was executed but no upload result signal detected "
+            "(e.g. filename, thumbnail, progress bar, or success message). A file picker dialog may have "
+            "opened in a separate window—try selecting a file from /tmp/test_data in that dialog (e.g. "
+            "type path or navigate and press Enter), then re-check the page. Do not only click the Upload button again."
+        )
+        logger.warning(self.rc.error_message)
+
     def _check_download_result(self, since_mtime: float) -> bool:
         """True if at least one new file appeared in download dir after since_mtime."""
         download_dir = get_download_dir(getattr(self, "user_data_dir", "") or "")
@@ -1171,7 +1388,29 @@ class OSAgent(Role):
             # Execute other actions
             try:
                 if self.platform in ["Android", "Windows", "Linux"]:
-                    self.controller.run_action(self.rc.action)
+                    # For upload-related Run actions: inject file via JS INSTEAD of clicking
+                    # so the OS picker never opens and resets the input.
+                    _js_injected = False
+                    _is_upload_click = (
+                        self._is_upload_related_context()
+                        and "Run" in self.rc.action
+                        and getattr(self.controller, "inject_file_via_js", None)
+                    )
+                    if _is_upload_click:
+                        test_file = self._get_upload_test_file_path()
+                        if test_file:
+                            _js_injected = self.controller.inject_file_via_js(test_file)
+                            if _js_injected:
+                                logger.info(f"JS file injection succeeded (skipping click): {test_file}")
+                                time.sleep(2.0)  # Let page process the change event
+
+                    # Only execute the click if injection didn't succeed (fallback)
+                    if not _js_injected:
+                        self.controller.run_action(self.rc.action)
+                    else:
+                        # Injection succeeded: page already has the file via change event.
+                        # Still wait a bit, then check if page updated.
+                        time.sleep(1.0)
                 else:
                     logger.error("Currently only supports Android, Windows and Linux")
             except Exception as e:
@@ -1206,12 +1445,24 @@ class OSAgent(Role):
                     self.screenshot_file, self.screenshot_som_file
                 )
                 if not self._check_upload_result_signals():
-                    self.rc.error_flag = True
-                    self.rc.error_message = (
-                        "RESULT CHECK FAILED (upload): Click was executed but no upload result signal detected "
-                        "(e.g. filename, thumbnail, progress bar, or success message). Please retry or confirm the upload control."
-                    )
-                    logger.warning(self.rc.error_message)
+                    # Try CDP setFileInputFiles so the page receives a file without opening the native dialog
+                    test_file = self._get_upload_test_file_path()
+                    if test_file and getattr(self.controller, "set_file_input_files", None):
+                        if self.controller.set_file_input_files(test_file):
+                            time.sleep(1.5)
+                            self._update_screenshot_files()
+                            self.rc.perception_infos, self.width, self.height, self.output_image_path = await self._get_perception_infos(
+                                self.screenshot_file, self.screenshot_som_file
+                            )
+                            if self._check_upload_result_signals():
+                                # Recovery succeeded, do not set error
+                                pass
+                            else:
+                                self._set_upload_result_check_error()
+                        else:
+                            self._set_upload_result_check_error()
+                    else:
+                        self._set_upload_result_check_error()
             elif self._is_download_related_context() and getattr(self, "_download_check_before_time", None) is not None:
                 time.sleep(2.0)
                 if not self._check_download_result(self._download_check_before_time):

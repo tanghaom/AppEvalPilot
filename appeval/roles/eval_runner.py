@@ -11,6 +11,7 @@ import copy
 import datetime
 import json
 import os
+import re
 import shutil
 import time
 from pathlib import Path
@@ -27,6 +28,7 @@ from appeval.actions.case_generator import CaseGenerator, OperationType
 from appeval.prompts.osagent import case_batch_check_system_prompt
 from appeval.prompts.text_agent import text_agent_system_prompt
 from appeval.judges.supervisor_judge import analyze_trajectory_async as supervisor_analyze_trajectory_async
+from appeval.judges.supervisor_judge import select_plans_async as supervisor_select_plans_async
 from appeval.roles.osagent import OSAgent
 from appeval.roles.osagent import (
     CHECKPOINT_ACTION_TAIL_LEN,
@@ -229,6 +231,105 @@ def _save_resume_checkpoint(
         return ""
 
 
+def _prune_checkpoints_keep_only_restart(checkpoint_dir_path: str, restart_from_iter: Optional[int]) -> None:
+    """After case completes and LLM gives restart_recommendation: keep only step_{restart_from_iter}.json, delete other step_*.json."""
+    if restart_from_iter is None:
+        return
+    step_dir = Path(checkpoint_dir_path) / "checkpoints"
+    if not step_dir.is_dir():
+        return
+    restart_from_iter = int(restart_from_iter)
+    # restart_from_iter == 0 means restart from scratch: no step checkpoint should be kept.
+    if restart_from_iter == 0:
+        removed = 0
+        for f in step_dir.glob("step_*.json"):
+            try:
+                f.unlink()
+                removed += 1
+            except Exception as e:
+                logger.warning(f"Failed to prune checkpoint {f}: {e}")
+        index_path = step_dir / "checkpoint_index.json"
+        if index_path.exists():
+            try:
+                with open(index_path, "r", encoding="utf-8") as f:
+                    idx = json.load(f)
+                idx["steps"] = {}
+                idx["latest_step"] = 0
+                with open(index_path, "w", encoding="utf-8") as f:
+                    json.dump(idx, f, indent=2, ensure_ascii=False)
+            except Exception as e:
+                logger.warning(f"Failed to prune checkpoint index {index_path}: {e}")
+        if removed:
+            logger.info(f"Pruned {removed} checkpoint(s) for restart_from_iter=0 in {step_dir}")
+        return
+    keep_name = f"step_{int(restart_from_iter):03d}.json"
+    keep_file = step_dir / keep_name
+    if not keep_file.exists():
+        logger.debug(f"Recommended step file {keep_name} not found in {step_dir}, skip pruning checkpoints")
+        return
+    removed = 0
+    for f in step_dir.glob("step_*.json"):
+        if f.name != keep_name:
+            try:
+                f.unlink()
+                removed += 1
+            except Exception as e:
+                logger.warning(f"Failed to prune checkpoint {f}: {e}")
+    # Keep checkpoint index consistent with remaining step file.
+    index_path = step_dir / "checkpoint_index.json"
+    if index_path.exists():
+        try:
+            with open(index_path, "r", encoding="utf-8") as f:
+                idx = json.load(f)
+            steps = idx.get("steps", {}) if isinstance(idx, dict) else {}
+            keep_key = str(int(restart_from_iter))
+            kept_step = steps.get(keep_key)
+            idx["steps"] = {keep_key: kept_step} if kept_step else {}
+            idx["latest_step"] = int(restart_from_iter)
+            with open(index_path, "w", encoding="utf-8") as f:
+                json.dump(idx, f, indent=2, ensure_ascii=False)
+        except Exception as e:
+            logger.warning(f"Failed to prune checkpoint index {index_path}: {e}")
+    if removed:
+        logger.info(f"Pruned {removed} checkpoint(s), kept only {keep_name} in {step_dir}")
+
+
+def _build_trajectory_tail(checkpoint: dict, restart_iter: int, tail_steps: int = 6) -> str:
+    """Extract and format the action/summary steps near the retry node.
+
+    Includes up to tail_steps steps ending at the last recorded step.
+    The restart node step is marked with an arrow so the judge can orient itself.
+
+    Args:
+        checkpoint: Loaded resume_checkpoint dict.
+        restart_iter: 0-based step index recommended as the retry node.
+        tail_steps: How many steps to include in the tail.
+    Returns:
+        Human-readable multi-line string, or "(no trajectory available)".
+    """
+    # Prefer decision_payload tails (what we actually persist in current checkpoints),
+    # then fall back to replay_core/full-history legacy fields.
+    payload = checkpoint.get("decision_payload") or {}
+    rc = checkpoint.get("replay_core") or {}
+    actions = payload.get("action_tail") or rc.get("action_history") or []
+    summaries = payload.get("summary_tail") or rc.get("summary_history") or []
+    if not actions:
+        # Fallback: look one level up
+        actions = checkpoint.get("action_history") or checkpoint.get("action_history_prefix") or []
+        summaries = checkpoint.get("summary_history") or checkpoint.get("summary_history_prefix") or []
+    n = len(actions)
+    if n == 0:
+        return "(no trajectory available)"
+    start = max(0, n - tail_steps)
+    lines = []
+    for i in range(start, n):
+        action = actions[i] if i < len(actions) else ""
+        summary = summaries[i] if i < len(summaries) else ""
+        marker = "  ← retry node" if i == restart_iter else ""
+        lines.append(f"  Step {i}: {action} | {summary}{marker}")
+    return "\n".join(lines)
+
+
 def _load_resume_checkpoint(path: str) -> Optional[dict]:
     """Load and validate a resume checkpoint JSON.
 
@@ -359,6 +460,8 @@ class AppEvalRole(Role):
             "max_iters": kwargs.get("max_iters", 20),
             "save_checkpoint_per_step": kwargs.get("save_checkpoint_per_step", False),
             "save_profile_per_step": kwargs.get("save_profile_per_step", False),
+            "branching_n_candidates": int(kwargs.get("branching_n_candidates", 0)),
+            "branching_k": int(kwargs.get("branching_k", 1)),
         }
 
         # Store agent_class for _init_osagent
@@ -1282,6 +1385,31 @@ Please use the Tell action to report the results of all test cases before execut
                 "cost": case_data.get("cost", ""),
             }
 
+        def _build_retry_context_text(restart_rec: Optional[dict]) -> str:
+            """Compose supplemental guidance for round-2 from supervisor recommendation."""
+            if not restart_rec:
+                return ""
+            fail_reason = str(restart_rec.get("fail_reason", "") or "").strip()
+            retry_reason = str(restart_rec.get("retry_reason", "") or "").strip()
+            restart_from_iter = restart_rec.get("restart_from_iter")
+            restart_explanation = str(restart_rec.get("restart_explanation", "") or "").strip()
+            parts = []
+            if fail_reason:
+                parts.append(f"- Fail reason from previous round: {fail_reason}")
+            if retry_reason:
+                parts.append(f"- Retry reason from previous round: {retry_reason}")
+            if restart_from_iter is not None:
+                parts.append(f"- Recommended restart_from_iter: {restart_from_iter}")
+            if restart_explanation:
+                parts.append(f"- Restart guidance: {restart_explanation}")
+            if not parts:
+                return ""
+            return (
+                "\\n\\n[ROUND-2 SUPPLEMENTAL GUIDANCE]\\n"
+                "Use this as additional context before starting actions in this retry run:\\n"
+                + "\\n".join(parts)
+            )
+
         def _save_incremental_case_json(case_id, case_data) -> None:
             """Persist one case result immediately so partial progress survives interruptions."""
             if not save_to_file:
@@ -1308,8 +1436,37 @@ Please use the Tell action to report the results of all test cases before execut
             except Exception as e:
                 logger.warning(f"Failed to save incremental result for case {case_id}: {e}")
 
+        def _save_retry_plans_json(case_id: str, payload: dict) -> None:
+            """Persist candidate and selected retry plans for audit/debug."""
+            try:
+                output_dir = Path(getattr(self.osagent, "save_img", "") or "")
+                if not output_dir.exists():
+                    log_base = self.rc.agent_params.get("log_dirs", "work_dirs")
+                    if case_name_for_log is not None:
+                        output_dir = Path(log_base) / log_dir / f"{case_name_for_log}{case_id}"
+                    else:
+                        output_dir = Path(log_base) / log_dir / str(case_id)
+                    output_dir.mkdir(parents=True, exist_ok=True)
+                output_file = output_dir / "retry_plans.json"
+                with open(output_file, "w", encoding="utf-8") as f:
+                    json.dump(payload, f, indent=2, ensure_ascii=False)
+                logger.info(f"[branching] Saved retry plans JSON: {output_file}")
+            except Exception as e:
+                logger.warning(f"[branching] Failed to save retry_plans.json for case {case_id}: {e}")
+
+        def _extract_plan_dimension(plan_text: str) -> str:
+            s = str(plan_text or "").strip()
+            m = re.match(r"^\[Dimension\s+([ABC])\]", s, flags=re.IGNORECASE)
+            if m:
+                return m.group(1).upper()
+            return ""
+
         # ── Resume mode: load and validate checkpoint (sequential_mode only) ──
         resume_cp: Optional[dict] = None
+        resume_restart_rec: Optional[dict] = None
+        resume_cp_for_branching: Optional[dict] = None
+        resume_retry_context_text = ""
+        force_baseline_from_start = False
         if sequential_mode and resume_checkpoint_path:
             _cp = _load_resume_checkpoint(resume_checkpoint_path)
             if _cp is None:
@@ -1317,16 +1474,24 @@ Please use the Tell action to report the results of all test cases before execut
             else:
                 # If SupervisorJudge recommended a specific step, load that step's checkpoint for replay state
                 rr = _cp.get("restart_recommendation") or {}
+                resume_restart_rec = rr
+                resume_cp_for_branching = copy.deepcopy(_cp)
+                resume_retry_context_text = _build_retry_context_text(rr)
                 restart_iter = rr.get("restart_from_iter")
                 if restart_iter is not None:
-                    step_path = Path(resume_checkpoint_path).parent / "checkpoints" / f"step_{int(restart_iter):03d}.json"
-                    if step_path.exists():
-                        step_cp = _load_resume_checkpoint(str(step_path))
-                        if step_cp and step_cp.get("replay_core"):
-                            _cp["replay_core"] = step_cp["replay_core"]
-                            _cp["decision_payload"] = step_cp.get("decision_payload") or _cp.get("decision_payload")
-                            _apply_replay_core_to_checkpoint(_cp)
-                            logger.info(f"[resume] Using restart_recommendation: step {restart_iter} → {step_path}")
+                    if int(restart_iter) == 0:
+                        # restart_from_iter=0 means retry from scratch; do baseline startup instead of resume.
+                        force_baseline_from_start = True
+                        logger.info("[resume] restart_from_iter=0, forcing baseline restart from start_func")
+                    else:
+                        step_path = Path(resume_checkpoint_path).parent / "checkpoints" / f"step_{int(restart_iter):03d}.json"
+                        if step_path.exists():
+                            step_cp = _load_resume_checkpoint(str(step_path))
+                            if step_cp and step_cp.get("replay_core"):
+                                _cp["replay_core"] = step_cp["replay_core"]
+                                _cp["decision_payload"] = step_cp.get("decision_payload") or _cp.get("decision_payload")
+                                _apply_replay_core_to_checkpoint(_cp)
+                                logger.info(f"[resume] Using restart_recommendation: step {restart_iter} → {step_path}")
 
                 _degraded = _cp.get("integrity", {}).get("resume_degraded", False)
                 _reason = _cp.get("integrity", {}).get("degrade_reason", "")
@@ -1345,8 +1510,12 @@ Please use the Tell action to report the results of all test cases before execut
                             f"but profile exists → proceeding with resume "
                             f"(URL will fall back to start_func if empty)."
                         )
-                    resume_cp = _cp
-                    logger.info("Resume mode ENABLED: first case will start from checkpoint.")
+                    if force_baseline_from_start:
+                        resume_cp = None
+                        logger.info("Baseline mode ENABLED (restart_from_iter=0): first case will start from start_func.")
+                    else:
+                        resume_cp = _cp
+                        logger.info("Resume mode ENABLED: first case will start from checkpoint.")
 
         if sequential_mode:
             # Sequential mode: execute test cases one by one, record per-case time and cost
@@ -1361,7 +1530,7 @@ Please use the Tell action to report the results of all test cases before execut
                     f"Executing test case {idx}/{len(test_cases)}: {case_id}")
 
                 # Determine if this case should use resume mode (first case only)
-                use_resume_this_case = (resume_cp is not None and idx == 1)
+                use_resume_this_case = (resume_cp is not None and idx == 1 and not force_baseline_from_start)
 
                 t0 = time.perf_counter()
                 try:
@@ -1434,6 +1603,7 @@ Please use the Tell action to report the results of all test cases before execut
                         self.osagent.log_dirs = f"{base_log_dir}/{case_name_for_log}{case_id}"
                     else:
                         self.osagent.log_dirs = f"{base_log_dir}/{case_id}"
+                    case_log_root = self.osagent.log_dirs
                     self.osagent._get_timestamped_paths()
                     # Lock timestamped paths so _reset_state won't regenerate a new timestamp dir
                     self.osagent._lock_timestamped_paths = True
@@ -1446,11 +1616,368 @@ Please use the Tell action to report the results of all test cases before execut
                             f"history_len={len(self.osagent.rc.action_history)}"
                         )
 
-                    # Create single case dict for execution
-                    single_case = {case_id: case_info}
+                    # Create single case dict for execution.
+                    # In round-2, inject supervisor's fail/retry context so agent can use it before acting.
+                    case_info_for_run = copy.deepcopy(case_info)
+                    if idx == 1 and resume_retry_context_text:
+                        case_info_for_run["case_desc"] = (
+                            str(case_info_for_run.get("case_desc", "") or "") + resume_retry_context_text
+                        )
+                        logger.info("[resume] Injected supplemental fail/retry context into case_desc for round-2 run")
 
-                    # Execute single test case (soft_reset=True preserves checkpoint history)
-                    result_dict = await self.execute_api_check(task_name, 1, single_case, soft_reset=use_resume_this_case)
+                    # ── Branching retry (round-2 first case only) ──────────────────────────
+                    branching_n = int(self.rc.agent_params.get("branching_n_candidates", 0))
+                    branching_k = int(self.rc.agent_params.get("branching_k", 1))
+                    do_branching = (
+                        idx == 1
+                        and (bool(resume_checkpoint_path) or bool(resume_retry_context_text))
+                        and branching_n >= 2
+                    )
+
+                    if do_branching:
+                        rr = (resume_restart_rec or {})
+                        restart_iter = int(rr.get("restart_from_iter") or 0)
+                        task_desc = str(case_info_for_run.get("case_desc", ""))
+                        fail_reason = str(rr.get("fail_reason", "") or "")
+                        retry_reason = str(rr.get("retry_reason", "") or "")
+                        restart_explanation = str(rr.get("restart_explanation", "") or "")
+                        cp_for_tail = resume_cp_for_branching or resume_cp or {}
+                        traj_tail = _build_trajectory_tail(cp_for_tail, restart_iter) if cp_for_tail else "(no trajectory available)"
+
+                        # Step A: capture current screenshot at retry node
+                        screenshot_b64 = ""
+                        try:
+                            from metagpt.utils.common import encode_image as _enc_img
+                            screenshot_b64 = _enc_img(self.osagent.screenshot_file) if Path(self.osagent.screenshot_file).exists() else ""
+                        except Exception as _se:
+                            logger.debug(f"[branching] Screenshot capture failed: {_se}")
+
+                        # Step B: agent generates N candidate plans
+                        logger.info(f"[branching] Generating {branching_n} candidate retry plans...")
+                        candidate_plan_items = await self.osagent.generate_retry_plans(
+                            n=branching_n,
+                            task_desc=task_desc,
+                            fail_reason=fail_reason,
+                            restart_explanation=restart_explanation,
+                            trajectory_tail=traj_tail,
+                            screenshot_b64=screenshot_b64,
+                        )
+                        if not candidate_plan_items:
+                            logger.warning("[branching] No plans generated, falling back to single-run mode")
+                            do_branching = False
+
+                    if do_branching:
+                        plans = [str(p.get("plan", "")).strip() for p in candidate_plan_items if isinstance(p, dict)]
+                        candidate_plan_items = [p for p in candidate_plan_items if isinstance(p, dict) and str(p.get("plan", "")).strip()]
+                        if not plans:
+                            logger.warning("[branching] Candidate plans empty after normalization, fallback to single-run mode")
+                            do_branching = False
+                    if do_branching:
+                        # Step C: SupervisorJudge selects top-K plans
+                        config_file = str(getattr(self, "_config_file", "") or "")
+                        selected_plan_items = await supervisor_select_plans_async(
+                            plans=plans,
+                            k=branching_k,
+                            context={
+                                "task_desc": task_desc,
+                                "fail_reason": fail_reason,
+                                "retry_reason": retry_reason,
+                                "restart_explanation": restart_explanation,
+                                "trajectory_tail": traj_tail,
+                                "screenshot_b64": screenshot_b64,
+                            },
+                            config_path=config_file,
+                        )
+                        if not selected_plan_items:
+                            logger.warning("[branching] Judge returned empty plan set, fallback to first generated plan")
+                            selected_plan_items = [{"idx": 0, "plan": plans[0], "reason": "fallback: first generated plan"}]
+                        selected_plans = [str(it.get("plan", "")) for it in selected_plan_items if isinstance(it, dict)]
+                        selected_reasons = [str(it.get("reason", "")) for it in selected_plan_items if isinstance(it, dict)]
+                        logger.info(f"[branching] Judge selected {len(selected_plans)}/{len(plans)} plans")
+                        if len(selected_plans) < min(branching_k, len(plans)):
+                            logger.warning(
+                                f"[branching] Selected plans fewer than branching_k: "
+                                f"{len(selected_plans)} < {min(branching_k, len(plans))}. "
+                                "Will execute all selected plans in order."
+                            )
+                        selected_indices: List[int] = []
+                        _used_indices = set()
+                        for sp in selected_plans:
+                            _idx = -1
+                            for i, p in enumerate(plans):
+                                if i not in _used_indices and p == sp:
+                                    _idx = i
+                                    _used_indices.add(i)
+                                    break
+                            selected_indices.append(_idx)
+                        # Persist early so candidate/selected plans are not lost if execution crashes later.
+                        _save_retry_plans_json(
+                            case_id=str(case_id),
+                            payload={
+                                "case_id": str(case_id),
+                                "branching_n_candidates": int(branching_n),
+                                "branching_k": int(branching_k),
+                                "task_desc": task_desc,
+                                "failure_context": {
+                                    "fail_reason": fail_reason,
+                                    "retry_reason": retry_reason,
+                                    "restart_explanation": restart_explanation,
+                                    "restart_from_iter": restart_iter,
+                                },
+                                "trajectory_tail": traj_tail,
+                                "candidate_plans": [
+                                    {
+                                        "idx": i,
+                                        "dimension": str(candidate_plan_items[i].get("dimension", "")),
+                                        "title": str(candidate_plan_items[i].get("title", "")),
+                                        "plan": p,
+                                        "reason": str(candidate_plan_items[i].get("reason", "")),
+                                    }
+                                    for i, p in enumerate(plans)
+                                ],
+                                "selected_plan_indices": selected_indices,
+                                "selected_plans": [
+                                    {
+                                        "order": i,
+                                        "dimension": _extract_plan_dimension(p),
+                                        "plan": p,
+                                        "reason": selected_reasons[i] if i < len(selected_reasons) else "",
+                                    }
+                                    for i, p in enumerate(selected_plans)
+                                ],
+                                "branch_execution": [],
+                                "stopped_early_on_success": False,
+                                "status": "selected_not_executed_yet",
+                            },
+                        )
+
+                        # Save browser + agent state at retry node for inter-branch restore
+                        retry_node_cp = copy.deepcopy(
+                            resume_cp
+                            or resume_cp_for_branching
+                            or {
+                                "last_completed_iter": 0,
+                                "action_history_prefix": [],
+                                "summary_history_prefix": [],
+                            }
+                        )
+                        # IMPORTANT: inter-branch restore must align with supervisor recommendation.
+                        # Otherwise branch 1+ may resume from stale last_completed_iter (e.g. 16/20)
+                        # even when restart_from_iter is 0.
+                        try:
+                            restart_iter_int = int(restart_iter or 0)
+                        except Exception:
+                            restart_iter_int = 0
+                        if not isinstance(retry_node_cp, dict):
+                            retry_node_cp = {}
+                        retry_node_cp["last_completed_iter"] = restart_iter_int
+                        # OSAgent.restore_from_checkpoint prefers replay_core.last_completed_iter
+                        # over top-level last_completed_iter, so we must align both.
+                        core = retry_node_cp.get("replay_core")
+                        if isinstance(core, dict):
+                            core["last_completed_iter"] = restart_iter_int
+                        if restart_iter_int <= 0:
+                            retry_node_cp["action_history_prefix"] = []
+                            retry_node_cp["summary_history_prefix"] = []
+                            payload = retry_node_cp.get("decision_payload")
+                            if isinstance(payload, dict):
+                                payload["action_tail"] = []
+                                payload["summary_tail"] = []
+                        else:
+                            ah = retry_node_cp.get("action_history_prefix")
+                            if isinstance(ah, list):
+                                retry_node_cp["action_history_prefix"] = ah[:restart_iter_int]
+                            sh = retry_node_cp.get("summary_history_prefix")
+                            if isinstance(sh, list):
+                                retry_node_cp["summary_history_prefix"] = sh[:restart_iter_int]
+                        retry_node_profile_src = ""
+                        retry_node_profile_bak = ""
+                        if len(selected_plans) > 1 and self._user_data_dir and Path(self._user_data_dir).exists():
+                            retry_node_profile_bak = self._user_data_dir + "_branching_bak"
+                            try:
+                                if Path(retry_node_profile_bak).exists():
+                                    shutil.rmtree(retry_node_profile_bak, ignore_errors=True)
+                                shutil.copytree(self._user_data_dir, retry_node_profile_bak)
+                                retry_node_profile_src = retry_node_profile_bak
+                                logger.info(f"[branching] Saved retry-node browser profile → {retry_node_profile_bak}")
+                            except Exception as _pe:
+                                logger.warning(f"[branching] Profile snapshot failed: {_pe}")
+                        if len(selected_plans) > 1 and not retry_node_profile_src:
+                            logger.warning(
+                                "[branching] Cannot snapshot browser profile for multi-branch restore; "
+                                "will still execute remaining selected plans without profile-restore shortcut"
+                            )
+
+                        resume_anchor_cp = resume_cp or resume_cp_for_branching or {}
+                        retry_node_url = resume_anchor_cp.get("resume_from_url", "") or start_func
+                        retry_node_scroll = resume_anchor_cp.get("scroll", {})
+
+                        # Step D: execute each selected plan sequentially, stop on first success
+                        result_dict = {}
+                        branch_results = []
+                        for branch_idx, plan in enumerate(selected_plans):
+                            if branch_idx > 0:
+                                # Restore browser + agent state to retry node
+                                logger.info(f"[branching] Restoring retry-node state for branch {branch_idx}...")
+                                await self._cleanup_environment(is_web)
+                                await asyncio.sleep(SLEEP_AFTER_CLEANUP)
+                                if retry_node_profile_src and Path(retry_node_profile_src).exists() and self._user_data_dir:
+                                    try:
+                                        if Path(self._user_data_dir).exists():
+                                            shutil.rmtree(self._user_data_dir, ignore_errors=True)
+                                        shutil.copytree(retry_node_profile_src, self._user_data_dir)
+                                        logger.info(f"[branching] Profile restored for branch {branch_idx}")
+                                    except Exception as _rpe:
+                                        logger.warning(f"[branching] Profile restore failed: {_rpe}")
+                                await self._start_environment(
+                                    url=retry_node_url if is_web else None,
+                                    work_path=retry_node_url if not is_web else None,
+                                )
+                                await asyncio.sleep(SLEEP_BEFORE_EXECUTE)
+                                if retry_node_scroll.get("y") or retry_node_scroll.get("x"):
+                                    try:
+                                        self.osagent.controller.set_scroll(
+                                            x=int(retry_node_scroll.get("x", 0)),
+                                            y=int(retry_node_scroll.get("y", 0)),
+                                        )
+                                    except Exception:
+                                        pass
+                                # Restore osagent context
+                                self.osagent.rc.restore_from_checkpoint(retry_node_cp)
+                                logger.info(f"[branching] Agent context restored for branch {branch_idx}")
+
+                            # Inject selected plan into case_desc
+                            case_branched = copy.deepcopy(case_info_for_run)
+                            case_branched["case_desc"] = (
+                                str(case_branched.get("case_desc", "") or "")
+                                + f"\n\n[Retry Plan for this attempt]\n{plan}"
+                            )
+                            branch_case = {case_id: case_branched}
+                            # Put each selected plan execution under an explicit branch folder:
+                            #   .../<case>/0/<timestamp>  (first selected plan)
+                            #   .../<case>/1/<timestamp>  (second selected plan)
+                            #   .../<case>/2/<timestamp>  (third selected plan)
+                            # This makes per-plan logs easy to inspect.
+                            self.osagent.log_dirs = f"{case_log_root}/{branch_idx}"
+                            logger.info(f"[branching] Branch {branch_idx} log root: {self.osagent.log_dirs}")
+                            # Re-lock timestamped paths for this branch
+                            self.osagent._get_timestamped_paths()
+                            self.osagent._lock_timestamped_paths = True
+
+                            logger.info(f"[branching] Executing branch {branch_idx + 1}/{len(selected_plans)}...")
+                            # Keep soft_reset=True for every branch, otherwise osagent.run() hard-reset
+                            # will wipe the restored retry-node context before execution.
+                            branch_result = await self.execute_api_check(
+                                task_name, 1, branch_case, soft_reset=True
+                            )
+                            result_dict = branch_result
+                            # Keep branch checkpoint storage aligned with restart policy:
+                            # - restart_from_iter == 0: remove all per-step checkpoints
+                            # - restart_from_iter > 0: keep only the recommended step if present
+                            try:
+                                _prune_checkpoints_keep_only_restart(
+                                    checkpoint_dir_path=str(getattr(self.osagent, "save_img", "") or ""),
+                                    restart_from_iter=restart_iter,
+                                )
+                            except Exception as _prune_exc:
+                                logger.warning(f"[branching] Failed to prune branch checkpoints: {_prune_exc}")
+
+                            # Early stop: task succeeded
+                            matched = self._find_matching_key(case_id, branch_result)
+                            branch_ok = False
+                            if matched is not None:
+                                matched_payload = branch_result.get(matched)
+                                if not isinstance(matched_payload, dict):
+                                    matched_payload = {}
+                                rv = matched_payload.get("result", "")
+                                branch_ok = bool(str(rv).strip().lower() in ("true", "pass", "1", "yes", "y"))
+                            branch_results.append(
+                                {
+                                    "order": branch_idx,
+                                    "selected_from_candidate_idx": selected_indices[branch_idx]
+                                    if branch_idx < len(selected_indices)
+                                    else -1,
+                                    "dimension": _extract_plan_dimension(plan),
+                                    "plan": plan,
+                                    "select_reason": selected_reasons[branch_idx] if branch_idx < len(selected_reasons) else "",
+                                    "result": bool(branch_ok),
+                                }
+                            )
+                            # Save per-branch result json to {case_log_root}/{branch_idx}/test_case.json
+                            try:
+                                branch_dir = Path(case_log_root) / str(branch_idx)
+                                branch_dir.mkdir(parents=True, exist_ok=True)
+                                _branch_payload = matched_payload if matched is not None else {}
+                                _branch_case_data = test_cases.get(case_id, {})
+                                _branch_item = {
+                                    "test_id": f"{case_name_for_log}{case_id}" if case_name_for_log else str(case_id),
+                                    "case_desc": _branch_case_data.get("case_desc", ""),
+                                    "evidence": _branch_payload.get("evidence", ""),
+                                    "result": bool(branch_ok),
+                                    "plan": plan,
+                                }
+                                _branch_json_path = branch_dir / "test_case.json"
+                                with open(_branch_json_path, "w", encoding="utf-8") as _bf:
+                                    json.dump({"test_cases": [_branch_item]}, _bf, indent=4, ensure_ascii=False)
+                                logger.info(f"[branching] Saved branch {branch_idx} result to {_branch_json_path}")
+                            except Exception as _bje:
+                                logger.warning(f"[branching] Failed to save branch {branch_idx} result json: {_bje}")
+                            logger.info(f"[branching] Branch {branch_idx + 1} result: {'SUCCESS' if branch_ok else 'fail'}")
+                            if branch_ok:
+                                logger.info(f"[branching] Early stop after branch {branch_idx + 1}")
+                                break
+
+                        # Clean up profile backup
+                        if retry_node_profile_bak and Path(retry_node_profile_bak).exists():
+                            try:
+                                shutil.rmtree(retry_node_profile_bak, ignore_errors=True)
+                            except Exception:
+                                pass
+                        _save_retry_plans_json(
+                            case_id=str(case_id),
+                            payload={
+                                "case_id": str(case_id),
+                                "branching_n_candidates": int(branching_n),
+                                "branching_k": int(branching_k),
+                                "task_desc": task_desc,
+                                "failure_context": {
+                                    "fail_reason": fail_reason,
+                                    "retry_reason": retry_reason,
+                                    "restart_explanation": restart_explanation,
+                                    "restart_from_iter": restart_iter,
+                                },
+                                "trajectory_tail": traj_tail,
+                                "candidate_plans": [
+                                    {
+                                        "idx": i,
+                                        "dimension": str(candidate_plan_items[i].get("dimension", "")),
+                                        "title": str(candidate_plan_items[i].get("title", "")),
+                                        "plan": p,
+                                        "reason": str(candidate_plan_items[i].get("reason", "")),
+                                    }
+                                    for i, p in enumerate(plans)
+                                ],
+                                "selected_plan_indices": selected_indices,
+                                "selected_plans": [
+                                    {
+                                        "order": i,
+                                        "dimension": _extract_plan_dimension(p),
+                                        "plan": p,
+                                        "reason": selected_reasons[i] if i < len(selected_reasons) else "",
+                                    }
+                                    for i, p in enumerate(selected_plans)
+                                ],
+                                "branch_execution": branch_results,
+                                "stopped_early_on_success": any(bool(x.get("result")) for x in branch_results),
+                                "status": "execution_finished",
+                            },
+                        )
+
+                    else:
+                        # Normal single-run (no branching or branching disabled)
+                        single_case = {case_id: case_info_for_run}
+                        result_dict = await self.execute_api_check(task_name, 1, single_case, soft_reset=use_resume_this_case)
+
                     elapsed = time.perf_counter() - t0
                     cost_after = _get_llm_total_usd()
                     delta_usd = max(0.0, cost_after - cost_before)
@@ -1463,10 +1990,12 @@ Please use the Tell action to report the results of all test cases before execut
                     test_cases[case_id]["cost"] = f"time={elapsed:.1f}s, usd=${delta_usd:.6f}"
                     matched_key = self._find_matching_key(case_id, result_dict)
                     if matched_key is not None:
-                        all_results[case_id] = result_dict[matched_key]
+                        matched_payload = result_dict.get(matched_key)
+                        if not isinstance(matched_payload, dict):
+                            matched_payload = {}
+                        all_results[case_id] = matched_payload
                         test_cases[case_id].update(
-                            {"result": result_dict[matched_key].get(
-                                "result", ""), "evidence": result_dict[matched_key].get("evidence", "")}
+                            {"result": matched_payload.get("result", ""), "evidence": matched_payload.get("evidence", "")}
                         )
                 except Exception as case_err:
                     logger.error(f"Case {case_id} failed with error: {case_err}")
@@ -1517,6 +2046,11 @@ Please use the Tell action to report the results of all test cases before execut
                                         with open(ts_path, "w", encoding="utf-8") as f:
                                             json.dump(cp, f, indent=2, ensure_ascii=False)
                                         logger.debug(f"Synced restart_recommendation to {ts_path}")
+                                # 只保留大模型推荐的 retry 节点，删除其他 step checkpoint
+                                _prune_checkpoints_keep_only_restart(
+                                    str(Path(self._last_checkpoint_path).parent),
+                                    rec.get("restart_from_iter"),
+                                )
                         except Exception as e:
                             logger.warning(f"Failed to add restart_recommendation: {e}")
 
@@ -1584,6 +2118,11 @@ Please use the Tell action to report the results of all test cases before execut
                                     with open(ts_path, "w", encoding="utf-8") as f:
                                         json.dump(cp, f, indent=2, ensure_ascii=False)
                                     logger.debug(f"Synced restart_recommendation to {ts_path}")
+                            # 只保留大模型推荐的 retry 节点，删除其他 step checkpoint
+                            _prune_checkpoints_keep_only_restart(
+                                str(Path(self._last_checkpoint_path).parent),
+                                rec.get("restart_from_iter"),
+                            )
                     except Exception as e:
                         logger.warning(f"Failed to add restart_recommendation: {e}")
 

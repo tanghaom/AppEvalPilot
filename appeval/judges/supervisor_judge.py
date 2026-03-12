@@ -298,6 +298,9 @@ async def analyze_trajectory_async(
             failure_type = str(parsed.get("failure_type", "ambiguous") or "ambiguous").strip().lower()
             if failure_type not in ("agent", "env", "ambiguous"):
                 failure_type = "ambiguous"
+            # Treat ambiguous as agent fail for counting/reporting (e.g. work_dirs stats)
+            if failure_type == "ambiguous":
+                failure_type = "agent"
             should_retry = bool(parsed.get("should_retry", True))
             restart = int(parsed.get("restart_from_iter", last_iter - 2))
             restart = max(0, min(restart, last_iter - 1))
@@ -331,7 +334,7 @@ async def analyze_trajectory_async(
         restart_from = max(0, last_iter - 2)
 
     out = {
-        "failure_type": "ambiguous",
+        "failure_type": "agent",  # ambiguous treated as agent fail
         "fail_reason": f"Heuristic fallback (LLM unavailable): last_completed_iter={last_iter}.",
         "should_retry": True,
         "retry_reason": "LLM analysis unavailable; defaulting to retry.",
@@ -434,6 +437,140 @@ def select_actions(
 ) -> List[Any]:
     """Sync wrapper for select_actions_async."""
     coro = select_actions_async(candidates, K, context, config_path)
+    try:
+        loop = asyncio.get_running_loop()
+    except RuntimeError:
+        loop = None
+    if loop and loop.is_running():
+        import concurrent.futures
+        with concurrent.futures.ThreadPoolExecutor() as pool:
+            return pool.submit(asyncio.run, coro).result(timeout=120)
+    return asyncio.run(coro)
+
+
+# ---------------------------------------------------------------------------
+#  Plan selection (branching retry)
+# ---------------------------------------------------------------------------
+
+PLAN_SELECTION_PROMPT = """\
+You are a test retry supervisor. A GUI agent failed its first-round test and has now proposed \
+{n_candidates} candidate retry plans. Your job: select the top {k} most promising plans to execute.
+
+## Selection criteria (in priority order)
+1. **Root-cause fit** — Does the plan directly fix the documented failure reason?
+2. **Feasibility** — Can it be executed from what is visible in the current screenshot?
+3. **Non-repetition** — Does it avoid the actions that already failed (see action history)?
+4. **Specificity** — A concrete, step-by-step plan beats a vague strategy.
+
+## Task description
+{task_desc}
+
+## Previous round failure analysis
+- Failure reason: {fail_reason}
+- Retry rationale: {retry_reason}
+- Supervisor advice: {restart_explanation}
+
+## Action history near the retry point (last steps before failure)
+{trajectory_tail}
+
+## Current screen at retry node
+[See attached screenshot]
+
+## Candidate plans (indexed 0..{n_minus_1}):
+{candidates_text}
+
+## Your answer
+Return ONLY a JSON object in this format:
+{{
+  "selected": [
+    {{"idx": 2, "reason": "why this plan is selected"}},
+    {{"idx": 0, "reason": "why this plan is selected"}}
+  ]
+}}
+Rules:
+1) Keep the order as priority ranking (best first).
+2) Select at most {k} items.
+3) reason should be concise and specific.
+4) No markdown, no extra text.
+"""
+
+
+async def select_plans_async(
+    plans: List[str],
+    k: int,
+    context: Optional[Dict[str, Any]] = None,
+    config_path: str = "",
+) -> List[Dict[str, Any]]:
+    """From N candidate retry plans, select and rank the top-k using a strong model.
+
+    context keys (all optional):
+        task_desc, fail_reason, retry_reason, restart_explanation,
+        trajectory_tail, screenshot_b64
+    Returns list of selected plan objects:
+      [{"idx": int, "plan": str, "reason": str}, ...]
+    Falls back to first-k plans with generic reasons if LLM unavailable/unparseable.
+    """
+    if not plans or k <= 0:
+        return []
+    if len(plans) <= k:
+        return [{"idx": i, "plan": p, "reason": "auto-selected: candidates <= k"} for i, p in enumerate(plans)]
+
+    ctx = context or {}
+    llm = _get_llm(config_path)
+    if llm:
+        try:
+            candidates_text = "\n".join(
+                f"[{i}]\n{p}" for i, p in enumerate(plans)
+            )
+            prompt = PLAN_SELECTION_PROMPT.format(
+                n_candidates=len(plans),
+                k=k,
+                n_minus_1=len(plans) - 1,
+                task_desc=ctx.get("task_desc", "(not provided)"),
+                fail_reason=ctx.get("fail_reason", "(not provided)"),
+                retry_reason=ctx.get("retry_reason", "(not provided)"),
+                restart_explanation=ctx.get("restart_explanation", "(not provided)"),
+                trajectory_tail=ctx.get("trajectory_tail", "(not provided)"),
+                candidates_text=candidates_text,
+            )
+            screenshot_b64 = ctx.get("screenshot_b64")
+            images = [screenshot_b64] if screenshot_b64 else []
+            raw = await llm.aask(prompt, images=images)
+            raw = raw.strip()
+            raw = re.sub(r"```(?:json)?\s*", "", raw)
+            raw = re.sub(r"```", "", raw).strip()
+            payload = json.loads(raw)
+            selected_items = payload.get("selected", []) if isinstance(payload, dict) else []
+            if isinstance(selected_items, list):
+                selected: List[Dict[str, Any]] = []
+                seen: set = set()
+                for item in selected_items:
+                    if not isinstance(item, dict):
+                        continue
+                    idx = int(item.get("idx", -1))
+                    reason = str(item.get("reason", "")).strip()
+                    if 0 <= idx < len(plans) and idx not in seen:
+                        selected.append({"idx": idx, "plan": plans[idx], "reason": reason})
+                        seen.add(idx)
+                    if len(selected) >= k:
+                        break
+                if selected:
+                    logger.info(f"SupervisorJudge (select_plans): selected {len(selected)}/{len(plans)} plans")
+                    return selected
+        except Exception as e:
+            logger.warning(f"SupervisorJudge select_plans LLM failed, falling back: {e}")
+
+    return [{"idx": i, "plan": p, "reason": "fallback: first-k selection"} for i, p in enumerate(plans[:k])]
+
+
+def select_plans(
+    plans: List[str],
+    k: int,
+    context: Optional[Dict[str, Any]] = None,
+    config_path: str = "",
+) -> List[Dict[str, Any]]:
+    """Sync wrapper for select_plans_async."""
+    coro = select_plans_async(plans, k, context, config_path)
     try:
         loop = asyncio.get_running_loop()
     except RuntimeError:

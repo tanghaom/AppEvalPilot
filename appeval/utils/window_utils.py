@@ -253,7 +253,7 @@ async def start_windows(
                 "--remote-allow-origins=*",
                 f"--user-data-dir={user_data_dir}" if user_data_dir else "",
                 # Xvfb rendering
-                "--disable-gpu", "--disable-software-rasterizer", "--disable-dev-shm-usage",
+                "--disable-gpu", "--use-gl=swiftshader", "--disable-dev-shm-usage",
                 "--window-size=1920,1080", "--start-maximized",
                 # Suppress prompts & dialogs
                 "--disable-infobars", "--disable-component-update",

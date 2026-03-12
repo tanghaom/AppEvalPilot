@@ -798,6 +798,249 @@ class PCController(BaseController):
         except Exception as exc:
             logger.debug(f"set_scroll failed: {exc}")
 
+    def intercept_next_file_chooser(self, file_path: str, timeout_sec: float = 8.0) -> bool:
+        """Intercept the next native file chooser dialog opened by the page via CDP.
+
+        Call this BEFORE the action that triggers the file picker (e.g. clicking 'Choose File').
+        CDP will intercept the dialog so the OS picker never appears, then immediately
+        handle it with the supplied file path.
+
+        Returns True if a file chooser was intercepted and handled, False on error/timeout.
+        """
+        if not getattr(self, "remote_debugging_port", None):
+            return False
+        path_abs = os.path.abspath(os.path.expanduser(file_path))
+        if not os.path.isfile(path_abs):
+            logger.warning(f"intercept_next_file_chooser: file not found: {path_abs}")
+            return False
+        try:
+            import websocket as _ws
+            import threading
+
+            tabs, _ = self._fetch_cdp_tabs(timeout=2.0)
+            target = self._pick_cdp_page_tab(tabs)
+            if not target:
+                return False
+            ws_url = target.get("webSocketDebuggerUrl", "")
+            if not ws_url:
+                return False
+
+            result = {"handled": False, "error": None}
+
+            def _run():
+                try:
+                    conn = self._cdp_ws_connect(ws_url, timeout=5)
+                    # Enable file chooser interception
+                    conn.send(json.dumps({"id": 1, "method": "Page.setInterceptFileChooserDialog", "params": {"enabled": True}}))
+                    self._cdp_ws_recv_result(conn, request_id=1, timeout_sec=3.0)
+                    # Wait for fileChooserOpened event (no id field)
+                    deadline = time.time() + timeout_sec
+                    backend_node_id = None
+                    while time.time() < deadline:
+                        try:
+                            raw = conn.recv()
+                        except Exception:
+                            break
+                        if not raw:
+                            continue
+                        try:
+                            msg = json.loads(raw)
+                        except Exception:
+                            continue
+                        if msg.get("method") == "Page.fileChooserOpened":
+                            backend_node_id = (msg.get("params") or {}).get("backendNodeId")
+                            break
+                    if backend_node_id is not None:
+                        conn.send(json.dumps({
+                            "id": 2,
+                            "method": "DOM.setFileInputFiles",
+                            "params": {"backendNodeId": backend_node_id, "files": [path_abs]},
+                        }))
+                        self._cdp_ws_recv_result(conn, request_id=2, timeout_sec=5.0)
+                        result["handled"] = True
+                        logger.info(f"intercept_next_file_chooser: handled with {path_abs}")
+                    else:
+                        logger.debug("intercept_next_file_chooser: timeout waiting for fileChooserOpened")
+                    # Disable interception
+                    conn.send(json.dumps({"id": 3, "method": "Page.setInterceptFileChooserDialog", "params": {"enabled": False}}))
+                    self._cdp_ws_recv_result(conn, request_id=3, timeout_sec=2.0)
+                    conn.close()
+                except Exception as exc:
+                    result["error"] = exc
+                    logger.debug(f"intercept_next_file_chooser thread error: {exc}")
+
+            t = threading.Thread(target=_run, daemon=True)
+            t.start()
+            # Store thread so osagent can join() after the click
+            self._file_chooser_thread = t
+            return True
+        except Exception as exc:
+            logger.debug(f"intercept_next_file_chooser setup failed: {exc}")
+        return False
+
+    def wait_for_file_chooser_handled(self, timeout_sec: float = 10.0) -> bool:
+        """Wait for the background file-chooser intercept thread to finish.
+
+        Call this AFTER the click action. Returns True if interception succeeded.
+        """
+        t = getattr(self, "_file_chooser_thread", None)
+        if t is None:
+            return False
+        t.join(timeout=timeout_sec)
+        handled = not t.is_alive()
+        self._file_chooser_thread = None
+        return handled
+
+    def inject_file_via_js(self, file_path: str, mime_type: str = None) -> bool:
+        """Inject a file directly into the page's <input type="file"> via JavaScript DataTransfer.
+
+        This bypasses the OS file picker entirely and works even with hidden/shadow-DOM inputs.
+        Reads the file in Python, base64-encodes it, then runs a Runtime.evaluate that creates
+        a real File object and assigns it to the input, dispatching 'change'/'input' events.
+        Returns True on success.
+        """
+        if not getattr(self, "remote_debugging_port", None):
+            return False
+        path_abs = os.path.abspath(os.path.expanduser(file_path))
+        if not os.path.isfile(path_abs):
+            logger.warning(f"inject_file_via_js: file not found: {path_abs}")
+            return False
+        import base64
+        ext = os.path.splitext(path_abs)[1].lower()
+        mime_map = {
+            ".jpg": "image/jpeg", ".jpeg": "image/jpeg", ".png": "image/png",
+            ".gif": "image/gif", ".webp": "image/webp", ".pdf": "application/pdf",
+            ".csv": "text/csv", ".txt": "text/plain", ".mp4": "video/mp4",
+            ".tiff": "image/tiff", ".zip": "application/zip", ".js": "text/javascript",
+        }
+        if not mime_type:
+            mime_type = mime_map.get(ext, "application/octet-stream")
+        file_name = os.path.basename(path_abs)
+        file_size = os.path.getsize(path_abs)
+        with open(path_abs, "rb") as fh:
+            b64 = base64.b64encode(fh.read()).decode()
+
+        js = (
+            "(function(){"
+            "function findInput(root){"
+            "var inp=root.querySelector(\"input[type='file']\");"
+            "if(inp)return inp;"
+            "var all=root.querySelectorAll('*');"
+            "for(var i=0;i<all.length;i++){if(all[i].shadowRoot){"
+            "var f=findInput(all[i].shadowRoot);if(f)return f;}}"
+            "return null;}"
+            "var input=findInput(document);"
+            "if(!input)return JSON.stringify({status:'no_input'});"
+            f"var b64='{b64}';"
+            "var bin=atob(b64);var arr=new Uint8Array(bin.length);"
+            "for(var i=0;i<bin.length;i++)arr[i]=bin.charCodeAt(i);"
+            f"var blob=new Blob([arr],{{type:'{mime_type}'}});"
+            f"var file=new File([blob],'{file_name}',{{type:'{mime_type}',lastModified:Date.now()}});"
+            "var dt=new DataTransfer();dt.items.add(file);"
+            "input.files=dt.files;"
+            "input.dispatchEvent(new Event('change',{bubbles:true}));"
+            "input.dispatchEvent(new InputEvent('input',{bubbles:true}));"
+            f"return JSON.stringify({{status:'ok',name:'{file_name}',size:{file_size}}});"
+            "})()"
+        )
+        try:
+            import websocket as _ws
+            tabs, _ = self._fetch_cdp_tabs(timeout=2.0)
+            target = self._pick_cdp_page_tab(tabs)
+            if not target:
+                return False
+            ws_url = target.get("webSocketDebuggerUrl", "")
+            if not ws_url:
+                return False
+            conn = self._cdp_ws_connect(ws_url, timeout=5)
+            conn.send(json.dumps({
+                "id": 1,
+                "method": "Runtime.evaluate",
+                "params": {"expression": js, "returnByValue": True},
+            }))
+            resp = self._cdp_ws_recv_result(conn, request_id=1, timeout_sec=15.0)
+            conn.close()
+            val = ((resp.get("result") or {}).get("result") or {}).get("value")
+            if val:
+                try:
+                    r = json.loads(val)
+                    if r.get("status") == "ok":
+                        logger.info(f"inject_file_via_js: injected {file_name} ({r.get('size')} bytes)")
+                        return True
+                    logger.debug(f"inject_file_via_js: page returned {r}")
+                except Exception:
+                    pass
+            logger.debug(f"inject_file_via_js: unexpected response: {resp}")
+        except Exception as exc:
+            logger.debug(f"inject_file_via_js failed: {exc}")
+        return False
+
+    def set_file_input_files(self, file_path: str) -> bool:
+        """Set file(s) on the first <input type="file"> in the active tab via CDP (no native dialog).
+
+        Use this when the task requires file upload: it injects the path directly so the
+        browser does not open the OS file picker (which is invisible to CDP screenshot).
+        Returns True if a file input was found and files were set, False otherwise.
+        """
+        if not getattr(self, "remote_debugging_port", None):
+            return False
+        path_abs = os.path.abspath(os.path.expanduser(file_path))
+        if not os.path.isfile(path_abs):
+            logger.warning(f"set_file_input_files: file not found: {path_abs}")
+            return False
+        try:
+            import websocket as _ws
+            tabs, _ = self._fetch_cdp_tabs(timeout=2.0)
+            target = self._pick_cdp_page_tab(tabs)
+            if not target:
+                return False
+            ws_url = target.get("webSocketDebuggerUrl", "")
+            if not ws_url:
+                return False
+            conn = self._cdp_ws_connect(ws_url, timeout=5)
+            req_id = 1
+            # DOM.enable
+            conn.send(json.dumps({"id": req_id, "method": "DOM.enable", "params": {}}))
+            self._cdp_ws_recv_result(conn, request_id=req_id, timeout_sec=3.0)
+            req_id += 1
+            # DOM.getDocument
+            conn.send(json.dumps({"id": req_id, "method": "DOM.getDocument", "params": {}}))
+            doc_resp = self._cdp_ws_recv_result(conn, request_id=req_id, timeout_sec=3.0)
+            conn.close()
+            root_id = (doc_resp.get("result") or {}).get("root", {}).get("nodeId")
+            if root_id is None:
+                logger.debug("set_file_input_files: no document root")
+                return False
+            conn = self._cdp_ws_connect(ws_url, timeout=5)
+            req_id = 10
+            conn.send(json.dumps({
+                "id": req_id,
+                "method": "DOM.querySelector",
+                "params": {"nodeId": root_id, "selector": "input[type=\"file\"]"},
+            }))
+            q_resp = self._cdp_ws_recv_result(conn, request_id=req_id, timeout_sec=3.0)
+            node_id = (q_resp.get("result") or {}).get("nodeId")
+            if node_id is None or node_id == 0:
+                conn.close()
+                logger.debug("set_file_input_files: no input[type=file] found")
+                return False
+            req_id += 1
+            conn.send(json.dumps({
+                "id": req_id,
+                "method": "DOM.setFileInputFiles",
+                "params": {"nodeId": node_id, "files": [path_abs]},
+            }))
+            set_resp = self._cdp_ws_recv_result(conn, request_id=req_id, timeout_sec=5.0)
+            conn.close()
+            if set_resp.get("error"):
+                logger.warning(f"set_file_input_files: CDP error: {set_resp.get('error')}")
+                return False
+            logger.info(f"set_file_input_files: set {path_abs} on file input (nodeId={node_id})")
+            return True
+        except Exception as exc:
+            logger.debug(f"set_file_input_files failed: {exc}")
+        return False
+
     # -------------------- Linux/Ubuntu helpers --------------------
     def _open_app_linux(self, name: str) -> None:
         """Open application on Linux/Ubuntu.
