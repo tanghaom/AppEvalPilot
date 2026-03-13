@@ -2,7 +2,7 @@ import asyncio
 
 from loguru import logger
 
-from appeval.roles.eval_runner import AppEvalRole
+from appeval.roles.seleniumagent import SeleniumAgent
 from appeval.utils.excel_json_converter import make_work_path
 
 
@@ -187,6 +187,15 @@ async def run_single_test(mode: str = "single"):
             logger.exception("Detailed error information")
 
 
+async def run_selenium_test(instruction:str,start_url: str) -> None:
+    appeval = SeleniumAgent()
+    try:
+    # Execute single test
+        result = await appeval.run(instruction=instruction, start_url=start_url)
+        logger.info(f"Final Response: {result}")
+    except Exception as e:
+        logger.info(f"Error : {e}")
+
 async def main():
     """Main function"""
     # Run single test example
@@ -196,7 +205,7 @@ async def main():
     # Run batch test example
     # logger.info("Starting to execute batch test...")
     # await run_batch_test()
-    await run_api_test()
+    await run_selenium_test("搜索视频 计量经济学，并进入前十个视频搜集信息情况。","https://www.bilibili.com")
 
 
 if __name__ == "__main__":
