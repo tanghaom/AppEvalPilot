@@ -277,7 +277,8 @@ async def start_task(req: StartRequest):
     if _task_status.get(req.detail_id, {}).get("status") == "running":
         return StartResponse(code=1, message="任务执行中", data={"success": False})
 
-    counter_key = f"{req.task_id}/{req.case_name}"
+    # 按 detail_id 区分 app，避免同名 case_name 被误归为同一个 app。
+    counter_key = f"{req.task_id}/{req.detail_id}"
     async with _counter_lock:
         start_index = _case_counter.get(counter_key, 0)
         _case_counter[counter_key] = start_index + len(req.test_arry)
@@ -306,7 +307,8 @@ async def batch_tasks(request: Request):
     start_index_map: Dict[int, int] = {}
     async with _counter_lock:
         for t in req.tasks:
-            counter_key = f"{t.task_id}/{t.case_name}"
+            # 按 detail_id 区分 app，避免同名 case_name 被误归为同一个 app。
+            counter_key = f"{t.task_id}/{t.detail_id}"
             si = _case_counter.get(counter_key, 0)
             _case_counter[counter_key] = si + len(t.test_arry)
             start_index_map[t.detail_id] = si
@@ -477,7 +479,7 @@ def main():
     if not args.callback_url and _full_cfg.get("callback_base_url"):
         CALLBACK_BASE_URL = _full_cfg["callback_base_url"].strip().rstrip("/")
 
-    _executor = ProcessPoolExecutor(max_workers=workers)
+    _executor = ProcessPoolExecutor(max_workers=workers, mp_context=__import__("multiprocessing").get_context("fork"))
     _worker_slots = asyncio.Queue(maxsize=workers)
     for _i in range(workers):
         _worker_slots.put_nowait(_i)

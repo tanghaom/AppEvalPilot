@@ -29,6 +29,9 @@ from appeval.prompts.osagent import case_batch_check_system_prompt
 from appeval.prompts.text_agent import text_agent_system_prompt
 from appeval.judges.supervisor_judge import analyze_trajectory_async as supervisor_analyze_trajectory_async
 from appeval.judges.supervisor_judge import select_plans_async as supervisor_select_plans_async
+from appeval.judges.supervisor_judge import classify_failure_async as supervisor_classify_failure_async
+from appeval.judges.supervisor_judge import update_env_belief as supervisor_update_env_belief
+from appeval.judges.supervisor_judge import compute_dimension_weights, P_BRANCH_FAIL_GIVEN_AGENT
 from appeval.roles.osagent import OSAgent
 from appeval.roles.osagent import (
     CHECKPOINT_ACTION_TAIL_LEN,
@@ -458,6 +461,7 @@ class AppEvalRole(Role):
             "log_dirs": kwargs.get("log_dirs", "work_dirs"),
             "use_timestamp_log_dir": kwargs.get("use_timestamp_log_dir", True),
             "max_iters": kwargs.get("max_iters", 20),
+            "think_history_images": int(kwargs.get("think_history_images", 3)),
             "save_checkpoint_per_step": kwargs.get("save_checkpoint_per_step", False),
             "save_profile_per_step": kwargs.get("save_profile_per_step", False),
             "branching_n_candidates": int(kwargs.get("branching_n_candidates", 0)),
@@ -467,6 +471,10 @@ class AppEvalRole(Role):
         # Store agent_class for _init_osagent
         self._agent_class = kwargs.get("agent_class", "osagent")
 
+        # Accumulator for SupervisorJudge token usage (populated during branching)
+        self._sv_prompt_tokens = 0
+        self._sv_completion_tokens = 0
+
         # Initialize CaseGenerator Action
         self.test_generator = CaseGenerator(
             config_path=kwargs.get("config_file", "config/config2.yaml")
@@ -475,16 +483,46 @@ class AppEvalRole(Role):
         # Initialize OSAgent (or TextAgent)
         self._init_osagent(**kwargs)
 
+    def _accumulate_sv_usage(self, result: dict) -> None:
+        """Accumulate SupervisorJudge token usage from a call result containing 'usage'."""
+        usage = result.get("usage") if isinstance(result, dict) else None
+        if usage:
+            self._sv_prompt_tokens += int(usage.get("prompt_tokens", 0) or 0)
+            self._sv_completion_tokens += int(usage.get("completion_tokens", 0) or 0)
+
+    def get_all_token_usage(self) -> dict:
+        """Return total token usage across all LLM sources (OSAgent, CaseGenerator, TellVerifier, SupervisorJudge)."""
+        prompt_tokens = completion_tokens = 0
+        llm_sources = [
+            getattr(self.test_generator, "llm", None),
+            getattr(self.osagent, "llm", None) if self.osagent else None,
+        ]
+        tv = getattr(self.osagent, "tell_verifier", None) if self.osagent else None
+        if tv:
+            llm_sources.append(getattr(tv, "llm", None))
+        for llm_source in llm_sources:
+            if llm_source and hasattr(llm_source, "get_costs"):
+                c = llm_source.get_costs()
+                prompt_tokens += int(getattr(c, "total_prompt_tokens", 0) or 0)
+                completion_tokens += int(getattr(c, "total_completion_tokens", 0) or 0)
+        return {
+            "prompt_tokens": prompt_tokens + self._sv_prompt_tokens,
+            "completion_tokens": completion_tokens + self._sv_completion_tokens,
+            "sv_prompt_tokens": self._sv_prompt_tokens,
+            "sv_completion_tokens": self._sv_completion_tokens,
+        }
+
     def _init_osagent(self, **kwargs) -> None:
         """Initialize OSAgent or TextAgent based on agent_class parameter.
 
         Args (via kwargs):
             agent_class: "osagent" (default, VLM + screenshots) or "text_agent" (text-only, a11y tree)
         """
-        add_info = """**[CRITICAL - Login Credentials]** If the application requires login or registration (e.g. you see a login page, "Welcome Back", "Sign Up", or "Create your account"), use these credentials to LOG IN directly:
-  - Email: algo_020@qq.com
-  - Password: 123456
-Click the email field, type the email using pyautogui.write(), then click the password field and type the password. Then click the "Log in" button. Do NOT register a new account. Do NOT click "Create your account" or "Sign up".
+        add_info = """**[CRITICAL - Login Credentials]** If the application requires login or registration, follow this priority order:
+1. **If the login form already has pre-filled values** (username/email and password fields are NOT empty), do NOT clear or overwrite them — just click the Login/Submit button directly. This is the most common case for demo/test web apps.
+2. **If the login form is empty but shows hint text** (e.g., placeholder like 'admin', 'testuser'), type exactly those hint values.
+3. **Only if the form is completely empty with no hints**, fall back to: Email: max_test1@qq.com, Password: 123456.
+NEVER clear pre-filled credentials to enter different ones. Do NOT register a new account. Do NOT click "Create your account" or "Sign up". If the pre-filled credentials fail, try once with admin/admin, then move on — do not spend more than 3 steps on login.
 If you see an "Authorize Application" page requesting permissions (OpenID, Email etc.), click the "Allow" button immediately.
 If a "Save password?" popup appears from Chrome, click "Never" to dismiss it and continue testing.
 
@@ -559,6 +597,7 @@ Please use the Tell action to report the results of all test cases before execut
                 use_icon_caption=True,
                 use_memory=self.rc.agent_params["use_memory"],
                 use_reflection=self.rc.agent_params["use_reflection"],
+                think_history_images=self.rc.agent_params["think_history_images"],
                 use_som=False,
                 use_chrome_debugger=self.rc.agent_params["use_chrome_debugger"],
                 use_tell_verifier=self.rc.agent_params["use_tell_verifier"],
@@ -881,7 +920,7 @@ Please use the Tell action to report the results of all test cases before execut
         previous_uncertain_count = float("inf")
         original_log_dir = self.osagent.log_dirs
         is_api_mode = task_name is not None and start_func is not None
-        is_web = start_func.startswith("http") if start_func else False
+        is_web = start_func.startswith(("http", "file://")) if start_func else False
 
         while retry_count < max_retry:
             uncertain_cases = self._extract_uncertain_cases(result)
@@ -1149,7 +1188,8 @@ Please use the Tell action to report the results of all test cases before execut
         original_log_dir = self.osagent.log_dirs
         is_api_mode = task_name is not None and start_func is not None
         is_web = (start_func.startswith("http://")
-                  or start_func.startswith("https://")) if start_func else False
+                  or start_func.startswith("https://")
+                  or start_func.startswith("file://")) if start_func else False
 
         while retry_count < max_retry:
             uncertain_cases = self._extract_uncertain_cases(result)
@@ -1315,7 +1355,7 @@ Please use the Tell action to report the results of all test cases before execut
         else:
             self.osagent.log_dirs = f"{log_base}/{log_dir}/{task_name}"
         is_web = start_func.startswith(
-            "http://") or start_func.startswith("https://")
+            "http://") or start_func.startswith("https://") or start_func.startswith("file://")
 
         # Start environment once for batch mode; sequential mode rebuilds fresh session per case.
         if not sequential_mode:
@@ -1358,15 +1398,36 @@ Please use the Tell action to report the results of all test cases before execut
                 ) / 1000.0
 
             total = 0.0
-            for llm_source in (
+            llm_sources = [
                 getattr(self.test_generator, "llm", None),
                 getattr(self.osagent, "llm", None),
-            ):
+            ]
+            tv = getattr(self.osagent, "tell_verifier", None) if self.osagent else None
+            if tv:
+                llm_sources.append(getattr(tv, "llm", None))
+            for llm_source in llm_sources:
                 if llm_source and hasattr(llm_source, "get_costs"):
                     c = llm_source.get_costs()
                     model_name = getattr(llm_source, "model", "") or ""
                     total += _cost_to_usd(c, model_name)
             return total
+
+        def _get_llm_tokens() -> tuple[int, int]:
+            """Return (total_prompt_tokens, total_completion_tokens) from all LLM sources."""
+            prompt_tokens = completion_tokens = 0
+            llm_sources = [
+                getattr(self.test_generator, "llm", None),
+                getattr(self.osagent, "llm", None),
+            ]
+            tv = getattr(self.osagent, "tell_verifier", None) if self.osagent else None
+            if tv:
+                llm_sources.append(getattr(tv, "llm", None))
+            for llm_source in llm_sources:
+                if llm_source and hasattr(llm_source, "get_costs"):
+                    c = llm_source.get_costs()
+                    prompt_tokens += int(getattr(c, "total_prompt_tokens", 0) or 0)
+                    completion_tokens += int(getattr(c, "total_completion_tokens", 0) or 0)
+            return (prompt_tokens, completion_tokens)
 
         def _to_bool_result(v) -> bool:
             if isinstance(v, bool):
@@ -1377,12 +1438,34 @@ Please use the Tell action to report the results of all test cases before execut
             return s in ("pass", "true", "1", "yes", "y")
 
         def _build_case_item(case_id, case_data, case_name: Optional[str] = None) -> dict:
-            return {
+            item = {
                 "test_id": f"{case_name}{case_id}" if case_name else str(case_id),
                 "case_desc": case_data.get("case_desc", ""),
                 "evidence": case_data.get("evidence", ""),
                 "result": _to_bool_result(case_data.get("result", "")),
                 "cost": case_data.get("cost", ""),
+            }
+            if isinstance(case_data.get("cost_breakdown"), dict):
+                item["cost_breakdown"] = case_data.get("cost_breakdown")
+            return item
+
+        def _empty_retry_reco_cost() -> dict:
+            return {
+                "model": "",
+                "prompt_tokens": 0,
+                "completion_tokens": 0,
+                "usd": 0.0,
+            }
+
+        def _extract_retry_reco_cost(rec: Optional[dict]) -> dict:
+            usage = (rec or {}).get("usage") if isinstance(rec, dict) else None
+            if not isinstance(usage, dict):
+                return _empty_retry_reco_cost()
+            return {
+                "model": str(usage.get("model", "") or ""),
+                "prompt_tokens": int(usage.get("prompt_tokens", 0) or 0),
+                "completion_tokens": int(usage.get("completion_tokens", 0) or 0),
+                "usd": float(usage.get("usd", 0.0) or 0.0),
             }
 
         def _build_retry_context_text(restart_rec: Optional[dict]) -> str:
@@ -1533,6 +1616,7 @@ Please use the Tell action to report the results of all test cases before execut
                 use_resume_this_case = (resume_cp is not None and idx == 1 and not force_baseline_from_start)
 
                 t0 = time.perf_counter()
+                _tokens_before_case = _get_llm_tokens()
                 try:
                     if use_resume_this_case:
                         # ── Resume mode startup (restore_order: copy_profile → start_chrome
@@ -1652,6 +1736,33 @@ Please use the Tell action to report the results of all test cases before execut
                         except Exception as _se:
                             logger.debug(f"[branching] Screenshot capture failed: {_se}")
 
+                        # Step A2: classify failure category for dimension-weight routing
+                        config_file = str(getattr(self, "_config_file", "") or "")
+                        failure_category = "unknown"
+                        if fail_reason:
+                            try:
+                                classify_result = await supervisor_classify_failure_async(
+                                    fail_reason=fail_reason,
+                                    config_path=config_file,
+                                )
+                                failure_category = classify_result.get("category", "unknown") if isinstance(classify_result, dict) else str(classify_result)
+                                self._accumulate_sv_usage(classify_result if isinstance(classify_result, dict) else {})
+                            except Exception as _ce:
+                                logger.warning(f"[branching] classify_failure failed: {_ce}, using 'unknown'")
+                        logger.info(f"[branching] failure_category={failure_category!r}")
+
+                        # Initial P(env_fail): start with the assumption that agent can complete
+                        # the task (p_env_fail low), then let branch failures raise it.
+                        _coarse_type = str((resume_restart_rec or {}).get("failure_type", "agent") or "agent").lower()
+                        p_env_fail = {"env": 0.10, "ambiguous": 0.10}.get(_coarse_type, 0.10)
+                        _coarse_p_env_fail = p_env_fail
+                        _dim_weights = compute_dimension_weights(failure_category)
+                        _dim_weights_round = {
+                            "A": round(float(_dim_weights.get("A", 0.0)), 4),
+                            "B": round(float(_dim_weights.get("B", 0.0)), 4),
+                            "C": round(float(_dim_weights.get("C", 0.0)), 4),
+                        }
+
                         # Step B: agent generates N candidate plans
                         logger.info(f"[branching] Generating {branching_n} candidate retry plans...")
                         candidate_plan_items = await self.osagent.generate_retry_plans(
@@ -1661,6 +1772,7 @@ Please use the Tell action to report the results of all test cases before execut
                             restart_explanation=restart_explanation,
                             trajectory_tail=traj_tail,
                             screenshot_b64=screenshot_b64,
+                            failure_category=failure_category,
                         )
                         if not candidate_plan_items:
                             logger.warning("[branching] No plans generated, falling back to single-run mode")
@@ -1674,7 +1786,7 @@ Please use the Tell action to report the results of all test cases before execut
                             do_branching = False
                     if do_branching:
                         # Step C: SupervisorJudge selects top-K plans
-                        config_file = str(getattr(self, "_config_file", "") or "")
+                        # config_file already resolved in Step A2 above
                         selected_plan_items = await supervisor_select_plans_async(
                             plans=plans,
                             k=branching_k,
@@ -1688,6 +1800,9 @@ Please use the Tell action to report the results of all test cases before execut
                             },
                             config_path=config_file,
                         )
+                        if selected_plan_items:
+                            # select_plans is one LLM call; avoid double-counting by accumulating once
+                            self._accumulate_sv_usage(selected_plan_items[0] if isinstance(selected_plan_items[0], dict) else {})
                         if not selected_plan_items:
                             logger.warning("[branching] Judge returned empty plan set, fallback to first generated plan")
                             selected_plan_items = [{"idx": 0, "plan": plans[0], "reason": "fallback: first generated plan"}]
@@ -1723,6 +1838,16 @@ Please use the Tell action to report the results of all test cases before execut
                                     "retry_reason": retry_reason,
                                     "restart_explanation": restart_explanation,
                                     "restart_from_iter": restart_iter,
+                                    "failure_category": failure_category,
+                                    "initial_p_env_fail": p_env_fail,
+                                },
+                                "dimension_weights": {
+                                    "category": failure_category,
+                                    "A": _dim_weights_round["A"],
+                                    "B": _dim_weights_round["B"],
+                                    "C": _dim_weights_round["C"],
+                                    "weights": dict(_dim_weights_round),
+                                    "p_branch_fail_given_agent": dict(P_BRANCH_FAIL_GIVEN_AGENT),
                                 },
                                 "trajectory_tail": traj_tail,
                                 "candidate_plans": [
@@ -1739,7 +1864,12 @@ Please use the Tell action to report the results of all test cases before execut
                                 "selected_plans": [
                                     {
                                         "order": i,
-                                        "dimension": _extract_plan_dimension(p),
+                                        "dimension": (
+                                            candidate_plan_items[selected_indices[i]].get("dimension", "")
+                                            if i < len(selected_indices) and 0 <= selected_indices[i] < len(candidate_plan_items)
+                                            and isinstance(candidate_plan_items[selected_indices[i]], dict)
+                                            else _extract_plan_dimension(p)
+                                        ),
                                         "plan": p,
                                         "reason": selected_reasons[i] if i < len(selected_reasons) else "",
                                     }
@@ -1891,18 +2021,42 @@ Please use the Tell action to report the results of all test cases before execut
                                     matched_payload = {}
                                 rv = matched_payload.get("result", "")
                                 branch_ok = bool(str(rv).strip().lower() in ("true", "pass", "1", "yes", "y"))
+                            _cand_idx = selected_indices[branch_idx] if branch_idx < len(selected_indices) else -1
                             branch_results.append(
                                 {
                                     "order": branch_idx,
-                                    "selected_from_candidate_idx": selected_indices[branch_idx]
-                                    if branch_idx < len(selected_indices)
-                                    else -1,
-                                    "dimension": _extract_plan_dimension(plan),
+                                    "selected_from_candidate_idx": _cand_idx,
+                                    "dimension": (
+                                        str(candidate_plan_items[_cand_idx].get("dimension", ""))
+                                        if 0 <= _cand_idx < len(candidate_plan_items)
+                                        and isinstance(candidate_plan_items[_cand_idx], dict)
+                                        else _extract_plan_dimension(plan)
+                                    ),
                                     "plan": plan,
                                     "select_reason": selected_reasons[branch_idx] if branch_idx < len(selected_reasons) else "",
                                     "result": bool(branch_ok),
                                 }
                             )
+                            # Bayesian update of P(env_fail) after each failed branch (before saving file)
+                            _bayesian_update_info = {}
+                            if not branch_ok:
+                                failed_dim = str(branch_results[-1].get("dimension", "") or "").strip().upper()[:1]
+                                if failed_dim in ("A", "B", "C"):
+                                    p_env_fail_prev = p_env_fail
+                                    p_env_fail = supervisor_update_env_belief(p_env_fail, failed_dim)
+                                    _lk = P_BRANCH_FAIL_GIVEN_AGENT.get(failed_dim, 0.5)
+                                    _bayesian_update_info = {
+                                        "dimension": failed_dim,
+                                        "p_env_fail_before": round(p_env_fail_prev, 4),
+                                        "p_env_fail_after": round(p_env_fail, 4),
+                                        "p_branch_fail_given_agent": _lk,
+                                    }
+                                    branch_results[-1]["bayesian_update"] = _bayesian_update_info
+                                    logger.info(
+                                        f"[branching] P(env_fail) updated: {p_env_fail_prev:.3f} → {p_env_fail:.3f} "
+                                        f"(branch {branch_idx} dim={failed_dim} failed, lk={_lk})"
+                                    )
+
                             # Save per-branch result json to {case_log_root}/{branch_idx}/test_case.json
                             try:
                                 branch_dir = Path(case_log_root) / str(branch_idx)
@@ -1915,6 +2069,10 @@ Please use the Tell action to report the results of all test cases before execut
                                     "evidence": _branch_payload.get("evidence", ""),
                                     "result": bool(branch_ok),
                                     "plan": plan,
+                                    "dimension": _extract_plan_dimension(plan),
+                                    "failure_category": failure_category,
+                                    "bayesian_update": _bayesian_update_info,
+                                    "p_env_fail_current": round(p_env_fail, 4),
                                 }
                                 _branch_json_path = branch_dir / "test_case.json"
                                 with open(_branch_json_path, "w", encoding="utf-8") as _bf:
@@ -1926,6 +2084,10 @@ Please use the Tell action to report the results of all test cases before execut
                             if branch_ok:
                                 logger.info(f"[branching] Early stop after branch {branch_idx + 1}")
                                 break
+                            if not branch_ok:
+                                logger.info(
+                                    f"[branching] P(env_fail)={p_env_fail:.3f} after branch {branch_idx + 1} (no early stop)"
+                                )
 
                         # Clean up profile backup
                         if retry_node_profile_bak and Path(retry_node_profile_bak).exists():
@@ -1945,6 +2107,16 @@ Please use the Tell action to report the results of all test cases before execut
                                     "retry_reason": retry_reason,
                                     "restart_explanation": restart_explanation,
                                     "restart_from_iter": restart_iter,
+                                    "failure_category": failure_category,
+                                    "initial_p_env_fail": _coarse_p_env_fail,
+                                },
+                                "dimension_weights": {
+                                    "category": failure_category,
+                                    "A": _dim_weights_round["A"],
+                                    "B": _dim_weights_round["B"],
+                                    "C": _dim_weights_round["C"],
+                                    "weights": dict(_dim_weights_round),
+                                    "p_branch_fail_given_agent": dict(P_BRANCH_FAIL_GIVEN_AGENT),
                                 },
                                 "trajectory_tail": traj_tail,
                                 "candidate_plans": [
@@ -1961,7 +2133,12 @@ Please use the Tell action to report the results of all test cases before execut
                                 "selected_plans": [
                                     {
                                         "order": i,
-                                        "dimension": _extract_plan_dimension(p),
+                                        "dimension": (
+                                            candidate_plan_items[selected_indices[i]].get("dimension", "")
+                                            if i < len(selected_indices) and 0 <= selected_indices[i] < len(candidate_plan_items)
+                                            and isinstance(candidate_plan_items[selected_indices[i]], dict)
+                                            else _extract_plan_dimension(p)
+                                        ),
                                         "plan": p,
                                         "reason": selected_reasons[i] if i < len(selected_reasons) else "",
                                     }
@@ -1969,6 +2146,8 @@ Please use the Tell action to report the results of all test cases before execut
                                 ],
                                 "branch_execution": branch_results,
                                 "stopped_early_on_success": any(bool(x.get("result")) for x in branch_results),
+                                "final_p_env_fail": round(p_env_fail, 4),
+                                "env_fail_threshold": float(self.rc.agent_params.get("branching_env_fail_threshold", 0.7)),
                                 "status": "execution_finished",
                             },
                         )
@@ -1986,8 +2165,24 @@ Please use the Tell action to report the results of all test cases before execut
                     # Unlock after execution
                     self.osagent._lock_timestamped_paths = False
 
-                    # Merge result and set per-case cost (time=...s, usd=$... for server compatibility)
-                    test_cases[case_id]["cost"] = f"time={elapsed:.1f}s, usd=${delta_usd:.6f}"
+                    # Merge result and set per-case cost (time, usd, token counts)
+                    pt_after, ct_after = _get_llm_tokens()
+                    delta_pt = pt_after - _tokens_before_case[0]
+                    delta_ct = ct_after - _tokens_before_case[1]
+                    test_cases[case_id]["cost"] = (
+                        f"time={elapsed:.1f}s, usd=${delta_usd:.6f} (prompt:{delta_pt}, completion:{delta_ct})"
+                    )
+                    test_cases[case_id]["cost_breakdown"] = {
+                        "test_agent": {
+                            "time_sec": round(elapsed, 1),
+                            "usd": float(delta_usd),
+                            "prompt_tokens": int(delta_pt),
+                            "completion_tokens": int(delta_ct),
+                        },
+                        "retry_recommendation": test_cases[case_id].get("cost_breakdown", {}).get(
+                            "retry_recommendation", _empty_retry_reco_cost()
+                        ),
+                    }
                     matched_key = self._find_matching_key(case_id, result_dict)
                     if matched_key is not None:
                         matched_payload = result_dict.get(matched_key)
@@ -2001,7 +2196,23 @@ Please use the Tell action to report the results of all test cases before execut
                     logger.error(f"Case {case_id} failed with error: {case_err}")
                     self.osagent._lock_timestamped_paths = False
                     elapsed = time.perf_counter() - t0
-                    test_cases[case_id]["cost"] = f"time={elapsed:.1f}s, usd=$0.000000"
+                    pt_after, ct_after = _get_llm_tokens()
+                    delta_pt = pt_after - _tokens_before_case[0]
+                    delta_ct = ct_after - _tokens_before_case[1]
+                    test_cases[case_id]["cost"] = (
+                        f"time={elapsed:.1f}s, usd=$0.000000 (prompt:{delta_pt}, completion:{delta_ct})"
+                    )
+                    test_cases[case_id]["cost_breakdown"] = {
+                        "test_agent": {
+                            "time_sec": round(elapsed, 1),
+                            "usd": 0.0,
+                            "prompt_tokens": int(delta_pt),
+                            "completion_tokens": int(delta_ct),
+                        },
+                        "retry_recommendation": test_cases[case_id].get("cost_breakdown", {}).get(
+                            "retry_recommendation", _empty_retry_reco_cost()
+                        ),
+                    }
                     test_cases[case_id]["result"] = False
                     test_cases[case_id]["evidence"] = f"Error: {case_err}"
 
@@ -2034,7 +2245,10 @@ Please use the Tell action to report the results of all test cases before execut
                                 config_path=config_file,
                                 task_desc=case_desc,
                             )
+                            self._accumulate_sv_usage(rec)
                             if rec:
+                                test_cases[case_id].setdefault("cost_breakdown", {})
+                                test_cases[case_id]["cost_breakdown"]["retry_recommendation"] = _extract_retry_reco_cost(rec)
                                 cp["restart_recommendation"] = rec
                                 with open(self._last_checkpoint_path, "w", encoding="utf-8") as f:
                                     json.dump(cp, f, indent=2, ensure_ascii=False)
@@ -2106,7 +2320,10 @@ Please use the Tell action to report the results of all test cases before execut
                             config_path=config_file,
                             task_desc=last_case_desc,
                         )
+                        self._accumulate_sv_usage(rec)
                         if rec:
+                            test_cases[last_case_id].setdefault("cost_breakdown", {})
+                            test_cases[last_case_id]["cost_breakdown"]["retry_recommendation"] = _extract_retry_reco_cost(rec)
                             cp["restart_recommendation"] = rec
                             with open(self._last_checkpoint_path, "w", encoding="utf-8") as f:
                                 json.dump(cp, f, indent=2, ensure_ascii=False)
@@ -2156,8 +2373,21 @@ Please use the Tell action to report the results of all test cases before execut
                 existing = str(case_data.get("cost", ""))
                 # Preserve per-case cost from sequential mode (format: "time=...s, usd=$...")
                 if "time=" in existing and "usd=" in existing:
+                    case_data.setdefault("cost_breakdown", {})
+                    case_data["cost_breakdown"].setdefault("retry_recommendation", _empty_retry_reco_cost())
                     continue
                 case_data["cost"] = cost_str
+                case_data["cost_breakdown"] = {
+                    "test_agent": {
+                        "time_sec": None,
+                        "usd": float(total_cost),
+                        "prompt_tokens": int(prompt_tokens),
+                        "completion_tokens": int(completion_tokens),
+                    },
+                    "retry_recommendation": case_data.get("cost_breakdown", {}).get(
+                        "retry_recommendation", _empty_retry_reco_cost()
+                    ),
+                }
         except Exception:
             pass
 

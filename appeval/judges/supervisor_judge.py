@@ -205,6 +205,31 @@ def _extract_json_object(text: str) -> Optional[dict]:
     return None
 
 
+def _extract_llm_usage(llm: Any) -> Dict[str, Any]:
+    """Best-effort usage snapshot from LLM cost manager."""
+    usage = {
+        "model": "",
+        "prompt_tokens": 0,
+        "completion_tokens": 0,
+        "usd": 0.0,
+    }
+    try:
+        usage["model"] = str(getattr(llm, "model", "") or "")
+        if hasattr(llm, "get_costs"):
+            c = llm.get_costs()
+            usage["prompt_tokens"] = int(getattr(c, "total_prompt_tokens", 0) or 0)
+            usage["completion_tokens"] = int(getattr(c, "total_completion_tokens", 0) or 0)
+            usage["usd"] = float(
+                getattr(c, "total_cost_usd", None)
+                or getattr(c, "total_cost", None)
+                or getattr(c, "cost", None)
+                or 0.0
+            )
+    except Exception:
+        pass
+    return usage
+
+
 # ---------------------------------------------------------------------------
 #  Public API — async core, sync wrappers
 # ---------------------------------------------------------------------------
@@ -313,6 +338,7 @@ async def analyze_trajectory_async(
                 "restart_from_iter": restart,
                 "restart_explanation": str(parsed.get("restart_explanation", "") or "").strip(),
                 "model_response": model_response_raw,
+                "usage": _extract_llm_usage(llm),
             }
             logger.info(
                 f"SupervisorJudge (LLM): failure_type={failure_type}, should_retry={should_retry}, "
@@ -341,6 +367,7 @@ async def analyze_trajectory_async(
         "restart_from_iter": restart_from,
         "restart_explanation": f"Heuristic: restart from step {restart_from} (last_completed_iter={last_iter}, skip last 2 steps).",
         "model_response": "",
+        "usage": {"model": "", "prompt_tokens": 0, "completion_tokens": 0, "usd": 0.0},
     }
     logger.info(f"SupervisorJudge (heuristic): {out} (last_completed_iter={last_iter})")
     return out
@@ -363,6 +390,171 @@ def analyze_trajectory(
         with concurrent.futures.ThreadPoolExecutor() as pool:
             return pool.submit(asyncio.run, coro).result(timeout=120)
     return asyncio.run(coro)
+
+
+# ---------------------------------------------------------------------------
+#  Failure classification: fail_reason → category → dimension weights
+# ---------------------------------------------------------------------------
+
+FAILURE_CATEGORY_PROMPT = """\
+Classify the agent's failure reason into exactly ONE category.
+
+## Categories
+
+- **insufficient_exploration**: The agent gave up too early or failed to navigate/scroll
+  enough. It drew premature conclusions without fully exploring the page or available UI.
+
+- **wrong_strategy**: The agent located the correct elements but used the wrong technique,
+  algorithm, or execution approach (wrong key timing, wrong game strategy, wrong sequence).
+
+- **wrong_target**: The agent interacted with the wrong element, wrong coordinates, or
+  misidentified what a UI component does. The element itself may be correct but the agent
+  pointed at the wrong thing.
+
+- **env_boundary**: The feature may not be implemented, the app has a broken component,
+  or the UI is non-responsive regardless of what the agent tries.
+
+- **unknown**: The failure does not clearly fit any of the above categories.
+
+## Examples
+
+[insufficient_exploration]
+"The agent only pressed 'pagedown' twice and then concluded no carousel exists. It never took a screenshot to confirm the page state."
+"The agent completed the survey but could not find dimension percentage scores on the results page. It did not scroll through the full results page."
+"The agent scrolled through the timeline but did not explore all UI controls or buttons that might reveal comparison photos."
+
+[wrong_strategy]
+"The agent moved the paddle briefly (0.5 seconds) and then the ball was lost. It never implemented continuous paddle control to keep the ball alive."
+"The agent repeatedly anchored on card (0,0) paired with every other card — an invalid memory match strategy since both cards need to be different."
+"The agent performed hard drops without attempting to clear lines, so the LINES counter remained at 0."
+
+[wrong_target]
+"The agent repeatedly attempted to fill form fields using incorrect coordinates, resulting in validation errors."
+"The agent clicked the preset text label instead of the actual radio button circle, so the resize was never applied."
+"The agent attempted to drag a locked (correctly-placed) puzzle piece instead of testing an unlocked piece."
+
+[env_boundary]
+"Clicking a tag on a note card navigated to the detail page instead of filtering — the tag filtering feature may not be implemented."
+"The agent waited 105 seconds but no inactivity prompt appeared — the timeout threshold may be longer than tested or not implemented."
+"Every time a shape property value was committed, the selected shape disappeared from the canvas — likely an application bug."
+
+## Failure reason to classify
+{fail_reason}
+
+Return JSON only, no markdown:
+{{"category": "insufficient_exploration | wrong_strategy | wrong_target | env_boundary | unknown"}}
+"""
+
+# Empirical success counts per category×dimension (from 103 branches, 41 cases).
+# Source: test2_agent_fail_nologin_round2_ours_gemini-3-flash-preview
+_RAW_SUCCESS_COUNTS: Dict[str, Dict[str, int]] = {
+    "insufficient_exploration": {"A": 1, "B": 7, "C": 0},
+    "wrong_strategy":           {"A": 3, "B": 0, "C": 0},
+    "wrong_target":             {"A": 2, "B": 0, "C": 0},
+    # Bias env-boundary branch allocation toward A (probe/alternate target) over C.
+    "env_boundary":             {"A": 2, "B": 1, "C": 0},
+    "unknown":                  {"A": 0, "B": 0, "C": 0},
+}
+
+# P(branch fails | confirmed agent_fail) per dimension — used for Bayesian env_fail update.
+# Calibrated from confirmed-agent-fail subset of the same dataset.
+P_BRANCH_FAIL_GIVEN_AGENT: Dict[str, float] = {
+    "A": 0.60,
+    "B": 0.50,
+    "C": 0.40,
+}
+
+# Dim-A generation guidance per category (injected into _RETRY_PLAN_PROMPT).
+DIM_A_GUIDANCE: Dict[str, str] = {
+    "wrong_target":
+        "same goal, but find/target the CORRECT element through alternative means "
+        "(try parent/sibling elements, different location on page, hover to confirm before clicking).",
+    "wrong_strategy":
+        "same goal, but use a fundamentally DIFFERENT execution method or algorithm "
+        "(different key sequence, different timing, different logical approach).",
+    "insufficient_exploration":
+        "same goal, but be more thorough — scroll systematically, take screenshots at each step, "
+        "do not conclude until the full page has been examined.",
+    "env_boundary":
+        "same goal, but first probe whether the feature responds at all before committing to the full interaction.",
+    "unknown":
+        "same goal, different trigger forms (single-click vs double-click, hotkey fallback, etc.).",
+}
+
+_LAPLACE_ALPHA = 1.0  # smoothing to avoid weight collapse
+
+
+def _compute_weights_from_counts(
+    counts: Dict[str, int], alpha: float = _LAPLACE_ALPHA
+) -> Dict[str, float]:
+    """Laplace-smoothed weights from raw success counts."""
+    dims = ["A", "B", "C"]
+    smoothed = {d: counts.get(d, 0) + alpha for d in dims}
+    total = sum(smoothed.values())
+    return {d: smoothed[d] / total for d in dims}
+
+
+# Pre-compute the weight table once at import time.
+CATEGORY_TO_WEIGHTS: Dict[str, Dict[str, float]] = {
+    cat: _compute_weights_from_counts(counts)
+    for cat, counts in _RAW_SUCCESS_COUNTS.items()
+}
+
+
+def compute_dimension_weights(failure_category: str) -> Dict[str, float]:
+    """Return A/B/C branch-allocation weights for a given failure category."""
+    return CATEGORY_TO_WEIGHTS.get(failure_category, CATEGORY_TO_WEIGHTS["unknown"])
+
+
+def update_env_belief(p_env: float, failed_dim: str) -> float:
+    """Bayesian update of P(env_fail) after a branch on `failed_dim` fails.
+
+    P(env | fail) ∝ P(env) * 1          (env always causes failure)
+    P(agent | fail) ∝ P(agent) * P(fail | agent)
+    """
+    p_agent = 1.0 - p_env
+    lk = P_BRANCH_FAIL_GIVEN_AGENT.get(failed_dim.upper(), 0.5)
+    denom = p_env + p_agent * lk
+    if denom <= 0:
+        return p_env
+    return p_env / denom
+
+
+async def classify_failure_async(
+    fail_reason: str,
+    config_path: str = "",
+) -> dict:
+    """Classify a fail_reason string into one of the known failure categories.
+
+    Returns dict with:
+        "category": "insufficient_exploration" | "wrong_strategy" | "wrong_target"
+                    | "env_boundary" | "unknown"
+        "usage": {prompt_tokens, completion_tokens, ...}
+
+    Falls back to "unknown" if LLM is unavailable or parsing fails.
+    """
+    if not fail_reason or not fail_reason.strip():
+        return {"category": "unknown", "usage": {}}
+
+    llm = _get_llm(config_path)
+    if llm:
+        try:
+            prompt = FAILURE_CATEGORY_PROMPT.format(fail_reason=fail_reason.strip())
+            raw = await llm.aask(prompt)
+            usage = _extract_llm_usage(llm)
+            parsed = _extract_json_object(raw)
+            if parsed:
+                cat = str(parsed.get("category", "") or "").strip().lower()
+                valid = {"insufficient_exploration", "wrong_strategy", "wrong_target",
+                         "env_boundary", "unknown"}
+                if cat in valid:
+                    logger.info(f"[classify_failure] category={cat!r} for: {fail_reason[:100]}")
+                    return {"category": cat, "usage": usage}
+        except Exception as e:
+            logger.warning(f"[classify_failure] LLM call failed: {e}")
+
+    logger.info("[classify_failure] Falling back to 'unknown'")
+    return {"category": "unknown", "usage": {}}
 
 
 async def select_actions_async(
@@ -556,11 +748,13 @@ async def select_plans_async(
                         break
                 if selected:
                     logger.info(f"SupervisorJudge (select_plans): selected {len(selected)}/{len(plans)} plans")
+                    for item in selected:
+                        item["usage"] = _extract_llm_usage(llm)
                     return selected
         except Exception as e:
             logger.warning(f"SupervisorJudge select_plans LLM failed, falling back: {e}")
 
-    return [{"idx": i, "plan": p, "reason": "fallback: first-k selection"} for i, p in enumerate(plans[:k])]
+    return [{"idx": i, "plan": p, "reason": "fallback: first-k selection", "usage": {}} for i, p in enumerate(plans[:k])]
 
 
 def select_plans(

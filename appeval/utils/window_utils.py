@@ -75,6 +75,8 @@ def _setup_chrome_preferences(user_data_dir: str) -> None:
 
     prefs.setdefault("browser", {})
     prefs["browser"]["check_default_browser"] = False
+    # 禁止恢复上次 session，防止多 worker 复用 profile 时打开错误页面
+    prefs.setdefault("session", {})["restore_on_startup"] = 4  # 4 = don't restore
     prefs.setdefault("distribution", {})
     prefs["distribution"]["skip_first_run_ui"] = True
     prefs["distribution"]["show_welcome_page"] = False

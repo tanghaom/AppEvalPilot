@@ -157,6 +157,39 @@ class OSAgentContext(RoleContext):
             self.memory = list(checkpoint.get("memory", []))
 
 
+def _weights_to_mins(weights: dict, n: int) -> tuple:
+    """Convert A/B/C probability weights to minimum count quotas that sum to n.
+
+    Each dimension gets at least 1 slot (when n >= 3), proportional to its weight.
+    """
+    if n <= 0:
+        return 0, 0, 0
+    dims = ["A", "B", "C"]
+    # Proportional allocation rounded to nearest integer
+    raw = {d: weights.get(d, 0.0) * n for d in dims}
+    counts = {d: max(0, round(v)) for d, v in raw.items()}
+    # Adjust total to exactly n
+    total = sum(counts.values())
+    diff = n - total
+    if diff != 0:
+        # Add/remove from the dimension with largest fractional remainder
+        remainders = sorted(dims, key=lambda d: raw[d] - counts[d], reverse=(diff > 0))
+        for i in range(abs(diff)):
+            d = remainders[i % len(dims)]
+            counts[d] += 1 if diff > 0 else -1
+            counts[d] = max(0, counts[d])
+    # Guarantee at least 1 per dim when n >= 3
+    if n >= 3:
+        for d in dims:
+            if counts[d] == 0:
+                # Take from the dimension with the most
+                donor = max(dims, key=lambda x: counts[x])
+                if counts[donor] > 1:
+                    counts[donor] -= 1
+                    counts[d] = 1
+    return counts["A"], counts["B"], counts["C"]
+
+
 class OSAgent(Role):
     """Operating System Agent class for executing automated tasks"""
 
@@ -912,8 +945,7 @@ Generate diversified retry plans under the required divergence dimensions.
 [See attached screenshot]
 
 ## Required divergence dimensions
-- Dimension A (Action-Form Hypothesis): same goal, different trigger forms.
-  Examples: single-click vs double-click; text-area click vs icon click; hotkey fallback.
+- Dimension A (Action-Form Hypothesis): {dim_a_guidance}
 - Dimension B (Visibility/Reachability Hypothesis): target may be outside current viewport.
   Must include scroll/re-locate style candidate.
 - Dimension C (Diagnostic Hypothesis): low-risk probes to validate interactability.
@@ -952,6 +984,7 @@ Rules:
         restart_explanation: str = "",
         trajectory_tail: str = "",
         screenshot_b64: str = "",
+        failure_category: str = "",
     ) -> List[Dict[str, str]]:
         """Generate N candidate retry plans (text strategies) without executing anything.
 
@@ -966,6 +999,10 @@ Rules:
             restart_explanation: Supervisor guidance on what to do differently.
             trajectory_tail: Formatted text of recent action steps near the retry node.
             screenshot_b64: Base64-encoded screenshot at the retry node.
+            failure_category: One of the classified failure types
+                (insufficient_exploration | wrong_strategy | wrong_target |
+                 env_boundary | unknown). Used to weight A/B/C dimension quotas
+                 and to sharpen Dim-A generation guidance.
         Returns:
             List of plan dicts:
                 {
@@ -978,23 +1015,30 @@ Rules:
         if n <= 0:
             return []
 
-        # Enforce requested divergence quotas:
-        # priority: A(>=2 if possible), then B/C at least 1 if possible.
-        min_a, min_b, min_c = 0, 0, 0
-        if n == 1:
-            min_a = 1
-        elif n == 2:
-            min_a, min_b = 1, 1
-        elif n == 3:
-            min_a, min_b, min_c = 1, 1, 1
-        else:
-            min_a, min_b, min_c = 2, 1, 1
+        # Resolve dimension weights and Dim-A guidance from failure_category.
+        try:
+            from appeval.judges.supervisor_judge import (
+                compute_dimension_weights,
+                DIM_A_GUIDANCE,
+            )
+            weights = compute_dimension_weights(failure_category)
+            dim_a_guidance = DIM_A_GUIDANCE.get(
+                failure_category,
+                DIM_A_GUIDANCE.get("unknown", "same goal, different trigger forms."),
+            )
+        except Exception:
+            weights = {"A": 0.33, "B": 0.33, "C": 0.34}
+            dim_a_guidance = "same goal, different trigger forms."
+
+        # Convert weights to per-dimension minimum counts.
+        min_a, min_b, min_c = _weights_to_mins(weights, n)
 
         prompt = self._RETRY_PLAN_PROMPT.format(
             task_desc=task_desc or "(not provided)",
             fail_reason=fail_reason or "(not provided)",
             restart_explanation=restart_explanation or "(not provided)",
             trajectory_tail=trajectory_tail or "(not provided)",
+            dim_a_guidance=dim_a_guidance,
             n=int(n),
             min_a=int(min_a),
             min_b=int(min_b),

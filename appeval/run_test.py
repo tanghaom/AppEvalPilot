@@ -118,11 +118,85 @@ def _resolve_resume_checkpoint_path(path: str, target_step: Optional[int]) -> st
 #  Environment setup helpers (Xvfb / D-Bus / AT-SPI / WM / Xauthority)
 # ---------------------------------------------------------------------------
 
-def _start_xvfb(display: int):
-    return subprocess.Popen(
-        ["Xvfb", f":{display}", "-screen", "0", "1920x1080x24"],
+def _find_free_display(start: int, max_search: int = 200) -> int:
+    """Return the first X display number >= start that is not already in use."""
+    for n in range(start, start + max_search):
+        lock = f"/tmp/.X{n}-lock"
+        sock = f"/tmp/.X11-unix/X{n}"
+        if not os.path.exists(lock) and not os.path.exists(sock):
+            return n
+    return start + max_search  # fallback
+
+
+def _find_free_port(start: int, max_search: int = 200) -> int:
+    """Return the first TCP port >= start that is not already bound."""
+    import socket
+    for p in range(start, start + max_search):
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+            s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+            try:
+                s.bind(("127.0.0.1", p))
+                return p
+            except OSError:
+                continue
+    return start + max_search  # fallback
+
+
+def _start_xvfb(display: int) -> tuple:
+    """Start Xvfb on an unused display number >= *display*.
+
+    Returns (proc, actual_display_num).  The caller must use the returned
+    display number to set DISPLAY, not the requested one.
+    """
+    actual = _find_free_display(display)
+    proc = subprocess.Popen(
+        ["Xvfb", f":{actual}", "-screen", "0", "1920x1080x24"],
         stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
     )
+    time.sleep(0.5)  # let the socket appear before callers proceed
+    return proc, actual
+
+
+# Candidate video/image files to seed /tmp/test_data, searched in order
+_TEST_DATA_VIDEO_CANDIDATES = [
+    "/tmp/test_data/test.mp4",
+    os.path.join(PROJECT_DIR, "test_data", "test.mp4"),
+    os.path.join(PROJECT_DIR, "assets", "test.mp4"),
+    "/data/miniconda3/pkgs/torchaudio-2.5.0-py310_cu124/info/test/test/torchaudio_unittest/assets/nasa_13013.mp4",
+    "/data/miniconda3/pkgs/torchvision-0.20.0-py310_cu124/info/test/test/assets/videos/SOX5yA1l24A.mp4",
+]
+_TEST_DATA_IMAGE_CANDIDATES = [
+    "/tmp/test_data/test.jpg",
+    os.path.join(PROJECT_DIR, "assets", "images", "workflow.png"),
+]
+
+
+def _setup_test_data(test_data_dir: str = "/tmp/test_data") -> None:
+    """Ensure *test_data_dir* exists and contains at least one video and one image file."""
+    os.makedirs(test_data_dir, exist_ok=True)
+
+    dst_video = os.path.join(test_data_dir, "test.mp4")
+    if not os.path.exists(dst_video):
+        for src in _TEST_DATA_VIDEO_CANDIDATES:
+            if os.path.isfile(src) and src != dst_video:
+                try:
+                    shutil.copy2(src, dst_video)
+                    logger.info(f"[test_data] copied video {src} -> {dst_video}")
+                    break
+                except Exception as e:
+                    logger.warning(f"[test_data] failed to copy {src}: {e}")
+
+    dst_image = os.path.join(test_data_dir, "test.jpg")
+    if not os.path.exists(dst_image):
+        for src in _TEST_DATA_IMAGE_CANDIDATES:
+            if os.path.isfile(src) and src != dst_image:
+                try:
+                    shutil.copy2(src, dst_image)
+                    logger.info(f"[test_data] copied image {src} -> {dst_image}")
+                    break
+                except Exception as e:
+                    logger.warning(f"[test_data] failed to copy {src}: {e}")
+
 
 
 def _start_dbus_and_atspi(display_num: int, worker_id: int):
@@ -361,7 +435,7 @@ def _worker_callback(callback_url: str, full_cfg: dict, result: dict):
         logger.error(f"[Runner-CB] 回调失败: {e}")
 
 
-def _write_per_case_json(cases: list, case_name: str, task_id, run_group_ts: str):
+def _write_per_case_json(cases: list, case_name: str, task_id, run_group_ts: str, app_log_key: str):
     """Write test_case.json for each individual case under api_log."""
     try:
         for case_item in cases:
@@ -369,7 +443,7 @@ def _write_per_case_json(cases: list, case_name: str, task_id, run_group_ts: str
             if not test_id.startswith(case_name):
                 continue
             case_suffix = test_id[len(case_name):]
-            case_dir = API_LOG_BASE / str(task_id) / run_group_ts / case_name / f"{case_name}{case_suffix}"
+            case_dir = API_LOG_BASE / str(task_id) / run_group_ts / app_log_key / f"{case_name}{case_suffix}"
             case_dir.mkdir(parents=True, exist_ok=True)
             ts_dirs = [p for p in case_dir.iterdir() if p.is_dir() and re.fullmatch(r"\d{12,}", p.name)]
             output_dir = sorted(ts_dirs, key=lambda p: p.name)[-1] if ts_dirs else case_dir
@@ -404,6 +478,7 @@ def run_single_task(
     task_id = task["task_id"]
     detail_id = task["detail_id"]
     case_name = task["case_name"]
+    app_log_key = str(detail_id).strip() or str(case_name).strip()
     prod_url = task["prod_url"]
     test_arry: List[str] = task["test_arry"]
     start_index: int = task.get("start_index", 0)
@@ -477,12 +552,12 @@ def run_single_task(
         }, f, default_flow_style=False)
 
     display_num = base_display + worker_id
-    port = base_chrome_port + worker_id
+    port = _find_free_port(base_chrome_port + worker_id)
     user_data_dir = f"/tmp/chrome_run_{log_dir_prefix}_w{worker_id}_d{detail_id}"
 
     # 错峰启动
     time.sleep(worker_id * 1.2)
-    xvfb = _start_xvfb(display_num)
+    xvfb, display_num = _start_xvfb(display_num)
     time.sleep(2)
     os.environ["DISPLAY"] = f":{display_num}"
     _setup_xauthority(display_num, worker_id)
@@ -495,6 +570,7 @@ def run_single_task(
 
     shutil.rmtree(user_data_dir, ignore_errors=True)
     os.makedirs(user_data_dir, exist_ok=True)
+    _setup_test_data()
 
     # ---- 构造 test_cases ----
     test_cases = {
@@ -516,7 +592,7 @@ def run_single_task(
         partial: list = []
         for i, _desc in enumerate(test_arry):
             case_num = start_index + i
-            case_dir = API_LOG_BASE / str(task_id) / run_group_ts / case_name / f"{case_name}{case_num}"
+            case_dir = API_LOG_BASE / str(task_id) / run_group_ts / app_log_key / f"{case_name}{case_num}"
             candidates: list = []
             try:
                 ts_dirs = sorted(
@@ -589,7 +665,7 @@ def run_single_task(
                 task_name="test_case",
                 test_cases=test_cases,
                 start_func=prod_url,
-                log_dir=f"{task_id}/{run_group_ts}/{case_name}",
+                log_dir=f"{task_id}/{run_group_ts}/{app_log_key}",
                 sequential_mode=True,
                 case_name_for_log=case_name,
                 resume_checkpoint_path=resume_checkpoint_path,
@@ -625,6 +701,7 @@ def run_single_task(
                 prod_url=prod_url,
                 task_id=task_id,
                 run_group_ts=run_group_ts,
+                app_log_key=app_log_key,
                 case_name=case_name,
                 test_arry=test_arry,
                 start_index=start_index,
@@ -635,7 +712,7 @@ def run_single_task(
             if retry_cases:
                 cases = retry_cases
 
-        _write_per_case_json(cases, case_name, task_id, run_group_ts)
+        _write_per_case_json(cases, case_name, task_id, run_group_ts, app_log_key)
 
         result_dict = {
             "detail_id": str(detail_id),
@@ -654,7 +731,7 @@ def run_single_task(
         times = [_parse_cost_to_seconds(str(c.get("cost", ""))) for c in cases]
         avg_time = (sum(times) / max(1, len(times))) if times else 0.0
 
-        _write_per_case_json(cases, case_name, task_id, run_group_ts)
+        _write_per_case_json(cases, case_name, task_id, run_group_ts, app_log_key)
 
         result_dict = {
             "detail_id": str(detail_id),
@@ -729,7 +806,7 @@ def _is_black_screen(evidence: str) -> bool:
 
 
 def _black_screen_retry(
-    role_kwargs, test_cases, prod_url, task_id, run_group_ts, case_name,
+    role_kwargs, test_cases, prod_url, task_id, run_group_ts, app_log_key, case_name,
     test_arry, start_index, avg_time, avg_usd, user_data_dir,
 ) -> Optional[list]:
     """Kill Chrome, rebuild user_data_dir, re-run. Returns new cases list or None."""
@@ -758,7 +835,7 @@ def _black_screen_retry(
                 task_name="test_case",
                 test_cases=test_cases,
                 start_func=prod_url,
-                log_dir=f"{task_id}/{run_group_ts}/{case_name}",
+                log_dir=f"{task_id}/{run_group_ts}/{app_log_key}",
                 sequential_mode=True,
                 case_name_for_log=case_name,
             )

@@ -374,6 +374,7 @@ class PCController(BaseController):
             self.expected_url = ""
             self.expected_domain = expected_domain.lower().strip()
             self._last_domain_recover_ts = 0.0
+            self._chrome_ui_y_offset: int | None = None  # cached viewport→screen y offset
             if self.a11y_mode not in ("atspi", "cdp"):
                 logger.warning(f"Unknown a11y_mode '{a11y_mode}', falling back to 'atspi'")
                 self.a11y_mode = "atspi"
@@ -531,8 +532,46 @@ class PCController(BaseController):
     def _handle_run(self, action: str) -> None:
         """Handle 'Run' action"""
         code = self._extract_code(action)
+        # Apply y-offset to convert CDP viewport coords → absolute screen coords
+        if getattr(self, "remote_debugging_port", None):
+            offset = self._get_chrome_ui_y_offset()
+            if offset > 0:
+                import re
+                # Add offset to y in: click/doubleClick/rightClick/moveTo/dragTo(x, y)
+                pattern = r'(pyautogui\.(?:click|doubleClick|rightClick|moveTo|dragTo|tripleClick)\(\s*)(\d+)(\s*,\s*)(\d+)'
+                def _add_y(m):
+                    return m.group(1) + m.group(2) + m.group(3) + str(int(m.group(4)) + offset)
+                corrected = re.sub(pattern, _add_y, code)
+                if corrected != code:
+                    logger.debug(f"[y-offset={offset}] {code!r} → {corrected!r}")
+                code = corrected
         logger.info(f"Executing code: {code}")
         exec(code)
+
+    def _get_chrome_ui_y_offset(self) -> int:
+        """Return Chrome UI height (screen_h - viewport_h) as y-offset for pyautogui.
+
+        CDP screenshots capture only the viewport, so CDP element coordinates are
+        viewport-relative. pyautogui uses absolute screen coordinates, requiring
+        this offset to be added to all y values.
+        Result is cached for the lifetime of the Chrome instance.
+        """
+        if self._chrome_ui_y_offset is not None:
+            return self._chrome_ui_y_offset
+        try:
+            import pyautogui as _pg
+            _, screen_h = _pg.size()
+            vp = self.get_viewport()
+            vp_h = vp.get("h", 0)
+            if vp_h > 0 and screen_h > vp_h:
+                self._chrome_ui_y_offset = screen_h - vp_h
+            else:
+                self._chrome_ui_y_offset = 0
+            logger.info(f"[y-offset] screen_h={screen_h} viewport_h={vp_h} offset={self._chrome_ui_y_offset}")
+        except Exception as e:
+            logger.debug(f"[y-offset] failed to compute: {e}")
+            self._chrome_ui_y_offset = 0
+        return self._chrome_ui_y_offset
 
     def set_expected_url(self, expected_url: str = "") -> None:
         """Bind current task URL to controller for tab-domain validation."""
