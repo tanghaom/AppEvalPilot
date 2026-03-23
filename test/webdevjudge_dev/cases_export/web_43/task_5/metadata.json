@@ -1,0 +1,9 @@
+{
+  "web_id": "web_43",
+  "task_id": 5,
+  "task_type": "dynamic",
+  "instruction": "Task: Select answers for a series of quiz questions and click a 'Submit Quiz' button.\nExpected Result: The user's quiz score and feedback (e.g., correct/incorrect answers) are displayed based on client-side logic.\n\nNote: The task is only considered successful if the expected result is achieved; otherwise, it is deemed infeasible.",
+  "max_steps": 15,
+  "expected": "The user's quiz score and feedback (e.g., correct/incorrect answers) are displayed based on client-side logic.",
+  "label": 0
+}

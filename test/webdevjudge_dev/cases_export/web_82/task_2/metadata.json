@@ -1,0 +1,9 @@
+{
+  "web_id": "web_82",
+  "task_id": 2,
+  "task_type": "dynamic",
+  "instruction": "Task: Type text into the message input field for the active chat and click the 'Send' button.\nExpected Result: New message with typed text appears in the active chat's message list.\n\nNote: The task is only considered successful if the expected result is achieved; otherwise, it is deemed infeasible.",
+  "max_steps": 15,
+  "expected": "New message with typed text appears in the active chat's message list.",
+  "label": 1
+}

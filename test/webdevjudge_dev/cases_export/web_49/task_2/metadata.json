@@ -1,0 +1,9 @@
+{
+  "web_id": "web_49",
+  "task_id": 2,
+  "task_type": "dynamic",
+  "instruction": "Task: Click the 'Login' or 'Register' button.\nExpected Result: The button animates on click (e.g., shrinks slightly then expands). A brief, simulated loading animation (e.g., the form dissolving into particles) occurs.\n\nNote: The task is only considered successful if the expected result is achieved; otherwise, it is deemed infeasible.",
+  "max_steps": 15,
+  "expected": "The button animates on click (e.g., shrinks slightly then expands). A brief, simulated loading animation (e.g., the form dissolving into particles) occurs.",
+  "label": 1
+}

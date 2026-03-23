@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ChatClone</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Custom scrollbar for webkit browsers */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #1f2937; /* bg-gray-800 */
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #4b5563; /* bg-gray-600 */
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #6b7280; /* bg-gray-500 */
+        }
+        /* For Firefox */
+        html {
+            scrollbar-width: thin;
+            scrollbar-color: #4b5563 #1f2937;
+        }
+
+        /* Ensure body takes full height and no margin */
+        body {
+            margin: 0;
+            height: 100vh;
+            overflow: hidden; /* Prevent body scroll, handle scroll within elements */
+        }
+        
+        /* Basic styling for code blocks */
+        .code-block {
+            background-color: #111827; /* bg-gray-900 */
+            color: #e5e7eb; /* text-gray-200 */
+            padding: 0.75rem;
+            border-radius: 0.5rem;
+            overflow-x: auto;
+            font-family: monospace;
+            font-size: 0.875rem; /* text-sm */
+            position: relative;
+        }
+        .code-block pre {
+            margin: 0;
+        }
+        .code-block .copy-button {
+            position: absolute;
+            top: 0.5rem;
+            right: 0.5rem;
+            background-color: #374151; /* bg-gray-700 */
+            color: #d1d5db; /* text-gray-300 */
+            border: none;
+            padding: 0.25rem 0.5rem;
+            border-radius: 0.25rem;
+            font-size: 0.75rem; /* text-xs */
+            cursor: pointer;
+            opacity: 0.7;
+            transition: opacity 0.2s;
+        }
+        .code-block:hover .copy-button {
+            opacity: 1;
+        }
+        .copy-button:hover {
+            background-color: #4b5563; /* bg-gray-600 */
+        }
+    </style>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: {
+                            DEFAULT: '#10B981', // Emerald 500
+                            light: '#34D399', // Emerald 400
+                            dark: '#059669',  // Emerald 600
+                        },
+                        gray: {
+                            50: '#F9FAFB',
+                            100: '#F3F4F6',
+                            200: '#E5E7EB',
+                            300: '#D1D5DB',
+                            400: '#9CA3AF',
+                            500: '#6B7280',
+                            600: '#4B5563',
+                            700: '#374151',
+                            800: '#1F2937',
+                            900: '#111827',
+                            950: '#0d1117' 
+                        },
+                        accent: { // Using teal as an example, matching ChatGPT's green/teal hints
+                            DEFAULT: '#14B8A6', // Teal 500
+                            dark: '#0D9488' // Teal 600
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+<body class="bg-gray-800 text-gray-100 flex h-screen antialiased">
+
+    <!-- SVG Icons Definition -->
+    <div id="svg-icons" class="hidden">
+        <svg id="icon-plus" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+        </svg>
+        <svg id="icon-user-circle" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M17.982 18.725A7.488 7.488 0 0012 15.75a7.488 7.488 0 00-5.982 2.975m11.963 0a9 9 0 10-11.963 0m11.963 0A8.966 8.966 0 0112 21a8.966 8.966 0 01-5.982-2.275M15 9.75a3 3 0 11-6 0 3 3 0 016 0z" />
+        </svg>
+        <svg id="icon-bot" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M8.25 3v1.5M4.5 8.25H3m18.75 0h-1.5m-16.5 5.25h1.5m13.5 0h1.5m-16.5 5.25h1.5m13.5 0h1.5M9 11.25l3-3m0 0l3 3m-3-3v7.5M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+        </svg>
+        <svg id="icon-send" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M6 12L3.269 3.126A59.768 59.768 0 0121.485 12 59.77 59.77 0 013.27 20.876L5.999 12zm0 0h7.5" />
+        </svg>
+        <svg id="icon-menu" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" />
+        </svg>
+        <svg id="icon-copy" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 17.25v3.375c0 .621-.504 1.125-1.125 1.125h-9.75a1.125 1.125 0 01-1.125-1.125V7.875c0-.621.504-1.125 1.125-1.125H6.75a9.06 9.06 0 011.5.124m7.5 10.376h3.375c.621 0 1.125-.504 1.125-1.125V11.25c0-4.46-3.243-8.161-7.5-8.876a9.06 1.06 0 00-1.5-.124H9.375c-.621 0-1.125.504-1.125 1.125V7.5m0 4.5V7.5m0 4.5H11.25m2.25 0V7.5m0 4.5L15.75 12m0 0V7.5m0 4.5H18m2.25-4.5H15.75" />
+        </svg>
+        <svg id="icon-check" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5" />
+        </svg>
+    </div>
+
+    <!-- Sidebar -->
+    <aside id="sidebar" class="bg-gray-900 w-64 p-4 flex flex-col space-y-4 fixed inset-y-0 left-0 transform -translate-x-full md:relative md:translate-x-0 transition-transform duration-300 ease-in-out z-30 h-full">
+        <button id="new-chat-button" class="w-full flex items-center justify-center space-x-2 bg-accent-DEFAULT hover:bg-accent-dark text-white font-semibold py-2 px-4 rounded-lg transition-colors">
+            <!-- SVG will be injected here -->
+            <span>New Chat</span>
+        </button>
+        
+        <div class="flex-grow overflow-y-auto space-y-2" id="conversation-list">
+            <!-- Conversations will be listed here -->
+        </div>
+        
+        <div class="border-t border-gray-700 pt-4">
+            <div class="flex items-center space-x-3 p-2 rounded-md hover:bg-gray-700 cursor-pointer">
+                <div id="user-avatar-placeholder" class="bg-gray-500 border-2 border-dashed border-gray-400 rounded-full w-8 h-8 flex items-center justify-center text-sm">U</div>
+                <span class="font-medium">User Name</span>
+            </div>
+        </div>
+    </aside>
+
+    <!-- Main Content Area -->
+    <main class="flex-1 flex flex-col h-screen overflow-hidden">
+        <!-- Mobile Header for Menu Toggle -->
+        <header class="md:hidden p-3 bg-gray-800 border-b border-gray-700 flex items-center">
+            <button id="menu-toggle-button" class="p-1 text-gray-300 hover:text-white">
+                <!-- Menu icon SVG injected here -->
+            </button>
+            <h1 id="mobile-chat-title" class="ml-3 text-lg font-semibold truncate">New Chat</h1>
+        </header>
+
+        <div id="chat-log" class="flex-1 overflow-y-auto p-6 space-y-6 min-h-0">
+            <!-- Messages will appear here -->
+            <!-- Welcome Screen (Initial State) -->
+            <div id="welcome-screen" class="flex flex-col items-center justify-center h-full text-center">
+                <div class="w-16 h-16 mb-6">
+                    <!-- Larger bot icon or logo placeholder -->
+                     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-full h-full text-accent-DEFAULT">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M8.25 3v1.5M4.5 8.25H3m18.75 0h-1.5m-16.5 5.25h1.5m13.5 0h1.5m-16.5 5.25h1.5m13.5 0h1.5M9 11.25l3-3m0 0l3 3m-3-3v7.5M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                </div>
+                <h1 class="text-3xl font-semibold mb-6">ChatClone</h1>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 max-w-2xl">
+                    <div class="bg-gray-700 p-4 rounded-lg hover:bg-gray-600 cursor-pointer example-prompt">
+                        <h3 class="font-semibold mb-1">Explain quantum computing</h3>
+                        <p class="text-sm text-gray-400">in simple terms</p>
+                    </div>
+                    <div class="bg-gray-700 p-4 rounded-lg hover:bg-gray-600 cursor-pointer example-prompt">
+                        <h3 class="font-semibold mb-1">Creative ideas for a birthday</h3>
+                        <p class="text-sm text-gray-400">for a 10 year old's party</p>
+                    </div>
+                    <div class="bg-gray-700 p-4 rounded-lg hover:bg-gray-600 cursor-pointer example-prompt">
+                        <h3 class="font-semibold mb-1">HTTP request in JavaScript</h3>
+                        <p class="text-sm text-gray-400">How do I make one?</p>
+                    </div>
+                    <div class="bg-gray-700 p-4 rounded-lg hover:bg-gray-600 cursor-pointer example-prompt">
+                        <h3 class="font-semibold mb-1">Write a short story</h3>
+                        <p class="text-sm text-gray-400">about a friendly robot</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Loading Indicator -->
+        <div id="loading-indicator" class="px-6 py-3 text-center text-sm text-gray-400 hidden">
+            Assistant is typing...
+        </div>
+
+        <!-- Input Area -->
+        <div id="input-area" class="p-4 md:p-6 border-t border-gray-700 bg-gray-800">
+            <div class="flex items-end space-x-3 bg-gray-700 rounded-xl p-1">
+                <textarea id="message-input" rows="1" placeholder="Send a message..." class="flex-1 bg-transparent p-3 text-gray-100 placeholder-gray-400 focus:outline-none resize-none"></textarea>
+                <button id="send-button" class="p-3 bg-accent-DEFAULT hover:bg-accent-dark text-white rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
+                    <!-- Send icon SVG injected here -->
+                </button>
+            </div>
+            <p class="text-xs text-gray-500 text-center mt-2">ChatClone can make mistakes. Responses are simulated.</p>
+        </div>
+    </main>
+
+    <script>
+        // --- UTILITY FUNCTIONS ---
+        function getIcon(id, classes = "w-6 h-6") {
+            const svgElement = document.getElementById(id)?.cloneNode(true);
+            if (svgElement) {
+                svgElement.removeAttribute('id');
+                svgElement.setAttribute('class', classes);
+                return svgElement;
+            }
+            return document.createElement('span'); // Fallback
+        }
+
+        function generateId() {
+            return Math.random().toString(36).substr(2, 9);
+        }
+
+        function parseMessageText(text) {
+            const parts = [];
+            let lastIndex = 0;
+            const regex = /

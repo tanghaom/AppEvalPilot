@@ -1,0 +1,9 @@
+{
+  "web_id": "web_58",
+  "task_id": 2,
+  "task_type": "dynamic",
+  "instruction": "Task: Click the 'New Game' button.\nExpected Result: The current Sudoku grid is cleared and populated with a new, solvable puzzle. Any game-specific state like timers or scores for the previous game resets.\n\nNote: The task is only considered successful if the expected result is achieved; otherwise, it is deemed infeasible.",
+  "max_steps": 15,
+  "expected": "The current Sudoku grid is cleared and populated with a new, solvable puzzle. Any game-specific state like timers or scores for the previous game resets.",
+  "label": 0
+}

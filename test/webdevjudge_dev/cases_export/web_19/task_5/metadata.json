@@ -1,0 +1,9 @@
+{
+  "web_id": "web_19",
+  "task_id": 5,
+  "task_type": "dynamic",
+  "instruction": "Task: Click a button to trigger a specific AI content generation feature (e.g., 'Generate Title' or 'Suggest Transition').\nExpected Result: Simulated generated content is displayed (e.g., in the side panel or as a pop-up) and can be chosen for insertion into the editor.\n\nNote: The task is only considered successful if the expected result is achieved; otherwise, it is deemed infeasible.",
+  "max_steps": 15,
+  "expected": "Simulated generated content is displayed (e.g., in the side panel or as a pop-up) and can be chosen for insertion into the editor.",
+  "label": 0
+}

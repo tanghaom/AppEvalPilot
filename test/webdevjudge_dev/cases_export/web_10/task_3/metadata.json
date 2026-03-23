@@ -1,0 +1,9 @@
+{
+  "web_id": "web_10",
+  "task_id": 3,
+  "task_type": "dynamic",
+  "instruction": "Task: Click on a file name in a simulated sidebar file explorer.\nExpected Result: The content of the selected file is displayed in the editor area, potentially opening it in a new tab if not already open, or switching to its existing tab.\n\nNote: The task is only considered successful if the expected result is achieved; otherwise, it is deemed infeasible.",
+  "max_steps": 15,
+  "expected": "The content of the selected file is displayed in the editor area, potentially opening it in a new tab if not already open, or switching to its existing tab.",
+  "label": 0
+}

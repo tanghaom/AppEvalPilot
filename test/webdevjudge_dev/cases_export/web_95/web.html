@@ -1,0 +1,1033 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Путешествие в Камбоджу - Шаблон</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* 
+          Рекомендации по культурной аутентичности:
+          - Цветовая палитра: Вдохновляйтесь цветами храмов (охра, золото, терракота), природы (зеленый риса, голубой Меконга)
+            и традиционных тканей (яркие шелка, узоры Крама).
+            Примерная палитра (названия для Tailwind config, если бы он был):
+            theme: {
+              extend: {
+                colors: {
+                  'cambodia-red': '#A62C21', // A deep, earthy red
+                  'cambodia-gold': '#E6A930', // Warm gold
+                  'cambodia-green': '#5E8C6A', // Lush green
+                  'cambodia-blue': '#3B82F6', // Mekong blue / sky
+                  'cambodia-stone': '#D4CDBE', // Light stone/sand
+                }
+              }
+            }
+          - Типографика: Для заголовков можно рассмотреть стилизованные шрифты, напоминающие кхмерское письмо (если это уместно и не вредит читаемости).
+            Для основного текста - чистый, хорошо читаемый шрифт. (Например, Noto Sans Khmer для кхмерского текста).
+          - Узоры: Тонкие, ненавязчивые узоры, вдохновленные кхмерской орнаментикой, на фонах или разделителях.
+        */
+        body {
+            font-family: 'Inter', sans-serif; /* Пример современного, читаемого шрифта */
+        }
+        /* Добавим шрифт Inter с Google Fonts для примера, хотя Tailwind использует системные UI шрифты по умолчанию */
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
+        .hero-bg {
+            /* Placeholder for actual background image/video */
+            background-image: url('https://images.unsplash.com/photo-1500582898963-920919931658?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1920&q=80');
+            background-size: cover;
+            background-position: center;
+        }
+        .sticky-nav {
+            position: sticky;
+            top: 0;
+            z-index: 50;
+            background-color: rgba(255, 255, 255, 0.9); /* Полупрозрачный фон для "липкости" */
+            backdrop-filter: blur(10px);
+        }
+        .active-nav-link {
+            color: #A62C21; /* Пример цвета 'cambodia-red' */
+            font-weight: 600;
+        }
+        .inactive-nav-link {
+            color: #4B5563; /* gray-600 */
+        }
+        .inactive-nav-link:hover {
+            color: #A62C21; /* Пример цвета 'cambodia-red' */
+        }
+        .cambodia-gold-text { color: #E6A930; }
+        .cambodia-red-text { color: #A62C21; }
+        .cambodia-green-text { color: #5E8C6A; }
+        .bg-cambodia-red { background-color: #A62C21; }
+        .hover-bg-cambodia-red-dark:hover { background-color: #8f251c; }
+        .border-cambodia-gold { border-color: #E6A930; }
+
+        /* Стили для чат-бота */
+        #chatbotContainer.hidden { display: none; }
+        #chatMessages::-webkit-scrollbar { width: 6px; }
+        #chatMessages::-webkit-scrollbar-thumb { background-color: #E6A930; border-radius: 3px; }
+        #chatMessages::-webkit-scrollbar-track { background-color: #f0f0f0; }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-800">
+
+    <!-- Навигационная панель (Navigation Bar) -->
+    <nav id="navigation-bar" class="sticky-nav shadow-md">
+        <div class="container mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex items-center justify-between h-16">
+                <div class="flex items-center">
+                    <a href="#" class="flex-shrink-0 text-2xl font-bold cambodia-red-text">
+                        <!-- Комментарий: Здесь может быть логотип с элементами кхмерской культуры -->
+                        Cambodia<span class="cambodia-gold-text">Travel</span>
+                    </a>
+                </div>
+                <div class="hidden md:flex items-center space-x-4">
+                    <a href="#hero-section" class="inactive-nav-link px-3 py-2 rounded-md text-sm font-medium active-nav-link">Обзор</a>
+                    <a href="#plan-trip-flow" class="inactive-nav-link px-3 py-2 rounded-md text-sm font-medium">Планировать поездку</a>
+                    <a href="#safety-section-content" class="inactive-nav-link px-3 py-2 rounded-md text-sm font-medium">Безопасность</a>
+                    <a href="#" class="inactive-nav-link px-3 py-2 rounded-md text-sm font-medium">Сообщество</a>
+                    <a href="#marketplace-page-content" class="inactive-nav-link px-3 py-2 rounded-md text-sm font-medium">Маркетплейс</a>
+                </div>
+                <div class="hidden md:flex items-center space-x-4">
+                    <!-- Селектор языка -->
+                    <div class="relative" id="languageDropdownContainer">
+                        <button type="button" id="languageButton" class="flex items-center text-slate-600 hover:text-cambodia-red focus:outline-none">
+                            <svg class="w-5 h-5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9V3m0 9a9 9 0 019-9m-9 9a9 9 0 00-9 9"></path></svg>
+                            <span>RU</span>
+                            <svg class="w-4 h-4 ml-1" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd"></path></svg>
+                        </button>
+                        <div id="languageDropdown" class="hidden absolute right-0 mt-2 w-40 bg-white rounded-md shadow-lg py-1 z-20">
+                            <a href="#" class="block px-4 py-2 text-sm text-slate-700 hover:bg-slate-100 hover:text-cambodia-red">Русский (RU)</a>
+                            <a href="#" class="block px-4 py-2 text-sm text-slate-700 hover:bg-slate-100 hover:text-cambodia-red">English (EN)</a>
+                            <a href="#" class="block px-4 py-2 text-sm text-slate-700 hover:bg-slate-100 hover:text-cambodia-red">ភាសាខ្មែរ (KH)</a>
+                        </div>
+                    </div>
+                    <!-- Иконка профиля пользователя -->
+                    <div class="relative" id="userProfileDropdownContainer">
+                        <button type="button" id="userProfileButton" class="flex items-center focus:outline-none">
+                            <div class="w-8 h-8 bg-amber-400 rounded-full flex items-center justify-center text-white font-semibold">
+                                <!-- Placeholder for user avatar or initials -->
+                                <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path fill-rule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clip-rule="evenodd"></path></svg>
+                            </div>
+                        </button>
+                         <div id="userProfileDropdown" class="hidden absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 z-20">
+                            <a href="#" class="block px-4 py-2 text-sm text-slate-700 hover:bg-slate-100 hover:text-cambodia-red">Профиль</a>
+                            <a href="#" class="block px-4 py-2 text-sm text-slate-700 hover:bg-slate-100 hover:text-cambodia-red">Мои поездки</a>
+                            <a href="#" class="block px-4 py-2 text-sm text-slate-700 hover:bg-slate-100 hover:text-cambodia-red">Настройки</a>
+                            <hr class="my-1 border-slate-200">
+                            <a href="#" class="block px-4 py-2 text-sm text-slate-700 hover:bg-slate-100 hover:text-cambodia-red">Выйти</a>
+                        </div>
+                    </div>
+                </div>
+                <!-- Mobile menu button -->
+                <div class="md:hidden flex items-center">
+                    <button id="mobileMenuButton" class="inline-flex items-center justify-center p-2 rounded-md text-slate-600 hover:text-cambodia-red hover:bg-slate-100 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-cambodia-red" aria-expanded="false">
+                        <span class="sr-only">Открыть главное меню</span>
+                        <svg id="menuIconOpen" class="block h-6 w-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
+                        </svg>
+                        <svg id="menuIconClose" class="hidden h-6 w-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                    </button>
+                </div>
+            </div>
+        </div>
+        <!-- Mobile menu, show/hide based on menu state. -->
+        <div id="mobileMenu" class="md:hidden hidden">
+            <div class="px-2 pt-2 pb-3 space-y-1 sm:px-3">
+                <a href="#hero-section" class="text-slate-700 hover:bg-slate-100 hover:text-cambodia-red block px-3 py-2 rounded-md text-base font-medium">Обзор</a>
+                <a href="#plan-trip-flow" class="text-slate-700 hover:bg-slate-100 hover:text-cambodia-red block px-3 py-2 rounded-md text-base font-medium">Планировать поездку</a>
+                <a href="#safety-section-content" class="text-slate-700 hover:bg-slate-100 hover:text-cambodia-red block px-3 py-2 rounded-md text-base font-medium">Безопасность</a>
+                <a href="#" class="text-slate-700 hover:bg-slate-100 hover:text-cambodia-red block px-3 py-2 rounded-md text-base font-medium">Сообщество</a>
+                <a href="#marketplace-page-content" class="text-slate-700 hover:bg-slate-100 hover:text-cambodia-red block px-3 py-2 rounded-md text-base font-medium">Маркетплейс</a>
+            </div>
+            <div class="pt-4 pb-3 border-t border-slate-200">
+                 <div class="flex items-center px-5">
+                    <div class="flex-shrink-0">
+                         <div class="w-10 h-10 bg-amber-400 rounded-full flex items-center justify-center text-white font-semibold">
+                            <svg class="w-6 h-6" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path fill-rule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clip-rule="evenodd"></path></svg>
+                        </div>
+                    </div>
+                    <div class="ml-3">
+                        <div class="text-base font-medium text-slate-800">Имя Пользователя</div>
+                        <div class="text-sm font-medium text-slate-500">user@example.com</div>
+                    </div>
+                </div>
+                <div class="mt-3 px-2 space-y-1">
+                    <a href="#" class="block px-3 py-2 rounded-md text-base font-medium text-slate-700 hover:text-cambodia-red hover:bg-slate-100">Профиль</a>
+                    <a href="#" class="block px-3 py-2 rounded-md text-base font-medium text-slate-700 hover:text-cambodia-red hover:bg-slate-100">Выйти</a>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <main>
+        <!-- 1. Главная страница (Homepage) -->
+        <!-- Секция Hero -->
+        <section id="hero-section" class="hero-bg relative min-h-screen flex items-center justify-center text-white">
+            <div class="absolute inset-0 bg-black opacity-50"></div> <!-- Наложение для читаемости текста -->
+            <div class="relative z-10 text-center p-4">
+                <h1 class="text-4xl sm:text-5xl md:text-6xl font-extrabold mb-4 leading-tight">
+                    <!-- Комментарий: Можно использовать шрифт с кхмерскими нотками -->
+                    Откройте для себя <span class="cambodia-gold-text">магию</span> Камбоджи
+                </h1>
+                <p class="text-lg sm:text-xl md:text-2xl mb-8 max-w-2xl mx-auto">
+                    Ваш персональный гид по незабываемым храмам, яркой культуре и захватывающей природе Королевства Чудес.
+                </p>
+                <div class="max-w-xl mx-auto">
+                    <div class="relative">
+                        <input type="search" placeholder="Куда вы хотите поехать? (например, Ангкор-Ват, Пномпень)" class="w-full p-4 pr-16 rounded-lg shadow-lg text-slate-800 focus:ring-2 focus:ring-amber-400 focus:outline-none" aria-label="Поиск направлений">
+                        <button type="submit" class="absolute right-0 top-0 bottom-0 bg-cambodia-red hover-bg-cambodia-red-dark text-white p-4 rounded-r-lg" aria-label="Найти">
+                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+                        </button>
+                        <!-- Комментарий: Иконка голосового поиска может быть добавлена здесь -->
+                        <!-- <button type="button" class="absolute right-16 top-0 bottom-0 p-4 text-slate-500 hover:text-cambodia-red" aria-label="Голосовой поиск">
+                            <svg class="w-6 h-6" fill="currentColor" viewBox="0 0 20 20"><path d="M7 4a3 3 0 016 0v4a3 3 0 11-6 0V4zm4 10.93A7.001 7.001 0 0017 8h-1a6 6 0 11-5.93 5.98_L11 14.93zM17 8a1 1 0 00-2 0v1a1 1 0 102 0V8z"></path></svg>
+                        </button> -->
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Рекомендованные разделы (Featured Sections) -->
+        <section id="featured-destinations" class="py-12 md:py-20 bg-slate-100">
+            <div class="container mx-auto px-4 sm:px-6 lg:px-8">
+                <h2 class="text-3xl font-bold text-center mb-4 cambodia-red-text">Популярные направления</h2>
+                <p class="text-center text-slate-600 mb-10 max-w-2xl mx-auto">Исследуйте самые известные и захватывающие места Камбоджи.</p>
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
+                    <!-- Карточка направления 1 -->
+                    <article class="bg-white rounded-xl shadow-lg overflow-hidden transform hover:scale-105 transition-transform duration-300">
+                        <div class="bg-gray-200 border-2 border-dashed rounded-t-xl w-full h-56 animate-pulse">
+                            <!-- Placeholder: Изображение Ангкор-Ват -->
+                            <!-- <img src="placeholder-angkor.jpg" alt="Ангкор-Ват" class="w-full h-56 object-cover"> -->
+                        </div>
+                        <div class="p-6">
+                            <h3 class="text-xl font-semibold mb-2 cambodia-gold-text">Ангкор-Ват</h3>
+                            <p class="text-slate-600 text-sm mb-4">Величественный храмовый комплекс, символ Камбоджи и объект Всемирного наследия ЮНЕСКО.</p>
+                            <a href="#" class="inline-block bg-cambodia-red hover-bg-cambodia-red-dark text-white text-sm font-medium py-2 px-4 rounded-lg transition-colors">Подробнее</a>
+                        </div>
+                    </article>
+                    <!-- Карточка направления 2 -->
+                    <article class="bg-white rounded-xl shadow-lg overflow-hidden transform hover:scale-105 transition-transform duration-300">
+                        <div class="bg-gray-200 border-2 border-dashed rounded-t-xl w-full h-56 animate-pulse">
+                            <!-- Placeholder: Изображение Пномпеня -->
+                        </div>
+                        <div class="p-6">
+                            <h3 class="text-xl font-semibold mb-2 cambodia-gold-text">Пномпень</h3>
+                            <p class="text-slate-600 text-sm mb-4">Столица Камбоджи, сочетающая историческое наследие с современной городской жизнью.</p>
+                            <a href="#" class="inline-block bg-cambodia-red hover-bg-cambodia-red-dark text-white text-sm font-medium py-2 px-4 rounded-lg transition-colors">Подробнее</a>
+                        </div>
+                    </article>
+                    <!-- Карточка направления 3 -->
+                    <article class="bg-white rounded-xl shadow-lg overflow-hidden transform hover:scale-105 transition-transform duration-300">
+                        <div class="bg-gray-200 border-2 border-dashed rounded-t-xl w-full h-56 animate-pulse">
+                            <!-- Placeholder: Изображение островов Ко Ронг -->
+                        </div>
+                        <div class="p-6">
+                            <h3 class="text-xl font-semibold mb-2 cambodia-gold-text">Острова Ко Ронг</h3>
+                            <p class="text-slate-600 text-sm mb-4">Райские острова с белоснежными пляжами и кристально чистой водой для идеального отдыха.</p>
+                            <a href="#" class="inline-block bg-cambodia-red hover-bg-cambodia-red-dark text-white text-sm font-medium py-2 px-4 rounded-lg transition-colors">Подробнее</a>
+                        </div>
+                    </article>
+                </div>
+            </div>
+        </section>
+
+        <section id="unique-experiences" class="py-12 md:py-20 bg-white">
+            <div class="container mx-auto px-4 sm:px-6 lg:px-8">
+                <h2 class="text-3xl font-bold text-center mb-4 cambodia-green-text">Уникальные впечатления</h2>
+                <p class="text-center text-slate-600 mb-10 max-w-2xl mx-auto">Погрузитесь в аутентичный опыт, который запомнится на всю жизнь.</p>
+                <!-- Горизонтальный слайдер или карточки -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                     <article class="bg-slate-50 rounded-xl shadow-lg overflow-hidden flex flex-col md:flex-row">
+                        <div class="md:w-1/2 bg-gray-200 border-2 border-dashed md:rounded-l-xl md:rounded-t-none rounded-t-xl w-full h-64 md:h-auto animate-pulse">
+                            <!-- Placeholder: Кулинарный мастер-класс -->
+                        </div>
+                        <div class="md:w-1/2 p-6 flex flex-col justify-center">
+                            <h3 class="text-xl font-semibold mb-2">Кулинарный мастер-класс</h3>
+                            <p class="text-slate-600 text-sm mb-4">Научитесь готовить традиционные кхмерские блюда под руководством местных поваров.</p>
+                            <a href="#" class="text-sm font-medium text-cambodia-red hover:underline">Узнать больше &rarr;</a>
+                        </div>
+                    </article>
+                     <article class="bg-slate-50 rounded-xl shadow-lg overflow-hidden flex flex-col md:flex-row">
+                        <div class="md:w-1/2 bg-gray-200 border-2 border-dashed md:rounded-l-xl md:rounded-t-none rounded-t-xl w-full h-64 md:h-auto animate-pulse">
+                            <!-- Placeholder: Посещение плавучей деревни -->
+                        </div>
+                        <div class="md:w-1/2 p-6 flex flex-col justify-center">
+                            <h3 class="text-xl font-semibold mb-2">Плавучие деревни Тонлесап</h3>
+                            <p class="text-slate-600 text-sm mb-4">Откройте для себя уникальный образ жизни людей на самом большом озере Юго-Восточной Азии.</p>
+                            <a href="#" class="text-sm font-medium text-cambodia-red hover:underline">Узнать больше &rarr;</a>
+                        </div>
+                    </article>
+                </div>
+            </div>
+        </section>
+        
+        <section id="local-highlights" class="py-12 md:py-20 bg-slate-100">
+            <div class="container mx-auto px-4 sm:px-6 lg:px-8">
+                <h2 class="text-3xl font-bold text-center mb-4 cambodia-red-text">Местные особенности</h2>
+                <p class="text-center text-slate-600 mb-10 max-w-2xl mx-auto">Скрытые жемчужины и сезонные события, которые сделают ваше путешествие особенным.</p>
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
+                    <!-- Карточка "Скрытая жемчужина" 1 -->
+                    <article class="bg-white rounded-xl shadow-lg p-6 text-center">
+                        <div class="mx-auto mb-4 bg-gray-200 border-2 border-dashed rounded-xl w-24 h-24 animate-pulse">
+                            <!-- Placeholder: Иконка или фото небольшой пагоды -->
+                        </div>
+                        <h3 class="text-lg font-semibold mb-2">Храм Бантеай Срей</h3>
+                        <p class="text-slate-600 text-sm">Изящный "женский храм" с невероятной резьбой по розовому песчанику.</p>
+                    </article>
+                    <!-- Карточка "Сезонное событие" 2 -->
+                     <article class="bg-white rounded-xl shadow-lg p-6 text-center">
+                        <div class="mx-auto mb-4 bg-gray-200 border-2 border-dashed rounded-xl w-24 h-24 animate-pulse">
+                            <!-- Placeholder: Иконка или фото фестиваля воды -->
+                        </div>
+                        <h3 class="text-lg font-semibold mb-2">Фестиваль воды (Бон Ом Тук)</h3>
+                        <p class="text-slate-600 text-sm">Яркий ежегодный фестиваль с гонками на лодках, знаменующий смену течения реки Тонлесап.</p>
+                    </article>
+                    <!-- Карточка "Местная рекомендация" 3 -->
+                     <article class="bg-white rounded-xl shadow-lg p-6 text-center">
+                        <div class="mx-auto mb-4 bg-gray-200 border-2 border-dashed rounded-xl w-24 h-24 animate-pulse">
+                            <!-- Placeholder: Иконка или фото местного рынка -->
+                        </div>
+                        <h3 class="text-lg font-semibold mb-2">Ночной рынок Пса Ча</h3>
+                        <p class="text-slate-600 text-sm">Оживленный рынок в Сием Рипе, где можно купить сувениры, попробовать уличную еду и ощутить местный колорит.</p>
+                    </article>
+                </div>
+            </div>
+        </section>
+
+        <!-- Отзывы / Логотипы партнеров (Testimonials/Partner Logos) -->
+        <section id="testimonials" class="py-12 md:py-20 bg-white">
+            <div class="container mx-auto px-4 sm:px-6 lg:px-8">
+                <h2 class="text-3xl font-bold text-center mb-10 cambodia-gold-text">Что говорят наши путешественники</h2>
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 mb-12">
+                    <!-- Отзыв 1 -->
+                    <blockquote class="bg-slate-50 p-6 rounded-lg shadow">
+                        <div class="flex items-center mb-4">
+                            <div class="w-12 h-12 bg-gray-200 border-2 border-dashed rounded-full animate-pulse mr-4">
+                                <!-- Placeholder: Фото пользователя -->
+                            </div>
+                            <div>
+                                <p class="font-semibold text-slate-800">Елена С.</p>
+                                <p class="text-sm text-slate-500">Путешествовала в Январе 2023</p>
+                            </div>
+                        </div>
+                        <p class="text-slate-600 italic">"Невероятная поездка! Ангкор-Ват превзошел все ожидания. Платформа помогла спланировать все идеально."</p>
+                    </blockquote>
+                    <!-- Отзыв 2 -->
+                     <blockquote class="bg-slate-50 p-6 rounded-lg shadow">
+                        <div class="flex items-center mb-4">
+                            <div class="w-12 h-12 bg-gray-200 border-2 border-dashed rounded-full animate-pulse mr-4"></div>
+                            <div>
+                                <p class="font-semibold text-slate-800">Алексей П.</p>
+                                <p class="text-sm text-slate-500">Путешествовал в Марте 2023</p>
+                            </div>
+                        </div>
+                        <p class="text-slate-600 italic">"Камбоджа - удивительная страна. Спасибо за помощь в поиске уникальных мест и активностей!"</p>
+                    </blockquote>
+                     <blockquote class="bg-slate-50 p-6 rounded-lg shadow">
+                        <div class="flex items-center mb-4">
+                            <div class="w-12 h-12 bg-gray-200 border-2 border-dashed rounded-full animate-pulse mr-4"></div>
+                            <div>
+                                <p class="font-semibold text-slate-800">Мария К.</p>
+                                <p class="text-sm text-slate-500">Путешествовала в Ноябре 2022</p>
+                            </div>
+                        </div>
+                        <p class="text-slate-600 italic">"Очарована культурой и людьми. Удобный сервис для бронирования и планирования."</p>
+                    </blockquote>
+                </div>
+                <!-- Комментарий: Элементы, подтверждающие безопасность и доверие, могут быть размещены здесь (сертификаты, награды) -->
+                <h3 class="text-2xl font-semibold text-center text-slate-700 mb-6">Нам доверяют</h3>
+                <div class="flex flex-wrap justify-center items-center gap-8 opacity-70">
+                    <div class="bg-gray-200 border-2 border-dashed rounded-xl w-32 h-16 animate-pulse" title="Логотип партнера 1"></div>
+                    <div class="bg-gray-200 border-2 border-dashed rounded-xl w-32 h-16 animate-pulse" title="Логотип партнера 2"></div>
+                    <div class="bg-gray-200 border-2 border-dashed rounded-xl w-32 h-16 animate-pulse" title="Логотип партнера 3"></div>
+                    <div class="bg-gray-200 border-2 border-dashed rounded-xl w-32 h-16 animate-pulse" title="Логотип партнера 4"></div>
+                </div>
+            </div>
+        </section>
+
+        <!-- 2. Страница "Обзор" (Explore Page) - Структура контента -->
+        <section id="explore-page-content" class="py-12 md:py-20 bg-slate-50">
+            <div class="container mx-auto px-4 sm:px-6 lg:px-8">
+                <h2 class="text-3xl font-bold text-center mb-2 cambodia-red-text">Исследуйте Камбоджу</h2>
+                <p class="text-center text-slate-600 mb-10 max-w-2xl mx-auto">Найдите лучшие направления, впечатления и местные бизнесы.</p>
+
+                <!-- Фильтрация и сортировка -->
+                <div class="mb-8 p-4 bg-white rounded-lg shadow">
+                    <div class="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4 items-end">
+                        <div>
+                            <label for="category-filter" class="block text-sm font-medium text-slate-700">Категория</label>
+                            <select id="category-filter" class="mt-1 block w-full py-2 px-3 border border-slate-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-amber-500 focus:border-amber-500 sm:text-sm">
+                                <option>Все</option>
+                                <option>Достопримечательности</option>
+                                <option>Еда и напитки</option>
+                                <option>Природа и парки</option>
+                                <option>Культура и история</option>
+                                <option>Проживание</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label for="price-filter" class="block text-sm font-medium text-slate-700">Цена</label>
+                            <select id="price-filter" class="mt-1 block w-full py-2 px-3 border border-slate-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-amber-500 focus:border-amber-500 sm:text-sm">
+                                <option>Любая</option>
+                                <option>$ (Доступно)</option>
+                                <option>$$ (Средне)</option>
+                                <option>$$$ (Дорого)</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label for="rating-filter" class="block text-sm font-medium text-slate-700">Рейтинг</label>
+                            <select id="rating-filter" class="mt-1 block w-full py-2 px-3 border border-slate-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-amber-500 focus:border-amber-500 sm:text-sm">
+                                <option>Любой</option>
+                                <option>4+ звезд</option>
+                                <option>3+ звезд</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label for="location-filter" class="block text-sm font-medium text-slate-700">Местоположение</label>
+                            <input type="text" id="location-filter" placeholder="Например, Сием Рип" class="mt-1 block w-full py-2 px-3 border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-amber-500 focus:border-amber-500 sm:text-sm">
+                        </div>
+                        <button class="bg-cambodia-red hover-bg-cambodia-red-dark text-white py-2 px-4 rounded-md text-sm font-medium w-full md:w-auto">Применить фильтры</button>
+                    </div>
+                    <div class="mt-4 flex justify-end">
+                         <label for="sort-by" class="text-sm font-medium text-slate-700 mr-2 self-center">Сортировать по:</label>
+                         <select id="sort-by" class="py-2 px-3 border border-slate-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-amber-500 focus:border-amber-500 sm:text-sm">
+                            <option>Популярности</option>
+                            <option>Цене (сначала дешевые)</option>
+                            <option>Цене (сначала дорогие)</option>
+                            <option>Рейтингу</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Интеграция с картой (Placeholder) -->
+                <div class="mb-8">
+                    <h3 class="text-xl font-semibold text-slate-700 mb-2">Карта региона</h3>
+                    <div class="bg-gray-200 border-2 border-dashed rounded-xl w-full h-96 animate-pulse flex items-center justify-center">
+                        <p class="text-slate-500">Интерактивная карта будет здесь</p>
+                        <!-- Комментарий: Карта с метками и кластеризацией. WCAG: обеспечить доступность карты (текстовые альтернативы, навигация с клавиатуры). -->
+                    </div>
+                </div>
+
+                <!-- Сетка/масонская раскладка для карточек объявлений -->
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                    <!-- Пример карточки объявления -->
+                    <article class="bg-white rounded-lg shadow-md overflow-hidden cursor-pointer hover:shadow-xl transition-shadow">
+                        <div class="bg-gray-200 border-2 border-dashed rounded-t-lg w-full h-48 animate-pulse">
+                            <!-- Placeholder: Изображение объявления -->
+                        </div>
+                        <div class="p-4">
+                            <h4 class="text-lg font-semibold mb-1 cambodia-gold-text">Уютный гестхаус в Сием Рипе</h4>
+                            <p class="text-sm text-slate-500 mb-2">Рядом с центром, завтрак включен</p>
+                            <div class="flex items-center justify-between mb-2">
+                                <p class="text-lg font-bold cambodia-red-text">$25 <span class="text-sm font-normal text-slate-500">/ ночь</span></p>
+                                <div class="flex items-center">
+                                    <svg class="w-4 h-4 text-amber-400 mr-1" fill="currentColor" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"></path></svg>
+                                    <span class="text-sm text-slate-600">4.5 (120 отзывов)</span>
+                                </div>
+                            </div>
+                            <button class="w-full bg-cambodia-red hover-bg-cambodia-red-dark text-white text-sm py-2 px-4 rounded-md transition-colors">Посмотреть детали</button>
+                        </div>
+                    </article>
+                    <!-- Добавить еще 7 карточек для примера -->
+                    <div class="bg-gray-200 border-2 border-dashed rounded-lg w-full h-80 animate-pulse"></div>
+                    <div class="bg-gray-200 border-2 border-dashed rounded-lg w-full h-80 animate-pulse"></div>
+                    <div class="bg-gray-200 border-2 border-dashed rounded-lg w-full h-80 animate-pulse hidden sm:block"></div>
+                    <div class="bg-gray-200 border-2 border-dashed rounded-lg w-full h-80 animate-pulse hidden lg:block"></div>
+                    <div class="bg-gray-200 border-2 border-dashed rounded-lg w-full h-80 animate-pulse hidden lg:block"></div>
+                    <div class="bg-gray-200 border-2 border-dashed rounded-lg w-full h-80 animate-pulse hidden xl:block"></div>
+                    <div class="bg-gray-200 border-2 border-dashed rounded-lg w-full h-80 animate-pulse hidden xl:block"></div>
+                </div>
+            </div>
+        </section>
+
+        <!-- 3. Процесс планирования поездки (Plan Your Trip Flow) -->
+        <section id="plan-trip-flow" class="py-12 md:py-20 bg-white">
+            <div class="container mx-auto px-4 sm:px-6 lg:px-8">
+                <h2 class="text-3xl font-bold text-center mb-2 cambodia-green-text">Спланируйте свою идеальную поездку</h2>
+                <p class="text-center text-slate-600 mb-10 max-w-2xl mx-auto">Мы поможем вам создать персонализированный маршрут за несколько шагов.</p>
+
+                <!-- Мастер / Пошаговый интерфейс -->
+                <div class="max-w-3xl mx-auto bg-slate-50 p-6 sm:p-8 rounded-xl shadow-xl">
+                    <!-- Индикатор прогресса -->
+                    <div class="mb-8">
+                        <ol class="flex items-center w-full">
+                            <li class="flex w-full items-center text-cambodia-red after:content-[''] after:w-full after:h-1 after:border-b after:border-cambodia-red after:border-4 after:inline-block">
+                                <span class="flex items-center justify-center w-10 h-10 bg-cambodia-red text-white rounded-full lg:h-12 lg:w-12 shrink-0">
+                                    1
+                                </span>
+                            </li>
+                            <li class="flex w-full items-center after:content-[''] after:w-full after:h-1 after:border-b after:border-slate-300 after:border-4 after:inline-block">
+                                <span class="flex items-center justify-center w-10 h-10 bg-slate-300 rounded-full lg:h-12 lg:w-12 shrink-0">
+                                    2
+                                </span>
+                            </li>
+                             <li class="flex w-full items-center after:content-[''] after:w-full after:h-1 after:border-b after:border-slate-300 after:border-4 after:inline-block">
+                                <span class="flex items-center justify-center w-10 h-10 bg-slate-300 rounded-full lg:h-12 lg:w-12 shrink-0">
+                                    3
+                                </span>
+                            </li>
+                            <li class="flex items-center w-auto">
+                                <span class="flex items-center justify-center w-10 h-10 bg-slate-300 rounded-full lg:h-12 lg:w-12 shrink-0">
+                                    4
+                                </span>
+                            </li>
+                        </ol>
+                        <div class="mt-2 grid grid-cols-4 text-center text-sm text-slate-600">
+                            <div class="font-semibold text-cambodia-red">Направление</div>
+                            <div>Даты</div>
+                            <div>Интересы</div>
+                            <div>Бюджет</div>
+                        </div>
+                    </div>
+
+                    <!-- Шаг 1: Направление -->
+                    <div id="step-1-destination">
+                        <h3 class="text-xl font-semibold mb-4 text-slate-700">Куда бы вы хотели отправиться?</h3>
+                        <div class="mb-4">
+                            <label for="trip-destination" class="block text-sm font-medium text-slate-700">Выберите или введите направление</label>
+                            <input type="text" id="trip-destination" list="destinations" placeholder="Например, Сием Рип, Пномпень, Ко Ронг" class="mt-1 block w-full py-2 px-3 border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-amber-500 focus:border-amber-500 sm:text-sm">
+                            <datalist id="destinations">
+                                <option value="Сием Рип"></option>
+                                <option value="Пномпень"></option>
+                                <option value="Ко Ронг"></option>
+                                <option value="Баттамбанг"></option>
+                                <option value="Кампот"></option>
+                            </datalist>
+                        </div>
+                        <!-- Комментарий: Интеграция с картой для выбора направления -->
+                        <div class="bg-gray-200 border-2 border-dashed rounded-xl w-full h-64 animate-pulse mb-4 flex items-center justify-center">
+                           <p class="text-slate-500">Карта для выбора направления</p>
+                        </div>
+                        <button class="w-full bg-cambodia-red hover-bg-cambodia-red-dark text-white py-2.5 px-4 rounded-md font-medium">Далее</button>
+                    </div>
+                    <!-- Другие шаги (Даты, Интересы, Бюджет) будут похожими по структуре -->
+                </div>
+
+                <!-- Представление персонализированного маршрута (после завершения мастера) -->
+                <div class="mt-12 hidden" id="personalized-itinerary">
+                    <h3 class="text-2xl font-bold text-center mb-6 text-slate-700">Ваш персонализированный маршрут</h3>
+                    <!-- Визуальная временная шкала или календарь -->
+                    <div class="space-y-8">
+                        <!-- День 1 -->
+                        <div>
+                            <h4 class="text-xl font-semibold mb-2 border-b-2 border-cambodia-gold pb-1">День 1: Прибытие в Сием Рип и Ангкор-Ват</h4>
+                            <div class="space-y-4">
+                                <!-- Действие 1 -->
+                                <div class="flex items-start space-x-4 p-4 bg-slate-50 rounded-lg shadow">
+                                    <div class="bg-gray-200 border-2 border-dashed rounded-lg w-24 h-24 animate-pulse flex-shrink-0"></div>
+                                    <div>
+                                        <h5 class="font-semibold text-slate-800">08:00 - Посещение Ангкор-Ват на рассвете</h5>
+                                        <p class="text-sm text-slate-600">Исследуйте главный храм комплекса, наслаждаясь восходом солнца.</p>
+                                        <p class="text-xs text-slate-500 mt-1">Продолжительность: 3-4 часа. Локация: Ангкор-Ват.</p>
+                                        <div class="mt-2">
+                                            <button class="text-xs text-cambodia-red hover:underline mr-2">Изменить</button>
+                                            <button class="text-xs text-slate-500 hover:underline">Удалить</button>
+                                        </div>
+                                    </div>
+                                </div>
+                                <!-- Действие 2 -->
+                                <div class="flex items-start space-x-4 p-4 bg-slate-50 rounded-lg shadow">
+                                    <div class="bg-gray-200 border-2 border-dashed rounded-lg w-24 h-24 animate-pulse flex-shrink-0"></div>
+                                    <div>
+                                        <h5 class="font-semibold text-slate-800">13:00 - Обед в местном ресторане</h5>
+                                        <p class="text-sm text-slate-600">Попробуйте традиционную кхмерскую кухню.</p>
+                                         <a href="#" class="text-xs text-blue-600 hover:underline">Варианты бронирования &rarr;</a>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <!-- День 2 (пример) -->
+                         <div>
+                            <h4 class="text-xl font-semibold mb-2 border-b-2 border-cambodia-gold pb-1">День 2: Ангкор Тхом и Та Прум</h4>
+                             <div class="bg-gray-200 border-2 border-dashed rounded-lg w-full h-32 animate-pulse"></div>
+                        </div>
+                    </div>
+                    <div class="mt-8 text-center">
+                        <button class="bg-amber-500 hover:bg-amber-600 text-white py-3 px-6 rounded-lg font-medium">Сохранить и забронировать</button>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- 4. Бронирование проживания (Booking Accommodation) -->
+        <section id="booking-accommodation" class="py-12 md:py-20 bg-slate-100">
+            <div class="container mx-auto px-4 sm:px-6 lg:px-8">
+                <h2 class="text-3xl font-bold text-center mb-10 cambodia-red-text">Найдите идеальное жилье</h2>
+                
+                <!-- Страница списка вариантов размещения (Пример карточки) -->
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 mb-12">
+                    <article class="bg-white rounded-xl shadow-lg overflow-hidden">
+                        <div class="relative">
+                             <div class="bg-gray-200 border-2 border-dashed w-full h-56 animate-pulse">
+                                <!-- Placeholder: Фото отеля -->
+                            </div>
+                            <div class="absolute top-2 right-2 bg-cambodia-red text-white text-xs font-semibold px-2 py-1 rounded">Популярно</div>
+                        </div>
+                        <div class="p-6">
+                            <h3 class="text-xl font-semibold mb-1">Borei Angkor Resort & Spa</h3>
+                            <p class="text-sm text-slate-500 mb-2">Сием Рип, рядом с центром</p>
+                            <div class="flex items-center mb-3">
+                                <div class="flex text-amber-400">
+                                    <!-- Звезды рейтинга -->
+                                    <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"></path></svg>
+                                    <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"></path></svg>
+                                    <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"></path></svg>
+                                    <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"></path></svg>
+                                    <svg class="w-5 h-5 text-slate-300" fill="currentColor" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"></path></svg>
+                                </div>
+                                <span class="ml-2 text-sm text-slate-500">480 отзывов</span>
+                            </div>
+                            <ul class="text-sm text-slate-600 space-y-1 mb-4">
+                                <li>✓ Бесплатный Wi-Fi</li>
+                                <li>✓ Бассейн</li>
+                                <li>✓ Спа-центр</li>
+                            </ul>
+                            <div class="flex items-baseline justify-between">
+                                <div>
+                                    <p class="text-xl font-bold text-slate-800">$120 <span class="text-sm font-normal text-slate-500">/ ночь</span></p>
+                                    <p class="text-xs text-slate-500">Включая налоги и сборы</p>
+                                </div>
+                                <a href="#" class="bg-cambodia-red hover-bg-cambodia-red-dark text-white text-sm font-medium py-2 px-4 rounded-lg transition-colors">Выбрать номер</a>
+                            </div>
+                        </div>
+                    </article>
+                    <div class="bg-gray-200 border-2 border-dashed rounded-xl w-full h-[480px] animate-pulse"></div>
+                    <div class="bg-gray-200 border-2 border-dashed rounded-xl w-full h-[480px] animate-pulse hidden md:block"></div>
+                </div>
+
+                <!-- Форма бронирования (может быть на странице отеля или в модальном окне) -->
+                <div class="max-w-lg mx-auto bg-white p-6 sm:p-8 rounded-xl shadow-xl">
+                    <h3 class="text-xl font-semibold mb-6 text-slate-700">Забронировать номер</h3>
+                    <form action="#" method="POST">
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
+                            <div>
+                                <label for="checkin-date" class="block text-sm font-medium text-slate-700">Дата заезда</label>
+                                <input type="date" id="checkin-date" name="checkin-date" class="mt-1 block w-full py-2 px-3 border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-amber-500 focus:border-amber-500 sm:text-sm" required aria-label="Дата заезда">
+                            </div>
+                            <div>
+                                <label for="checkout-date" class="block text-sm font-medium text-slate-700">Дата выезда</label>
+                                <input type="date" id="checkout-date" name="checkout-date" class="mt-1 block w-full py-2 px-3 border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-amber-500 focus:border-amber-500 sm:text-sm" required aria-label="Дата выезда">
+                            </div>
+                        </div>
+                        <div class="mb-4">
+                            <label for="guests" class="block text-sm font-medium text-slate-700">Количество гостей</label>
+                            <select id="guests" name="guests" class="mt-1 block w-full py-2 px-3 border border-slate-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-amber-500 focus:border-amber-500 sm:text-sm">
+                                <option>1 гость</option>
+                                <option selected>2 гостя</option>
+                                <option>3 гостя</option>
+                                <option>4 гостя</option>
+                            </select>
+                        </div>
+                        <div class="mb-6">
+                            <label for="room-type" class="block text-sm font-medium text-slate-700">Тип номера</label>
+                            <select id="room-type" name="room-type" class="mt-1 block w-full py-2 px-3 border border-slate-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-amber-500 focus:border-amber-500 sm:text-sm">
+                                <option>Стандартный двухместный</option>
+                                <option>Делюкс с видом на бассейн</option>
+                                <option>Семейный люкс</option>
+                            </select>
+                        </div>
+                        <button type="submit" class="w-full bg-amber-500 hover:bg-amber-600 text-white py-3 px-4 rounded-lg font-medium">Перейти к оплате</button>
+                        <!-- Комментарий: Интеграция с защищенным платежным шлюзом. Показать значки безопасности (Visa, Mastercard, SSL). -->
+                        <div class="mt-4 flex justify-center items-center space-x-2">
+                            <span class="text-xs text-slate-500">Безопасная оплата:</span>
+                            <div class="bg-gray-200 border-2 border-dashed rounded w-10 h-6 animate-pulse" title="Visa"></div>
+                            <div class="bg-gray-200 border-2 border-dashed rounded w-10 h-6 animate-pulse" title="Mastercard"></div>
+                            <div class="bg-gray-200 border-2 border-dashed rounded w-16 h-6 animate-pulse flex items-center justify-center text-xs text-slate-400" title="SSL Secured">SSL</div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </section>
+
+        <!-- 5. Маркетплейс (Marketplace) -->
+        <section id="marketplace-page-content" class="py-12 md:py-20 bg-white">
+            <div class="container mx-auto px-4 sm:px-6 lg:px-8">
+                <h2 class="text-3xl font-bold text-center mb-2 cambodia-green-text">Маркетплейс местных товаров</h2>
+                <p class="text-center text-slate-600 mb-10 max-w-2xl mx-auto">Поддержите местных ремесленников и привезите домой частичку Камбоджи.</p>
+
+                <!-- Фильтры для маркетплейса (упрощенные) -->
+                <div class="mb-8 flex flex-wrap gap-2 justify-center">
+                    <button class="bg-amber-100 text-amber-700 hover:bg-amber-200 px-4 py-2 rounded-full text-sm font-medium">Все товары</button>
+                    <button class="bg-slate-100 text-slate-700 hover:bg-slate-200 px-4 py-2 rounded-full text-sm font-medium">Текстиль (Крама, Шелк)</button>
+                    <button class="bg-slate-100 text-slate-700 hover:bg-slate-200 px-4 py-2 rounded-full text-sm font-medium">Керамика</button>
+                    <button class="bg-slate-100 text-slate-700 hover:bg-slate-200 px-4 py-2 rounded-full text-sm font-medium">Резьба по дереву</button>
+                    <button class="bg-slate-100 text-slate-700 hover:bg-slate-200 px-4 py-2 rounded-full text-sm font-medium">Украшения</button>
+                </div>
+
+                <!-- Страница списка товаров -->
+                <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+                    <!-- Карточка товара 1 -->
+                    <article class="bg-slate-50 rounded-xl shadow-lg overflow-hidden group">
+                        <div class="relative">
+                            <div class="bg-gray-200 border-2 border-dashed rounded-t-xl w-full h-64 animate-pulse">
+                                <!-- Placeholder: Изображение товара -->
+                            </div>
+                            <div class="absolute inset-0 bg-black bg-opacity-20 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                                <button class="bg-white text-cambodia-red py-2 px-4 rounded-lg font-semibold">Быстрый просмотр</button>
+                            </div>
+                        </div>
+                        <div class="p-4">
+                            <h3 class="text-md font-semibold mb-1 truncate">Шарф Крама ручной работы</h3>
+                            <p class="text-sm text-slate-500 mb-2">100% хлопок, традиционный узор</p>
+                            <div class="flex justify-between items-center">
+                                <p class="text-lg font-bold cambodia-red-text">$15</p>
+                                <button class="border border-cambodia-red text-cambodia-red hover:bg-cambodia-red hover:text-white p-2 rounded-full transition-colors" aria-label="Добавить в корзину">
+                                    <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20"><path d="M3 1a1 1 0 000 2h1.22l.305 1.222a.997.997 0 00.01.042l1.358 5.43-.893.892C3.74 11.846 4.632 14 6.414 14H15a1 1 0 000-2H6.414l1-1H14a1 1 0 00.894-.553l3-6A1 1 0 0017 3H6.28l-.31-1.243A1 1 0 005 1H3zM16 16.5a1.5 1.5 0 11-3 0 1.5 1.5 0 013 0zM6.5 18a1.5 1.5 0 100-3 1.5 1.5 0 000 3z"></path></svg>
+                                </button>
+                            </div>
+                        </div>
+                    </article>
+                    <!-- Еще карточки товаров -->
+                    <div class="bg-gray-200 border-2 border-dashed rounded-xl w-full h-96 animate-pulse"></div>
+                    <div class="bg-gray-200 border-2 border-dashed rounded-xl w-full h-96 animate-pulse"></div>
+                    <div class="bg-gray-200 border-2 border-dashed rounded-xl w-full h-96 animate-pulse hidden md:block"></div>
+                </div>
+
+                <!-- Страница деталей товара (пример структуры, обычно отдельная страница) -->
+                <div class="mt-16 hidden" id="product-detail-example">
+                    <div class="grid md:grid-cols-2 gap-8 items-start">
+                        <div>
+                            <!-- Галерея изображений товара -->
+                            <div class="bg-gray-200 border-2 border-dashed rounded-xl w-full aspect-square animate-pulse mb-4"></div>
+                            <div class="grid grid-cols-4 gap-2">
+                                <div class="bg-gray-200 border-2 border-dashed rounded-lg aspect-square animate-pulse"></div>
+                                <div class="bg-gray-200 border-2 border-dashed rounded-lg aspect-square animate-pulse"></div>
+                                <div class="bg-gray-200 border-2 border-dashed rounded-lg aspect-square animate-pulse"></div>
+                                <div class="bg-gray-200 border-2 border-dashed rounded-lg aspect-square animate-pulse"></div>
+                            </div>
+                        </div>
+                        <div>
+                            <h1 class="text-3xl font-bold mb-2">Серебряные серьги с узором "Апсара"</h1>
+                            <p class="text-sm text-slate-500 mb-4">Продавец: <a href="#" class="text-cambodia-red hover:underline">Angkor Artisans</a></p>
+                            <p class="text-3xl font-bold cambodia-red-text mb-4">$45.00</p>
+                            <p class="text-slate-600 mb-4">Изящные серебряные серьги ручной работы, вдохновленные танцовщицами Апсара. Изготовлены местными мастерами из высококачественного серебра.</p>
+                            <div class="mb-6">
+                                <h4 class="text-sm font-medium text-slate-700 mb-1">Особенности:</h4>
+                                <ul class="list-disc list-inside text-sm text-slate-600">
+                                    <li>Материал: Серебро 925 пробы</li>
+                                    <li>Ручная работа</li>
+                                    <li>Размер: 3см</li>
+                                </ul>
+                            </div>
+                            <div class="flex items-center space-x-4 mb-6">
+                                <label for="quantity" class="text-sm font-medium">Количество:</label>
+                                <input type="number" id="quantity" value="1" min="1" class="w-16 border border-slate-300 rounded-md py-2 px-3 text-center">
+                                <button class="bg-cambodia-red hover-bg-cambodia-red-dark text-white py-3 px-8 rounded-lg font-medium flex-grow">Добавить в корзину</button>
+                            </div>
+                             <!-- Отзывы о товаре -->
+                            <div>
+                                <h4 class="text-lg font-semibold mb-2">Отзывы покупателей (3)</h4>
+                                <div class="bg-gray-200 border-2 border-dashed rounded-lg w-full h-24 animate-pulse"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Корзина и оформление заказа (упрощенная структура) -->
+                <div class="mt-16 hidden" id="shopping-cart-example">
+                    <h2 class="text-2xl font-bold text-center mb-8">Ваша корзина</h2>
+                     <div class="bg-gray-200 border-2 border-dashed rounded-lg w-full h-64 animate-pulse flex items-center justify-center">
+                        <p class="text-slate-500">Товары в корзине, информация о доставке, варианты оплаты будут здесь.</p>
+                     </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- 7. Раздел "Безопасность" (Safety Section) -->
+        <section id="safety-section-content" class="py-12 md:py-20 bg-slate-50">
+            <div class="container mx-auto px-4 sm:px-6 lg:px-8">
+                <h2 class="text-3xl font-bold text-center mb-2 cambodia-gold-text">Ваша безопасность в Камбодже</h2>
+                <p class="text-center text-slate-600 mb-10 max-w-2xl mx-auto">Полезная информация и советы для спокойного и безопасного путешествия.</p>
+
+                <div class="grid md:grid-cols-3 gap-8">
+                    <!-- Категория 1: Здоровье -->
+                    <div class="bg-white p-6 rounded-lg shadow-md">
+                        <div class="flex items-center mb-3">
+                            <div class="bg-emerald-100 text-emerald-600 p-2 rounded-full mr-3">
+                                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg> <!-- Заменить на иконку здоровья -->
+                            </div>
+                            <h3 class="text-xl font-semibold text-emerald-700">Здоровье и гигиена</h3>
+                        </div>
+                        <ul class="list-disc list-inside text-sm text-slate-600 space-y-1">
+                            <li>Рекомендуемые прививки</li>
+                            <li>Профилактика малярии и лихорадки Денге</li>
+                            <li>Безопасность питьевой воды и еды</li>
+                            <li>Аптечка путешественника</li>
+                        </ul>
+                    </div>
+                    <!-- Категория 2: Советы по безопасности -->
+                    <div class="bg-white p-6 rounded-lg shadow-md">
+                        <div class="flex items-center mb-3">
+                            <div class="bg-sky-100 text-sky-600 p-2 rounded-full mr-3">
+                               <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"></path></svg>
+                            </div>
+                            <h3 class="text-xl font-semibold text-sky-700">Общие советы</h3>
+                        </div>
+                         <ul class="list-disc list-inside text-sm text-slate-600 space-y-1">
+                            <li>Безопасность на улицах и в транспорте</li>
+                            <li>Как избежать мошенничества</li>
+                            <li>Уважение местных обычаев и традиций</li>
+                            <li>Хранение ценностей и документов</li>
+                        </ul>
+                    </div>
+                    <!-- Категория 3: Экстренные контакты -->
+                    <div class="bg-white p-6 rounded-lg shadow-md">
+                        <div class="flex items-center mb-3">
+                            <div class="bg-red-100 text-red-600 p-2 rounded-full mr-3">
+                                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.308 1.538a11.034 11.034 0 005.372 5.372l1.538-2.308a1 1 0 011.21-.502l4.493 1.498A1 1 0 0119 12.72V16a2 2 0 01-2 2h-1C9.716 18 3 11.284 3 5z"></path></svg>
+                            </div>
+                            <h3 class="text-xl font-semibold text-red-700">Экстренные контакты</h3>
+                        </div>
+                        <ul class="text-sm text-slate-600 space-y-1">
+                            <li>Полиция: <strong class="text-slate-800">117</strong></li>
+                            <li>Скорая помощь: <strong class="text-slate-800">119</strong></li>
+                            <li>Пожарная служба: <strong class="text-slate-800">118</strong></li>
+                            <li>Туристическая полиция: <strong class="text-slate-800">(номер)</strong></li>
+                            <li>Посольство вашей страны: <a href="#" class="text-cambodia-red hover:underline">(ссылка или номер)</a></li>
+                        </ul>
+                    </div>
+                </div>
+                <!-- Интерактивные карты с безопасными зонами (Placeholder) -->
+                <div class="mt-10">
+                     <h3 class="text-xl font-semibold text-slate-700 mb-2">Карта безопасных зон / Полезные места</h3>
+                     <div class="bg-gray-200 border-2 border-dashed rounded-xl w-full h-80 animate-pulse flex items-center justify-center">
+                        <p class="text-slate-500">Интерактивная карта с безопасными зонами, больницами, полицейскими участками.</p>
+                     </div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- Подвал (Footer) -->
+    <footer id="footer" class="bg-slate-800 text-slate-300 py-12">
+        <div class="container mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+                <div>
+                    <h4 class="text-lg font-semibold text-white mb-3">CambodiaTravel</h4>
+                    <p class="text-sm mb-4">Ваш надежный партнер в путешествиях по Камбодже.</p>
+                    <!-- Комментарий: Здесь можно добавить слоган или краткое описание -->
+                </div>
+                <div>
+                    <h5 class="text-md font-semibold text-white mb-3">Быстрые ссылки</h5>
+                    <ul class="space-y-2 text-sm">
+                        <li><a href="#" class="hover:text-amber-400 transition-colors">О нас</a></li>
+                        <li><a href="#" class="hover:text-amber-400 transition-colors">Контакты</a></li>
+                        <li><a href="#" class="hover:text-amber-400 transition-colors">Часто задаваемые вопросы</a></li>
+                        <li><a href="#" class="hover:text-amber-400 transition-colors">Блог</a></li>
+                    </ul>
+                </div>
+                <div>
+                    <h5 class="text-md font-semibold text-white mb-3">Правовая информация</h5>
+                    <ul class="space-y-2 text-sm">
+                        <li><a href="#" class="hover:text-amber-400 transition-colors">Политика конфиденциальности</a></li>
+                        <li><a href="#" class="hover:text-amber-400 transition-colors">Условия использования</a></li>
+                        <li><a href="#" class="hover:text-amber-400 transition-colors">Политика Cookie</a></li>
+                    </ul>
+                </div>
+            </div>
+            <div class="mt-8 pt-8 border-t border-slate-700 flex flex-col sm:flex-row justify-between items-center">
+                <p class="text-sm mb-4 sm:mb-0">&copy; <span id="currentYear"></span> CambodiaTravel. Все права защищены.</p>
+                <!-- Иконки социальных сетей -->
+                <div class="flex space-x-4">
+                    <a href="#" class="text-slate-400 hover:text-amber-400" aria-label="Facebook">
+                        <svg class="w-6 h-6" fill="currentColor" viewBox="0 0 24 24"><path d="M9 8h-3v4h3v12h5v-12h3.642l.358-4h-4v-1.667c0-.955.192-1.333 1.115-1.333h2.885v-5h-3.808c-3.596 0-5.192 1.583-5.192 4.615v3.385z"></path></svg>
+                    </a>
+                    <a href="#" class="text-slate-400 hover:text-amber-400" aria-label="Instagram">
+                        <svg class="w-6 h-6" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z"></path></svg>
+                    </a>
+                     <a href="#" class="text-slate-400 hover:text-amber-400" aria-label="YouTube">
+                        <svg class="w-6 h-6" fill="currentColor" viewBox="0 0 24 24"><path d="M19.615 3.184c-3.604-.246-11.631-.245-15.23 0-3.897.266-4.356 2.62-4.385 8.816.029 6.185.484 8.549 4.385 8.816 3.6.245 11.626.246 15.23 0 3.897-.266 4.356-2.62 4.385-8.816-.029-6.185-.484-8.549-4.385-8.816zm-10.615 12.816v-8l8 3.993-8 4.007z"></path></svg>
+                    </a>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <!-- 6. Интерфейс AI-чатбота (AI Chatbot Interface) -->
+    <div id="chatbotContainer" class="fixed bottom-6 right-6 z-50 hidden">
+        <!-- Chatbot Window -->
+        <div id="chatWindow" class="w-80 sm:w-96 h-[500px] bg-white rounded-xl shadow-2xl flex flex-col overflow-hidden border border-cambodia-gold">
+            <!-- Header -->
+            <div class="bg-cambodia-red text-white p-3 flex justify-between items-center">
+                <div class="flex items-center">
+                    <div class="w-8 h-8 bg-amber-400 rounded-full flex items-center justify-center text-cambodia-red font-bold text-sm mr-2">AI</div>
+                    <h3 class="font-semibold">Помощник CambodiaTravel</h3>
+                </div>
+                <button id="closeChatbot" class="text-white hover:text-amber-200" aria-label="Закрыть чат">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                </button>
+            </div>
+            <!-- Messages -->
+            <div id="chatMessages" class="flex-grow p-4 space-y-3 overflow-y-auto bg-slate-50">
+                <!-- Bot message example -->
+                <div class="flex">
+                    <div class="bg-amber-400 text-white p-3 rounded-lg rounded-bl-none max-w-[80%]">
+                        <p class="text-sm">Здравствуйте! Чем могу помочь в планировании вашего путешествия по Камбодже?</p>
+                    </div>
+                </div>
+                <!-- User message example -->
+                <div class="flex justify-end">
+                    <div class="bg-cambodia-red text-white p-3 rounded-lg rounded-br-none max-w-[80%]">
+                        <p class="text-sm">Расскажите про лучшие пляжи.</p>
+                    </div>
+                </div>
+                 <div class="flex">
+                    <div class="bg-amber-400 text-white p-3 rounded-lg rounded-bl-none max-w-[80%]">
+                        <p class="text-sm">Конечно! В Камбодже есть прекрасные пляжи, например, на островах Ко Ронг и Ко Ронг Самлоем. Вас интересует спокойный отдых или активные развлечения?</p>
+                    </div>
+                </div>
+            </div>
+            <!-- Suggested queries -->
+            <div class="p-2 border-t bg-slate-100">
+                <div class="flex flex-wrap gap-2">
+                    <button class="text-xs bg-white border border-cambodia-gold text-cambodia-gold hover:bg-amber-50 px-2 py-1 rounded-full">Погода в Сием Рипе</button>
+                    <button class="text-xs bg-white border border-cambodia-gold text-cambodia-gold hover:bg-amber-50 px-2 py-1 rounded-full">Виза в Камбоджу</button>
+                    <button class="text-xs bg-white border border-cambodia-gold text-cambodia-gold hover:bg-amber-50 px-2 py-1 rounded-full">Туры в Ангкор-Ват</button>
+                </div>
+            </div>
+            <!-- Input -->
+            <div class="p-3 border-t bg-white flex items-center">
+                <input type="text" id="chatInput" placeholder="Введите ваш вопрос..." class="flex-grow py-2 px-3 border border-slate-300 rounded-l-md focus:outline-none focus:ring-1 focus:ring-amber-500 focus:border-amber-500 sm:text-sm" aria-label="Сообщение для чат-бота">
+                <button id="sendChatMessage" class="bg-cambodia-red hover-bg-cambodia-red-dark text-white px-4 py-2 rounded-r-md" aria-label="Отправить сообщение">
+                    <svg class="w-5 h-5 transform rotate-90" fill="currentColor" viewBox="0 0 20 20"><path d="M10.894 2.553a1 1 0 00-1.788 0l-7 14a1 1 0 001.169 1.409l5-1.429A1 1 0 009 16.571V11a1 1 0 112 0v5.571a1 1 0 00.725.962l5 1.428a1 1 0 001.17-1.408l-7-14z"></path></svg>
+                </button>
+            </div>
+             <div class="text-center p-2 text-xs text-slate-500 bg-slate-100 border-t">
+                <a href="#" class="hover:underline">Связаться с оператором</a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Chatbot Toggle Button -->
+    <button id="toggleChatbot" class="fixed bottom-6 right-6 bg-cambodia-red hover-bg-cambodia-red-dark text-white w-14 h-14 rounded-full shadow-lg flex items-center justify-center z-40 transition-transform hover:scale-110" aria-label="Открыть чат-помощник">
+        <svg class="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 5.523-4.477 10-10 10S1 17.523 1 12s4.477-10 10-10 10 4.477 10 10z"></path></svg>
+    </button>
+
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            // Mobile menu toggle
+            const mobileMenuButton = document.getElementById('mobileMenuButton');
+            const mobileMenu = document.getElementById('mobileMenu');
+            const menuIconOpen = document.getElementById('menuIconOpen');
+            const menuIconClose = document.getElementById('menuIconClose');
+
+            if (mobileMenuButton && mobileMenu && menuIconOpen && menuIconClose) {
+                mobileMenuButton.addEventListener('click', () => {
+                    const expanded = mobileMenuButton.getAttribute('aria-expanded') === 'true' || false;
+                    mobileMenuButton.setAttribute('aria-expanded', !expanded);
+                    mobileMenu.classList.toggle('hidden');
+                    menuIconOpen.classList.toggle('hidden');
+                    menuIconOpen.classList.toggle('block');
+                    menuIconClose.classList.toggle('hidden');
+                    menuIconClose.classList.toggle('block');
+                });
+            }
+
+            // Language Dropdown
+            const languageButton = document.getElementById('languageButton');
+            const languageDropdown = document.getElementById('languageDropdown');
+            if (languageButton && languageDropdown) {
+                languageButton.addEventListener('click', (event) => {
+                    event.stopPropagation();
+                    languageDropdown.classList.toggle('hidden');
+                });
+            }
+
+            // User Profile Dropdown
+            const userProfileButton = document.getElementById('userProfileButton');
+            const userProfileDropdown = document.getElementById('userProfileDropdown');
+             if (userProfileButton && userProfileDropdown) {
+                userProfileButton.addEventListener('click', (event) => {
+                    event.stopPropagation();
+                    userProfileDropdown.classList.toggle('hidden');
+                });
+            }
+            
+            // Close dropdowns when clicking outside
+            document.addEventListener('click', (event) => {
+                if (languageDropdown && !languageDropdown.classList.contains('hidden') && !document.getElementById('languageDropdownContainer').contains(event.target)) {
+                    languageDropdown.classList.add('hidden');
+                }
+                if (userProfileDropdown && !userProfileDropdown.classList.contains('hidden') && !document.getElementById('userProfileDropdownContainer').contains(event.target)) {
+                    userProfileDropdown.classList.add('hidden');
+                }
+            });
+
+            // Footer Current Year
+            const currentYearSpan = document.getElementById('currentYear');
+            if (currentYearSpan) {
+                currentYearSpan.textContent = new Date().getFullYear();
+            }
+
+            // Chatbot Toggle
+            const toggleChatbotButton = document.getElementById('toggleChatbot');
+            const chatbotContainer = document.getElementById('chatbotContainer');
+            const closeChatbotButton = document.getElementById('closeChatbot');
+
+            if (toggleChatbotButton && chatbotContainer) {
+                toggleChatbotButton.addEventListener('click', () => {
+                    chatbotContainer.classList.remove('hidden');
+                    toggleChatbotButton.classList.add('hidden'); // Hide toggle button when chat is open
+                });
+            }
+            if (closeChatbotButton && chatbotContainer) {
+                 closeChatbotButton.addEventListener('click', () => {
+                    chatbotContainer.classList.add('hidden');
+                    if (toggleChatbotButton) toggleChatbotButton.classList.remove('hidden'); // Show toggle button
+                });
+            }
+            
+            // Smooth scroll for nav links
+            document.querySelectorAll('nav a[href^="#"], footer a[href^="#"]').forEach(anchor => {
+                anchor.addEventListener('click', function (e) {
+                    const href = this.getAttribute('href');
+                    // Check if it's a real section ID and not just "#"
+                    if (href.length > 1 && document.querySelector(href)) {
+                        e.preventDefault();
+                        document.querySelector(href).scrollIntoView({
+                            behavior: 'smooth'
+                        });
+                        // Close mobile menu if open
+                        if (mobileMenu && !mobileMenu.classList.contains('hidden')) {
+                           mobileMenuButton.click();
+                        }
+                    }
+                });
+            });
+
+            // Active navigation link highlighting based on scroll
+            const sections = document.querySelectorAll('main section[id]');
+            const navLinks = document.querySelectorAll('#navigation-bar .hidden.md\\:flex a');
+
+            function changeNav() {
+                let index = sections.length;
+
+                while(--index && window.scrollY + 100 < sections[index].offsetTop) {} // Add offset for better UX
+                
+                navLinks.forEach((link) => link.classList.remove('active-nav-link'));
+                // Check if the link corresponding to the current section exists
+                if (sections[index] && sections[index].id) {
+                    const activeLink = document.querySelector(`#navigation-bar .hidden.md\\:flex a[href="#${sections[index].id}"]`);
+                    if (activeLink) {
+                        activeLink.classList.add('active-nav-link');
+                    }
+                } else if (window.scrollY < sections[0].offsetTop) { // If at the very top, activate the first link
+                     const firstLink = document.querySelector('#navigation-bar .hidden.md\\:flex a');
+                     if (firstLink) firstLink.classList.add('active-nav-link');
+                }
+            }
+            
+            // Initial call
+            if (sections.length > 0 && navLinks.length > 0) {
+                changeNav();
+                window.addEventListener('scroll', changeNav);
+            }
+
+        });
+    </script>
+</body>
+</html>

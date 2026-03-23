@@ -1,0 +1,9 @@
+{
+  "web_id": "web_62",
+  "task_id": 3,
+  "task_type": "dynamic",
+  "instruction": "Task: Select an existing account, input a withdrawal amount, and click a 'Withdraw' button.\nExpected Result: The selected account's displayed balance updates (if funds are sufficient), and the withdrawal is logged in the transaction history section.\n\nNote: The task is only considered successful if the expected result is achieved; otherwise, it is deemed infeasible.",
+  "max_steps": 15,
+  "expected": "The selected account's displayed balance updates (if funds are sufficient), and the withdrawal is logged in the transaction history section.",
+  "label": 1
+}

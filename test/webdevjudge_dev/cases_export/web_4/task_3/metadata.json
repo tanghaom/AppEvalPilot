@@ -1,0 +1,9 @@
+{
+  "web_id": "web_4",
+  "task_id": 3,
+  "task_type": "dynamic",
+  "instruction": "Task: Drag a task card from one column (e.g., 'To Do') to another (e.g., 'In Progress') in the Kanban view.\nExpected Result: The task card visually moves to the new column, and its status is updated accordingly (locally).\n\nNote: The task is only considered successful if the expected result is achieved; otherwise, it is deemed infeasible.",
+  "max_steps": 15,
+  "expected": "The task card visually moves to the new column, and its status is updated accordingly (locally).",
+  "label": 1
+}

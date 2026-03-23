@@ -1,0 +1,9 @@
+{
+  "web_id": "web_54",
+  "task_id": 4,
+  "task_type": "dynamic",
+  "instruction": "Task: Click on a post's title or a 'comments' link to view its details and comments.\nExpected Result: The display updates or navigates to show the full post content and its associated comments, along with an interface to add a new comment.\n\nNote: The task is only considered successful if the expected result is achieved; otherwise, it is deemed infeasible.",
+  "max_steps": 15,
+  "expected": "The display updates or navigates to show the full post content and its associated comments, along with an interface to add a new comment.",
+  "label": 0
+}

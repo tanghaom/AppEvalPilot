@@ -1,0 +1,945 @@
+<!DOCTYPE html>
+<html lang="en" class="dark"> <!-- Default to dark theme -->
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GameDev Pings - Track Your Game Development</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        /* Custom scrollbar for webkit browsers */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            @apply bg-slate-200 dark:bg-slate-700;
+            border-radius: 10px;
+        }
+        ::-webkit-scrollbar-thumb {
+            @apply bg-blue-500;
+            border-radius: 10px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            @apply bg-blue-600;
+        }
+        /* Basic transition for theme switch */
+        body, .bg-card, .text-main, .text-secondary, .border-color {
+            transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease;
+        }
+        /* Class for card background color for easier theme switching */
+        .bg-card {
+            @apply bg-white dark:bg-slate-800;
+        }
+        .text-main {
+            @apply text-slate-800 dark:text-slate-100;
+        }
+        .text-secondary {
+            @apply text-slate-600 dark:text-slate-400;
+        }
+        .border-color {
+            @apply border-slate-200 dark:border-slate-700;
+        }
+        .input-field {
+            @apply w-full p-3 bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-lg text-main focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none;
+        }
+        .btn {
+            @apply px-4 py-2 rounded-lg font-semibold transition-colors duration-200;
+        }
+        .btn-primary {
+            @apply bg-blue-600 hover:bg-blue-700 text-white;
+        }
+        .btn-secondary {
+            @apply bg-slate-200 hover:bg-slate-300 dark:bg-slate-700 dark:hover:bg-slate-600 text-main;
+        }
+        .btn-outline {
+            @apply border border-blue-500 text-blue-500 hover:bg-blue-500 hover:text-white;
+        }
+        .tag {
+            @apply text-xs bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300 px-2 py-1 rounded-full;
+        }
+        .dev-stage {
+            @apply text-xs font-semibold px-2 py-1 rounded-full;
+        }
+        [x-cloak] { display: none !important; }
+    </style>
+    <script>
+        tailwind.config = {
+            darkMode: 'class', // or 'media'
+            theme: {
+                extend: {
+                    colors: {
+                        // Define the palette used in the <style> block if needed for JS, or just use Tailwind classes directly.
+                        // Example: 'custom-blue': '#3490dc',
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+<body class="bg-slate-100 dark:bg-slate-900 text-main min-h-screen flex flex-col font-sans">
+
+    <!-- Header -->
+    <header class="bg-card shadow-md sticky top-0 z-50 border-b border-color">
+        <div class="container mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex items-center justify-between h-16">
+                <div class="flex items-center">
+                    <svg class="h-8 w-auto text-blue-600 dark:text-blue-500" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg"><path fill-rule="evenodd" clip-rule="evenodd" d="M12 2C6.47715 2 2 6.47715 2 12C2 17.5228 6.47715 22 12 22C17.5228 22 22 17.5228 22 12C22 6.47715 17.5228 2 12 2ZM12 4C16.4183 4 20 7.58172 20 12C20 16.4183 16.4183 20 12 20C7.58172 20 4 16.4183 4 12C4 7.58172 7.58172 4 12 4ZM11 6V10H7V12H11V16H13V12H17V10H13V6H11Z"></path></svg>
+                    <span class="ml-2 text-xl font-bold text-main">GameDev Pings</span>
+                </div>
+                <div class="flex items-center space-x-4">
+                    <button id="postNewUpdateBtn" class="btn btn-primary flex items-center space-x-1">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clip-rule="evenodd" /></svg>
+                        <span>Post Update</span>
+                    </button>
+                    <button id="analyticsBtn" class="btn btn-secondary p-2" aria-label="View Analytics">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path d="M2 11h14v2H2z"/><path d="M2 7h14v2H2z"/><path d="M2 3h14v2H2z"/></svg>
+                    </button>
+                    <button id="themeToggleBtn" class="btn btn-secondary p-2" aria-label="Toggle theme">
+                        <svg id="themeIconSun" xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 2a1 1 0 011 1v1a1 1 0 11-2 0V3a1 1 0 011-1zm4 8a4 4 0 11-8 0 4 4 0 018 0zm-.464 4.95l.707.707a1 1 0 001.414-1.414l-.707-.707a1 1 0 00-1.414 1.414zm2.12-10.607a1 1 0 010 1.414l-.706.707a1 1 0 11-1.414-1.414l.707-.707a1 1 0 011.414 0zM17 11a1 1 0 100-2h-1a1 1 0 100 2h1zm-7 4a1 1 0 011 1v1a1 1 0 11-2 0v-1a1 1 0 011-1zM5.05 14.464L4.343 13.757a1 1 0 10-1.414 1.414l.707.707a1 1 0 001.414-1.414zM4.95 6.05a1 1 0 010-1.414l.707-.707a1 1 0 00-1.414-1.414l-.707.707a1 1 0 011.414 1.414zM2 11a1 1 0 100-2H1a1 1 0 100 2h1z" clip-rule="evenodd" /></svg>
+                        <svg id="themeIconMoon" xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 hidden" viewBox="0 0 20 20" fill="currentColor"><path d="M17.293 13.293A8 8 0 016.707 2.707a8.001 8.001 0 1010.586 10.586z" /></svg>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="container mx-auto px-4 sm:px-6 lg:px-8 py-8 flex-grow">
+        <!-- Filters -->
+        <div class="mb-6 p-4 bg-card shadow rounded-lg border border-color">
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                <input type="text" id="searchInput" placeholder="Search projects..." class="input-field">
+                <select id="platformFilter" class="input-field">
+                    <option value="">All Platforms</option>
+                    <!-- Options will be populated by JS -->
+                </select>
+                <select id="stageFilter" class="input-field">
+                    <option value="">All Stages</option>
+                    <!-- Options will be populated by JS -->
+                </select>
+                <input type="text" id="tagFilter" placeholder="Filter by tags (e.g. RPG, Unity)" class="input-field">
+            </div>
+        </div>
+
+        <!-- Project Update Feed -->
+        <div id="feedContainer" class="space-y-6">
+            <!-- Project cards will be injected here -->
+        </div>
+
+        <!-- Loading Indicator for Infinite Scroll -->
+        <div id="loadingIndicator" class="text-center py-8 hidden">
+            <svg class="animate-spin h-8 w-8 text-blue-500 mx-auto" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
+            <p class="text-secondary mt-2">Loading more pings...</p>
+        </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="bg-card border-t border-color py-6 text-center">
+        <p class="text-secondary text-sm">&copy; <span id="currentYear"></span> GameDev Pings. All rights reserved (for this demo!).</p>
+    </footer>
+
+    <!-- Post Update/Project Modal -->
+    <div id="postModal" class="fixed inset-0 bg-slate-900 bg-opacity-75 flex items-center justify-center p-4 z-[60] hidden" x-cloak>
+        <div class="bg-card rounded-lg shadow-xl p-6 w-full max-w-lg max-h-[90vh] overflow-y-auto">
+            <div class="flex justify-between items-center mb-4">
+                <h2 class="text-2xl font-semibold text-main">Post New Update / Project</h2>
+                <button id="closePostModalBtn" class="text-secondary hover:text-main">&times;</button>
+            </div>
+            <form id="postForm" class="space-y-4">
+                <div>
+                    <label for="projectTitle" class="block text-sm font-medium text-secondary">Project Title*</label>
+                    <input type="text" id="projectTitle" name="projectTitle" class="input-field" required>
+                    <p class="text-xs text-secondary mt-1">If this is an update for an existing project, enter its title. Otherwise, a new project will be created.</p>
+                </div>
+                <div>
+                    <label for="projectDescription" class="block text-sm font-medium text-secondary">Project Description (if new project)</label>
+                    <textarea id="projectDescription" name="projectDescription" rows="3" class="input-field"></textarea>
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label for="developmentStage" class="block text-sm font-medium text-secondary">Development Stage (if new project)</label>
+                        <select id="developmentStage" name="developmentStage" class="input-field">
+                            <!-- Options populated by JS -->
+                        </select>
+                    </div>
+                    <div>
+                        <label for="platform" class="block text-sm font-medium text-secondary">Platform(s) (if new project, comma-separated)</label>
+                        <input type="text" id="platform" name="platform" class="input-field" placeholder="e.g., PC, Mobile (iOS)">
+                    </div>
+                </div>
+                <div>
+                    <label for="tags" class="block text-sm font-medium text-secondary">Tags (comma-separated)</label>
+                    <input type="text" id="tags" name="tags" class="input-field" placeholder="e.g., RPG, Unity, Pixel Art">
+                </div>
+                <hr class="border-color">
+                <h3 class="text-lg font-medium text-main">Update Details</h3>
+                <div>
+                    <label for="updateType" class="block text-sm font-medium text-secondary">Update Type*</label>
+                    <select id="updateType" name="updateType" class="input-field" required>
+                        <!-- Options populated by JS -->
+                    </select>
+                </div>
+                <div>
+                    <label for="updateContent" class="block text-sm font-medium text-secondary">Update Content*</label>
+                    <textarea id="updateContent" name="updateContent" rows="4" class="input-field" required></textarea>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-secondary">Attachments (Simulated)</label>
+                    <div class="mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-color border-dashed rounded-md">
+                        <div class="space-y-1 text-center">
+                            <svg class="mx-auto h-12 w-12 text-secondary" stroke="currentColor" fill="none" viewBox="0 0 48 48" aria-hidden="true">
+                                <path d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28m0 0l4 4m4-24h8m-4-4v8m-12 4h.02" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+                            </svg>
+                            <div class="flex text-sm text-secondary">
+                                <p class="pl-1">Upload screenshots/videos (max 3 files, placeholder)</p>
+                            </div>
+                            <div id="attachmentPlaceholders" class="mt-2 space-x-2">
+                                <!-- Placeholder divs will appear here -->
+                            </div>
+                            <button type="button" id="addAttachmentBtn" class="mt-2 text-xs btn btn-secondary">Add Placeholder Attachment</button>
+                        </div>
+                    </div>
+                </div>
+                <div class="pt-2">
+                    <label class="flex items-center">
+                        <input type="checkbox" id="captchaCheckbox" class="h-4 w-4 text-blue-600 border-slate-300 rounded focus:ring-blue-500">
+                        <span class="ml-2 text-sm text-secondary">I'm not a human-shaped robot fueled by game bugs.*</span>
+                    </label>
+                </div>
+                <div class="flex justify-end space-x-3 pt-2">
+                    <button type="button" id="cancelPostBtn" class="btn btn-secondary">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Post Ping</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Analytics Modal -->
+    <div id="analyticsModal" class="fixed inset-0 bg-slate-900 bg-opacity-75 flex items-center justify-center p-4 z-[60] hidden" x-cloak>
+        <div class="bg-card rounded-lg shadow-xl p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+            <div class="flex justify-between items-center mb-4">
+                <h2 class="text-2xl font-semibold text-main">Project Analytics</h2>
+                <button id="closeAnalyticsModalBtn" class="text-secondary hover:text-main">&times;</button>
+            </div>
+            <div class="space-y-6">
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-center">
+                    <div class="p-4 bg-slate-100 dark:bg-slate-700 rounded-lg">
+                        <h3 class="text-sm font-medium text-secondary">Total Projects</h3>
+                        <p id="totalProjectsStat" class="text-3xl font-bold text-main">0</p>
+                    </div>
+                    <div class="p-4 bg-slate-100 dark:bg-slate-700 rounded-lg">
+                        <h3 class="text-sm font-medium text-secondary">Total Updates</h3>
+                        <p id="totalUpdatesStat" class="text-3xl font-bold text-main">0</p>
+                    </div>
+                    <div class="p-4 bg-slate-100 dark:bg-slate-700 rounded-lg">
+                        <h3 class="text-sm font-medium text-secondary">Total Upvotes</h3>
+                        <p id="totalUpvotesStat" class="text-3xl font-bold text-main">0</p>
+                    </div>
+                </div>
+                <div>
+                    <h3 class="text-lg font-medium text-main mb-2">Projects by Stage</h3>
+                    <canvas id="projectsByStageChart" height="150"></canvas>
+                </div>
+                <div>
+                    <h3 class="text-lg font-medium text-main mb-2">Most Followed Projects (Top 5)</h3>
+                    <div id="mostFollowedList" class="space-y-1 text-sm text-secondary">
+                        <!-- Populated by JS -->
+                    </div>
+                </div>
+                 <div class="text-center mt-4">
+                    <button class="btn btn-outline text-sm" onclick="alert('Exporting project metrics (simulated)... CSV would be generated here.')">
+                        Export Project Metrics (CSV)
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // --- Alpine.js-like simple reactivity (not full Alpine, just for x-cloak) ---
+        document.addEventListener('DOMContentLoaded', () => {
+            document.querySelectorAll('[x-cloak]').forEach(el => el.removeAttribute('x-cloak'));
+        });
+
+        // --- Constants and State ---
+        const GamedevPingsApp = {
+            state: {
+                theme: 'dark',
+                projects: [], // Array of project objects
+                isLoading: false,
+                currentPage: 1, // For infinite scroll
+                itemsPerPage: 5, // Number of projects to load per page
+                filters: {
+                    search: '',
+                    platform: '',
+                    stage: '',
+                    tags: ''
+                },
+                // Available options for forms
+                developmentStages: ['Concept', 'Pre-production', 'Alpha', 'Beta', 'Early Access', 'Released', 'Live Service', 'On Hiatus', 'Cancelled'],
+                updateTypes: ['Feature', 'Bug Fix', 'Milestone', 'Art/Asset', 'Devlog', 'Community', 'General Update', 'Release Announcement'],
+                platforms: ['PC', 'PlayStation', 'Xbox', 'Nintendo Switch', 'Mobile (Android)', 'Mobile (iOS)', 'Web', 'VR/AR', 'Mac', 'Linux'],
+                captchaVerified: false, // Simple CAPTCHA state
+                mockAttachmentsCount: 0,
+            },
+
+            // --- DOM Elements ---
+            elements: {
+                html: document.documentElement,
+                themeToggleBtn: document.getElementById('themeToggleBtn'),
+                themeIconSun: document.getElementById('themeIconSun'),
+                themeIconMoon: document.getElementById('themeIconMoon'),
+                feedContainer: document.getElementById('feedContainer'),
+                loadingIndicator: document.getElementById('loadingIndicator'),
+                currentYear: document.getElementById('currentYear'),
+                // Modals
+                postModal: document.getElementById('postModal'),
+                postNewUpdateBtn: document.getElementById('postNewUpdateBtn'),
+                closePostModalBtn: document.getElementById('closePostModalBtn'),
+                cancelPostBtn: document.getElementById('cancelPostBtn'),
+                postForm: document.getElementById('postForm'),
+                // Form fields
+                projectTitle: document.getElementById('projectTitle'),
+                projectDescription: document.getElementById('projectDescription'),
+                developmentStageSelect: document.getElementById('developmentStage'),
+                platformInput: document.getElementById('platform'),
+                tagsInput: document.getElementById('tags'),
+                updateTypeSelect: document.getElementById('updateType'),
+                updateContent: document.getElementById('updateContent'),
+                captchaCheckbox: document.getElementById('captchaCheckbox'),
+                addAttachmentBtn: document.getElementById('addAttachmentBtn'),
+                attachmentPlaceholders: document.getElementById('attachmentPlaceholders'),
+                // Filters
+                searchInput: document.getElementById('searchInput'),
+                platformFilter: document.getElementById('platformFilter'),
+                stageFilter: document.getElementById('stageFilter'),
+                tagFilter: document.getElementById('tagFilter'),
+                // Analytics
+                analyticsModal: document.getElementById('analyticsModal'),
+                analyticsBtn: document.getElementById('analyticsBtn'),
+                closeAnalyticsModalBtn: document.getElementById('closeAnalyticsModalBtn'),
+                totalProjectsStat: document.getElementById('totalProjectsStat'),
+                totalUpdatesStat: document.getElementById('totalUpdatesStat'),
+                totalUpvotesStat: document.getElementById('totalUpvotesStat'),
+                projectsByStageChartCtx: document.getElementById('projectsByStageChart')?.getContext('2d'),
+                mostFollowedList: document.getElementById('mostFollowedList'),
+            },
+
+            // --- Initialization ---
+            init() {
+                this.elements.currentYear.textContent = new Date().getFullYear();
+                this.loadTheme();
+                this.populateSelectOptions();
+                this.loadInitialData(); // Load or generate initial projects
+                this.renderFeed();
+                this.attachEventListeners();
+                // Initial population of filter dropdowns
+                this.elements.platforms.forEach(p => this.elements.platformFilter.add(new Option(p, p)));
+                this.elements.developmentStages.forEach(s => this.elements.stageFilter.add(new Option(s, s)));
+            },
+
+            // --- Theme Management ---
+            loadTheme() {
+                const savedTheme = localStorage.getItem('theme');
+                if (savedTheme) {
+                    this.state.theme = savedTheme;
+                }
+                this.applyTheme();
+            },
+            toggleTheme() {
+                this.state.theme = this.state.theme === 'light' ? 'dark' : 'light';
+                localStorage.setItem('theme', this.state.theme);
+                this.applyTheme();
+            },
+            applyTheme() {
+                if (this.state.theme === 'dark') {
+                    this.elements.html.classList.add('dark');
+                    this.elements.themeIconSun.classList.add('hidden');
+                    this.elements.themeIconMoon.classList.remove('hidden');
+                } else {
+                    this.elements.html.classList.remove('dark');
+                    this.elements.themeIconSun.classList.remove('hidden');
+                    this.elements.themeIconMoon.classList.add('hidden');
+                }
+            },
+
+            // --- Data Management & Rendering ---
+            loadInitialData() {
+                const storedProjects = localStorage.getItem('gameDevPingsProjects');
+                if (storedProjects) {
+                    this.state.projects = JSON.parse(storedProjects);
+                } else {
+                    // Generate some dummy data if nothing is stored
+                    this.state.projects = [
+                        {
+                            id: this.uuidv4(), title: 'Pixel Raiders', description: 'A retro-style dungeon crawler with procedural generation.',
+                            developmentStage: 'Alpha', platforms: ['PC', 'Nintendo Switch'], tags: ['RPG', 'Pixel Art', 'Indie'],
+                            createdAt: new Date(Date.now() - 86400000 * 5).toISOString(), updatedAt: new Date().toISOString(),
+                            followers: 125, views: 1500,
+                            updates: [
+                                { id: this.uuidv4(), type: 'Feature', content: 'Added 3 new enemy types and a mini-boss for the first dungeon.', timestamp: new Date(Date.now() - 86400000 * 2).toISOString(), upvotes: 15, attachments: [{type: 'image', name: 'enemy_concept.png'}] },
+                                { id: this.uuidv4(), type: 'Devlog', content: 'Refactored the inventory system for better performance and scalability. Next up: crafting!', timestamp: new Date().toISOString(), upvotes: 8, attachments: [] },
+                            ]
+                        },
+                        {
+                            id: this.uuidv4(), title: 'Cosmic Frontier Online', description: 'A massively multiplayer space exploration and trading game.',
+                            developmentStage: 'Beta', platforms: ['PC', 'Xbox'], tags: ['MMO', 'Sci-Fi', 'Space Sim', 'Unity'],
+                            createdAt: new Date(Date.now() - 86400000 * 30).toISOString(), updatedAt: new Date(Date.now() - 86400000 * 1).toISOString(),
+                            followers: 850, views: 12000,
+                            updates: [
+                                { id: this.uuidv4(), type: 'Milestone', content: 'Closed Beta Wave 2 successfully launched! Invites sent to 5000 new testers.', timestamp: new Date(Date.now() - 86400000 * 1).toISOString(), upvotes: 152, attachments: [{type: 'video', name: 'beta_trailer.mp4'}] },
+                            ]
+                        },
+                         {
+                            id: this.uuidv4(), title: 'Silent Orchard', description: 'A narrative-driven horror game set in a secluded village.',
+                            developmentStage: 'Pre-production', platforms: ['PC'], tags: ['Horror', 'Story Rich', 'Unreal Engine'],
+                            createdAt: new Date(Date.now() - 86400000 * 2).toISOString(), updatedAt: new Date(Date.now() - 86400000 * 2).toISOString(),
+                            followers: 30, views: 300,
+                            updates: [
+                                { id: this.uuidv4(), type: 'Art/Asset', content: 'Finalized concept art for the main antagonist. Check out the creepy vibes!', timestamp: new Date(Date.now() - 86400000 * 2).toISOString(), upvotes: 5, attachments: [{type: 'image', name: 'antagonist_art.jpg'}]}
+                            ]
+                        }
+                    ];
+                    // Add more dummy projects for infinite scroll testing
+                    for (let i = 0; i < 15; i++) {
+                        this.state.projects.push({
+                            id: this.uuidv4(), title: `Procedural Game ${i+1}`, description: `This is dummy project number ${i+1} for testing purposes.`,
+                            developmentStage: this.state.developmentStages[i % this.state.developmentStages.length],
+                            platforms: [this.state.platforms[i % this.state.platforms.length]],
+                            tags: ['Demo', `Tag${i}`],
+                            createdAt: new Date(Date.now() - 86400000 * (i + 10)).toISOString(), updatedAt: new Date().toISOString(),
+                            followers: Math.floor(Math.random() * 100), views: Math.floor(Math.random() * 1000),
+                            updates: [
+                                { id: this.uuidv4(), type: 'General Update', content: `Just a routine update for Procedural Game ${i+1}. Working on core mechanics.`, timestamp: new Date().toISOString(), upvotes: Math.floor(Math.random() * 20), attachments: [] }
+                            ]
+                        });
+                    }
+                    this.saveProjects();
+                }
+                this.state.projects.sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt));
+            },
+            saveProjects() {
+                localStorage.setItem('gameDevPingsProjects', JSON.stringify(this.state.projects));
+            },
+            renderFeed(append = false) {
+                if (!append) {
+                    this.elements.feedContainer.innerHTML = '';
+                    this.state.currentPage = 1;
+                }
+
+                const filteredProjects = this.getFilteredProjects();
+                const startIndex = (this.state.currentPage - 1) * this.state.itemsPerPage;
+                const endIndex = startIndex + this.state.itemsPerPage;
+                const projectsToRender = filteredProjects.slice(startIndex, endIndex);
+
+                if (projectsToRender.length === 0 && !append) {
+                    this.elements.feedContainer.innerHTML = `<p class="text-secondary text-center py-10">No pings match your criteria. Try adjusting filters or post a new update!</p>`;
+                    return;
+                }
+                
+                projectsToRender.forEach(project => {
+                    // Increment views (simulated)
+                    project.views = (project.views || 0) + 1;
+                    const projectCard = this.createProjectCard(project);
+                    this.elements.feedContainer.appendChild(projectCard);
+                });
+                this.saveProjects(); // Save view counts
+                this.state.isLoading = false;
+                this.elements.loadingIndicator.classList.add('hidden');
+
+                // Check if more items can be loaded
+                if (endIndex >= filteredProjects.length) {
+                    // No more items to load for current filters
+                }
+            },
+            getFilteredProjects() {
+                const { search, platform, stage, tags } = this.state.filters;
+                const searchLower = search.toLowerCase();
+                const filterTags = tags.toLowerCase().split(',').map(t => t.trim()).filter(t => t);
+
+                return this.state.projects.filter(project => {
+                    const titleMatch = project.title.toLowerCase().includes(searchLower);
+                    const descriptionMatch = project.description.toLowerCase().includes(searchLower);
+                    const platformMatch = platform ? project.platforms.includes(platform) : true;
+                    const stageMatch = stage ? project.developmentStage === stage : true;
+                    const tagsMatch = filterTags.length > 0 ? filterTags.every(ft => project.tags.some(pt => pt.toLowerCase().includes(ft))) : true;
+                    
+                    // Check if any update content matches
+                    const updateContentMatch = project.updates.some(update => update.content.toLowerCase().includes(searchLower));
+
+                    return (titleMatch || descriptionMatch || updateContentMatch) && platformMatch && stageMatch && tagsMatch;
+                }).sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt)); // Ensure sorted by latest update
+            },
+            createProjectCard(project) {
+                const card = document.createElement('article');
+                card.className = 'bg-card shadow-lg rounded-xl p-6 border border-color overflow-hidden';
+                card.setAttribute('data-project-id', project.id);
+
+                // Stage specific colors
+                let stageColorClass = 'bg-slate-500 text-white'; // Default
+                switch(project.developmentStage) {
+                    case 'Concept': stageColorClass = 'bg-purple-200 text-purple-800 dark:bg-purple-700 dark:text-purple-200'; break;
+                    case 'Pre-production': stageColorClass = 'bg-indigo-200 text-indigo-800 dark:bg-indigo-700 dark:text-indigo-200'; break;
+                    case 'Alpha': stageColorClass = 'bg-red-200 text-red-800 dark:bg-red-700 dark:text-red-200'; break;
+                    case 'Beta': stageColorClass = 'bg-yellow-200 text-yellow-800 dark:bg-yellow-700 dark:text-yellow-200'; break;
+                    case 'Early Access': stageColorClass = 'bg-orange-200 text-orange-800 dark:bg-orange-700 dark:text-orange-200'; break;
+                    case 'Released': stageColorClass = 'bg-green-200 text-green-800 dark:bg-green-700 dark:text-green-200'; break;
+                    case 'Live Service': stageColorClass = 'bg-teal-200 text-teal-800 dark:bg-teal-700 dark:text-teal-200'; break;
+                    case 'On Hiatus':
+                    case 'Cancelled': 
+                        stageColorClass = 'bg-gray-300 text-gray-700 dark:bg-gray-600 dark:text-gray-300'; break;
+                }
+
+                // Sort updates by timestamp, newest first
+                project.updates.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+
+                card.innerHTML = `
+                    <div class="flex flex-col sm:flex-row justify-between items-start mb-3">
+                        <div>
+                            <h2 class="text-2xl font-bold text-main hover:text-blue-500 cursor-pointer">${project.title}</h2>
+                            <p class="text-sm text-secondary mt-1">${project.description}</p>
+                        </div>
+                        <div class="mt-2 sm:mt-0 sm:ml-4 flex-shrink-0">
+                            <span class="dev-stage ${stageColorClass}">${project.developmentStage}</span>
+                        </div>
+                    </div>
+
+                    <div class="flex flex-wrap gap-2 text-sm text-secondary mb-4">
+                        <span>Platforms: ${project.platforms.join(', ')}</span>
+                        <span>|</span>
+                        <span>Tags: ${project.tags.map(tag => `<span class="tag">${tag}</span>`).join(' ')}</span>
+                    </div>
+                    
+                    <div class="mb-4 space-y-1 text-xs text-secondary">
+                        <span>Posted: ${new Date(project.createdAt).toLocaleDateString()}</span> |
+                        <span>Last Update: ${new Date(project.updatedAt).toLocaleTimeString([], {year: 'numeric', month: 'numeric', day: 'numeric', hour: '2-digit', minute:'2-digit'})}</span>
+                    </div>
+
+                    <div class="updates-container space-y-4 border-t border-color pt-4">
+                        ${project.updates.slice(0, 2).map(update => this.createUpdateSnippet(update, project.id)).join('')} 
+                        ${project.updates.length > 2 ? `<button class="text-sm text-blue-500 hover:underline toggle-more-updates" data-project-id="${project.id}">Show all ${project.updates.length} updates</button>` : ''}
+                    </div>
+
+                    <div class="mt-4 pt-4 border-t border-color flex items-center justify-between text-sm text-secondary">
+                        <div class="flex items-center space-x-4">
+                            <button class="flex items-center space-x-1 hover:text-blue-500 follow-btn" data-project-id="${project.id}" aria-pressed="${localStorage.getItem('followed_' + project.id) ? 'true' : 'false'}">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 ${localStorage.getItem('followed_' + project.id) ? 'text-yellow-400 fill-current' : 'stroke-current'}" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.846 5.671a1 1 0 00.95.69h5.969c.969 0 1.371 1.24.588 1.81l-4.826 3.522a1 1 0 00-.364 1.118l1.846 5.671c.3.921-.755 1.688-1.54 1.118l-4.826-3.522a1 1 0 00-1.175 0l-4.826 3.522c-.784.57-1.838-.197-1.539-1.118l1.846-5.671a1 1 0 00-.364-1.118L2.98 11.1c-.783-.57-.38-1.81.588-1.81h5.969a1 1 0 00.95-.69L11.049 2.927z" />
+                                </svg>
+                                <span class="follow-count">${project.followers}</span> <span class="hidden sm:inline">Follows</span>
+                            </button>
+                            <span class="flex items-center space-x-1">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clip-rule="evenodd" /></svg>
+                                <span>${project.updates.length} Updates</span>
+                            </span>
+                             <span class="flex items-center space-x-1">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path stroke-linecap="round" stroke-linejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
+                                <span>${project.views} Views</span>
+                            </span>
+                        </div>
+                        <button class="btn btn-secondary btn-sm post-update-for-project-btn" data-project-title="${project.title}">Quick Update</button>
+                    </div>
+                `;
+                return card;
+            },
+            createUpdateSnippet(update, projectId) {
+                const upvotedKey = `upvoted_${update.id}`;
+                const isUpvoted = localStorage.getItem(upvotedKey);
+                return `
+                    <div class="update-snippet p-3 bg-slate-50 dark:bg-slate-700/50 rounded-md border border-slate-200 dark:border-slate-600/50" data-update-id="${update.id}">
+                        <div class="flex justify-between items-start">
+                            <p class="text-sm text-main font-semibold">[${update.type}] ${update.content.substring(0, 150)}${update.content.length > 150 ? '...' : ''}</p>
+                            <button class="upvote-btn flex items-center space-x-1 text-sm ${isUpvoted ? 'text-green-500' : 'text-secondary hover:text-green-500'}" data-project-id="${projectId}" data-update-id="${update.id}" ${isUpvoted ? 'disabled' : ''}>
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 ${isUpvoted ? 'fill-current' : ''}" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M14.707 12.707a1 1 0 01-1.414 0L10 9.414l-3.293 3.293a1 1 0 01-1.414-1.414l4-4a1 1 0 011.414 0l4 4a1 1 0 010 1.414z" clip-rule="evenodd" /><path fill-rule="evenodd" d="M10 18a1 1 0 01-1-1V4a1 1 0 112 0v13a1 1 0 01-1 1z" clip-rule="evenodd" transform="rotate(0 10 10) translate(0, -3) scale(1, 0.7)" /></svg> <!-- Simplified up arrow -->
+                                <span class="upvote-count">${update.upvotes}</span>
+                            </button>
+                        </div>
+                        <p class="text-xs text-secondary mt-1">Posted: ${new Date(update.timestamp).toLocaleString()}</p>
+                        ${update.attachments && update.attachments.length > 0 ? `
+                            <div class="mt-2 text-xs text-secondary flex items-center space-x-1">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" /></svg>
+                                <span>${update.attachments.map(att => att.name).join(', ')} (Simulated)</span>
+                            </div>` : ''}
+                    </div>
+                `;
+            },
+            toggleMoreUpdates(projectId) {
+                const project = this.state.projects.find(p => p.id === projectId);
+                if (!project) return;
+
+                const card = this.elements.feedContainer.querySelector(`[data-project-id="${projectId}"]`);
+                const updatesContainer = card.querySelector('.updates-container');
+                const toggleButton = card.querySelector('.toggle-more-updates');
+
+                if (toggleButton.textContent.startsWith('Show all')) {
+                    updatesContainer.innerHTML = project.updates.map(update => this.createUpdateSnippet(update, project.id)).join('') + 
+                                                `<button class="text-sm text-blue-500 hover:underline toggle-more-updates" data-project-id="${project.id}">Show fewer updates</button>`;
+                } else {
+                     updatesContainer.innerHTML = project.updates.slice(0, 2).map(update => this.createUpdateSnippet(update, project.id)).join('') + 
+                                                (project.updates.length > 2 ? `<button class="text-sm text-blue-500 hover:underline toggle-more-updates" data-project-id="${project.id}">Show all ${project.updates.length} updates</button>` : '');
+                }
+                // Re-attach listeners if needed, but for simple buttons like this, direct event delegation on feedContainer is better.
+                // For now, this simple re-render is okay as event listeners are on specific buttons.
+            },
+
+
+            // --- Modal Management ---
+            openModal(modalElement) {
+                modalElement.classList.remove('hidden');
+                document.body.style.overflow = 'hidden'; // Prevent background scrolling
+            },
+            closeModal(modalElement) {
+                modalElement.classList.add('hidden');
+                document.body.style.overflow = '';
+            },
+            openPostModal(projectTitle = '') {
+                this.elements.postForm.reset();
+                this.state.mockAttachmentsCount = 0;
+                this.elements.attachmentPlaceholders.innerHTML = '';
+                this.elements.projectTitle.value = projectTitle;
+                if(projectTitle){
+                    // If updating an existing project, some fields might be pre-filled or disabled.
+                    const existingProject = this.state.projects.find(p => p.title.toLowerCase() === projectTitle.toLowerCase());
+                    if(existingProject){
+                        this.elements.projectDescription.value = existingProject.description;
+                        this.elements.projectDescription.disabled = true;
+                        this.elements.developmentStageSelect.value = existingProject.developmentStage;
+                        this.elements.developmentStageSelect.disabled = true;
+                        this.elements.platformInput.value = existingProject.platforms.join(', ');
+                        this.elements.platformInput.disabled = true;
+                        this.elements.tagsInput.value = existingProject.tags.join(', ');
+                    } else {
+                        this.elements.projectDescription.disabled = false;
+                        this.elements.developmentStageSelect.disabled = false;
+                        this.elements.platformInput.disabled = false;
+                    }
+                } else {
+                    this.elements.projectDescription.disabled = false;
+                    this.elements.developmentStageSelect.disabled = false;
+                    this.elements.platformInput.disabled = false;
+                }
+                this.openModal(this.elements.postModal);
+            },
+            closePostModal() {
+                this.closeModal(this.elements.postModal);
+            },
+            openAnalyticsModal() {
+                this.updateAnalyticsStats();
+                this.renderAnalyticsCharts();
+                this.openModal(this.elements.analyticsModal);
+            },
+            closeAnalyticsModal() {
+                this.closeModal(this.elements.analyticsModal);
+            },
+            
+            // --- Form Handling & Posting ---
+            populateSelectOptions() {
+                this.state.developmentStages.forEach(stage => {
+                    this.elements.developmentStageSelect.add(new Option(stage, stage));
+                });
+                this.state.updateTypes.forEach(type => {
+                    this.elements.updateTypeSelect.add(new Option(type, type));
+                });
+            },
+            handlePostFormSubmit(event) {
+                event.preventDefault();
+                if (!this.elements.captchaCheckbox.checked) {
+                    alert("Please verify you're not a bug-fueled robot!");
+                    return;
+                }
+
+                const formData = new FormData(this.elements.postForm);
+                const title = formData.get('projectTitle').trim();
+                const updateContent = formData.get('updateContent').trim();
+                const updateType = formData.get('updateType');
+
+                if (!title || !updateContent || !updateType) {
+                    alert("Project Title, Update Type, and Update Content are required.");
+                    return;
+                }
+
+                let project = this.state.projects.find(p => p.title.toLowerCase() === title.toLowerCase());
+                const isNewProject = !project;
+
+                if (isNewProject) {
+                    const description = formData.get('projectDescription').trim();
+                    const devStage = formData.get('developmentStage');
+                    const platforms = formData.get('platform').split(',').map(p => p.trim()).filter(p => p);
+                    const tags = formData.get('tags').split(',').map(t => t.trim()).filter(t => t);
+
+                    if (!description || !devStage || platforms.length === 0) {
+                        alert("For new projects, Description, Development Stage, and at least one Platform are required.");
+                        return;
+                    }
+                    project = {
+                        id: this.uuidv4(),
+                        title: title,
+                        description: description,
+                        developmentStage: devStage,
+                        platforms: platforms,
+                        tags: tags,
+                        createdAt: new Date().toISOString(),
+                        updatedAt: new Date().toISOString(),
+                        followers: 0,
+                        views: 0,
+                        updates: []
+                    };
+                    this.state.projects.unshift(project); // Add to beginning
+                }
+
+                const newUpdate = {
+                    id: this.uuidv4(),
+                    type: updateType,
+                    content: updateContent,
+                    timestamp: new Date().toISOString(),
+                    upvotes: 0,
+                    attachments: Array(this.state.mockAttachmentsCount).fill(0).map((_, i) => ({ type: 'placeholder', name: `attachment_${i+1}.png`}))
+                };
+
+                project.updates.unshift(newUpdate); // Add new update to the beginning
+                project.updatedAt = new Date().toISOString(); // Update project's last update time
+
+                this.state.projects.sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt)); // Re-sort
+                this.saveProjects();
+                this.renderFeed(); // Re-render the entire feed
+                this.closePostModal();
+                this.elements.captchaCheckbox.checked = false; // Reset CAPTCHA
+                alert("Ping posted successfully!");
+            },
+            handleAddAttachment() {
+                if (this.state.mockAttachmentsCount < 3) {
+                    this.state.mockAttachmentsCount++;
+                    const placeholder = document.createElement('div');
+                    placeholder.className = "bg-gray-200 dark:bg-slate-600 border-2 border-dashed border-gray-300 dark:border-slate-500 rounded-xl w-16 h-16 inline-flex items-center justify-center text-xs text-gray-500 dark:text-slate-400";
+                    placeholder.textContent = `File ${this.state.mockAttachmentsCount}`;
+                    this.elements.attachmentPlaceholders.appendChild(placeholder);
+                } else {
+                    alert("Maximum 3 attachments allowed (simulated).");
+                }
+            },
+
+
+            // --- Interactions (Upvote, Follow) ---
+            handleUpvote(projectId, updateId, button) {
+                const project = this.state.projects.find(p => p.id === projectId);
+                if (!project) return;
+                const update = project.updates.find(u => u.id === updateId);
+                if (!update) return;
+
+                const upvotedKey = `upvoted_${updateId}`;
+                if (localStorage.getItem(upvotedKey)) {
+                    // Already upvoted (or simple rate limit hit)
+                    // Could implement un-upvote here if desired
+                    // For now, button is disabled server-side if already upvoted.
+                    // This client-side check ensures UI consistency if localstorage is used.
+                    return; 
+                }
+
+                update.upvotes++;
+                button.classList.add('text-green-500');
+                button.classList.remove('text-secondary', 'hover:text-green-500');
+                button.querySelector('svg').classList.add('fill-current');
+                button.querySelector('.upvote-count').textContent = update.upvotes;
+                button.disabled = true; // Simple rate limit: disable after one click
+
+                localStorage.setItem(upvotedKey, 'true'); // Mark as upvoted
+                // Simulate rate limiting per IP by just disabling the button for a session on this item.
+                // A more robust solution would involve cooldown or backend IP tracking.
+
+                this.saveProjects();
+            },
+            handleFollow(projectId, button) {
+                const project = this.state.projects.find(p => p.id === projectId);
+                if (!project) return;
+
+                const followKey = `followed_${projectId}`;
+                const isFollowing = localStorage.getItem(followKey);
+                const svgIcon = button.querySelector('svg');
+                const followCountSpan = button.querySelector('.follow-count');
+
+                if (isFollowing) {
+                    project.followers--;
+                    localStorage.removeItem(followKey);
+                    button.setAttribute('aria-pressed', 'false');
+                    svgIcon.classList.remove('text-yellow-400', 'fill-current');
+                    svgIcon.classList.add('stroke-current'); // Assuming default is stroke
+                } else {
+                    project.followers++;
+                    localStorage.setItem(followKey, 'true');
+                    button.setAttribute('aria-pressed', 'true');
+                    svgIcon.classList.add('text-yellow-400', 'fill-current');
+                    svgIcon.classList.remove('stroke-current');
+                }
+                followCountSpan.textContent = project.followers;
+                this.saveProjects();
+            },
+
+            // --- Infinite Scroll ---
+            handleScroll() {
+                // Debounce or throttle this for performance in a real app
+                if (this.state.isLoading) return;
+                if ((window.innerHeight + window.scrollY) >= document.body.offsetHeight - 200) { // 200px from bottom
+                    this.state.isLoading = true;
+                    this.elements.loadingIndicator.classList.remove('hidden');
+                    setTimeout(() => { // Simulate network delay
+                        this.state.currentPage++;
+                        this.renderFeed(true); // Append new items
+                    }, 1000);
+                }
+            },
+
+            // --- Filtering ---
+            applyFilters() {
+                this.state.filters.search = this.elements.searchInput.value;
+                this.state.filters.platform = this.elements.platformFilter.value;
+                this.state.filters.stage = this.elements.stageFilter.value;
+                this.state.filters.tags = this.elements.tagFilter.value;
+                this.renderFeed(); // Re-render with new filters, reset pagination
+            },
+
+            // --- Analytics ---
+            updateAnalyticsStats() {
+                this.elements.totalProjectsStat.textContent = this.state.projects.length;
+                const totalUpdates = this.state.projects.reduce((sum, p) => sum + p.updates.length, 0);
+                this.elements.totalUpdatesStat.textContent = totalUpdates;
+                const totalUpvotes = this.state.projects.reduce((sum, p) => sum + p.updates.reduce((uSum, u) => uSum + u.upvotes, 0), 0);
+                this.elements.totalUpvotesStat.textContent = totalUpvotes;
+
+                // Most followed projects
+                const sortedByFollowers = [...this.state.projects].sort((a,b) => b.followers - a.followers).slice(0,5);
+                this.elements.mostFollowedList.innerHTML = sortedByFollowers.map(p => `
+                    <div class="flex justify-between items-center p-2 bg-slate-50 dark:bg-slate-700/50 rounded">
+                        <span>${p.title}</span>
+                        <span class="font-semibold">${p.followers} follows</span>
+                    </div>
+                `).join('') || '<p>No projects being followed yet.</p>';
+            },
+            
+            _projectsByStageChartInstance: null, // To store chart instance
+            renderAnalyticsCharts() {
+                if (!this.elements.projectsByStageChartCtx) return;
+
+                const stageCounts = this.state.developmentStages.reduce((acc, stage) => {
+                    acc[stage] = 0;
+                    return acc;
+                }, {});
+                this.state.projects.forEach(p => {
+                    if (stageCounts.hasOwnProperty(p.developmentStage)) {
+                        stageCounts[p.developmentStage]++;
+                    }
+                });
+
+                const chartData = {
+                    labels: this.state.developmentStages,
+                    datasets: [{
+                        label: 'Projects by Stage',
+                        data: Object.values(stageCounts),
+                        backgroundColor: [ // Example colors, can be themed
+                            'rgba(255, 99, 132, 0.5)', 'rgba(54, 162, 235, 0.5)', 'rgba(255, 206, 86, 0.5)',
+                            'rgba(75, 192, 192, 0.5)', 'rgba(153, 102, 255, 0.5)', 'rgba(255, 159, 64, 0.5)',
+                            'rgba(199, 199, 199, 0.5)', 'rgba(83, 102, 255, 0.5)', 'rgba(40, 159, 64, 0.5)'
+                        ],
+                        borderColor: [
+                            'rgba(255, 99, 132, 1)', 'rgba(54, 162, 235, 1)', 'rgba(255, 206, 86, 1)',
+                            'rgba(75, 192, 192, 1)', 'rgba(153, 102, 255, 1)', 'rgba(255, 159, 64, 1)',
+                            'rgba(199, 199, 199, 1)', 'rgba(83, 102, 255, 1)', 'rgba(40, 159, 64, 1)'
+                        ],
+                        borderWidth: 1
+                    }]
+                };
+
+                if (this._projectsByStageChartInstance) {
+                    this._projectsByStageChartInstance.destroy(); // Destroy previous chart if exists
+                }
+                
+                this._projectsByStageChartInstance = new Chart(this.elements.projectsByStageChartCtx, {
+                    type: 'bar',
+                    data: chartData,
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: true,
+                        scales: {
+                            y: { beginAtZero: true, ticks: { color: this.state.theme === 'dark' ? '#CBD5E1' : '#475569' } }, // slate-300, slate-600
+                            x: { ticks: { color: this.state.theme === 'dark' ? '#CBD5E1' : '#475569' } }
+                        },
+                        plugins: {
+                            legend: { display: false }
+                        }
+                    }
+                });
+            },
+
+
+            // --- Utility ---
+            uuidv4() { // Simple UUID generator
+                return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+                    var r = Math.random() * 16 | 0, v = c == 'x' ? r : (r & 0x3 | 0x8);
+                    return v.toString(16);
+                });
+            },
+
+            // --- Event Listeners ---
+            attachEventListeners() {
+                this.elements.themeToggleBtn.addEventListener('click', () => this.toggleTheme());
+                
+                // Modals
+                this.elements.postNewUpdateBtn.addEventListener('click', () => this.openPostModal());
+                this.elements.closePostModalBtn.addEventListener('click', () => this.closePostModal());
+                this.elements.cancelPostBtn.addEventListener('click', () => this.closePostModal());
+                this.elements.postForm.addEventListener('submit', (e) => this.handlePostFormSubmit(e));
+                this.elements.addAttachmentBtn.addEventListener('click', () => this.handleAddAttachment());
+
+                this.elements.analyticsBtn.addEventListener('click', () => this.openAnalyticsModal());
+                this.elements.closeAnalyticsModalBtn.addEventListener('click', () => this.closeAnalyticsModal());
+                
+                // Infinite Scroll
+                window.addEventListener('scroll', () => this.handleScroll());
+
+                // Filters (debounce for search/tag input in real app)
+                this.elements.searchInput.addEventListener('input', () => this.applyFilters());
+                this.elements.platformFilter.addEventListener('change', () => this.applyFilters());
+                this.elements.stageFilter.addEventListener('change', () => this.applyFilters());
+                this.elements.tagFilter.addEventListener('input', () => this.applyFilters());
+
+                // Event delegation for dynamic content (upvotes, follows, etc.)
+                this.elements.feedContainer.addEventListener('click', (event) => {
+                    const upvoteButton = event.target.closest('.upvote-btn');
+                    if (upvoteButton && !upvoteButton.disabled) {
+                        const projectId = upvoteButton.dataset.projectId;
+                        const updateId = upvoteButton.dataset.updateId;
+                        this.handleUpvote(projectId, updateId, upvoteButton);
+                    }
+
+                    const followButton = event.target.closest('.follow-btn');
+                    if (followButton) {
+                        const projectId = followButton.dataset.projectId;
+                        this.handleFollow(projectId, followButton);
+                    }
+
+                    const quickUpdateButton = event.target.closest('.post-update-for-project-btn');
+                    if (quickUpdateButton) {
+                        const projectTitle = quickUpdateButton.dataset.projectTitle;
+                        this.openPostModal(projectTitle);
+                    }
+                    
+                    const toggleUpdatesButton = event.target.closest('.toggle-more-updates');
+                    if (toggleUpdatesButton) {
+                        const projectId = toggleUpdatesButton.dataset.projectId;
+                        this.toggleMoreUpdates(projectId);
+                    }
+                });
+            }
+        };
+
+        // --- App Initialization on DOMContentLoaded ---
+        document.addEventListener('DOMContentLoaded', () => {
+            GamedevPingsApp.init();
+        });
+
+    </script>
+</body>
+</html>

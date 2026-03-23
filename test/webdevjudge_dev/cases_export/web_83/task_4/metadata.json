@@ -1,0 +1,9 @@
+{
+  "web_id": "web_83",
+  "task_id": 4,
+  "task_type": "dynamic",
+  "instruction": "Task: Select a filter option, for example, 'High' from a priority filter control, or 'To Do' from a status filter.\nExpected Result: The Kanban board updates to display only tasks that match the selected filter criterion (e.g., only 'High' priority tasks or only 'To Do' tasks).\n\nNote: The task is only considered successful if the expected result is achieved; otherwise, it is deemed infeasible.",
+  "max_steps": 15,
+  "expected": "The Kanban board updates to display only tasks that match the selected filter criterion (e.g., only 'High' priority tasks or only 'To Do' tasks).",
+  "label": 1
+}

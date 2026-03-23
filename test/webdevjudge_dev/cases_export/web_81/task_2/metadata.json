@@ -1,0 +1,9 @@
+{
+  "web_id": "web_81",
+  "task_id": 2,
+  "task_type": "dynamic",
+  "instruction": "Task: Hover the mouse cursor over a hero's spell/ability icon.\nExpected Result: A tooltip or information panel appears, displaying details about the spell (e.g., name, description of effects, damage, target type, cooldown duration).\n\nNote: The task is only considered successful if the expected result is achieved; otherwise, it is deemed infeasible.",
+  "max_steps": 15,
+  "expected": "A tooltip or information panel appears, displaying details about the spell (e.g., name, description of effects, damage, target type, cooldown duration).",
+  "label": 0
+}

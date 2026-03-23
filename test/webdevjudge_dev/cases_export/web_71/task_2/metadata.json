@@ -1,0 +1,9 @@
+{
+  "web_id": "web_71",
+  "task_id": 2,
+  "task_type": "dynamic",
+  "instruction": "Task: Click on a product item (e.g., its title or image) from a list.\nExpected Result: A detailed view or section for the selected product is displayed, showing more information such as description, full price, and larger image.\n\nNote: The task is only considered successful if the expected result is achieved; otherwise, it is deemed infeasible.",
+  "max_steps": 15,
+  "expected": "A detailed view or section for the selected product is displayed, showing more information such as description, full price, and larger image.",
+  "label": 0
+}

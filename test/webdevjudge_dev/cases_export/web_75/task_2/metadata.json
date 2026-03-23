@@ -1,0 +1,9 @@
+{
+  "web_id": "web_75",
+  "task_id": 2,
+  "task_type": "dynamic",
+  "instruction": "Task: Click dedicated buttons (e.g., 'Day', 'Week', 'Month') to change the main calendar display.\nExpected Result: The calendar updates to show events according to the selected view format (day, week, or month).\n\nNote: The task is only considered successful if the expected result is achieved; otherwise, it is deemed infeasible.",
+  "max_steps": 15,
+  "expected": "The calendar updates to show events according to the selected view format (day, week, or month).",
+  "label": 1
+}

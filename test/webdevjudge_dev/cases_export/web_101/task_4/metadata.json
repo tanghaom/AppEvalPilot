@@ -1,0 +1,9 @@
+{
+  "web_id": "web_101",
+  "task_id": 4,
+  "task_type": "dynamic",
+  "instruction": "Task: Click the 'Basket' icon to open the basket, then click a 'Remove' button on an item within the basket.\nExpected Result: The basket view opens, displaying its contents. Clicking 'Remove' successfully removes the item from the basket display, and the basket summary (e.g., item count) updates.\n\nNote: The task is only considered successful if the expected result is achieved; otherwise, it is deemed infeasible.",
+  "max_steps": 15,
+  "expected": "The basket view opens, displaying its contents. Clicking 'Remove' successfully removes the item from the basket display, and the basket summary (e.g., item count) updates.",
+  "label": 1
+}

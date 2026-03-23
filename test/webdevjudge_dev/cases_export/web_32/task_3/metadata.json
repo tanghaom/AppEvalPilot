@@ -1,0 +1,9 @@
+{
+  "web_id": "web_32",
+  "task_id": 3,
+  "task_type": "dynamic",
+  "instruction": "Task: Click the 'downvote' button on a post.\nExpected Result: The post's score decreases locally, and the downvote button shows an active state (e.g., highlighted).\n\nNote: The task is only considered successful if the expected result is achieved; otherwise, it is deemed infeasible.",
+  "max_steps": 15,
+  "expected": "The post's score decreases locally, and the downvote button shows an active state (e.g., highlighted).",
+  "label": 1
+}

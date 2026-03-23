@@ -1,0 +1,9 @@
+{
+  "web_id": "web_104",
+  "task_id": 4,
+  "task_type": "dynamic",
+  "instruction": "Task: Click the 'Reload' navigation button.\nExpected Result: The current simulated web content is re-displayed, with a simulated loading progress bar shown during this process.\n\nNote: The task is only considered successful if the expected result is achieved; otherwise, it is deemed infeasible.",
+  "max_steps": 15,
+  "expected": "The current simulated web content is re-displayed, with a simulated loading progress bar shown during this process.",
+  "label": 1
+}

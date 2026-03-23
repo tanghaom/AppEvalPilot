@@ -1,0 +1,9 @@
+{
+  "web_id": "web_8",
+  "task_id": 4,
+  "task_type": "dynamic",
+  "instruction": "Task: Hover the mouse cursor over an interactive UI element (e.g., button, navigation link).\nExpected Result: A subtle visual hover effect (e.g., color change, slight scaling) is displayed on the element.\n\nNote: The task is only considered successful if the expected result is achieved; otherwise, it is deemed infeasible.",
+  "max_steps": 15,
+  "expected": "A subtle visual hover effect (e.g., color change, slight scaling) is displayed on the element.",
+  "label": 1
+}

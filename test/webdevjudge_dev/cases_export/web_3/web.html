@@ -1,0 +1,436 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Finans Kontrol Paneli</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        /* Custom scrollbar for a more integrated look (optional) */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #f1f5f9; /* slate-100 */
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #64748b; /* slate-500 */
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #475569; /* slate-600 */
+        }
+        /* Ensure chart responsiveness */
+        .chart-container {
+            position: relative;
+            height: 40vh; /* Default height, can be adjusted */
+            min-height: 300px; /* Minimum height */
+        }
+        @media (min-width: 768px) { /* md breakpoint */
+            .chart-container {
+                height: 350px; /* Taller on medium screens */
+            }
+        }
+        @media (min-width: 1024px) { /* lg breakpoint */
+            .chart-container {
+                height: 400px; /* Taller on large screens */
+            }
+        }
+    </style>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        'primary': {
+                            DEFAULT: '#0ea5e9', // sky-500
+                            'dark': '#0284c7',  // sky-600
+                            'light': '#38bdf8' // sky-400
+                        },
+                        'secondary': '#64748b', // slate-500
+                        'background': '#f1f5f9', // slate-100
+                        'card': '#ffffff', // white
+                        'text-primary': '#1e293b', // slate-800
+                        'text-secondary': '#475569', // slate-600
+                        'border-color': '#cbd5e1', // slate-300
+                        'header-bg': '#0f172a', // slate-900
+                        'header-text': '#e2e8f0', // slate-200
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+<body class="bg-background text-text-primary font-sans flex flex-col min-h-screen">
+
+    <!-- Header -->
+    <header class="bg-header-bg text-header-text shadow-lg sticky top-0 z-50">
+        <div class="container mx-auto px-4 sm:px-6 py-3 flex justify-between items-center">
+            <div class="flex items-center space-x-3">
+                <div class="bg-gray-200 border-2 border-dashed border-gray-400 rounded-xl w-10 h-10 sm:w-12 sm:h-12 flex items-center justify-center text-primary font-bold text-sm">LOGO</div>
+                <h1 class="text-xl sm:text-2xl font-bold text-primary">FinansPro</h1>
+            </div>
+            <nav class="hidden md:flex space-x-4 lg:space-x-6 items-center">
+                <a href="#" class="hover:text-primary transition-colors">Döviz Kurları</a>
+                <a href="#" class="hover:text-primary transition-colors">Hisse Senetleri</a>
+                <a href="#" class="hover:text-primary transition-colors">Kripto Paralar</a>
+                <a href="#" class="hover:text-primary transition-colors">Haberler</a>
+            </nav>
+            <div class="flex items-center space-x-3">
+                <div class="relative hidden sm:block">
+                    <input type="search" placeholder="Ara..." class="bg-slate-700 text-slate-300 placeholder-slate-400 rounded-lg py-2 pl-10 pr-3 focus:outline-none focus:ring-2 focus:ring-primary transition-all w-48 lg:w-64 text-sm">
+                    <svg class="w-5 h-5 text-slate-400 absolute left-3 top-1/2 transform -translate-y-1/2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                    </svg>
+                </div>
+                <button id="mobileMenuButton" class="md:hidden text-header-text hover:text-primary">
+                    <svg class="w-6 h-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16m-7 6h7" />
+                    </svg>
+                </button>
+            </div>
+        </div>
+        <!-- Mobile Menu -->
+        <div id="mobileMenu" class="hidden md:hidden bg-slate-800">
+            <nav class="flex flex-col space-y-2 px-4 py-3">
+                <a href="#" class="block py-2 px-3 rounded hover:bg-slate-700 hover:text-primary transition-colors">Döviz Kurları</a>
+                <a href="#" class="block py-2 px-3 rounded hover:bg-slate-700 hover:text-primary transition-colors">Hisse Senetleri</a>
+                <a href="#" class="block py-2 px-3 rounded hover:bg-slate-700 hover:text-primary transition-colors">Kripto Paralar</a>
+                <a href="#" class="block py-2 px-3 rounded hover:bg-slate-700 hover:text-primary transition-colors">Haberler</a>
+                <div class="relative mt-2">
+                    <input type="search" placeholder="Ara..." class="bg-slate-700 text-slate-300 placeholder-slate-400 rounded-lg py-2 pl-10 pr-3 focus:outline-none focus:ring-2 focus:ring-primary transition-all w-full text-sm">
+                    <svg class="w-5 h-5 text-slate-400 absolute left-3 top-1/2 transform -translate-y-1/2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                    </svg>
+                </div>
+            </nav>
+        </div>
+    </header>
+
+    <!-- Main Content Area -->
+    <main class="flex-1 container mx-auto px-4 sm:px-6 py-4 sm:py-6 flex flex-col lg:flex-row gap-4 sm:gap-6">
+        
+        <!-- Ana İçerik (Grafik ve Varlık Listesi) -->
+        <div class="flex-grow lg:w-2/3 space-y-4 sm:space-y-6">
+            <!-- Grafik Alanı -->
+            <section class="bg-card p-4 sm:p-6 rounded-xl shadow-lg">
+                <div class="flex flex-col sm:flex-row justify-between items-center mb-4">
+                    <h2 class="text-xl font-semibold text-text-primary mb-2 sm:mb-0">Piyasa Grafiği (EUR/USD)</h2>
+                    <div id="timeScaleSelector" class="flex space-x-1 sm:space-x-2">
+                        <button data-scale="10m" class="time-scale-btn px-3 py-1.5 text-xs sm:text-sm bg-slate-200 hover:bg-primary hover:text-white text-text-secondary rounded-md transition-colors">10Dk</button>
+                        <button data-scale="1h" class="time-scale-btn px-3 py-1.5 text-xs sm:text-sm bg-primary text-white rounded-md transition-colors">1S</button>
+                        <button data-scale="1d" class="time-scale-btn px-3 py-1.5 text-xs sm:text-sm bg-slate-200 hover:bg-primary hover:text-white text-text-secondary rounded-md transition-colors">1G</button>
+                        <button data-scale="1w" class="time-scale-btn px-3 py-1.5 text-xs sm:text-sm bg-slate-200 hover:bg-primary hover:text-white text-text-secondary rounded-md transition-colors">1Hft</button>
+                        <button data-scale="1mo" class="time-scale-btn px-3 py-1.5 text-xs sm:text-sm bg-slate-200 hover:bg-primary hover:text-white text-text-secondary rounded-md transition-colors">1Ay</button>
+                    </div>
+                </div>
+                <div class="chart-container">
+                    <canvas id="financialChart"></canvas>
+                </div>
+            </section>
+
+            <!-- Finansal Endeks ve Varlık Fiyatları -->
+            <section class="bg-card p-4 sm:p-6 rounded-xl shadow-lg">
+                <h2 class="text-xl font-semibold text-text-primary mb-4">Piyasa Verileri</h2>
+                <div class="overflow-x-auto">
+                    <table class="w-full min-w-max text-left text-sm">
+                        <thead>
+                            <tr class="border-b border-border-color">
+                                <th class="p-2 sm:p-3 font-semibold text-text-secondary">Varlık</th>
+                                <th class="p-2 sm:p-3 font-semibold text-text-secondary text-right">Fiyat</th>
+                                <th class="p-2 sm:p-3 font-semibold text-text-secondary text-right">Değişim (%)</th>
+                            </tr>
+                        </thead>
+                        <tbody id="assetList">
+                            <!-- Varlıklar buraya JS ile eklenecek -->
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+        </div>
+
+        <!-- Yan Panel (Sağ Taraf) -->
+        <aside class="w-full lg:w-1/3 xl:w-1/4 flex-shrink-0 space-y-4 sm:space-y-6 lg:max-w-sm">
+            <section class="bg-card p-4 sm:p-6 rounded-xl shadow-lg">
+                <h3 class="text-lg font-semibold text-text-primary mb-3 border-b border-border-color pb-2">Varlık Detayları: EUR/USD</h3>
+                <div class="space-y-2 text-sm">
+                    <div class="flex justify-between">
+                        <span class="text-text-secondary">Anlık Fiyat:</span>
+                        <span id="eurusd_price" class="font-semibold text-text-primary">1.0852</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="text-text-secondary">Günlük Yüksek:</span>
+                        <span id="eurusd_high" class="text-text-primary">1.0865</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="text-text-secondary">Günlük Düşük:</span>
+                        <span id="eurusd_low" class="text-text-primary">1.0830</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="text-text-secondary">Değişim:</span>
+                        <span id="eurusd_change" class="font-semibold text-green-600">+0.0002 (+0.02%)</span>
+                    </div>
+                </div>
+            </section>
+
+            <section class="bg-card p-4 sm:p-6 rounded-xl shadow-lg">
+                <h3 class="text-lg font-semibold text-text-primary mb-3 border-b border-border-color pb-2">Teknik Göstergeler (EUR/USD)</h3>
+                <ul id="technicalIndicatorsList" class="space-y-2.5 text-sm">
+                    <!-- Göstergeler buraya JS ile eklenecek -->
+                </ul>
+            </section>
+
+            <section class="bg-card p-4 sm:p-6 rounded-xl shadow-lg">
+                <h3 class="text-lg font-semibold text-text-primary mb-3 border-b border-border-color pb-2">Analiz Özeti</h3>
+                <p id="analysisSummary" class="text-sm text-text-secondary leading-relaxed">
+                    Parite şu anda kısa vadeli direnci test ediyor. 1.0870'in üzerinde bir kırılma, daha fazla yükseliş sinyali verebilir. Yatırım tavsiyesi değildir.
+                </p>
+            </section>
+            
+            <section class="bg-card p-4 sm:p-6 rounded-xl shadow-lg">
+                <h3 class="text-lg font-semibold text-text-primary mb-3 border-b border-border-color pb-2">Karşılaştırma Aracı (Placeholder)</h3>
+                <select class="w-full p-2 border border-border-color rounded-md text-sm focus:ring-2 focus:ring-primary focus:border-primary">
+                    <option>Varlık Seçin...</option>
+                    <option>USD/JPY</option>
+                    <option>GBP/USD</option>
+                    <option>BTC/USD</option>
+                </select>
+                <button class="mt-3 w-full bg-primary text-white py-2 rounded-md hover:bg-primary-dark transition-colors text-sm">Karşılaştır</button>
+            </section>
+        </aside>
+    </main>
+
+    <!-- Altbilgi -->
+    <footer class="bg-header-bg text-slate-400 py-6 text-center mt-auto">
+        <div class="container mx-auto px-4 sm:px-6">
+            <p class="text-sm">&copy; 2024 FinansPro. Tüm hakları saklıdır.</p>
+            <div class="mt-2 space-x-4">
+                <a href="#" class="hover:text-primary transition-colors text-xs">Hakkımızda</a>
+                <a href="#" class="hover:text-primary transition-colors text-xs">İletişim</a>
+                <a href="#" class="hover:text-primary transition-colors text-xs">Kullanım Koşulları</a>
+            </div>
+        </div>
+    </footer>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            // Mobile menu toggle
+            const mobileMenuButton = document.getElementById('mobileMenuButton');
+            const mobileMenu = document.getElementById('mobileMenu');
+            if (mobileMenuButton && mobileMenu) {
+                mobileMenuButton.addEventListener('click', function () {
+                    mobileMenu.classList.toggle('hidden');
+                });
+            }
+
+            // Chart.js
+            const ctx = document.getElementById('financialChart').getContext('2d');
+            let financialChart;
+
+            const chartColors = {
+                borderColor: 'rgba(14, 165, 233, 1)', // sky-500
+                backgroundColor: 'rgba(14, 165, 233, 0.1)', // sky-500 with alpha
+                pointBackgroundColor: 'rgba(14, 165, 233, 1)',
+                pointBorderColor: '#fff',
+            };
+            
+            function generateRandomData(numPoints) {
+                let val = 100;
+                const data = [];
+                for (let i = 0; i < numPoints; i++) {
+                    val += (Math.random() - 0.5) * 5; // Smaller fluctuations for smoother graph
+                    data.push(Math.max(0, val)); // Ensure positive values
+                }
+                return data;
+            }
+
+            function generateLabels(numPoints, scale) {
+                const labels = [];
+                const now = new Date();
+                let interval; // minutes
+                switch(scale) {
+                    case '10m': interval = 1; numPoints = 10; break; // 10 points, 1 min interval
+                    case '1h': interval = 5; numPoints = 12; break; // 12 points, 5 min interval
+                    case '1d': interval = 60; numPoints = 24; break; // 24 points, 1 hour interval
+                    case '1w': interval = 60 * 24; numPoints = 7; break; // 7 points, 1 day interval
+                    case '1mo': interval = 60 * 24 * 2; numPoints = 15; break; // 15 points, 2 day interval
+                    default: interval = 5; numPoints = 12;
+                }
+
+                for (let i = 0; i < numPoints; i++) {
+                    const date = new Date(now.getTime() - (numPoints - 1 - i) * interval * 60000);
+                    if (scale === '10m' || scale === '1h') {
+                        labels.push(date.toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' }));
+                    } else if (scale === '1d') {
+                         labels.push(date.toLocaleTimeString('tr-TR', { hour: '2-digit' }) + ':00');
+                    }
+                    else {
+                        labels.push(date.toLocaleDateString('tr-TR', { day: '2-digit', month: 'short' }));
+                    }
+                }
+                return {labels, numPoints};
+            }
+
+            function updateChart(scale = '1h') {
+                const {labels, numPoints} = generateLabels(20, scale); // Default 20 points, but will be adjusted by scale
+                const data = generateRandomData(numPoints);
+
+                if (financialChart) {
+                    financialChart.destroy();
+                }
+
+                financialChart = new Chart(ctx, {
+                    type: 'line',
+                    data: {
+                        labels: labels,
+                        datasets: [{
+                            label: 'EUR/USD Fiyatı',
+                            data: data,
+                            borderColor: chartColors.borderColor,
+                            backgroundColor: chartColors.backgroundColor,
+                            borderWidth: 2,
+                            pointBackgroundColor: chartColors.pointBackgroundColor,
+                            pointBorderColor: chartColors.pointBorderColor,
+                            pointHoverBackgroundColor: '#fff',
+                            pointHoverBorderColor: chartColors.pointBorderColor,
+                            tension: 0.2, // Smooth lines
+                            fill: true,
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        scales: {
+                            y: {
+                                beginAtZero: false, // Data might not start at zero
+                                grid: {
+                                    color: 'rgba(203, 213, 225, 0.3)', // slate-300 with alpha
+                                },
+                                ticks: {
+                                    color: '#475569' // slate-600
+                                }
+                            },
+                            x: {
+                                grid: {
+                                    display: false, // Cleaner look
+                                },
+                                ticks: {
+                                    color: '#475569', // slate-600
+                                    maxRotation: 0,
+                                    autoSkip: true,
+                                    maxTicksLimit: 10 // Adjust for readability
+                                }
+                            }
+                        },
+                        plugins: {
+                            legend: {
+                                display: false, // Label is in dataset
+                            },
+                            tooltip: {
+                                backgroundColor: '#0f172a', // slate-900
+                                titleColor: '#e2e8f0', // slate-200
+                                bodyColor: '#e2e8f0',
+                                borderColor: '#334155', // slate-700
+                                borderWidth: 1,
+                                displayColors: false,
+                                callbacks: {
+                                    label: function(context) {
+                                        return `Fiyat: ${context.parsed.y.toFixed(4)}`;
+                                    }
+                                }
+                            }
+                        },
+                        interaction: {
+                            intersect: false,
+                            mode: 'index',
+                        },
+                    }
+                });
+            }
+
+            // Time scale buttons
+            const timeScaleButtons = document.querySelectorAll('.time-scale-btn');
+            timeScaleButtons.forEach(button => {
+                button.addEventListener('click', function () {
+                    timeScaleButtons.forEach(btn => {
+                        btn.classList.remove('bg-primary', 'text-white');
+                        btn.classList.add('bg-slate-200', 'text-text-secondary');
+                    });
+                    this.classList.add('bg-primary', 'text-white');
+                    this.classList.remove('bg-slate-200', 'text-text-secondary');
+                    updateChart(this.dataset.scale);
+                });
+            });
+            
+            // Initial chart load
+            updateChart('1h'); // Default to 1 hour
+
+            // Populate Asset List
+            const assetListData = [
+                { name: "EUR/USD", value: "1.0850", change: "+0.15%", positive: true },
+                { name: "USD/JPY", value: "157.20", change: "-0.05%", positive: false },
+                { name: "GBP/USD", value: "1.2710", change: "+0.22%", positive: true },
+                { name: "BTC/USD", value: "67,500.00", change: "+2.50%", positive: true },
+                { name: "ETH/USD", value: "3,780.50", change: "+1.80%", positive: true },
+                { name: "ALTIN (XAU/USD)", value: "2,350.75", change: "-0.10%", positive: false },
+                { name: "BIST 100", value: "10,250.40", change: "+1.20%", positive: true },
+            ];
+
+            const assetListElement = document.getElementById('assetList');
+            assetListData.forEach(asset => {
+                const row = document.createElement('tr');
+                row.classList.add('border-b', 'border-border-color', 'hover:bg-slate-50', 'transition-colors');
+                row.innerHTML = `
+                    <td class="p-2 sm:p-3 font-medium text-text-primary">${asset.name}</td>
+                    <td class="p-2 sm:p-3 text-right text-text-primary">${asset.value}</td>
+                    <td class="p-2 sm:p-3 text-right font-medium ${asset.positive ? 'text-green-600' : 'text-red-600'}">${asset.change}</td>
+                `;
+                assetListElement.appendChild(row);
+            });
+
+            // Populate Sidebar EUR/USD details (static for demo)
+            const selectedAssetDetails = {
+                name: "EUR/USD",
+                currentPrice: "1.0852",
+                dayHigh: "1.0865",
+                dayLow: "1.0830",
+                change: "+0.0002 (+0.02%)",
+                changePositive: true,
+                indicators: [
+                    { name: "RSI (14)", value: "55.20", sentiment: "Nötr", sentimentColor: "text-yellow-600" },
+                    { name: "MACD (12,26,9)", value: "0.0015", sentiment: "Al Sinyali", sentimentColor: "text-green-600" },
+                    { name: "SMA (50)", value: "1.0810", sentiment: "Üstünde", sentimentColor: "text-green-600" },
+                    { name: "EMA (20)", value: "1.0840", sentiment: "Test Ediliyor", sentimentColor: "text-orange-500" },
+                ],
+                summary: "Parite şu anda kısa vadeli direnci test ediyor. 1.0870'in üzerinde bir kırılma, daha fazla yükseliş sinyali verebilir. Yatırım tavsiyesi değildir."
+            };
+
+            document.getElementById('eurusd_price').textContent = selectedAssetDetails.currentPrice;
+            document.getElementById('eurusd_high').textContent = selectedAssetDetails.dayHigh;
+            document.getElementById('eurusd_low').textContent = selectedAssetDetails.dayLow;
+            const eurusdChangeEl = document.getElementById('eurusd_change');
+            eurusdChangeEl.textContent = selectedAssetDetails.change;
+            eurusdChangeEl.classList.toggle('text-green-600', selectedAssetDetails.changePositive);
+            eurusdChangeEl.classList.toggle('text-red-600', !selectedAssetDetails.changePositive);
+
+            const indicatorsListElement = document.getElementById('technicalIndicatorsList');
+            selectedAssetDetails.indicators.forEach(indicator => {
+                const listItem = document.createElement('li');
+                listItem.classList.add('flex', 'justify-between', 'items-center', 'py-1');
+                listItem.innerHTML = `
+                    <div>
+                        <span class="text-text-secondary">${indicator.name}:</span>
+                        <span class="font-medium text-text-primary ml-1">${indicator.value}</span>
+                    </div>
+                    <span class="text-xs font-semibold px-2 py-0.5 rounded-full ${indicator.sentimentColor} bg-opacity-10 ${indicator.sentimentColor.replace('text-', 'bg-')}">${indicator.sentiment}</span>
+                `;
+                indicatorsListElement.appendChild(listItem);
+            });
+            document.getElementById('analysisSummary').textContent = selectedAssetDetails.summary;
+        });
+    </script>
+
+</body>
+</html>

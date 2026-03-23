@@ -1,0 +1,9 @@
+{
+  "web_id": "web_59",
+  "task_id": 2,
+  "task_type": "dynamic",
+  "instruction": "Task: Press the left arrow key to move the falling tetromino\nExpected Result: The active tetromino moves one grid unit to the left, provided the destination space is unoccupied and within the game board boundaries.\n\nNote: The task is only considered successful if the expected result is achieved; otherwise, it is deemed infeasible.",
+  "max_steps": 15,
+  "expected": "The active tetromino moves one grid unit to the left, provided the destination space is unoccupied and within the game board boundaries.",
+  "label": 1
+}

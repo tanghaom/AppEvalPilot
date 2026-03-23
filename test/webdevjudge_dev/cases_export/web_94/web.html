@@ -1,0 +1,368 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Die 48 Gesetze der Macht</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Custom scrollbar for webkit browsers */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #f1f1f1;
+            border-radius: 10px;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #a3a3a3; /* neutral-400 */
+            border-radius: 10px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #737373; /* neutral-500 */
+        }
+        /* Basic body styling for better defaults */
+        body {
+            font-family: 'Inter', sans-serif; /* Using a common sans-serif font a la Tailwind defaults */
+        }
+        /* Add a subtle gradient to the background for depth */
+        .main-bg {
+            background-color: #f3f4f6; /* gray-100 */
+        }
+        .card-bg {
+            background-color: #ffffff; /* white */
+        }
+        .text-primary {
+            color: #1f2937; /* gray-800 */
+        }
+        .text-secondary {
+            color: #4b5563; /* gray-600 */
+        }
+        .text-accent {
+            color: #4f46e5; /* indigo-600 */
+        }
+        .border-accent {
+            border-color: #4f46e5; /* indigo-600 */
+        }
+        .nav-item {
+            transition: background-color 0.2s ease-in-out, color 0.2s ease-in-out;
+        }
+        .nav-item.active {
+            background-color: #e0e7ff; /* indigo-100 */
+            color: #3730a3; /* indigo-800 */
+            font-weight: 600;
+        }
+        .nav-item:hover:not(.active) {
+            background-color: #e5e7eb; /* gray-200 */
+        }
+    </style>
+     <!-- Add Inter font from Google Fonts for better typography -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Lora:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500;1,600;1,700&display=swap" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                        serif: ['Lora', 'serif'],
+                    },
+                    colors: {
+                        slate: {
+                            50: '#f8fafc',
+                            100: '#f1f5f9',
+                            200: '#e2e8f0',
+                            300: '#cbd5e1',
+                            400: '#94a3b8',
+                            500: '#64748b',
+                            600: '#475569',
+                            700: '#334155',
+                            800: '#1e2937',
+                            900: '#0f172a',
+                        },
+                        indigo: {
+                            50: '#eef2ff',
+                            100: '#e0e7ff',
+                            200: '#c7d2fe',
+                            300: '#a5b4fc',
+                            400: '#818cf8',
+                            500: '#6366f1',
+                            600: '#4f46e5',
+                            700: '#4338ca',
+                            800: '#3730a3',
+                            900: '#312e81',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+<body class="main-bg text-primary antialiased">
+
+    <div class="min-h-screen flex flex-col md:flex-row">
+        <!-- Sidebar -->
+        <aside id="sidebar" class="w-full md:w-72 lg:w-80 card-bg shadow-lg md:sticky md:top-0 md:h-screen overflow-y-auto shrink-0">
+            <div class="p-6 border-b border-slate-200">
+                <h1 class="text-xl font-bold text-slate-900">Die 48 Gesetze der Macht</h1>
+                <p class="text-sm text-slate-500">Robert Greene</p>
+            </div>
+            <nav id="toc-list" class="py-4">
+                <!-- Table of Contents will be populated here -->
+            </nav>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="flex-1 p-6 md:p-10 overflow-y-auto">
+            <div class="max-w-4xl mx-auto">
+                <header class="mb-8 pb-4 border-b border-slate-300">
+                    <h2 id="main-title" class="text-4xl font-bold text-slate-900 font-serif"></h2>
+                    <h3 id="main-subtitle" class="text-2xl text-indigo-700 font-serif mt-1"></h3>
+                </header>
+                
+                <article id="content-area" class="prose prose-slate max-w-none prose-headings:font-serif prose-headings:text-slate-900 prose-blockquote:border-indigo-500 prose-blockquote:bg-indigo-50 prose-blockquote:text-slate-700">
+                    <!-- Content will be injected here -->
+                </article>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        const bookData = {
+            mainTitle: "POWER",
+            mainSubtitle: "DIE 48 GESETZE DER MACHT",
+            author: "ROBERT GREENE",
+            foreword: {
+                id: "vorwort",
+                title: "VORWORT",
+                subtitle: "",
+                content: [
+                    { type: 'paragraph', text: "Das Gefühl, über Menschen und Vorgänge keine Macht zu haben, ist uns im Allgemeinen unerträglich – wenn wir hilflos sind, fühlen wir uns elend. Niemand will Macht abgeben, alle wollen mehr. In der heutigen Welt ist es jedoch gefährlich, als zu machthungrig zu erscheinen, zu unverhohlen seine Machtspielchen zu treiben. Fairness und Anstand werden von uns erwartet, also müssen wir subtil vorgehen – schicklich, aber schlau, demokratisch, aber diabolisch." },
+                    { type: 'paragraph', text: "Diese ständige Doppelbödigkeit erinnert stark an die Ränkeschmiederei um die Macht an den aristokratischen Höfen von einst. Durch die ganze Geschichte hindurch hat sich ein Hof immer um die eine Person an der Macht ausgebildet – König, Königin, Kaiser, Führer. Die Höflinge, die ihn bevölkerten, fanden sich in einer besonders delikaten Position: Sie hatten ihren Herren zu dienen, doch wenn sie sich zu sehr einschmeichelten, wenn sie zu offensichtlich um die Gunst buhlten, fiel das den anderen Höflingen auf, die sich dann gegen sie wandten. Die Gunst des Herrn und Meisters wollte also subtil erworben werden. Und selbst hochbegabte Höflinge, die dessen fähig waren, mussten sich gleichwohl vor ihren Mithöflingen schützen, die allzeit Pläne schmiedeten, sie aus ihrer Position zu verdrängen." },
+                    { type: 'paragraph', text: "Gleichzeitig sollte der Hof den Zenit an Zivilisiertheit und Raffinement repräsentieren. Über ein zu rüdes oder zu offenkundiges Vorgehen beim Spiel um die Macht rümpfte man die Nase; Höflinge pflegten heimlich, still und leise gegen jeden unter ihnen vorzugehen, der mit Gewalt sein Ziel erreichen wollte. Das war das Dilemma des Höflings: Er musste sich als ein Ausbund an Eleganz geben und zugleich seine Gegner auf subtilste Weise austricksen und ihnen einen Strich durch die Rechnung machen. Der erfolgreiche Höfling lernte im Lauf der Zeit, sämtliche Schachzüge nur indirekt auszuführen; wenn er jemandem das Messer auf die Brust setzte, trug er Samthandschuhe und stellte sein lieblichstes Lächeln zur Schau. Statt mit Gewalt oder Verrat erreichte der perfekte Höfling seine Ziele mit Verführung, Charme, List und subtilen Strategien, wobei er immer mehrere Schritte vorausplante. Das Leben am Hof war ein nie endender Kampf, der ständige Wachsamkeit und taktisches Denken erforderte. Es war ein zivilisierter Krieg." },
+                    { type: 'paragraph', text: "Heute leben wir in einer ähnlich paradoxen Situation: Alles muss zivilisiert, anständig, demokratisch und fair erscheinen. Aber wenn wir uns zu strikt an diese Regeln halten, wenn wir sie zu wörtlich nehmen, werden wir von denen vernichtet, die nicht so dumm sind. Der berühmte Renaissance-Diplomat und Höfling Niccolò Machiavelli schrieb: »Ein Mensch, der immer nur das Gute möchte, wird zwangsläufig zugrunde gehen inmitten von so vielen Menschen, die nicht gut sind.«" },
+                    { type: 'paragraph', text: "Der Hof betrachtete sich selbst als die Speerspitze des Raffinements, doch unter seiner glitzernden Oberfläche kochte und brodelte ein Kessel dunkelster Gefühle – Gier, Neid, Lust, Hass. Ähnlich betrachtet sich unsere heutige Welt als den Höhepunkt der Fairness, doch genauso wallen auch in uns wie seit Urzeiten hässliche Emotionen. Das Spiel ist dasselbe geblieben. Nach außen muss man sich den Anschein geben, die Regeln des Anstands zu respektieren, doch innerlich lernt man rasch – wenn man kein Narr ist –, auf der Hut zu sein und Napoleons Rat zu befolgen: Stecke deine eiserne Faust in einen Samthandschuh. Wenn Sie wie die Höflinge vergangener Tage die Kunst des indirekten Vorgehens beherrschen, wenn Sie lernen, zu verführen, sich einzuschmeicheln, zu täuschen und Ihre Gegner subtil auszutricksen, dann werden Sie den Gipfel der Macht erlangen. Sie werden Menschen dazu bringen können, sich Ihrem Willen zu unterwerfen, ohne dass diese merken, was Sie getan haben. Und solange dies ihnen nicht aufgeht, werden sie sich weder über Sie ärgern noch Ihnen Widerstand entgegensetzen." },
+                    { type: 'paragraph', text: "Betrachten Sie Power. Die 48 Gesetze der Macht als eine Art Handbuch für die Kunst des indirekten Vorgehens. Durch das Studium dieses Buches werden Sie Macht und deren Wirkung verstehen. Und durch die praktische Anwendung werden Sie in der heutigen Welt Erfolg haben, erscheinen als Vorbild an Ehrlichkeit, während Sie der vollendete Manipulator sind." }
+                ]
+            },
+            laws: [
+                {
+                    id: "gesetz1",
+                    title: "GESETZ 1",
+                    subtitle: "STELLE NIE DEN MEISTER IN DEN SCHATTEN",
+                    whatItMeans: [
+                        { type: 'paragraph', text: "Ihre Vorgesetzten müssen sich Ihnen immer überlegen fühlen können. Wenn Sie sie beeindrucken wollen, dürfen Sie Ihre eigenen Talente nicht zu sehr zur Schau stellen, sonst erreichen Sie das Gegenteil: Sie wecken Angst und Unsicherheit. Sorgen Sie dafür, dass die da oben brillanter erscheinen, als sie sind, und Sie werden den Gipfel der Macht erklimmen." }
+                    ],
+                    keysToPower: [
+                        { type: 'paragraph', text: "Jeder ist gelegentlich unsicher. Wenn man sich der Welt präsentiert und seine Talente zur Schau stellt, weckt man natürlich alle möglichen Arten von Ressentiments, Neid und andere Manifestationen von Unsicherheit. Das ist nicht anders zu erwarten. Aber Sie können nicht Ihr Leben lang auf die kleinkarierten Gefühle anderer Rücksicht nehmen. Mit denen, die über Ihnen stehen, müssen Sie jedoch anders umgehen: Wenn es um die Macht geht, ist der schlimmste Fehler von allen vielleicht, den Herrn und Meister in den Schatten zu stellen." },
+                        { type: 'paragraph', text: "Seien Sie nicht so töricht, zu glauben, dass sich die Welt seit den Tagen von Ludwig XIV. und den Medici groß verändert hätte. Die, die in ihrem Leben zu Rang und Namen kommen, sind wie Könige und Königinnen: Sie wollen sich in ihrer Position sicher fühlen und an Intelligenz, Witz und Charme ihrer Umgebung überlegen sein. Es ist ein tödlicher, aber weitverbreiteter Irrtum, zu glauben, man könne die Zuneigung derer da oben dadurch gewinnen, dass man die eigenen Gaben und Begabungen zur Schau stellt und sich damit brüstet. Vielleicht heuchelt der Herr Wohlwollen, doch bei der allerersten Gelegenheit wird er Sie durch jemanden ersetzen, der weniger intelligent, weniger attraktiv, weniger bedrohlich ist." },
+                        { type: 'paragraph', text: "Dieses Gesetz erfordert die Beachtung zweier Regeln, die Sie sich merken müssen. Erstens: Sie können unfreiwillig einen Herrn und Meister in den Schatten stellen, einfach nur, indem Sie Sie selbst sind. Einige Herren sind unsicherer als andere, erschreckend unsicher; Sie übertrumpfen sie vielleicht schon mit Ihrem natürlichen Charme und Witz. Wenn Sie nicht anders können, als charmant und überlegen zu wirken, müssen Sie lernen, solche Monster an Eitelkeit zu meiden. Oder Sie müssen eine Möglichkeit finden, Ihre guten Qualitäten zu unterdrücken, wenn Sie sich in deren Gesellschaft befinden." },
+                        { type: 'paragraph', text: "Zweitens: Bilden Sie sich niemals ein, dass Sie tun und lassen können, was Sie wollen, bloß weil Ihr Gebieter Sie liebt. Ganze Bücher wurden über Favoriten geschrieben, die in Ungnade fielen, weil sie ihren Status als gesichert ansahen, weil sie es wagten, ihren Meister in den Schatten zu stellen." },
+                        { type: 'paragraph', text: "Wenn Sie die Gefahren kennen, die mit dem Übertrumpfen des Herrn und Meisters verbunden sind, können Sie dieses Gesetz zu Ihrem Vorteil anwenden. Vor allem müssen Sie ihn umgarnen und aufs Podest heben. Offene Schmeichelei kann nützlich sein, hat aber ihre Grenzen; sie ist zu direkt und leicht zu durchschauen, und das sieht in den Augen der anderen Höflinge nicht gut aus. Diskrete Schmeichelei ist viel mächtiger. Wenn Sie beispielsweise intelligenter sind als Ihr Gebieter, inszenieren Sie das Gegenteil: Lassen Sie ihn intelligenter erscheinen als sich selbst. Geben Sie sich naiv. Lassen Sie es so aussehen, als ob Sie seinen Rat brauchen. Begehen Sie harmlose Fehler, die Ihnen auf lange Sicht nicht schaden, Ihnen aber Gelegenheit geben, seine Hilfe zu erbitten. Die Mächtigen sind von solchen Ersuchen begeistert. Ein Meister, der Ihnen nicht das Geschenk seiner Erfahrung zuteilwerden lassen kann, wird stattdessen Ihnen grollen und übelwollen." },
+                        { type: 'paragraph', text: "Wenn Sie kreativere Einfälle haben als der über Ihnen, schreiben Sie so öffentlich wie nur möglich diese ihm zu. Stellen Sie klar, dass Ihr Rat nur das Echo seines Rats ist." },
+                        { type: 'paragraph', text: "Wenn Sie von Natur aus umgänglicher und großzügiger sind als er, achten Sie darauf, nicht die Wolke zu sein, die seine Ausstrahlung von den anderen abhält. Er muss als die Sonne erscheinen, um die sich alles andere dreht, Macht und Brillanz verströmen, das Zentrum der Aufmerksamkeit sein." },
+                        { type: 'paragraph', text: "In all diesen Fällen ist es keine Schwäche, die eigenen Stärken zu bemänteln, wenn das letzten Endes zur Macht führt. Wenn Sie sich von anderen in den Schatten stellen lassen, behalten Sie selbst die Kontrolle, statt zum Opfer ihrer Unsicherheiten zu werden. An dem Tag, da Sie beschließen, Ihren unterlegenen Status zu überwinden, wird sich das alles auszahlen. Wenn es Ihnen gelingt, Ihren Herrn in den Augen anderer noch strahlender aussehen zu lassen, dann sind Sie ein Gottesgeschenk und werden umgehend befördert." }
+                    ],
+                    symbol: { type: 'paragraph', text: "die Sterne am Himmel. In einem gegebenen Moment kann es immer nur eine Sonne geben. Verdunkeln Sie die Sonne nie, und versuchen Sie nicht, es ihr an Brillanz gleichzutun; verblassen Sie lieber am Himmel und finden Sie Wege, die Intensität des Zentralgestirns zu verstärken." },
+                    guarantee: { type: 'blockquote', text: "Sich vor dem Siege über Vorgesetzte hüten. Alles Übertreffen ist verhaßt, aber seinen Herrn zu übertreffen, ist entweder ein dummer oder ein Schicksalsstreich … Eine glückliche Anleitung zu dieser Feinheit geben uns die Sterne, welche, obwohl hellglänzend und Kinder der Sonne, doch nie so verwegen sind, sich mit den Strahlen dieser zu messen.", source: "Baltasar Gracián, 1601–1658" }
+                },
+                // Placeholder for other laws
+                ...Array.from({ length: 47 }, (_, i) => ({
+                    id: `gesetz${i + 2}`,
+                    title: `GESETZ ${i + 2}`,
+                    subtitle: `Titel für Gesetz ${i + 2}`,
+                    whatItMeans: [{ type: 'paragraph', text: `Was Gesetz ${i + 2} bedeutet... (Inhalt folgt)` }],
+                    keysToPower: [{ type: 'paragraph', text: `Schlüssel zur Macht für Gesetz ${i + 2}... (Inhalt folgt)` }],
+                    symbol: null,
+                    guarantee: null
+                }))
+            ]
+        };
+
+        // Add subtitles to placeholder laws from the provided TOC for more realism
+        const subtitles = [
+            "STELLE NIE DEN MEISTER IN DEN SCHATTEN", // Gesetz 1
+            "VERTRAUE DEINEN FREUNDEN NIE ZU SEHR – BEDIENE DICH DEINER FEINDE",
+            "HALTE DEINE ABSICHTEN STETS GEHEIM",
+            "SAGE IMMER WENIGER ALS NÖTIG",
+            "OHNE EINEN GUTEN RUF GEHT NICHTS – SCHÜTZE IHN MIT ALLEN MITTELN",
+            "MACHE UM JEDEN PREIS AUF DICH AUFMERKSAM",
+            "LASS ANDERE FÜR DICH ARBEITEN, DOCH STREICHE IMMER DIE ANERKENNUNG DAFÜR EIN",
+            "LASS DIE ANDEREN ZU DIR KOMMEN – KÖDERE SIE, WENN ES NÖTIG IST",
+            "TATEN ZÄHLEN, NICHT ARGUMENTE",
+            "ANSTECKUNGSGEFAHR – MEIDE UNGLÜCKLICHE UND GLÜCKLOSE",
+            "MACHE MENSCHEN VON DIR ABHÄNGIG",
+            "ENTWAFFNE DEIN OPFER MIT GEZIELTER EHRLICHKEIT UND GROSSZÜGIGKEIT",
+            "BRAUCHST DU HILFE, APPELLIERE AN DEN EIGENNUTZ",
+            "GIB DICH WIE EIN FREUND, ABER HANDLE WIE EIN SPION",
+            "VERNICHTE DEINE FEINDE VOLLSTÄNDIG",
+            "GLÄNZE DURCH ABWESENHEIT, UM RESPEKT UND ANSEHEN ZU ERHÖHEN",
+            "VERSETZE ANDERE IN STÄNDIGE UNGEWISSHEIT – KULTIVIERE DIE AURA DER UNBERECHENBARKEIT",
+            "BAUE ZU DEINEM SCHUTZ KEINE FESTUNG – ISOLATION IST GEFÄHRLICH",
+            "MACHE DIR KLAR, MIT WEM DU ES ZU TUN HAST – KRÄNKE NICHT DIE FALSCHEN",
+            "SCHEUE BINDUNGEN, WO IMMER ES GEHT",
+            "SPIELE DEN DEPPEN, UM DEPPEN ZU ÜBERLISTEN – GIB DICH DÜMMER ALS DEIN OPFER",
+            "ERGIB DICH ZUM SCHEIN – VERWANDLE SCHWÄCHE IN STÄRKE",
+            "KONZENTRIERE DEINE KRÄFTE",
+            "SPIELE DEN PERFEKTEN HÖFLING",
+            "ERSCHAFFE DICH NEU",
+            "MACHE DIR NICHT DIE FINGER SCHMUTZIG",
+            "BEFRIEDIGE DAS MENSCHLICHE BEDÜRFNIS, AN ETWAS ZU GLAUBEN, UND FÖRDERE EINEN KULT UM DEINE PERSON",
+            "PACKE AUFGABEN MUTIG AN",
+            "PLANE ALLES BIS ZUM ENDE",
+            "ALLES MUSS GANZ LEICHT AUSSEHEN",
+            "LASS ANDERE MIT DEN KARTEN SPIELEN, DIE DU AUSTEILST",
+            "SPIELE MIT DEN TRÄUMEN DER MENSCHEN",
+            "FÜR JEDEN GIBT ES DIE PASSENDE DAUMENSCHRAUBE",
+            "HANDLE WIE EIN KÖNIG, UM WIE EIN KÖNIG BEHANDELT ZU WERDEN",
+            "MEISTERE DIE KUNST DES TIMINGS",
+            "VERGISS, WAS DU NICHT HABEN KANNST – ES ZU IGNORIEREN IST DIE BESTE RACHE",
+            "INSZENIERE PACKENDE SCHAUSPIELE",
+            "DENKE, WAS DU WILLST, ABER VERHALTE DICH WIE DIE ANDEREN",
+            "SCHLAGE WELLEN, UM FISCHE ZU FANGEN",
+            "VERSCHMÄHE DAS GRATISANGEBOT",
+            "TRITT NICHT IN DIE FUSSSTAPFEN EINES GROSSEN MANNES",
+            "ERSCHLAGE DEN HIRTEN, UND DIE SCHAFE ZERSTREUEN SICH",
+            "ARBEITE MIT HERZ UND GEIST DER ANDEREN",
+            "HALTE ANDEREN DEN SPIEGEL VOR",
+            "PREDIGE NOTWENDIGEN WANDEL, ABER ÄNDERE NIE ZU VIEL AUF EINMAL",
+            "SEI NIE ZU PERFEKT",
+            "SCHIESSE NIE ÜBER DAS ZIEL HINAUS – DER SIEG IST DER ZEITPUNKT ZUM AUFHÖREN",
+            "STREBE NACH FORMLOSIGKEIT"
+        ];
+
+        bookData.laws.forEach((law, index) => {
+            if (subtitles[index]) {
+                law.subtitle = subtitles[index];
+            }
+        });
+
+
+        const tocList = document.getElementById('toc-list');
+        const mainTitleEl = document.getElementById('main-title');
+        const mainSubtitleEl = document.getElementById('main-subtitle');
+        const contentArea = document.getElementById('content-area');
+        let currentItemId = 'gesetz1'; // Default view
+
+        function renderContentItem(item) {
+            let html = '';
+            if (item.type === 'paragraph') {
+                html += `<p class="mb-4 text-slate-700 leading-relaxed">${item.text}</p>`;
+            } else if (item.type === 'blockquote') {
+                html += `<blockquote class="mt-4 mb-4 p-4 bg-indigo-50 border-l-4 border-indigo-500 text-slate-600 italic">
+                            <p>${item.text}</p>
+                            ${item.source ? `<footer class="text-sm text-slate-500 mt-2 not-italic">— ${item.source}</footer>` : ''}
+                         </blockquote>`;
+            } else if (item.type === 'heading') { // For potential subheadings within keysToPower, etc.
+                html += `<h5 class="text-lg font-semibold text-slate-800 mt-6 mb-2">${item.text}</h5>`;
+            }
+            return html;
+        }
+        
+        function renderSection(sectionData, title) {
+            if (!sectionData || sectionData.length === 0) return '';
+            let html = `<div class="mb-8">
+                            <h4 class="text-xl font-semibold text-slate-900 mb-3 border-b-2 border-slate-300 pb-2 font-serif"><em>${title}</em></h4>`;
+            if (Array.isArray(sectionData)) {
+                sectionData.forEach(item => {
+                    html += renderContentItem(item);
+                });
+            } else if (typeof sectionData === 'object' && sectionData.type) { // For Symbol and Garant if not arrays
+                 html += renderContentItem(sectionData);
+            }
+            html += `</div>`;
+            return html;
+        }
+
+
+        function displayContent(itemId) {
+            currentItemId = itemId;
+            let itemData;
+
+            if (itemId === 'vorwort') {
+                itemData = bookData.foreword;
+            } else {
+                itemData = bookData.laws.find(law => law.id === itemId);
+            }
+
+            if (!itemData) {
+                mainTitleEl.textContent = 'Inhalt nicht gefunden';
+                mainSubtitleEl.textContent = '';
+                contentArea.innerHTML = '<p>Der ausgewählte Inhalt konnte nicht geladen werden.</p>';
+                return;
+            }
+            
+            mainTitleEl.textContent = itemData.title;
+            mainSubtitleEl.textContent = itemData.subtitle || '';
+            
+            let contentHtml = '';
+            if (itemId === 'vorwort') {
+                itemData.content.forEach(p => contentHtml += renderContentItem(p));
+            } else {
+                contentHtml += renderSection(itemData.whatItMeans, "WAS HEISST DAS?");
+                contentHtml += renderSection(itemData.keysToPower, "SCHLÜSSEL ZUR MACHT");
+                if (itemData.symbol) {
+                    contentHtml += renderSection(itemData.symbol, "Symbol:");
+                }
+                if (itemData.guarantee) {
+                    contentHtml += renderSection(itemData.guarantee, "Garant:");
+                }
+            }
+            contentArea.innerHTML = contentHtml;
+            setActiveNavItem(itemId);
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        function setActiveNavItem(itemId) {
+            document.querySelectorAll('#toc-list a').forEach(link => {
+                if (link.dataset.id === itemId) {
+                    link.classList.add('active');
+                     link.classList.add('bg-indigo-100', 'text-indigo-700', 'font-semibold');
+                    link.classList.remove('text-slate-700', 'hover:bg-slate-200');
+                } else {
+                    link.classList.remove('active');
+                    link.classList.remove('bg-indigo-100', 'text-indigo-700', 'font-semibold');
+                    link.classList.add('text-slate-700', 'hover:bg-slate-200');
+                }
+            });
+        }
+
+        function populateTOC() {
+            let tocHtml = '';
+            // Add Vorwort
+            tocHtml += `<a href="#" data-id="vorwort" class="nav-item block px-6 py-3 text-slate-700 hover:bg-slate-200 text-sm">
+                            <span class="font-medium">${bookData.foreword.title}</span>
+                        </a>`;
+
+            // Add Laws
+            bookData.laws.forEach(law => {
+                tocHtml += `<a href="#" data-id="${law.id}" class="nav-item block px-6 py-3 text-slate-700 hover:bg-slate-200 text-sm">
+                                <span class="font-medium">${law.title}:</span> ${law.subtitle}
+                            </a>`;
+            });
+            tocList.innerHTML = tocHtml;
+
+            document.querySelectorAll('#toc-list a').forEach(link => {
+                link.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    displayContent(link.dataset.id);
+                });
+            });
+        }
+
+        // Initial load
+        document.addEventListener('DOMContentLoaded', () => {
+            // Set main book title in sidebar header (already hardcoded, but could be dynamic)
+            // document.querySelector('#sidebar h1').textContent = bookData.mainTitle;
+            // document.querySelector('#sidebar p').textContent = bookData.author;
+            
+            populateTOC();
+            displayContent(currentItemId); // Display default item (Gesetz 1)
+        });
+
+    </script>
+
+</body>
+</html>

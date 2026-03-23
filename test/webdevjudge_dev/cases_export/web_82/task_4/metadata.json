@@ -1,0 +1,9 @@
+{
+  "web_id": "web_82",
+  "task_id": 4,
+  "task_type": "dynamic",
+  "instruction": "Task: Activate an 'edit' mode for a previously sent message (e.g., via a context menu or button), modify its text, and save the changes.\nExpected Result: Message content updates in place with the new text; edit mode closes.\n\nNote: The task is only considered successful if the expected result is achieved; otherwise, it is deemed infeasible.",
+  "max_steps": 15,
+  "expected": "Message content updates in place with the new text; edit mode closes.",
+  "label": 0
+}

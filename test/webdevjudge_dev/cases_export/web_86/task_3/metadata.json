@@ -1,0 +1,9 @@
+{
+  "web_id": "web_86",
+  "task_id": 3,
+  "task_type": "dynamic",
+  "instruction": "Task: Perform an action that simulates a translation error (e.g., by typing a specific keyword like 'error_trigger' into an input field and attempting translation).\nExpected Result: An error message is displayed clearly in the designated error area, possibly with an entry/exit animation. The application remains usable for further translation attempts.\n\nNote: The task is only considered successful if the expected result is achieved; otherwise, it is deemed infeasible.",
+  "max_steps": 15,
+  "expected": "An error message is displayed clearly in the designated error area, possibly with an entry/exit animation. The application remains usable for further translation attempts.",
+  "label": 1
+}

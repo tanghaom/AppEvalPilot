@@ -1,0 +1,9 @@
+{
+  "web_id": "web_33",
+  "task_id": 5,
+  "task_type": "dynamic",
+  "instruction": "Task: Click a highlighted valid target square to move the selected piece.\nExpected Result: The piece moves to the target square, the board updates, any capture is processed, and the turn passes to the opponent.\n\nNote: The task is only considered successful if the expected result is achieved; otherwise, it is deemed infeasible.",
+  "max_steps": 15,
+  "expected": "The piece moves to the target square, the board updates, any capture is processed, and the turn passes to the opponent.",
+  "label": 1
+}

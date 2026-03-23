@@ -1,0 +1,9 @@
+{
+  "web_id": "web_77",
+  "task_id": 2,
+  "task_type": "dynamic",
+  "instruction": "Task: Select a 'Course' (e.g., 'Mathematics') from a filter dropdown on the Question Bank Management page.\nExpected Result: The list of displayed question banks updates to show only those associated with 'Mathematics' (simulated filtering of local data).\n\nNote: The task is only considered successful if the expected result is achieved; otherwise, it is deemed infeasible.",
+  "max_steps": 15,
+  "expected": "The list of displayed question banks updates to show only those associated with 'Mathematics' (simulated filtering of local data).",
+  "label": 1
+}

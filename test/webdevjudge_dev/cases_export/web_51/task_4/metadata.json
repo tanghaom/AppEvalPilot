@@ -1,0 +1,9 @@
+{
+  "web_id": "web_51",
+  "task_id": 4,
+  "task_type": "dynamic",
+  "instruction": "Task: Click a 'View Code' or 'Export Code' button associated with the currently previewed component.\nExpected Result: A modal or panel appears, displaying a (pre-defined or placeholder) code snippet relevant to the component in the preview, with an option to copy the code to the clipboard.\n\nNote: The task is only considered successful if the expected result is achieved; otherwise, it is deemed infeasible.",
+  "max_steps": 15,
+  "expected": "A modal or panel appears, displaying a (pre-defined or placeholder) code snippet relevant to the component in the preview, with an option to copy the code to the clipboard.",
+  "label": 0
+}

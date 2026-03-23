@@ -1,0 +1,372 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Anti-Autoritärer News Feed</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Custom scrollbar for modal content (optional, for aesthetics) */
+        #articleModalContent::-webkit-scrollbar {
+            width: 8px;
+        }
+        #articleModalContent::-webkit-scrollbar-track {
+            background: #1e293b; /* slate-800 */
+        }
+        #articleModalContent::-webkit-scrollbar-thumb {
+            background: #334155; /* slate-700 */
+            border-radius: 4px;
+        }
+        #articleModalContent::-webkit-scrollbar-thumb:hover {
+            background: #475569; /* slate-600 */
+        }
+        /* Basic prose styling for article content, if not using typography plugin */
+        .prose-custom h4 {
+            font-size: 1.25rem; /* text-xl */
+            font-weight: 600; /* font-semibold */
+            margin-top: 1rem;
+            margin-bottom: 0.5rem;
+            color: #e2e8f0; /* slate-200 */
+        }
+        .prose-custom p {
+            margin-bottom: 1rem;
+            line-height: 1.6;
+        }
+        .prose-custom a {
+            color: #38bdf8; /* sky-400 */
+            text-decoration: underline;
+        }
+        .prose-custom a:hover {
+            color: #7dd3fc; /* sky-300 */
+        }
+        /* Prevent background scroll when modal is open */
+        .modal-open {
+            overflow: hidden;
+        }
+    </style>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        slate: {
+                            900: '#0F172A', // Main background
+                            800: '#1E293B', // Card/Header background
+                            700: '#334155', // Borders/Dividers, hover
+                            600: '#475569',
+                            500: '#64748B',
+                            400: '#94A3B8', // Secondary text
+                            300: '#CBD5E1',
+                            200: '#E2E8F0', // Primary text
+                            100: '#F1F5F9',
+                        },
+                        sky: {
+                            400: '#38BDF8', // Accent/Links
+                            500: '#0EA5E9', // Slightly darker accent
+                            300: '#7DD3FC', // Hover accent
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+<body class="bg-slate-900 text-slate-200 font-sans">
+
+    <header class="bg-slate-800 p-4 shadow-md sticky top-0 z-40">
+        <div class="container mx-auto flex justify-between items-center">
+            <h1 class="text-2xl md:text-3xl font-bold text-sky-400">Anti-Autoritärer News Feed</h1>
+            <button id="simulateNewArticlesBtn" class="bg-sky-500 hover:bg-sky-600 text-white font-semibold py-2 px-4 rounded-lg text-sm transition-colors duration-200">
+                Neue Artikel laden (Sim.)
+            </button>
+        </div>
+    </header>
+
+    <main class="container mx-auto p-4 md:p-8">
+        <div class="bg-slate-800 p-4 rounded-lg shadow mb-6">
+            <p class="text-sm text-slate-400">
+                Willkommen! Dieser Feed zeigt Nachrichten von (simulierten) anarchistischen und anti-autoritären Quellen.
+                Die Nachrichten sind nach Erscheinungsdatum sortiert. Klicken Sie auf einen Titel, um den vollständigen Artikel zu lesen.
+            </p>
+            <p class="text-xs text-slate-500 mt-2">
+                Hinweis: Dies ist eine Frontend-Demonstration. Das "Scraping" und die "stündlichen Updates" sind simuliert.
+                Es wird keine echte Datenbank oder Backend-Logik verwendet.
+            </p>
+        </div>
+
+        <div id="newsFeed" class="space-y-8">
+            <!-- Nachrichten werden hier per JavaScript eingefügt -->
+            <div class="text-center py-10">
+                <p class="text-slate-400">Lade Nachrichten...</p>
+            </div>
+        </div>
+    </main>
+
+    <!-- Artikel Detail Modal -->
+    <div id="articleModalOverlay" class="fixed inset-0 bg-black bg-opacity-75 hidden items-center justify-center p-4 z-50 transition-opacity duration-300 opacity-0">
+        <div id="articleModalContent" class="bg-slate-800 p-6 rounded-lg shadow-xl max-w-3xl w-full max-h-[90vh] overflow-y-auto relative transform scale-95 transition-all duration-300">
+            <button id="closeModalButton" aria-label="Schließen" class="absolute top-3 right-3 text-slate-400 hover:text-slate-100 p-2 rounded-full hover:bg-slate-700 transition-colors">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-6 h-6">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+            </button>
+            
+            <h2 id="modalTitle" class="text-3xl font-bold text-sky-400 mb-3 pr-10"></h2>
+            <div id="modalMeta" class="text-sm text-slate-400 mb-2">
+                <span id="modalDate"></span> | Quelle: <span id="modalSource"></span>
+            </div>
+            <a id="modalSourceLink" href="#" target="_blank" rel="noopener noreferrer" class="text-sky-400 hover:text-sky-300 hover:underline block mb-4 text-sm">
+                Originalartikel lesen
+            </a>
+            
+            <div id="modalBody" class="prose-custom text-slate-300 mt-4">
+                <!-- Artikelinhalt wird hier per JavaScript eingefügt -->
+            </div>
+        </div>
+    </div>
+
+    <footer class="text-center p-6 text-sm text-slate-500 border-t border-slate-700 mt-12">
+        <p>&copy; <span id="currentYear"></span> Anti-Autoritärer News Feed Demo. Alle Rechte (an den Inhalten) bei den jeweiligen Quellen.</p>
+    </footer>
+
+    <script>
+        const START_DATE_FILTER = new Date('2024-12-01T00:00:00Z');
+        let articles = [
+            {
+                id: 'article-1',
+                title: 'Direkte Aktion siegt: Gemeinschaftsgarten vor Bebauung gerettet',
+                publicationDate: '2024-12-01T10:00:00Z',
+                sourceName: 'Autonomer Aktionsbericht',
+                sourceUrl: 'https://example.com/aar-article-1',
+                contentHtml: `
+                    <p>Nach wochenlanger Organisation und direkter Aktion haben Aktivist:innen im Stadtteil Greenfield erfolgreich einen beliebten Gemeinschaftsgarten davor bewahrt, für Luxuswohnungen plattgemacht zu werden.</p>
+                    <p>Die Kampagne umfasste Baumbesetzungen, Blockaden und ein 24/7-Camp. Anwohner:innen solidarisierten sich und unterstützten mit Lebensmitteln, Material und moralischem Beistand.</p>
+                    <h4 class="text-lg font-semibold mt-4 mb-2 text-slate-200">Sieg der Gemeinschaft</h4>
+                    <p>Die Investoren gaben gestern bekannt, ihre Pläne für das Gelände aufgrund des wachsenden Drucks und der negativen Publizität aufzugeben. Die Gemeinschaft diskutiert nun Pläne, den Status des Gartens zu formalisieren und seine Angebote zu erweitern.</p>
+                    <p>"Das ist ein Sieg der Menschen über den Profit", sagte eine Aktivistin, "und ein Beweis dafür, was wir erreichen können, wenn wir uns gemeinsam organisieren."</p>
+                `
+            },
+            {
+                id: 'article-2',
+                title: 'Kritik an neuer Überwachungsgesetzgebung wächst',
+                publicationDate: '2024-12-01T14:30:00Z',
+                sourceName: 'Freie Presse Info',
+                sourceUrl: 'https://example.com/fp-article-2',
+                contentHtml: `
+                    <p>Ein breites Bündnis zivilgesellschaftlicher Organisationen hat scharfe Kritik an dem jüngst vorgeschlagenen Überwachungsgesetz geübt. Das Gesetz würde staatlichen Behörden weitreichende Befugnisse zur Datensammlung und -analyse einräumen.</p>
+                    <p>Expert:innen warnen vor einer massiven Einschränkung der Privatsphäre und der Gefahr eines Überwachungsstaates. "Unter dem Deckmantel der Sicherheit werden hier Grundrechte ausgehöhlt", so eine Sprecherin des Bündnisses.</p>
+                    <p>Für die kommenden Wochen sind Proteste und Informationsveranstaltungen in mehreren Städten geplant.</p>
+                `
+            },
+            {
+                id: 'article-3',
+                title: 'Solidaritätsnetzwerk für Gefangene ausgebaut',
+                publicationDate: '2024-12-02T09:15:00Z',
+                sourceName: 'ABC Nachrichten Kollektiv',
+                sourceUrl: 'https://example.com/abc-article-3',
+                contentHtml: `
+                    <p>Das Anarchist Black Cross (ABC) Netzwerk hat bekannt gegeben, seine Unterstützungsstrukturen für politische Gefangene und deren Familien erweitert zu haben. Dies umfasst rechtliche Hilfe, finanzielle Unterstützung und Öffentlichkeitsarbeit.</p>
+                    <p>"Solidarität ist unsere stärkste Waffe", erklärte ein Mitglied des Kollektivs. "Wir lassen niemanden allein, der für eine freiere Welt kämpft und dafür Repression erfährt."</p>
+                    <p>Neue lokale Gruppen wurden gegründet und bestehende konnten ihre Kapazitäten durch Spendenaktionen und Freiwilligenengagement ausbauen.</p>
+                `
+            },
+            {
+                id: 'article-4',
+                title: 'Besetzung eines Leerstands fordert sozialen Wohnraum',
+                publicationDate: '2024-12-02T16:00:00Z',
+                sourceName: 'SquatNow Ticker',
+                sourceUrl: 'https://example.com/squat-article-4',
+                contentHtml: `
+                    <p>Eine Gruppe von Aktivist:innen hat heute Morgen ein seit Jahren leerstehendes Bürogebäude im Zentrum der Stadt besetzt. Mit der Aktion wollen sie auf den Mangel an bezahlbarem Wohnraum und die Spekulation mit Immobilien aufmerksam machen.</p>
+                    <p>Die Besetzer:innen haben Transparente mit Forderungen nach sozialem Wohnraum und einer Umverteilung von Ressourcen angebracht. Sie laden die Nachbarschaft zu Gesprächen und zur Mitgestaltung ein.</p>
+                    <p>"Während Menschen auf der Straße leben, stehen hier Gebäude leer. Das ist ein Skandal, den wir nicht länger hinnehmen", so eine Person aus der Besetzung.</p>
+                `
+            },
+            {
+                id: 'article-5',
+                title: 'Internationale Konferenz für autonome Organisationen angekündigt',
+                publicationDate: '2024-12-03T11:00:00Z',
+                sourceName: 'Global Commons Assembly',
+                sourceUrl: 'https://example.com/gca-article-5',
+                contentHtml: `
+                    <p>Ein internationales Vorbereitungskomitee hat eine globale Konferenz für autonome und anti-autoritäre Gruppen und Individuen für das kommende Frühjahr angekündigt. Ziel ist es, Vernetzung zu stärken, Strategien auszutauschen und gemeinsame Projekte zu initiieren.</p>
+                    <p>Die Konferenz soll dezentral organisiert werden, mit lokalen Knotenpunkten und digitalen Beteiligungsmöglichkeiten. Schwerpunktthemen werden unter anderem ökologische Nachhaltigkeit, digitale Selbstverteidigung und der Aufbau resilienter Gemeinschaften sein.</p>
+                    <p>Ein Call for Participation wird in Kürze veröffentlicht.</p>
+                `
+            },
+             {
+                id: 'article-6',
+                title: 'Proteste gegen G20-Gipfel: Breite Mobilisierung erwartet',
+                publicationDate: '2024-12-03T15:00:00Z',
+                sourceName: 'Indymedia Global',
+                sourceUrl: 'https://example.com/indymedia-g20',
+                contentHtml: `
+                    <p>Verschiedene anti-kapitalistische und globalisierungskritische Netzwerke rufen zu Protesten gegen den bevorstehenden G20-Gipfel auf. Es wird mit einer breiten Mobilisierung und vielfältigen Aktionsformen gerechnet.</p>
+                    <p>"Die G20 repräsentieren die Interessen der Mächtigen und Konzerne, nicht die der Menschen und des Planeten", heißt es in einem Aufruf. "Wir werden unseren Widerstand auf die Straße tragen."</p>
+                    <p>Geplant sind Demonstrationen, Blockaden, alternative Gipfel und kulturelle Veranstaltungen.</p>
+                `
+            }
+        ];
+
+        const newsFeedElement = document.getElementById('newsFeed');
+        const articleModalOverlay = document.getElementById('articleModalOverlay');
+        const articleModalContent = document.getElementById('articleModalContent');
+        const closeModalButton = document.getElementById('closeModalButton');
+        
+        const modalTitle = document.getElementById('modalTitle');
+        const modalDate = document.getElementById('modalDate');
+        const modalSource = document.getElementById('modalSource');
+        const modalSourceLink = document.getElementById('modalSourceLink');
+        const modalBody = document.getElementById('modalBody');
+
+        function formatDateDisplay(isoDateString) {
+            const date = new Date(isoDateString);
+            return date.toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric' });
+        }
+        
+        function formatDateTimeDisplay(isoDateString) {
+            const date = new Date(isoDateString);
+            return date.toLocaleString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+        }
+
+        function renderNewsFeed() {
+            newsFeedElement.innerHTML = ''; // Clear existing content
+
+            const currentDate = new Date();
+
+            const filteredArticles = articles
+                .filter(article => {
+                    const articleDate = new Date(article.publicationDate);
+                    return articleDate >= START_DATE_FILTER && articleDate <= currentDate;
+                })
+                .sort((a, b) => new Date(b.publicationDate) - new Date(a.publicationDate)); // Sort newest first overall
+
+            if (filteredArticles.length === 0) {
+                newsFeedElement.innerHTML = '<p class="text-slate-400 text-center">Keine Nachrichten für den ausgewählten Zeitraum gefunden.</p>';
+                return;
+            }
+
+            const groupedArticles = filteredArticles.reduce((acc, article) => {
+                const dateKey = article.publicationDate.split('T')[0]; // YYYY-MM-DD
+                if (!acc[dateKey]) {
+                    acc[dateKey] = [];
+                }
+                acc[dateKey].push(article);
+                return acc;
+            }, {});
+
+            const sortedDateKeys = Object.keys(groupedArticles).sort((a,b) => new Date(b) - new Date(a)); // Sort dates descending (newest first)
+
+            sortedDateKeys.forEach(dateKey => {
+                const articlesForDate = groupedArticles[dateKey].sort((a,b) => new Date(b.publicationDate) - new Date(a.publicationDate)); // Sort articles within date newest first
+
+                const dateGroupDiv = document.createElement('div');
+                dateGroupDiv.className = 'date-group space-y-2';
+
+                const dateHeading = document.createElement('h2');
+                dateHeading.className = 'text-2xl font-semibold text-slate-300 border-b border-slate-700 pb-2 mb-4';
+                dateHeading.textContent = formatDateDisplay(articlesForDate[0].publicationDate);
+                dateGroupDiv.appendChild(dateHeading);
+
+                const articlesList = document.createElement('ul');
+                articlesList.className = 'space-y-3';
+
+                articlesForDate.forEach(article => {
+                    const listItem = document.createElement('li');
+                    listItem.className = 'news-item flex items-start space-x-3 md:space-x-4 bg-slate-800 p-3 md:p-4 rounded-lg shadow hover:bg-slate-700 cursor-pointer transition-colors duration-200';
+                    listItem.setAttribute('data-article-id', article.id);
+                    
+                    listItem.innerHTML = `
+                        <div class="flex-shrink-0 pt-1">
+                            <div class="bg-slate-700 border-2 border-dashed border-slate-600 rounded-lg w-10 h-10 md:w-12 md:h-12 flex items-center justify-center text-slate-500">
+                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5 md:w-6 md:h-6">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 7.5h1.5m-1.5 3h1.5m-7.5 3h7.5m-7.5 3h7.5m3-9h3.375c.621 0 1.125.504 1.125 1.125V18a2.25 2.25 0 0 1-2.25 2.25H6.75A2.25 2.25 0 0 1 4.5 18V7.125C4.5 6.504 5.004 6 5.625 6H9" />
+                                </svg>
+                            </div>
+                        </div>
+                        <div class="flex-grow">
+                            <h3 class="text-lg md:text-xl font-medium text-sky-400">${article.title}</h3>
+                            <p class="text-xs md:text-sm text-slate-400 mt-1">
+                                Quelle: ${article.sourceName}
+                            </p>
+                        </div>
+                    `;
+                    listItem.addEventListener('click', () => openArticleModal(article.id));
+                    articlesList.appendChild(listItem);
+                });
+                dateGroupDiv.appendChild(articlesList);
+                newsFeedElement.appendChild(dateGroupDiv);
+            });
+        }
+
+        function openArticleModal(articleId) {
+            const article = articles.find(a => a.id === articleId);
+            if (!article) return;
+
+            modalTitle.textContent = article.title;
+            modalDate.textContent = formatDateTimeDisplay(article.publicationDate);
+            modalSource.textContent = article.sourceName;
+            modalSourceLink.href = article.sourceUrl;
+            modalBody.innerHTML = article.contentHtml;
+            
+            articleModalOverlay.classList.remove('hidden');
+            setTimeout(() => { // For transition
+                articleModalOverlay.classList.remove('opacity-0');
+                articleModalContent.classList.remove('scale-95');
+                document.body.classList.add('modal-open');
+            }, 10);
+        }
+
+        function closeArticleModal() {
+            articleModalOverlay.classList.add('opacity-0');
+            articleModalContent.classList.add('scale-95');
+            document.body.classList.remove('modal-open');
+            setTimeout(() => { // For transition
+                 articleModalOverlay.classList.add('hidden');
+            }, 300);
+        }
+
+        closeModalButton.addEventListener('click', closeArticleModal);
+        articleModalOverlay.addEventListener('click', (event) => {
+            if (event.target === articleModalOverlay) {
+                closeArticleModal();
+            }
+        });
+        document.addEventListener('keydown', (event) => {
+            if (event.key === 'Escape' && !articleModalOverlay.classList.contains('hidden')) {
+                closeArticleModal();
+            }
+        });
+
+        // Simulate adding new articles
+        let newArticleCounter = 0;
+        document.getElementById('simulateNewArticlesBtn').addEventListener('click', () => {
+            const now = new Date();
+            newArticleCounter++;
+            const newArticle = {
+                id: `new-article-${newArticleCounter}-${Date.now()}`,
+                title: `Simulierter neuer Artikel #${newArticleCounter} (${now.toLocaleTimeString('de-DE')})`,
+                publicationDate: now.toISOString(),
+                sourceName: 'Dynamische Quelle',
+                sourceUrl: 'https://example.com/dynamic',
+                contentHtml: `
+                    <p>Dies ist ein dynamisch hinzugefügter Artikel, um die Aktualisierungsfunktion zu simulieren.</p>
+                    <p>Erstellt am: ${formatDateTimeDisplay(now.toISOString())}.</p>
+                    <p>Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.</p>
+                `
+            };
+            articles.push(newArticle);
+            renderNewsFeed(); // Re-render the feed with the new article
+            // Scroll to top to see the new article if it's on a new date or top of current date
+            window.scrollTo({ top: newsFeedElement.offsetTop - 80, behavior: 'smooth' }); 
+        });
+
+        document.getElementById('currentYear').textContent = new Date().getFullYear();
+        
+        // Initial render
+        renderNewsFeed();
+
+    </script>
+
+</body>
+</html>

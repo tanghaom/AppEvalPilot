@@ -1,0 +1,9 @@
+{
+  "web_id": "web_8",
+  "task_id": 1,
+  "task_type": "dynamic",
+  "instruction": "Task: Click a call-to-action button overlaid on the animation.\nExpected Result: The page smoothly scrolls to a relevant section or reveals related content on the page.\n\nNote: The task is only considered successful if the expected result is achieved; otherwise, it is deemed infeasible.",
+  "max_steps": 15,
+  "expected": "The page smoothly scrolls to a relevant section or reveals related content on the page.",
+  "label": 1
+}

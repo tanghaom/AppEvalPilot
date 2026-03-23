@@ -1,0 +1,9 @@
+{
+  "web_id": "web_33",
+  "task_id": 2,
+  "task_type": "dynamic",
+  "instruction": "Task: Edit the displayed move list (relative coordinates) for the selected piece.\nExpected Result: The piece's internal move definition is updated based on the user's input.\n\nNote: The task is only considered successful if the expected result is achieved; otherwise, it is deemed infeasible.",
+  "max_steps": 15,
+  "expected": "The piece's internal move definition is updated based on the user's input.",
+  "label": 1
+}

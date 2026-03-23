@@ -1,0 +1,9 @@
+{
+  "web_id": "web_7",
+  "task_id": 2,
+  "task_type": "dynamic",
+  "instruction": "Task: Click the 'Regenerate' button on an AI message.\nExpected Result: A new version of the AI message is displayed, replacing the current one. All subsequent messages in the current branch are cleared. A generation selector (e.g., '1/2') appears below the AI message, indicating the current generation and total available.\n\nNote: The task is only considered successful if the expected result is achieved; otherwise, it is deemed infeasible.",
+  "max_steps": 15,
+  "expected": "A new version of the AI message is displayed, replacing the current one. All subsequent messages in the current branch are cleared. A generation selector (e.g., '1/2') appears below the AI message, indicating the current generation and total available.",
+  "label": 1
+}

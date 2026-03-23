@@ -1,0 +1,1007 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Global Pulses Trading & Export Co.</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        /* Custom scrollbar for webkit browsers */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #f1f1f1;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #c49241; /* amber-500 */
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #a17434; /* amber-600 */
+        }
+        /* Basic body styling */
+        body {
+            font-family: 'Inter', sans-serif; /* A common, clean sans-serif font */
+        }
+        /* Add a subtle pattern or texture to the main background if desired */
+        .main-bg {
+             background-color: #f5f5f4; /* stone-100 */
+        }
+        .section-title {
+            @apply text-3xl font-bold text-stone-800 mb-8 text-center;
+        }
+        .section-subtitle {
+            @apply text-xl text-stone-700 mb-10 text-center;
+        }
+        .card {
+            @apply bg-white rounded-xl shadow-lg overflow-hidden transition-all duration-300 hover:shadow-2xl;
+        }
+        .button-primary {
+            @apply bg-amber-500 text-white py-2 px-6 rounded-lg hover:bg-amber-600 transition-colors text-sm font-medium;
+        }
+        .button-secondary {
+            @apply bg-lime-600 text-white py-2 px-6 rounded-lg hover:bg-lime-700 transition-colors text-sm font-medium;
+        }
+        .input-field {
+            @apply w-full px-4 py-2 border border-stone-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent outline-none transition-shadow;
+        }
+        .label-text {
+            @apply block text-sm font-medium text-stone-700 mb-1;
+        }
+        .nav-link {
+             @apply px-3 py-2 rounded-md text-sm font-medium text-stone-100 hover:bg-amber-500 hover:text-white transition-colors;
+        }
+        .nav-link-active {
+            @apply bg-amber-600 text-white;
+        }
+        /* For placeholder images */
+        .placeholder-image {
+            @apply bg-gray-200 border-2 border-dashed border-gray-300 rounded-xl w-full h-48 flex items-center justify-center text-gray-500;
+        }
+    </style>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body class="main-bg text-stone-700">
+
+    <!-- Header -->
+    <header class="bg-stone-800 text-white shadow-md sticky top-0 z-50">
+        <div class="container mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex items-center justify-between h-16">
+                <div class="flex items-center">
+                    <a href="#" onclick="navigateTo('homeSection')" class="text-2xl font-bold text-amber-400">GlobalPulses</a>
+                </div>
+                <nav class="hidden md:block">
+                    <div class="ml-10 flex items-baseline space-x-4">
+                        <a href="#" onclick="navigateTo('homeSection')" class="nav-link nav-link-active" data-section="homeSection">Home & Products</a>
+                        <a href="#" onclick="navigateTo('orderingSection')" class="nav-link" data-section="orderingSection">Order</a>
+                        <a href="#" onclick="navigateTo('b2bSection')" class="nav-link" data-section="b2bSection">B2B</a>
+                        <a href="#" onclick="navigateTo('logisticsSection')" class="nav-link" data-section="logisticsSection">Logistics</a>
+                        <a href="#" onclick="navigateTo('suppliersSection')" class="nav-link" data-section="suppliersSection">Suppliers</a>
+                        <a href="#" onclick="navigateTo('blogSection')" class="nav-link" data-section="blogSection">Blog</a>
+                        <a href="#" onclick="navigateTo('contactSection')" class="nav-link" data-section="contactSection">Contact</a>
+                        <!-- Add more nav items or a dropdown for less frequent pages -->
+                    </div>
+                </nav>
+                <div class="md:hidden">
+                    <button id="mobileMenuButton" class="text-stone-100 hover:text-amber-400 focus:outline-none">
+                        <svg class="h-6 w-6" stroke="currentColor" fill="none" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+        </div>
+        <!-- Mobile menu, show/hide based on menu state. -->
+        <div id="mobileMenu" class="md:hidden hidden">
+            <div class="px-2 pt-2 pb-3 space-y-1 sm:px-3">
+                <a href="#" onclick="navigateTo('homeSection'); closeMobileMenu();" class="block nav-link nav-link-active" data-section="homeSection">Home & Products</a>
+                <a href="#" onclick="navigateTo('orderingSection'); closeMobileMenu();" class="block nav-link" data-section="orderingSection">Order</a>
+                <a href="#" onclick="navigateTo('b2bSection'); closeMobileMenu();" class="block nav-link" data-section="b2bSection">B2B</a>
+                <a href="#" onclick="navigateTo('logisticsSection'); closeMobileMenu();" class="block nav-link" data-section="logisticsSection">Logistics</a>
+                <a href="#" onclick="navigateTo('suppliersSection'); closeMobileMenu();" class="block nav-link" data-section="suppliersSection">Suppliers</a>
+                <a href="#" onclick="navigateTo('blogSection'); closeMobileMenu();" class="block nav-link" data-section="blogSection">Blog</a>
+                <a href="#" onclick="navigateTo('contactSection'); closeMobileMenu();" class="block nav-link" data-section="contactSection">Contact</a>
+            </div>
+        </div>
+    </header>
+
+    <main class="container mx-auto px-4 sm:px-6 lg:px-8 py-8">
+
+        <!-- 1. Company Overview & Products Page -->
+        <section id="homeSection" class="py-12">
+            <h1 class="section-title">Welcome to Global Pulses Trading</h1>
+            <p class="section-subtitle">Your trusted partner for high-quality pulses from around the world.</p>
+
+            <!-- Company Profile -->
+            <div class="bg-white p-8 rounded-xl shadow-lg mb-12">
+                <h2 class="text-2xl font-semibold text-stone-800 mb-4">Our Company</h2>
+                <p class="mb-4">Global Pulses Trading has been a cornerstone in the international pulse market for over two decades. Our mission is to connect global demand with premium pulse supplies, fostering sustainable agriculture and ensuring food security. We value integrity, quality, and long-term partnerships with both our suppliers and clients.</p>
+                <p>We are committed to ethical sourcing, stringent quality control, and efficient logistics to deliver the best pulses to your doorstep.</p>
+            </div>
+
+            <!-- Product Catalog -->
+            <div class="mb-12">
+                <h2 class="text-2xl font-semibold text-stone-800 mb-6 text-center">Our Products</h2>
+                <!-- Filters -->
+                <div class="flex flex-wrap justify-center gap-4 mb-8">
+                    <select id="productTypeFilter" class="input-field sm:w-auto">
+                        <option value="all">All Types</option>
+                        <option value="Lentils">Lentils</option>
+                        <option value="Chickpeas">Chickpeas</option>
+                        <option value="Beans">Beans</option>
+                        <option value="Peas">Peas</option>
+                    </select>
+                    <select id="productRegionFilter" class="input-field sm:w-auto">
+                        <option value="all">All Regions</option>
+                        <option value="Canada">Canada</option>
+                        <option value="India">India</option>
+                        <option value="Australia">Australia</option>
+                        <option value="Turkey">Turkey</option>
+                    </select>
+                    <button onclick="applyProductFilters()" class="button-primary">Filter Products</button>
+                </div>
+                <div id="productCatalog" class="grid md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
+                    <!-- Product cards will be injected here by JavaScript -->
+                </div>
+            </div>
+
+            <!-- Export Markets -->
+            <div class="mb-12">
+                <h2 class="text-2xl font-semibold text-stone-800 mb-4 text-center">Export Markets</h2>
+                <p class="text-center mb-6">We proudly export our premium pulses to various countries across the globe.</p>
+                <div class="bg-white p-6 rounded-xl shadow-lg">
+                    <div class="placeholder-image h-64">World Map Placeholder / List of Countries</div>
+                    <p class="mt-4 text-center text-sm text-stone-600">Currently serving markets in North America, Europe, Asia, and the Middle East. Contact us for specific country inquiries.</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- 2. Online Ordering System -->
+        <section id="orderingSection" class="hidden py-12">
+            <h1 class="section-title">Online Ordering System</h1>
+            <div class="grid md:grid-cols-2 gap-8">
+                <!-- Order Form -->
+                <div class="card p-8">
+                    <h2 class="text-2xl font-semibold text-stone-800 mb-6">Place Your Bulk Order</h2>
+                    <form id="bulkOrderForm">
+                        <div class="mb-4">
+                            <label for="orderProductName" class="label-text">Product Name</label>
+                            <select id="orderProductName" class="input-field">
+                                <!-- Options populated by JS -->
+                            </select>
+                        </div>
+                        <div class="mb-4">
+                            <label for="orderQuantity" class="label-text">Quantity (MT)</label>
+                            <input type="number" id="orderQuantity" class="input-field" placeholder="e.g., 100" min="1">
+                        </div>
+                        <div class="mb-4">
+                            <label for="orderDestination" class="label-text">Destination Port/City</label>
+                            <input type="text" id="orderDestination" class="input-field" placeholder="e.g., Rotterdam">
+                        </div>
+                        <div class="mb-6">
+                            <label for="orderCompany" class="label-text">Company Name</label>
+                            <input type="text" id="orderCompany" class="input-field" placeholder="Your Company Inc.">
+                        </div>
+                         <div class="mb-6">
+                            <label for="orderEmail" class="label-text">Email</label>
+                            <input type="email" id="orderEmail" class="input-field" placeholder="your@company.com">
+                        </div>
+                        <button type="submit" class="button-primary w-full">Calculate Price & Submit Inquiry</button>
+                    </form>
+                    <div id="orderPriceResult" class="mt-6 text-lg font-semibold text-stone-800"></div>
+                </div>
+
+                <!-- Payment & Tracking -->
+                <div class="space-y-8">
+                    <div class="card p-8">
+                        <h2 class="text-2xl font-semibold text-stone-800 mb-4">Payment Information</h2>
+                        <p class="mb-4">Once your order is confirmed, we will provide secure payment options, including bank transfers and letters of credit. For select orders, online deposit options may be available.</p>
+                        <div class="placeholder-image h-24 w-full flex items-center justify-center text-gray-500 space-x-4">
+                            <span>Secure Payment Gateway Placeholder</span>
+                        </div>
+                    </div>
+                    <div class="card p-8">
+                        <h2 class="text-2xl font-semibold text-stone-800 mb-4">Track Your Order</h2>
+                        <form id="orderTrackingForm" class="space-y-4">
+                            <div>
+                                <label for="trackingId" class="label-text">Enter Your Order ID</label>
+                                <input type="text" id="trackingId" class="input-field" placeholder="e.g., GP12345XYZ">
+                            </div>
+                            <button type="submit" class="button-secondary">Track Order</button>
+                        </form>
+                        <div id="trackingResult" class="mt-4 text-stone-700"></div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- 3. B2B Portal -->
+        <section id="b2bSection" class="hidden py-12">
+            <h1 class="section-title">B2B Client Portal</h1>
+            <div id="b2bLoginView" class="text-center">
+                <p class="text-xl mb-6">Access exclusive wholesale pricing and manage your account.</p>
+                <button onclick="toggleB2BLogin(true)" class="button-primary text-lg px-8 py-3">Login to B2B Portal</button>
+            </div>
+            <div id="b2BDashboardView" class="hidden">
+                <div class="flex justify-between items-center mb-6">
+                    <h2 class="text-2xl font-semibold text-stone-800">Welcome, B2B Partner!</h2>
+                    <button onclick="toggleB2BLogin(false)" class="button-secondary">Logout</button>
+                </div>
+                <div class="grid md:grid-cols-2 gap-8">
+                    <div class="card p-6">
+                        <h3 class="text-xl font-semibold text-stone-800 mb-4">Wholesale Pricing</h3>
+                        <p class="mb-2">Access special pricing for bulk orders. Current offers:</p>
+                        <ul class="list-disc list-inside text-stone-600">
+                            <li>Red Lentils (Canada Origin): $XXX/MT (Min. 1000MT)</li>
+                            <li>Chickpeas (Kabuli): $YYY/MT (Min. 500MT)</li>
+                        </ul>
+                        <a href="#" onclick="navigateTo('quoteSection')" class="text-amber-600 hover:underline mt-4 inline-block">Request Custom Bulk Quote</a>
+                    </div>
+                    <div class="card p-6">
+                        <h3 class="text-xl font-semibold text-stone-800 mb-4">My Account</h3>
+                        <ul class="space-y-2">
+                            <li><a href="#" class="text-amber-600 hover:underline">View Order History</a></li>
+                            <li><a href="#" class="text-amber-600 hover:underline">Manage Payment Methods</a></li>
+                            <li><a href="#" class="text-amber-600 hover:underline">Update Shipping Details</a></li>
+                        </ul>
+                    </div>
+                </div>
+                <!-- 10. Interactive Export Dashboard (Part of B2B) -->
+                <div class="mt-12">
+                    <h2 class="text-2xl font-semibold text-stone-800 mb-6 text-center">Your Export Dashboard</h2>
+                    <div class="grid md:grid-cols-2 gap-8">
+                        <div class="card p-6">
+                            <h3 class="text-xl font-semibold text-stone-800 mb-4">Order Volume (Last 6 Months)</h3>
+                            <canvas id="orderVolumeChart"></canvas>
+                        </div>
+                        <div class="card p-6">
+                            <h3 class="text-xl font-semibold text-stone-800 mb-4">Pulse Price Trends (Red Lentils)</h3>
+                            <canvas id="priceTrendChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- 4. Logistics & Shipping Information -->
+        <section id="logisticsSection" class="hidden py-12">
+            <h1 class="section-title">Logistics & Shipping</h1>
+            <div class="grid md:grid-cols-3 gap-8">
+                <div class="card p-6">
+                    <h2 class="text-xl font-semibold text-stone-800 mb-4">Shipping Calculator</h2>
+                    <form id="shippingCalculatorForm" class="space-y-4">
+                        <div>
+                            <label for="shipWeight" class="label-text">Weight (MT)</label>
+                            <input type="number" id="shipWeight" class="input-field" placeholder="e.g., 20">
+                        </div>
+                        <div>
+                            <label for="shipDest" class="label-text">Destination Region</label>
+                            <select id="shipDest" class="input-field">
+                                <option value="NA">North America</option>
+                                <option value="EU">Europe</option>
+                                <option value="Asia">Asia</option>
+                                <option value="ME">Middle East</option>
+                            </select>
+                        </div>
+                        <button type="submit" class="button-primary">Calculate Shipping Est.</button>
+                    </form>
+                    <div id="shippingResult" class="mt-4 font-semibold text-stone-800"></div>
+                </div>
+                <div class="card p-6">
+                    <h2 class="text-xl font-semibold text-stone-800 mb-4">Our Logistics Partners</h2>
+                    <p class="mb-2">We work with leading global shipping lines and freight forwarders to ensure timely and secure delivery.</p>
+                    <ul class="list-disc list-inside text-stone-600 space-y-1">
+                        <li>Maersk Line</li>
+                        <li>MSC (Mediterranean Shipping Company)</li>
+                        <li>CMA CGM Group</li>
+                        <li>DHL Global Forwarding</li>
+                    </ul>
+                    <p class="mt-4 text-sm text-stone-500">Integrations for real-time rates are in development.</p>
+                </div>
+                <div class="card p-6">
+                    <h2 class="text-xl font-semibold text-stone-800 mb-4">Estimated Delivery Times</h2>
+                    <p class="mb-2">Standard estimated delivery times (post-processing):</p>
+                    <ul class="text-stone-600 space-y-1">
+                        <li>North America: 15-25 days</li>
+                        <li>Europe: 20-30 days</li>
+                        <li>Asia: 25-40 days</li>
+                        <li>Middle East: 15-25 days</li>
+                    </ul>
+                    <p class="mt-4 text-sm text-stone-500">Real-time shipment tracking available for confirmed orders.</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- 5. Supplier & Partner Directory -->
+        <section id="suppliersSection" class="hidden py-12">
+            <h1 class="section-title">Our Valued Suppliers & Partners</h1>
+            <div class="mb-12">
+                <h2 class="text-2xl font-semibold text-stone-800 mb-6 text-center">Meet Our Suppliers</h2>
+                <div id="supplierDirectory" class="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
+                    <!-- Supplier cards will be injected here -->
+                </div>
+            </div>
+            <div class="card p-8 text-center">
+                <h2 class="text-2xl font-semibold text-stone-800 mb-4">Partnership Opportunities</h2>
+                <p class="mb-6">Are you a pulse producer or involved in the pulse supply chain? We are always looking for reliable partners to expand our network and reach new markets. Let's grow together!</p>
+                <button onclick="navigateTo('contactSection')" class="button-primary px-8 py-3">Inquire About Partnership</button>
+            </div>
+        </section>
+
+        <!-- 6. Blog / News Section -->
+        <section id="blogSection" class="hidden py-12">
+            <h1 class="section-title">Pulse Industry Insights & News</h1>
+            <div class="mb-8 text-center">
+                <button class="button-secondary mx-2" onclick="filterBlogPosts('all')">All Posts</button>
+                <button class="button-secondary mx-2" onclick="filterBlogPosts('Industry News')">Industry News</button>
+                <button class="button-secondary mx-2" onclick="filterBlogPosts('Export Insights')">Export Insights</button>
+                <button class="button-secondary mx-2" onclick="filterBlogPosts('Recipes')">Recipes</button>
+            </div>
+            <div id="blogPostsContainer" class="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
+                <!-- Blog post cards will be injected here -->
+            </div>
+        </section>
+
+        <!-- 7. Certifications & Quality Assurance -->
+        <section id="qualitySection" class="hidden py-12">
+            <h1 class="section-title">Commitment to Quality & Sustainability</h1>
+             <div class="grid md:grid-cols-2 gap-8 mb-12">
+                <div class="card p-8">
+                    <h2 class="text-xl font-semibold text-stone-800 mb-4">Uncompromising Quality Standards</h2>
+                    <p class="mb-3">Our quality control process begins at the farm level and continues through processing, packaging, and shipping. We adhere to international food safety standards, including HACCP and ISO 22000 principles.</p>
+                    <p>Each batch undergoes rigorous testing for purity, moisture content, size, and other key quality parameters by independent laboratories.</p>
+                </div>
+                <div class="card p-8">
+                    <h2 class="text-xl font-semibold text-stone-800 mb-4">Sustainable Sourcing Practices</h2>
+                    <p class="mb-3">We are dedicated to promoting sustainable agriculture. We work closely with farmers who employ environmentally friendly practices, water conservation techniques, and minimal use of pesticides.</p>
+                    <p>Our goal is to contribute to a resilient and sustainable food system for future generations.</p>
+                </div>
+            </div>
+            <div>
+                <h2 class="text-2xl font-semibold text-stone-800 mb-6 text-center">Our Certifications</h2>
+                <div class="flex flex-wrap justify-center gap-8">
+                    <div class="card p-4 w-48 h-64 flex flex-col items-center justify-center">
+                        <div class="placeholder-image w-32 h-32 mb-2">Cert Logo</div>
+                        <p class="text-center font-medium text-sm">ISO 9001:2015</p>
+                    </div>
+                    <div class="card p-4 w-48 h-64 flex flex-col items-center justify-center">
+                        <div class="placeholder-image w-32 h-32 mb-2">Cert Logo</div>
+                        <p class="text-center font-medium text-sm">Organic Certified (Select Products)</p>
+                    </div>
+                    <div class="card p-4 w-48 h-64 flex flex-col items-center justify-center">
+                        <div class="placeholder-image w-32 h-32 mb-2">Cert Logo</div>
+                        <p class="text-center font-medium text-sm">HACCP Compliant</p>
+                    </div>
+                     <div class="card p-4 w-48 h-64 flex flex-col items-center justify-center">
+                        <div class="placeholder-image w-32 h-32 mb-2">Cert Logo</div>
+                        <p class="text-center font-medium text-sm">Fair Trade Partner (Select Supply Chains)</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- 8. Client Testimonials & Case Studies -->
+        <section id="testimonialsSection" class="hidden py-12">
+            <h1 class="section-title">What Our Clients Say</h1>
+            <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-8 mb-12">
+                <!-- Testimonial Card Example -->
+                <div class="card p-6">
+                    <p class="text-stone-600 italic mb-4">"Global Pulses Trading has consistently delivered high-quality lentils for our food processing business. Their reliability and professionalism are top-notch."</p>
+                    <p class="font-semibold text-stone-800">- John Doe, CEO of FoodProcess Inc.</p>
+                </div>
+                <div class="card p-6">
+                    <p class="text-stone-600 italic mb-4">"We've been sourcing chickpeas from Global Pulses for years. The quality is always excellent, and their team is fantastic to work with for international shipments."</p>
+                    <p class="font-semibold text-stone-800">- Jane Smith, Procurement Manager at HealthySnacks Co.</p>
+                </div>
+                <div class="card p-6">
+                    <p class="text-stone-600 italic mb-4">"Their B2B portal makes reordering easy, and the transparent pricing is a huge plus. Highly recommended for bulk pulse procurement."</p>
+                    <p class="font-semibold text-stone-800">- Ahmed Khan, Director at ImportExport Ltd.</p>
+                </div>
+            </div>
+            <h2 class="text-2xl font-semibold text-stone-800 mb-6 text-center">Success Stories (Case Studies)</h2>
+            <div class="grid md:grid-cols-2 gap-8">
+                 <div class="card p-6">
+                    <h3 class="text-xl font-semibold text-stone-800 mb-2">Large Scale Lentil Export to Europe</h3>
+                    <p class="text-stone-600 text-sm">Successfully managed a 5000MT shipment of red lentils to a major European distributor, navigating complex logistics and ensuring on-time delivery during peak season.</p>
+                    <a href="#" class="text-amber-600 hover:underline mt-2 inline-block text-sm">Read More</a>
+                </div>
+                 <div class="card p-6">
+                    <h3 class="text-xl font-semibold text-stone-800 mb-2">Supplying Organic Chickpeas to North American Market</h3>
+                    <p class="text-stone-600 text-sm">Partnered with organic farms to supply certified organic chickpeas to a growing health food market in North America, ensuring traceability and quality assurance.</p>
+                    <a href="#" class="text-amber-600 hover:underline mt-2 inline-block text-sm">Read More</a>
+                </div>
+            </div>
+        </section>
+
+        <!-- 9. Request a Quote / Custom Orders -->
+        <section id="quoteSection" class="hidden py-12">
+            <h1 class="section-title">Request a Quote or Custom Order</h1>
+            <div class="max-w-2xl mx-auto card p-8">
+                <p class="text-center mb-6">Need specific pulse varieties, custom packaging, or large volume quotes? Fill out the form below, and our team will get back to you shortly.</p>
+                <form id="customQuoteForm" class="space-y-4">
+                    <div>
+                        <label for="quoteName" class="label-text">Full Name</label>
+                        <input type="text" id="quoteName" class="input-field" required>
+                    </div>
+                    <div>
+                        <label for="quoteCompany" class="label-text">Company Name</label>
+                        <input type="text" id="quoteCompany" class="input-field">
+                    </div>
+                    <div>
+                        <label for="quoteEmail" class="label-text">Email</label>
+                        <input type="email" id="quoteEmail" class="input-field" required>
+                    </div>
+                    <div>
+                        <label for="quotePulses" class="label-text">Pulses of Interest (Type, Quantity)</label>
+                        <textarea id="quotePulses" rows="3" class="input-field" placeholder="e.g., Red Lentils (Split) - 500MT, Kabuli Chickpeas (8mm) - 200MT"></textarea>
+                    </div>
+                    <div>
+                        <label for="quoteDetails" class="label-text">Additional Details (Destination, Packaging, etc.)</label>
+                        <textarea id="quoteDetails" rows="3" class="input-field"></textarea>
+                    </div>
+                    <button type="submit" class="button-primary w-full">Submit Request</button>
+                </form>
+                <div id="quoteFormMessage" class="mt-4 text-center"></div>
+                <div class="mt-8 text-center">
+                    <p class="mb-2">For immediate assistance, use our Live Chat (Mon-Fri, 9am-5pm UTC) or contact us directly.</p>
+                    <button class="button-secondary">Live Chat (Offline)</button>
+                </div>
+            </div>
+        </section>
+
+        <!-- 11. Sustainability & Community Initiatives (Combined with #7 conceptually, but can be separate section) -->
+        <section id="sustainabilitySection" class="hidden py-12">
+            <h1 class="section-title">Our Sustainability & Community Impact</h1>
+             <div class="grid md:grid-cols-2 gap-8">
+                <div class="card p-8">
+                    <h2 class="text-xl font-semibold text-stone-800 mb-4">Corporate Social Responsibility (CSR)</h2>
+                    <p class="mb-3">At Global Pulses, we believe in business that benefits all stakeholders. Our CSR initiatives focus on environmental stewardship, community development in pulse-growing regions, and ethical labor practices throughout our supply chain.</p>
+                    <p>We invest in projects that improve water access, education, and healthcare in the communities we work with.</p>
+                </div>
+                <div class="card p-8">
+                    <h2 class="text-xl font-semibold text-stone-800 mb-4">Farmers' Support Program</h2>
+                    <p class="mb-3">We are committed to fair trade principles and empowering local farmers. Our support program includes:
+                        <ul class="list-disc list-inside ml-4 mt-2 space-y-1">
+                            <li>Providing training on sustainable farming techniques.</li>
+                            <li>Ensuring fair and transparent pricing.</li>
+                            <li>Offering access to better quality seeds and inputs.</li>
+                            <li>Facilitating direct market access to reduce intermediaries.</li>
+                        </ul>
+                    </p>
+                    <p class="mt-3">By supporting farmers, we ensure a stable supply of high-quality pulses while improving livelihoods in rural areas.</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- 12. Contact Page & Inquiry Form -->
+        <section id="contactSection" class="hidden py-12">
+            <h1 class="section-title">Get In Touch With Us</h1>
+            <div class="grid md:grid-cols-2 gap-8">
+                <div class="card p-8">
+                    <h2 class="text-2xl font-semibold text-stone-800 mb-6">Contact Information</h2>
+                    <div class="space-y-4">
+                        <p><strong>Global Headquarters:</strong><br>123 Pulse Avenue, Trade City, GL 54321</p>
+                        <p><strong>Email:</strong> <a href="mailto:info@globalpulses.com" class="text-amber-600 hover:underline">info@globalpulses.com</a></p>
+                        <p><strong>Sales Inquiries:</strong> <a href="mailto:sales@globalpulses.com" class="text-amber-600 hover:underline">sales@globalpulses.com</a></p>
+                        <p><strong>Phone:</strong> +1 (555) 123-PULSE (7857)</p>
+                        <p><strong>WhatsApp:</strong> <a href="https://wa.me/15551237857" target="_blank" class="text-lime-600 hover:underline">+1 (555) 123-7857 (Click to Chat)</a></p>
+                        <p><strong>Office Hours:</strong> Monday - Friday, 9:00 AM - 5:00 PM (UTC)</p>
+                    </div>
+                </div>
+                <div class="card p-8">
+                    <h2 class="text-2xl font-semibold text-stone-800 mb-6">Send Us an Inquiry</h2>
+                    <form id="generalInquiryForm" class="space-y-4">
+                        <div>
+                            <label for="inqName" class="label-text">Your Name</label>
+                            <input type="text" id="inqName" class="input-field" required>
+                        </div>
+                        <div>
+                            <label for="inqEmail" class="label-text">Your Email</label>
+                            <input type="email" id="inqEmail" class="input-field" required>
+                        </div>
+                        <div>
+                            <label for="inqSubject" class="label-text">Subject</label>
+                            <input type="text" id="inqSubject" class="input-field" required>
+                        </div>
+                        <div>
+                            <label for="inqMessage" class="label-text">Message</label>
+                            <textarea id="inqMessage" rows="4" class="input-field" required></textarea>
+                        </div>
+                        <button type="submit" class="button-primary w-full">Send Message</button>
+                    </form>
+                    <div id="inquiryFormMessage" class="mt-4 text-center"></div>
+                </div>
+            </div>
+        </section>
+
+        <!-- 13. Market Reports and Insights -->
+        <section id="reportsSection" class="hidden py-12">
+            <h1 class="section-title">Market Reports & Insights</h1>
+            <p class="section-subtitle">Stay informed with our latest analysis on the global pulse market.</p>
+            <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
+                <div class="card p-6 text-center">
+                    <div class="placeholder-image w-24 h-24 mx-auto mb-4 flex items-center justify-center text-3xl">📄</div>
+                    <h3 class="text-xl font-semibold text-stone-800 mb-2">Monthly Market Report - July 2024</h3>
+                    <p class="text-sm text-stone-600 mb-4">Analysis of price trends, supply/demand, and key market drivers.</p>
+                    <a href="#" class="button-primary">Download PDF</a>
+                </div>
+                <div class="card p-6 text-center">
+                    <div class="placeholder-image w-24 h-24 mx-auto mb-4 flex items-center justify-center text-3xl">📊</div>
+                    <h3 class="text-xl font-semibold text-stone-800 mb-2">Annual Export Review 2023</h3>
+                    <p class="text-sm text-stone-600 mb-4">Comprehensive overview of our export performance and market share.</p>
+                    <a href="#" class="button-primary">Download PDF</a>
+                </div>
+                <div class="card p-6 text-center">
+                    <div class="placeholder-image w-24 h-24 mx-auto mb-4 flex items-center justify-center text-3xl">📈</div>
+                    <h3 class="text-xl font-semibold text-stone-800 mb-2">Lentil Market Outlook Q3 2024</h3>
+                    <p class="text-sm text-stone-600 mb-4">Specific insights and forecasts for the upcoming lentil season.</p>
+                    <a href="#" class="button-primary">Download PDF</a>
+                </div>
+            </div>
+            <div class="mt-12 card p-8">
+                <h2 class="text-2xl font-semibold text-stone-800 mb-4 text-center">Key Export Statistics (YTD)</h2>
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
+                    <div>
+                        <p class="text-3xl font-bold text-amber-600">150,000+</p>
+                        <p class="text-stone-600">Metric Tons Exported</p>
+                    </div>
+                    <div>
+                        <p class="text-3xl font-bold text-amber-600">40+</p>
+                        <p class="text-stone-600">Countries Served</p>
+                    </div>
+                    <div>
+                        <p class="text-3xl font-bold text-amber-600">98%</p>
+                        <p class="text-stone-600">Client Satisfaction Rate</p>
+                    </div>
+                    <div>
+                        <p class="text-3xl font-bold text-amber-600">10+</p>
+                        <p class="text-stone-600">Types of Pulses</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- 14. Newsletter Signup (Can be part of footer or a dedicated small section) -->
+        <section class="py-12 bg-stone-200">
+            <div class="container mx-auto px-4 sm:px-6 lg:px-8 text-center">
+                <h2 class="text-2xl font-semibold text-stone-800 mb-4">Stay Updated With Global Pulses</h2>
+                <p class="text-stone-700 mb-6 max-w-xl mx-auto">Subscribe to our newsletter for the latest industry news, product updates, market reports, and special promotions.</p>
+                <form id="newsletterForm" class="max-w-md mx-auto flex gap-2">
+                    <input type="email" id="newsletterEmail" class="input-field flex-grow" placeholder="Enter your email address" required>
+                    <button type="submit" class="button-primary">Subscribe</button>
+                </form>
+                <div id="newsletterMessage" class="mt-4 text-sm"></div>
+            </div>
+        </section>
+
+        <!-- All sections are initially hidden except the homeSection. JS handles visibility. -->
+        <!-- Helper sections not directly in nav: qualitySection, testimonialsSection, quoteSection, sustainabilitySection, reportsSection -->
+        <!-- These would typically be linked from other relevant pages/sections -->
+    </main>
+
+    <footer class="bg-stone-800 text-stone-300 py-12">
+        <div class="container mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="grid md:grid-cols-2 lg:grid-cols-4 gap-8 mb-8">
+                <div>
+                    <h3 class="text-lg font-semibold text-white mb-4">GlobalPulses Co.</h3>
+                    <p class="text-sm">Connecting the world with premium quality pulses. Your trusted partner in global trade.</p>
+                </div>
+                <div>
+                    <h3 class="text-lg font-semibold text-white mb-4">Quick Links</h3>
+                    <ul class="space-y-2 text-sm">
+                        <li><a href="#" onclick="navigateTo('homeSection')" class="hover:text-amber-400">Home</a></li>
+                        <li><a href="#" onclick="navigateTo('qualitySection')" class="hover:text-amber-400">Quality Assurance</a></li>
+                        <li><a href="#" onclick="navigateTo('sustainabilitySection')" class="hover:text-amber-400">Sustainability</a></li>
+                        <li><a href="#" onclick="navigateTo('blogSection')" class="hover:text-amber-400">Blog</a></li>
+                        <li><a href="#" onclick="navigateTo('reportsSection')" class="hover:text-amber-400">Market Reports</a></li>
+                    </ul>
+                </div>
+                <div>
+                    <h3 class="text-lg font-semibold text-white mb-4">Support</h3>
+                     <ul class="space-y-2 text-sm">
+                        <li><a href="#" onclick="navigateTo('contactSection')" class="hover:text-amber-400">Contact Us</a></li>
+                        <li><a href="#" onclick="navigateTo('quoteSection')" class="hover:text-amber-400">Request a Quote</a></li>
+                        <li><a href="#" onclick="navigateTo('logisticsSection')" class="hover:text-amber-400">Shipping Info</a></li>
+                        <li><a href="#" onclick="navigateTo('b2bSection')" class="hover:text-amber-400">B2B Portal</a></li>
+                    </ul>
+                </div>
+                 <div>
+                    <h3 class="text-lg font-semibold text-white mb-4">Connect With Us</h3>
+                    <p class="text-sm mb-2">Follow us on social media for updates.</p>
+                    <div class="flex space-x-4">
+                        <a href="#" class="text-stone-300 hover:text-amber-400"><svg class="w-6 h-6" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path fill-rule="evenodd" d="M22 12c0-5.523-4.477-10-10-10S2 6.477 2 12c0 4.991 3.657 9.128 8.438 9.878v-6.987h-2.54V12h2.54V9.797c0-2.506 1.492-3.89 3.777-3.89 1.094 0 2.238.195 2.238.195v2.46h-1.26c-1.243 0-1.63.771-1.63 1.562V12h2.773l-.443 2.89h-2.33v6.988C18.343 21.128 22 16.991 22 12z" clip-rule="evenodd" /></svg></a>
+                        <a href="#" class="text-stone-300 hover:text-amber-400"><svg class="w-6 h-6" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path d="M8.29 20.251c7.547 0 11.675-6.253 11.675-11.675 0-.178 0-.355-.012-.53A8.348 8.348 0 0022 5.92a8.19 8.19 0 01-2.357.646 4.118 4.118 0 001.804-2.27 8.224 8.224 0 01-2.605.996 4.107 4.107 0 00-6.993 3.743 11.65 11.65 0 01-8.457-4.287 4.106 4.106 0 001.27 5.477A4.072 4.072 0 012.8 9.713v.052a4.105 4.105 0 003.292 4.022 4.095 4.095 0 01-1.853.07 4.108 4.108 0 003.834 2.85A8.233 8.233 0 012 18.407a11.616 11.616 0 006.29 1.84" /></svg></a>
+                        <a href="#" class="text-stone-300 hover:text-amber-400"><svg class="w-6 h-6" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path fill-rule="evenodd" d="M12 2C6.477 2 2 6.477 2 12s4.477 10 10 10 10-4.477 10-10S17.523 2 12 2zm4.927 8.177c.05.249.074.501.074.753 0 4.544-3.463 9.792-9.792 9.792A9.713 9.713 0 012 19.789a6.999 6.999 0 001.039.092 6.889 6.889 0 004.269-1.465 3.446 3.446 0 01-3.213-2.387c.14.026.285.039.43.039.358 0 .706-.049.1035-.145a3.445 3.445 0 01-2.76-3.375v-.044a3.42 3.42 0 001.556.43A3.447 3.447 0 013.15 9.13c0-.807.215-1.565.597-2.22A9.796 9.796 0 0012.173 12v-.002c.042-.562.34-.993.784-1.29a2.168 2.168 0 012.405.512 6.926 6.926 0 002.189-.837 3.444 3.444 0 01-1.516 1.903A6.869 6.869 0 0020 11.28a7.386 7.386 0 01-1.583 1.388c-.09.392-.369.708-.79.708z" clip-rule="evenodd" /></svg></a>
+                    </div>
+                </div>
+            </div>
+            <div class="mt-8 pt-8 border-t border-stone-700 text-center text-sm">
+                <p>&copy; <span id="currentYear"></span> Global Pulses Trading & Export Co. All Rights Reserved.</p>
+                <p>Designed with <span class="text-amber-400">&hearts;</span> by an Expert Frontend Engineer & UI/UX Designer.</p>
+            </div>
+        </div>
+    </footer>
+
+    <script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Initial state
+        let currentView = 'homeSection';
+        let isB2BLoggedIn = false;
+
+        // --- Data ---
+        const products = [
+            { id: 1, name: 'Red Split Lentils', type: 'Lentils', region: 'Canada', quality: 'Grade A', desc: 'High-quality red split lentils, perfect for soups and stews.', specs: 'Moisture: <13%, Purity: >99.5%', imgPlaceholder: 'Lentil Img', pricePerMT: 750 },
+            { id: 2, name: 'Kabuli Chickpeas', type: 'Chickpeas', region: 'India', quality: '8mm Calibre', desc: 'Large, creamy Kabuli chickpeas, ideal for hummus and salads.', specs: 'Size: 8-9mm, Admixture: <1%', imgPlaceholder: 'Chickpea Img', pricePerMT: 900 },
+            { id: 3, name: 'Green Lentils', type: 'Lentils', region: 'USA', quality: 'Grade A', desc: 'Nutritious green lentils, hold shape well when cooked.', specs: 'Moisture: <14%, Purity: >99%', imgPlaceholder: 'Green Lentil Img', pricePerMT: 800 },
+            { id: 4, name: 'Black Eyed Beans', type: 'Beans', region: 'Africa', quality: 'Premium', desc: 'Creamy white beans with a distinctive black spot.', specs: 'Moisture: <15%, Foreign Matter: <0.5%', imgPlaceholder: 'Bean Img', pricePerMT: 1100 },
+            { id: 5, name: 'Yellow Peas (Split)', type: 'Peas', region: 'Australia', quality: 'Grade 1', desc: 'Split yellow peas, great for traditional dishes and dals.', specs: 'Moisture: <13.5%, Purity: >99.7%', imgPlaceholder: 'Pea Img', pricePerMT: 700 },
+            { id: 6, name: 'Desi Chickpeas', type: 'Chickpeas', region: 'Canada', quality: 'Standard', desc: 'Smaller, darker chickpeas with a thicker seed coat.', specs: 'Size: 6-7mm, Admixture: <1.5%', imgPlaceholder: 'Desi Chickpea Img', pricePerMT: 850 },
+        ];
+
+        const suppliers = [
+            { name: 'Prairie Pulses Ltd.', location: 'Saskatchewan, Canada', specialties: 'Lentils, Peas', standards: 'GFSI, HACCP', certs: 'ISO 9001', imgPlaceholder: 'Supplier 1 Logo' },
+            { name: 'IndoFarm Goods', location: 'Madhya Pradesh, India', specialties: 'Chickpeas, Mung Beans', standards: 'APEDA, FSSAI', certs: 'Organic (select)', imgPlaceholder: 'Supplier 2 Logo' },
+            { name: 'Aussie Grains Co.', location: 'Victoria, Australia', specialties: 'Lupins, Faba Beans, Yellow Peas', standards: 'SQF, GTA', certs: 'Non-GMO', imgPlaceholder: 'Supplier 3 Logo' }
+        ];
+
+        const blogPosts = [
+            { title: 'Global Lentil Market Trends 2024', category: 'Industry News', date: 'July 15, 2024', snippet: 'An overview of current trends, price fluctuations, and demand forecasts for lentils worldwide...', imgPlaceholder: 'Lentil Field' },
+            { title: 'Navigating EU Import Regulations for Pulses', category: 'Export Insights', date: 'July 10, 2024', snippet: 'A guide for exporters on the latest EU regulations, documentation, and quality standards for pulse imports...', imgPlaceholder: 'Shipping Port' },
+            { title: 'Hearty Chickpea Curry Recipe', category: 'Recipes', date: 'July 5, 2024', snippet: 'A delicious and easy-to-make chickpea curry recipe that your whole family will love. Perfect for a weeknight meal!', imgPlaceholder: 'Curry Dish' },
+            { title: 'The Rise of Plant-Based Proteins: Pulses in Focus', category: 'Industry News', date: 'June 28, 2024', snippet: 'Exploring the growing demand for plant-based proteins and the significant role pulses play in this shift...', imgPlaceholder: 'Assorted Pulses' },
+        ];
+
+        // --- Navigation ---
+        window.navigateTo = (sectionId) => {
+            document.querySelectorAll('main > section').forEach(sec => sec.classList.add('hidden'));
+            const targetSection = document.getElementById(sectionId);
+            if (targetSection) {
+                targetSection.classList.remove('hidden');
+                currentView = sectionId;
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+            } else { // Fallback for sections not in main nav but linked internally
+                 console.warn(`Section ${sectionId} not found directly, attempting to show. Check if it's managed by other means or not in main nav.`);
+                 // This part could be improved if some sections are modals or dynamic content within other sections.
+                 // For now, if it exists, show it.
+                 const internalSection = document.getElementById(sectionId);
+                 if(internalSection) {
+                    internalSection.classList.remove('hidden');
+                    currentView = sectionId; // Update currentView even for internal links
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                 } else {
+                    console.error('Section not found:', sectionId);
+                    // Fallback to home if section not found
+                    document.getElementById('homeSection').classList.remove('hidden');
+                    currentView = 'homeSection';
+                 }
+            }
+            updateActiveNav();
+        };
+
+        function updateActiveNav() {
+            const navLinks = document.querySelectorAll('nav a[data-section], #mobileMenu a[data-section]');
+            navLinks.forEach(a => {
+                if (a.dataset.section === currentView) {
+                    a.classList.add('nav-link-active');
+                    a.classList.remove('hover:bg-amber-500');
+                } else {
+                    a.classList.remove('nav-link-active');
+                    a.classList.add('hover:bg-amber-500');
+                }
+            });
+        }
+        
+        // Mobile Menu
+        const mobileMenuButton = document.getElementById('mobileMenuButton');
+        const mobileMenu = document.getElementById('mobileMenu');
+        mobileMenuButton.addEventListener('click', () => {
+            mobileMenu.classList.toggle('hidden');
+        });
+        window.closeMobileMenu = () => { // Make it global for inline onclick
+            mobileMenu.classList.add('hidden');
+        }
+
+        // --- Product Catalog ---
+        const productCatalogContainer = document.getElementById('productCatalog');
+        const orderProductNameSelect = document.getElementById('orderProductName');
+
+        function renderProducts(filteredProducts = products) {
+            productCatalogContainer.innerHTML = '';
+            if(filteredProducts.length === 0) {
+                productCatalogContainer.innerHTML = '<p class="col-span-full text-center text-stone-600">No products match your current filters.</p>';
+                return;
+            }
+            filteredProducts.forEach(product => {
+                const card = `
+                    <div class="card transform hover:scale-105">
+                        <div class="placeholder-image h-48 flex items-center justify-center">
+                            <span class="text-gray-500">${product.imgPlaceholder}</span>
+                        </div>
+                        <div class="p-6">
+                            <h3 class="text-xl font-semibold text-stone-800 mb-2">${product.name}</h3>
+                            <p class="text-stone-600 text-sm mb-4 h-16 overflow-hidden">${product.desc}</p>
+                            <p class="text-sm text-stone-500 mb-1"><strong>Type:</strong> ${product.type}</p>
+                            <p class="text-sm text-stone-500 mb-1"><strong>Origin:</strong> ${product.region}</p>
+                            <p class="text-sm text-stone-500 mb-4"><strong>Quality:</strong> ${product.quality}</p>
+                            <button class="button-primary w-full" onclick="viewProductDetails(${product.id})">View Details</button>
+                        </div>
+                    </div>
+                `;
+                productCatalogContainer.innerHTML += card;
+            });
+        }
+
+        window.viewProductDetails = (productId) => { // Make it global for inline onclick
+            const product = products.find(p => p.id === productId);
+            // For now, just an alert. Could be a modal.
+            alert(`Product: ${product.name}\nDescription: ${product.desc}\nSpecifications: ${product.specs}\nPrice: $${product.pricePerMT}/MT (indicative)`);
+        }
+
+        window.applyProductFilters = () => { // Make it global for inline onclick
+            const typeFilter = document.getElementById('productTypeFilter').value;
+            const regionFilter = document.getElementById('productRegionFilter').value;
+            
+            const filtered = products.filter(product => {
+                const typeMatch = (typeFilter === 'all' || product.type === typeFilter);
+                const regionMatch = (regionFilter === 'all' || product.region === regionFilter);
+                return typeMatch && regionMatch;
+            });
+            renderProducts(filtered);
+        }
+
+        // Populate product dropdown for order form
+        products.forEach(product => {
+            const option = document.createElement('option');
+            option.value = product.id;
+            option.textContent = `${product.name} (${product.type} - ${product.region})`;
+            orderProductNameSelect.appendChild(option);
+        });
+        
+        renderProducts(); // Initial render
+
+        // --- Online Ordering System ---
+        const bulkOrderForm = document.getElementById('bulkOrderForm');
+        const orderPriceResult = document.getElementById('orderPriceResult');
+        bulkOrderForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            const productId = document.getElementById('orderProductName').value;
+            const quantity = parseFloat(document.getElementById('orderQuantity').value);
+            const destination = document.getElementById('orderDestination').value;
+            const company = document.getElementById('orderCompany').value;
+            const email = document.getElementById('orderEmail').value;
+
+            if (!productId || !quantity || !destination || !company || !email) {
+                orderPriceResult.textContent = 'Please fill in all fields.';
+                orderPriceResult.style.color = 'red';
+                return;
+            }
+
+            const product = products.find(p => p.id == productId);
+            if (!product) {
+                orderPriceResult.textContent = 'Selected product not found.';
+                orderPriceResult.style.color = 'red';
+                return;
+            }
+
+            // Simplified pricing: base price + quantity discount + destination factor
+            let basePrice = product.pricePerMT * quantity;
+            let discount = quantity > 500 ? 0.05 : (quantity > 100 ? 0.02 : 0); // 5% for >500MT, 2% for >100MT
+            let finalPrice = basePrice * (1 - discount);
+            // Add a mock shipping factor based on destination length (very simplified)
+            finalPrice += destination.length * 100; 
+
+            orderPriceResult.innerHTML = `
+                Estimated Price for ${quantity}MT of ${product.name} to ${destination}: 
+                <strong class="text-amber-600">$${finalPrice.toFixed(2)}</strong>.
+                <br>Our sales team will contact ${company} at ${email} with a formal quote.
+            `;
+            orderPriceResult.style.color = 'green';
+            bulkOrderForm.reset();
+        });
+
+        const orderTrackingForm = document.getElementById('orderTrackingForm');
+        const trackingResult = document.getElementById('trackingResult');
+        orderTrackingForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            const trackingId = document.getElementById('trackingId').value;
+            if (trackingId) {
+                // Mock tracking statuses
+                const statuses = ['Processing', 'Quality Check', 'Packaging', 'Awaiting Shipment', 'In Transit', 'Delivered'];
+                const randomStatus = statuses[Math.floor(Math.random() * statuses.length)];
+                trackingResult.textContent = `Order ${trackingId}: Status - ${randomStatus}. Estimated delivery: ${Math.floor(Math.random() * 10) + 5} days.`;
+            } else {
+                trackingResult.textContent = 'Please enter an Order ID.';
+            }
+        });
+
+        // --- B2B Portal ---
+        const b2bLoginView = document.getElementById('b2bLoginView');
+        const b2BDashboardView = document.getElementById('b2BDashboardView');
+        window.toggleB2BLogin = (loginState) => { // Make it global
+            isB2BLoggedIn = loginState;
+            if (isB2BLoggedIn) {
+                b2bLoginView.classList.add('hidden');
+                b2BDashboardView.classList.remove('hidden');
+                // Load B2B specific data or charts if not already loaded
+                if (!window.orderVolumeChartInstance) renderOrderVolumeChart();
+                if (!window.priceTrendChartInstance) renderPriceTrendChart();
+            } else {
+                b2bLoginView.classList.remove('hidden');
+                b2BDashboardView.classList.add('hidden');
+            }
+        };
+
+        // --- Charts for B2B Dashboard ---
+        function renderOrderVolumeChart() {
+            const ctx = document.getElementById('orderVolumeChart').getContext('2d');
+            if (window.orderVolumeChartInstance) {
+                window.orderVolumeChartInstance.destroy();
+            }
+            window.orderVolumeChartInstance = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'],
+                    datasets: [{
+                        label: 'Order Volume (MT)',
+                        data: [120, 190, 300, 500, 230, 320], // Mock data
+                        backgroundColor: 'rgba(245, 158, 11, 0.6)', // amber-500 with opacity
+                        borderColor: 'rgba(217, 119, 6, 1)', // amber-600
+                        borderWidth: 1
+                    }]
+                },
+                options: { scales: { y: { beginAtZero: true } }, responsive: true, maintainAspectRatio: false }
+            });
+        }
+
+        function renderPriceTrendChart() {
+            const ctx = document.getElementById('priceTrendChart').getContext('2d');
+            if (window.priceTrendChartInstance) {
+                window.priceTrendChartInstance.destroy();
+            }
+            window.priceTrendChartInstance = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'],
+                    datasets: [{
+                        label: 'Red Lentils Price ($/MT)',
+                        data: [720, 730, 710, 750, 740, 760], // Mock data
+                        borderColor: 'rgba(101, 163, 13, 1)', // lime-600
+                        tension: 0.1,
+                        fill: false
+                    }]
+                },
+                options: { scales: { y: { beginAtZero: false } }, responsive: true, maintainAspectRatio: false }
+            });
+        }
+        
+        // --- Logistics & Shipping ---
+        const shippingCalculatorForm = document.getElementById('shippingCalculatorForm');
+        const shippingResult = document.getElementById('shippingResult');
+        shippingCalculatorForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            const weight = parseFloat(document.getElementById('shipWeight').value);
+            const dest = document.getElementById('shipDest').value;
+            if (weight > 0 && dest) {
+                let baseRatePerMT;
+                switch(dest) {
+                    case 'NA': baseRatePerMT = 50; break;
+                    case 'EU': baseRatePerMT = 70; break;
+                    case 'Asia': baseRatePerMT = 90; break;
+                    case 'ME': baseRatePerMT = 60; break;
+                    default: baseRatePerMT = 80;
+                }
+                const totalCost = weight * baseRatePerMT * (1 + Math.random() * 0.2); // Add some variability
+                shippingResult.textContent = `Estimated shipping cost: $${totalCost.toFixed(2)}`;
+            } else {
+                shippingResult.textContent = 'Please enter valid weight and destination.';
+            }
+        });
+
+        // --- Supplier Directory ---
+        const supplierDirectoryContainer = document.getElementById('supplierDirectory');
+        function renderSuppliers() {
+            supplierDirectoryContainer.innerHTML = '';
+            suppliers.forEach(supplier => {
+                const card = `
+                    <div class="card p-6">
+                        <div class="placeholder-image h-24 w-24 mx-auto mb-4 rounded-full flex items-center justify-center">
+                           <span class="text-gray-500 text-sm">${supplier.imgPlaceholder}</span>
+                        </div>
+                        <h3 class="text-xl font-semibold text-stone-800 mb-2 text-center">${supplier.name}</h3>
+                        <p class="text-sm text-stone-600 mb-1 text-center">${supplier.location}</p>
+                        <p class="text-sm text-stone-500 mt-3"><strong>Specialties:</strong> ${supplier.specialties}</p>
+                        <p class="text-sm text-stone-500"><strong>Standards:</strong> ${supplier.standards}</p>
+                        <p class="text-sm text-stone-500"><strong>Certifications:</strong> ${supplier.certs}</p>
+                    </div>
+                `;
+                supplierDirectoryContainer.innerHTML += card;
+            });
+        }
+        renderSuppliers();
+
+        // --- Blog Section ---
+        const blogPostsContainer = document.getElementById('blogPostsContainer');
+        function renderBlogPosts(filter = 'all') {
+            blogPostsContainer.innerHTML = '';
+            const filteredPosts = (filter === 'all') ? blogPosts : blogPosts.filter(post => post.category === filter);
+            
+            if(filteredPosts.length === 0) {
+                blogPostsContainer.innerHTML = '<p class="col-span-full text-center text-stone-600">No posts in this category yet.</p>';
+                return;
+            }
+
+            filteredPosts.forEach(post => {
+                const card = `
+                    <div class="card">
+                        <div class="placeholder-image h-40 flex items-center justify-center">
+                            <span class="text-gray-500">${post.imgPlaceholder}</span>
+                        </div>
+                        <div class="p-6">
+                            <p class="text-xs text-amber-600 font-semibold mb-1">${post.category.toUpperCase()} | ${post.date}</p>
+                            <h3 class="text-lg font-semibold text-stone-800 mb-2">${post.title}</h3>
+                            <p class="text-sm text-stone-600 mb-4 h-20 overflow-hidden">${post.snippet}</p>
+                            <a href="#" class="text-amber-600 hover:underline font-medium text-sm">Read More &rarr;</a>
+                        </div>
+                    </div>
+                `;
+                blogPostsContainer.innerHTML += card;
+            });
+        }
+        window.filterBlogPosts = renderBlogPosts; // Make global
+        renderBlogPosts(); // Initial render
+
+
+        // --- Request a Quote Form ---
+        const customQuoteForm = document.getElementById('customQuoteForm');
+        const quoteFormMessage = document.getElementById('quoteFormMessage');
+        customQuoteForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            // Add actual form data collection and processing here
+            quoteFormMessage.textContent = 'Thank you! Your quote request has been submitted. We will contact you shortly.';
+            quoteFormMessage.style.color = 'green';
+            customQuoteForm.reset();
+            setTimeout(() => { quoteFormMessage.textContent = ''; }, 5000);
+        });
+
+        // --- General Inquiry Form ---
+        const generalInquiryForm = document.getElementById('generalInquiryForm');
+        const inquiryFormMessage = document.getElementById('inquiryFormMessage');
+        generalInquiryForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            inquiryFormMessage.textContent = 'Thank you for your message! We will get back to you soon.';
+            inquiryFormMessage.style.color = 'green';
+            generalInquiryForm.reset();
+            setTimeout(() => { inquiryFormMessage.textContent = ''; }, 5000);
+        });
+        
+        // --- Newsletter Signup ---
+        const newsletterForm = document.getElementById('newsletterForm');
+        const newsletterMessage = document.getElementById('newsletterMessage');
+        newsletterForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            const email = document.getElementById('newsletterEmail').value;
+            if (email) {
+                newsletterMessage.textContent = `Thank you for subscribing, ${email}!`;
+                newsletterMessage.style.color = 'green';
+                newsletterForm.reset();
+            } else {
+                newsletterMessage.textContent = 'Please enter a valid email.';
+                newsletterMessage.style.color = 'red';
+            }
+             setTimeout(() => { newsletterMessage.textContent = ''; }, 5000);
+        });
+
+        // --- Footer Current Year ---
+        document.getElementById('currentYear').textContent = new Date().getFullYear();
+
+        // --- Initial Page Load ---
+        navigateTo('homeSection'); // Show home section by default
+        updateActiveNav(); // Set initial active nav link
+    });
+    </script>
+</body>
+</html>

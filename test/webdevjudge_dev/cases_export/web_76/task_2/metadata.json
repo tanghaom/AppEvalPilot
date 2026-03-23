@@ -1,0 +1,9 @@
+{
+  "web_id": "web_76",
+  "task_id": 2,
+  "task_type": "dynamic",
+  "instruction": "Task: User clicks an 'Add to Cart' button associated with a specific product from the displayed list.\nExpected Result: The product appears in a cart summary section, showing its name, quantity (defaulting to 1), and price. The cart's overall total price is updated.\n\nNote: The task is only considered successful if the expected result is achieved; otherwise, it is deemed infeasible.",
+  "max_steps": 15,
+  "expected": "The product appears in a cart summary section, showing its name, quantity (defaulting to 1), and price. The cart's overall total price is updated.",
+  "label": 1
+}

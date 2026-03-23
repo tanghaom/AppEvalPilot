@@ -1,0 +1,9 @@
+{
+  "web_id": "web_96",
+  "task_id": 5,
+  "task_type": "dynamic",
+  "instruction": "Task: Click on an icon or diagram element representing a connected body system (e.g., 'Heart').\nExpected Result: Brain model or information display updates to show its relation to the selected system.\n\nNote: The task is only considered successful if the expected result is achieved; otherwise, it is deemed infeasible.",
+  "max_steps": 15,
+  "expected": "Brain model or information display updates to show its relation to the selected system.",
+  "label": 0
+}

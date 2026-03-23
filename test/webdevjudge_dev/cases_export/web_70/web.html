@@ -1,0 +1,1056 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pawsitive Connections - Find Your Furry Friend</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&family=Nunito+Sans:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Nunito Sans', sans-serif;
+        }
+        h1, h2, h3, h4, h5, h6, .font-heading {
+            font-family: 'Poppins', sans-serif;
+        }
+        .page-section {
+            display: none;
+            animation: fadeIn 0.5s ease-out;
+        }
+        .page-section.active {
+            display: block;
+        }
+        .nav-link-active {
+            color: #F97316; /* orange-500 */
+            font-weight: 600;
+        }
+        .nav-link-active-mobile {
+            background-color: #FFF7ED; /* orange-50 */
+            color: #F97316; /* orange-500 */
+            font-weight: 600;
+        }
+        html {
+            scroll-behavior: smooth;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+        .carousel-container {
+            overflow: hidden;
+            position: relative;
+        }
+        .carousel-track {
+            display: flex;
+            transition: transform 0.3s ease-in-out;
+        }
+        .carousel-item {
+            min-width: 100%;
+            box-sizing: border-box;
+        }
+        .form-input {
+            @apply w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-orange-400 focus:border-transparent outline-none transition-shadow;
+        }
+        .form-label {
+            @apply block text-sm font-medium text-slate-700 mb-1;
+        }
+        .btn {
+            @apply px-6 py-3 rounded-lg font-semibold transition-all duration-300 ease-in-out shadow-md hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-offset-2;
+        }
+        .btn-primary {
+            @apply bg-orange-500 text-white hover:bg-orange-600 focus:ring-orange-500;
+        }
+        .btn-secondary {
+            @apply bg-teal-500 text-white hover:bg-teal-600 focus:ring-teal-500;
+        }
+        .btn-outline {
+            @apply bg-transparent border-2 border-orange-500 text-orange-500 hover:bg-orange-500 hover:text-white focus:ring-orange-500;
+        }
+        /* Custom scrollbar for webkit browsers */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #FFF7ED; /* orange-50 */
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #FDBA74; /* orange-300 */
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #F97316; /* orange-500 */
+        }
+    </style>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        'brand-primary': '#F97316', // orange-500
+                        'brand-secondary': '#14B8A6', // teal-500
+                        'brand-accent': '#FDBA74', // orange-300
+                        'brand-bg': '#FFF7ED', // orange-50
+                        'brand-text': '#374151', // gray-700
+                        'brand-subtext': '#6B7280', // gray-500
+                    },
+                    fontFamily: {
+                        sans: ['Nunito Sans', 'sans-serif'],
+                        heading: ['Poppins', 'sans-serif'],
+                    },
+                    animation: {
+                        fadeIn: 'fadeIn 0.5s ease-out',
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+<body class="bg-brand-bg text-brand-text antialiased">
+
+    <!-- Header/Navigation -->
+    <header id="header" class="bg-white shadow-lg sticky top-0 z-50">
+        <div class="container mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex items-center justify-between h-20">
+                <a href="#" data-page="home" class="nav-trigger text-3xl font-bold text-brand-primary font-heading">
+                    Pawsitive<span class="text-brand-secondary">Connections</span>
+                </a>
+                <nav class="hidden md:flex space-x-8 items-center">
+                    <a href="#" data-page="home" class="nav-link nav-trigger text-brand-text hover:text-brand-primary transition-colors">Home</a>
+                    <a href="#" data-page="dogs" class="nav-link nav-trigger text-brand-text hover:text-brand-primary transition-colors">Adopt a Dog</a>
+                    <a href="#" data-page="application" class="nav-link nav-trigger text-brand-text hover:text-brand-primary transition-colors">Application</a>
+                    <a href="#" data-page="donate" class="nav-link nav-trigger text-brand-text hover:text-brand-primary transition-colors">Donate</a>
+                    <a href="#" data-page="volunteer" class="nav-link nav-trigger text-brand-text hover:text-brand-primary transition-colors">Volunteer/Foster</a>
+                    <a href="#" data-page="about" class="nav-link nav-trigger text-brand-text hover:text-brand-primary transition-colors">About Us</a>
+                    <a href="#" data-page="blog" class="nav-link nav-trigger text-brand-text hover:text-brand-primary transition-colors">Blog</a>
+                </nav>
+                <div class="md:hidden">
+                    <button id="mobile-menu-button" class="text-brand-text focus:outline-none">
+                        <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path></svg>
+                    </button>
+                </div>
+            </div>
+        </div>
+        <!-- Mobile Menu -->
+        <div id="mobile-menu" class="md:hidden hidden bg-white shadow-lg">
+            <nav class="px-2 pt-2 pb-4 space-y-1 sm:px-3">
+                <a href="#" data-page="home" class="mobile-nav-link nav-trigger block px-3 py-2 rounded-md text-base font-medium text-brand-text hover:bg-brand-bg hover:text-brand-primary">Home</a>
+                <a href="#" data-page="dogs" class="mobile-nav-link nav-trigger block px-3 py-2 rounded-md text-base font-medium text-brand-text hover:bg-brand-bg hover:text-brand-primary">Adopt a Dog</a>
+                <a href="#" data-page="application" class="mobile-nav-link nav-trigger block px-3 py-2 rounded-md text-base font-medium text-brand-text hover:bg-brand-bg hover:text-brand-primary">Application</a>
+                <a href="#" data-page="donate" class="mobile-nav-link nav-trigger block px-3 py-2 rounded-md text-base font-medium text-brand-text hover:bg-brand-bg hover:text-brand-primary">Donate</a>
+                <a href="#" data-page="volunteer" class="mobile-nav-link nav-trigger block px-3 py-2 rounded-md text-base font-medium text-brand-text hover:bg-brand-bg hover:text-brand-primary">Volunteer/Foster</a>
+                <a href="#" data-page="about" class="mobile-nav-link nav-trigger block px-3 py-2 rounded-md text-base font-medium text-brand-text hover:bg-brand-bg hover:text-brand-primary">About Us</a>
+                <a href="#" data-page="blog" class="mobile-nav-link nav-trigger block px-3 py-2 rounded-md text-base font-medium text-brand-text hover:bg-brand-bg hover:text-brand-primary">Blog</a>
+            </nav>
+        </div>
+    </header>
+
+    <!-- Main Content Area -->
+    <main id="main-content" class="container mx-auto px-4 sm:px-6 lg:px-8 py-8">
+
+        <!-- Homepage Section -->
+        <section id="home" class="page-section active space-y-12">
+            <!-- Hero Section -->
+            <div class="relative bg-gradient-to-r from-orange-400 to-amber-400 rounded-xl shadow-2xl overflow-hidden text-white p-8 md:p-16 min-h-[60vh] flex items-center">
+                <div class="absolute inset-0">
+                    <img src="https://placedog.net/1200/800?id=10" alt="Happy dog running in a field" class="w-full h-full object-cover opacity-30">
+                </div>
+                <div class="relative z-10 max-w-3xl">
+                    <h1 class="text-4xl sm:text-5xl lg:text-6xl font-bold font-heading mb-6 leading-tight">Find Your <span class="text-yellow-200">Best Friend</span> Today!</h1>
+                    <p class="text-lg sm:text-xl mb-8 text-orange-100">Open your heart and home to a deserving dog. Discover unconditional love and companionship.</p>
+                    <div class="flex flex-col sm:flex-row space-y-4 sm:space-y-0 sm:space-x-4">
+                        <button data-page="dogs" class="nav-trigger btn bg-white text-orange-500 hover:bg-orange-100 focus:ring-white w-full sm:w-auto">View Adoptable Dogs</button>
+                        <button data-page="donate" class="nav-trigger btn bg-transparent border-2 border-white text-white hover:bg-white hover:text-orange-500 focus:ring-white w-full sm:w-auto">Support Our Mission</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Intro Text -->
+            <div class="bg-white p-8 rounded-xl shadow-lg text-center">
+                <h2 class="text-3xl font-heading text-brand-primary mb-4">Welcome to Pawsitive Connections</h2>
+                <p class="text-lg text-brand-subtext max-w-2xl mx-auto">We are dedicated to rescuing, rehabilitating, and rehoming dogs in need. Our mission is to connect loving families with wonderful companion animals, creating lifelong bonds and happy tails.</p>
+            </div>
+
+            <!-- How It Works -->
+            <div class="bg-white p-8 rounded-xl shadow-lg">
+                <h2 class="text-3xl font-heading text-center text-brand-secondary mb-8">Adoption Made Easy</h2>
+                <div class="grid md:grid-cols-4 gap-8 text-center">
+                    <div class="flex flex-col items-center p-4">
+                        <div class="bg-orange-100 p-4 rounded-full mb-4 text-orange-500">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-10 w-10" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z" clip-rule="evenodd" /></svg>
+                        </div>
+                        <h3 class="text-xl font-semibold mb-2 font-heading">1. Browse Dogs</h3>
+                        <p class="text-brand-subtext">Explore profiles of adorable dogs waiting for a home.</p>
+                    </div>
+                    <div class="flex flex-col items-center p-4">
+                        <div class="bg-teal-100 p-4 rounded-full mb-4 text-teal-500">
+                           <svg xmlns="http://www.w3.org/2000/svg" class="h-10 w-10" viewBox="0 0 20 20" fill="currentColor"><path d="M9 2a1 1 0 000 2h2a1 1 0 100-2H9z" /><path fill-rule="evenodd" d="M4 5a2 2 0 012-2h8a2 2 0 012 2v10a2 2 0 01-2 2H6a2 2 0 01-2-2V5zm3 4a1 1 0 000 2h.01a1 1 0 100-2H7zm3 0a1 1 0 000 2h3a1 1 0 100-2h-3zm-3 4a1 1 0 100 2h.01a1 1 0 100-2H7zm3 0a1 1 0 100 2h3a1 1 0 100-2h-3z" clip-rule="evenodd" /></svg>
+                        </div>
+                        <h3 class="text-xl font-semibold mb-2 font-heading">2. Apply Online</h3>
+                        <p class="text-brand-subtext">Fill out our simple adoption application form.</p>
+                    </div>
+                    <div class="flex flex-col items-center p-4">
+                        <div class="bg-yellow-100 p-4 rounded-full mb-4 text-yellow-500">
+                           <svg xmlns="http://www.w3.org/2000/svg" class="h-10 w-10" viewBox="0 0 20 20" fill="currentColor"><path d="M2 5a2 2 0 012-2h7a2 2 0 012 2v4a2 2 0 01-2 2H9l-3 3v-3H4a2 2 0 01-2-2V5z" /><path d="M15 7v2a4 4 0 01-4 4H9.828l-1.766 1.767c.28.149.599.233.938.233h2l3 3v-3h2a2 2 0 002-2V9a2 2 0 00-2-2h-1z" /></svg>
+                        </div>
+                        <h3 class="text-xl font-semibold mb-2 font-heading">3. Meet & Greet</h3>
+                        <p class="text-brand-subtext">Schedule a visit to meet your potential new family member.</p>
+                    </div>
+                    <div class="flex flex-col items-center p-4">
+                        <div class="bg-green-100 p-4 rounded-full mb-4 text-green-500">
+                           <svg xmlns="http://www.w3.org/2000/svg" class="h-10 w-10" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M3.172 5.172a4 4 0 015.656 0L10 6.343l1.172-1.171a4 4 0 115.656 5.656L10 17.657l-6.828-6.829a4 4 0 010-5.656z" clip-rule="evenodd" /></svg>
+                        </div>
+                        <h3 class="text-xl font-semibold mb-2 font-heading">4. Welcome Home</h3>
+                        <p class="text-brand-subtext">Finalize adoption and start your new life together!</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Featured Dogs (Optional) -->
+            <div class="bg-white p-8 rounded-xl shadow-lg">
+                <h2 class="text-3xl font-heading text-center text-brand-primary mb-8">Featured Pups</h2>
+                <div id="featured-dogs-list" class="grid md:grid-cols-3 gap-8">
+                    <!-- Featured dogs will be dynamically inserted here -->
+                </div>
+                <div class="text-center mt-8">
+                     <button data-page="dogs" class="nav-trigger btn btn-secondary">Meet All Our Dogs</button>
+                </div>
+            </div>
+
+        </section>
+
+        <!-- Dogs for Adoption Section -->
+        <section id="dogs" class="page-section space-y-8">
+            <h1 class="text-4xl font-heading text-brand-primary text-center">Meet Our Wonderful Dogs</h1>
+            <!-- Filters -->
+            <div class="bg-white p-6 rounded-xl shadow-lg">
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 items-end">
+                    <div>
+                        <label for="filter-breed" class="form-label">Breed</label>
+                        <select id="filter-breed" class="form-input">
+                            <option value="">All Breeds</option>
+                            <!-- Breeds will be populated by JS -->
+                        </select>
+                    </div>
+                    <div>
+                        <label for="filter-age" class="form-label">Age</label>
+                        <select id="filter-age" class="form-input">
+                            <option value="">All Ages</option>
+                            <option value="Puppy">Puppy (0-1 yr)</option>
+                            <option value="Young">Young (1-3 yrs)</option>
+                            <option value="Adult">Adult (3-7 yrs)</option>
+                            <option value="Senior">Senior (7+ yrs)</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label for="filter-size" class="form-label">Size</label>
+                        <select id="filter-size" class="form-input">
+                            <option value="">All Sizes</option>
+                            <option value="Small">Small</option>
+                            <option value="Medium">Medium</option>
+                            <option value="Large">Large</option>
+                        </select>
+                    </div>
+                    <div class="flex space-x-2">
+                        <button id="apply-filters-btn" class="btn btn-primary w-full">Apply Filters</button>
+                        <button id="reset-filters-btn" class="btn btn-outline w-full">Reset</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Dog Listings -->
+            <div id="dog-listings" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
+                <!-- Dog cards will be dynamically inserted here -->
+            </div>
+            <div id="no-dogs-found" class="hidden text-center py-12">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-16 w-16 mx-auto text-brand-accent mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M17.553 17.553A1.501 1.501 0 1015 19.053V19.5A1.5 1.5 0 0016.5 21h1A1.5 1.5 0 0019 19.5v-.447a1.5 1.5 0 00-1.447-1.5zM6.447 17.553A1.501 1.501 0 109 19.053V19.5A1.5 1.5 0 017.5 21h-1A1.5 1.5 0 015 19.5v-.447a1.5 1.5 0 011.447-1.5z"/>
+                </svg>
+                <p class="text-2xl font-semibold text-brand-subtext">No dogs match your criteria.</p>
+                <p class="text-brand-subtext">Try adjusting your filters or check back soon!</p>
+            </div>
+        </section>
+
+        <!-- Dog Profile Section -->
+        <section id="dog-profile" class="page-section space-y-8">
+            <!-- Dog profile content will be dynamically inserted here -->
+        </section>
+
+        <!-- Adoption Application Section -->
+        <section id="application" class="page-section space-y-8">
+            <div class="bg-white p-8 rounded-xl shadow-lg max-w-3xl mx-auto">
+                <h1 class="text-3xl font-heading text-brand-primary text-center mb-2">Adoption Application</h1>
+                <p id="application-dog-name" class="text-center text-brand-subtext mb-6">Applying to adopt a wonderful dog!</p>
+                <form id="adoption-form" class="space-y-6">
+                    <!-- Applicant Information -->
+                    <div class="space-y-4 p-4 border border-slate-200 rounded-lg">
+                        <h2 class="text-xl font-semibold font-heading text-brand-secondary">Your Information</h2>
+                        <div>
+                            <label for="applicant-name" class="form-label">Full Name*</label>
+                            <input type="text" id="applicant-name" name="applicant-name" class="form-input" required>
+                        </div>
+                        <div class="grid md:grid-cols-2 gap-4">
+                            <div>
+                                <label for="applicant-email" class="form-label">Email Address*</label>
+                                <input type="email" id="applicant-email" name="applicant-email" class="form-input" required>
+                            </div>
+                            <div>
+                                <label for="applicant-phone" class="form-label">Phone Number*</label>
+                                <input type="tel" id="applicant-phone" name="applicant-phone" class="form-input" required>
+                            </div>
+                        </div>
+                        <div>
+                            <label for="applicant-address" class="form-label">Full Address*</label>
+                            <textarea id="applicant-address" name="applicant-address" rows="3" class="form-input" required></textarea>
+                        </div>
+                    </div>
+
+                    <!-- Household Information -->
+                     <div class="space-y-4 p-4 border border-slate-200 rounded-lg">
+                        <h2 class="text-xl font-semibold font-heading text-brand-secondary">Household Information</h2>
+                        <div>
+                            <label for="dwelling-type" class="form-label">Type of Dwelling*</label>
+                            <select id="dwelling-type" name="dwelling-type" class="form-input" required>
+                                <option value="">Select...</option>
+                                <option value="House">House</option>
+                                <option value="Apartment">Apartment</option>
+                                <option value="Condo">Condo/Townhouse</option>
+                                <option value="Other">Other</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="form-label">Do you own or rent?*</label>
+                            <div class="flex space-x-4">
+                                <label><input type="radio" name="own-rent" value="Own" class="mr-1 accent-orange-500" required> Own</label>
+                                <label><input type="radio" name="own-rent" value="Rent" class="mr-1 accent-orange-500"> Rent</label>
+                            </div>
+                        </div>
+                         <div>
+                            <label for="fenced-yard" class="form-label">Do you have a fenced yard?*</label>
+                            <select id="fenced-yard" name="fenced-yard" class="form-input" required>
+                                <option value="">Select...</option>
+                                <option value="Yes">Yes</option>
+                                <option value="No">No</option>
+                                <option value="Partial">Partial / Communal</option>
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <!-- Lifestyle & Experience -->
+                    <div class="space-y-4 p-4 border border-slate-200 rounded-lg">
+                        <h2 class="text-xl font-semibold font-heading text-brand-secondary">Lifestyle & Experience</h2>
+                        <div>
+                            <label for="other-pets" class="form-label">Do you have other pets? If yes, please describe.</label>
+                            <textarea id="other-pets" name="other-pets" rows="2" class="form-input"></textarea>
+                        </div>
+                        <div>
+                            <label for="children" class="form-label">Are there children in the household? If yes, their ages.</label>
+                            <input type="text" id="children" name="children" class="form-input">
+                        </div>
+                         <div>
+                            <label for="dog-experience" class="form-label">Please describe your experience with dogs.*</label>
+                            <textarea id="dog-experience" name="dog-experience" rows="3" class="form-input" required></textarea>
+                        </div>
+                    </div>
+
+                    <!-- References -->
+                     <div class="space-y-4 p-4 border border-slate-200 rounded-lg">
+                        <h2 class="text-xl font-semibold font-heading text-brand-secondary">References</h2>
+                        <p class="text-sm text-brand-subtext">Please provide two references (non-family members, e.g., vet, friend, employer).</p>
+                        <div class="grid md:grid-cols-2 gap-4">
+                            <div>
+                                <label for="ref1-name" class="form-label">Reference 1: Name*</label>
+                                <input type="text" id="ref1-name" name="ref1-name" class="form-input" required>
+                            </div>
+                            <div>
+                                <label for="ref1-phone" class="form-label">Reference 1: Phone*</label>
+                                <input type="tel" id="ref1-phone" name="ref1-phone" class="form-input" required>
+                            </div>
+                        </div>
+                         <div class="grid md:grid-cols-2 gap-4">
+                            <div>
+                                <label for="ref2-name" class="form-label">Reference 2: Name*</label>
+                                <input type="text" id="ref2-name" name="ref2-name" class="form-input" required>
+                            </div>
+                            <div>
+                                <label for="ref2-phone" class="form-label">Reference 2: Phone*</label>
+                                <input type="tel" id="ref2-phone" name="ref2-phone" class="form-input" required>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="flex items-center">
+                        <input id="agreement" name="agreement" type="checkbox" class="h-4 w-4 text-orange-500 border-gray-300 rounded focus:ring-orange-400 accent-orange-500" required>
+                        <label for="agreement" class="ml-2 block text-sm text-gray-900">
+                            I certify that the information provided is true and accurate.*
+                        </label>
+                    </div>
+
+                    <button type="submit" class="btn btn-primary w-full">Submit Application</button>
+                    <p id="application-status" class="text-center mt-4"></p>
+                </form>
+            </div>
+        </section>
+
+        <!-- Donate & Sponsor Section -->
+        <section id="donate" class="page-section space-y-8">
+            <div class="bg-white p-8 rounded-xl shadow-lg text-center max-w-3xl mx-auto">
+                <h1 class="text-4xl font-heading text-brand-primary mb-4">Support Our Paws</h1>
+                <p class="text-lg text-brand-subtext mb-8">Your generous donations help us provide food, shelter, medical care, and love to dogs in need. Every contribution makes a difference!</p>
+            </div>
+
+            <div class="grid md:grid-cols-2 gap-8">
+                <div class="bg-white p-8 rounded-xl shadow-lg">
+                    <h2 class="text-2xl font-heading text-brand-secondary mb-6">Make a General Donation</h2>
+                    <p class="text-brand-subtext mb-4">Help us cover ongoing costs and respond to urgent needs. Choose an amount or enter your own.</p>
+                    <div class="flex space-x-2 mb-4">
+                        <button class="btn btn-outline flex-1 donation-amount" data-amount="25">$25</button>
+                        <button class="btn btn-outline flex-1 donation-amount" data-amount="50">$50</button>
+                        <button class="btn btn-outline flex-1 donation-amount" data-amount="100">$100</button>
+                    </div>
+                    <input type="number" id="custom-donation-amount" placeholder="Or enter custom amount" class="form-input mb-4">
+                    <button id="process-donation-btn" class="btn btn-primary w-full">Donate Now (Mock)</button>
+                    <p id="donation-status" class="text-center mt-4"></p>
+                </div>
+
+                <div class="bg-white p-8 rounded-xl shadow-lg">
+                    <h2 class="text-2xl font-heading text-brand-secondary mb-6">Sponsor a Dog</h2>
+                    <p class="text-brand-subtext mb-4">Become a guardian angel for a specific dog. Your sponsorship helps cover their food, vet bills, and enrichment while they wait for their forever home.</p>
+                    <p class="text-brand-subtext mb-4">Visit our <a href="#" data-page="dogs" class="nav-trigger text-brand-primary hover:underline">Dogs for Adoption</a> page to see dogs who would love a sponsor!</p>
+                    <div class="bg-gray-200 border-2 border-dashed rounded-xl w-full h-32 flex items-center justify-center text-gray-500 my-4">
+                        <p>Featured Sponsoree Placeholder</p>
+                    </div>
+                    <button class="btn btn-secondary w-full nav-trigger" data-page="dogs">Find a Dog to Sponsor</button>
+                </div>
+            </div>
+        </section>
+
+        <!-- Volunteer / Foster Section -->
+        <section id="volunteer" class="page-section space-y-8">
+            <div class="bg-white p-8 rounded-xl shadow-lg text-center max-w-3xl mx-auto">
+                <h1 class="text-4xl font-heading text-brand-primary mb-4">Get Involved</h1>
+                <p class="text-lg text-brand-subtext mb-8">Your time and compassion can change a dog's life. Learn about volunteering and fostering opportunities.</p>
+            </div>
+
+            <div class="grid md:grid-cols-2 gap-8">
+                <!-- Volunteer -->
+                <div class="bg-white p-8 rounded-xl shadow-lg">
+                    <h2 class="text-2xl font-heading text-brand-secondary mb-6">Volunteer With Us</h2>
+                    <p class="text-brand-subtext mb-4">We need help with dog walking, kennel care, events, administrative tasks, and more. Find a role that suits your skills and passion!</p>
+                    <ul class="list-disc list-inside text-brand-subtext mb-6 space-y-1">
+                        <li>Must be 18+ or accompanied by an adult.</li>
+                        <li>Commit to a regular schedule (flexible options available).</li>
+                        <li>Attend a brief orientation session.</li>
+                    </ul>
+                    <form id="volunteer-form" class="space-y-4">
+                        <div>
+                            <label for="volunteer-name" class="form-label">Full Name*</label>
+                            <input type="text" id="volunteer-name" class="form-input" required>
+                        </div>
+                        <div>
+                            <label for="volunteer-email" class="form-label">Email*</label>
+                            <input type="email" id="volunteer-email" class="form-input" required>
+                        </div>
+                        <div>
+                            <label for="volunteer-interest" class="form-label">Area of Interest</label>
+                            <select id="volunteer-interest" class="form-input">
+                                <option>Dog Walking</option>
+                                <option>Event Support</option>
+                                <option>Kennel Care</option>
+                                <option>Administrative</option>
+                                <option>Other</option>
+                            </select>
+                        </div>
+                        <button type="submit" class="btn btn-primary w-full">Apply to Volunteer</button>
+                        <p id="volunteer-status" class="text-center mt-2"></p>
+                    </form>
+                </div>
+
+                <!-- Foster -->
+                <div class="bg-white p-8 rounded-xl shadow-lg">
+                    <h2 class="text-2xl font-heading text-brand-secondary mb-6">Become a Foster Parent</h2>
+                    <p class="text-brand-subtext mb-4">Open your home temporarily to a dog in need. Fostering provides a safe, loving environment and helps dogs adjust before adoption. We provide supplies and support!</p>
+                     <ul class="list-disc list-inside text-brand-subtext mb-6 space-y-1">
+                        <li>Provide a safe, indoor home.</li>
+                        <li>Able to transport dog to vet appointments (we cover costs).</li>
+                        <li>Patience and love for animals.</li>
+                    </ul>
+                    <form id="foster-form" class="space-y-4">
+                        <div>
+                            <label for="foster-name" class="form-label">Full Name*</label>
+                            <input type="text" id="foster-name" class="form-input" required>
+                        </div>
+                        <div>
+                            <label for="foster-email" class="form-label">Email*</label>
+                            <input type="email" id="foster-email" class="form-input" required>
+                        </div>
+                        <div>
+                            <label for="foster-experience" class="form-label">Briefly describe your home environment & experience</label>
+                            <textarea id="foster-experience" rows="2" class="form-input"></textarea>
+                        </div>
+                        <button type="submit" class="btn btn-secondary w-full">Apply to Foster</button>
+                        <p id="foster-status" class="text-center mt-2"></p>
+                    </form>
+                </div>
+            </div>
+             <div class="bg-white p-8 rounded-xl shadow-lg mt-8">
+                <h3 class="text-2xl font-heading text-center text-brand-secondary mb-4">Frequently Asked Questions</h3>
+                <div class="space-y-4">
+                    <div>
+                        <h4 class="font-semibold text-lg text-brand-text">What are the requirements to adopt?</h4>
+                        <p class="text-brand-subtext">Adopters must be 18 or older, provide proof of identity and address, and agree to a home check if necessary. We also look for a commitment to providing a loving, permanent home.</p>
+                    </div>
+                    <div>
+                        <h4 class="font-semibold text-lg text-brand-text">What is the adoption fee?</h4>
+                        <p class="text-brand-subtext">Adoption fees vary by dog (age, medical needs) but typically range from $150 to $400. This fee helps cover spay/neuter, vaccinations, microchip, and other care.</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- About Us & Contact Section -->
+        <section id="about" class="page-section space-y-8">
+            <div class="bg-white p-8 rounded-xl shadow-lg">
+                <h1 class="text-4xl font-heading text-brand-primary text-center mb-6">About Pawsitive Connections</h1>
+                <div class="grid md:grid-cols-2 gap-8 items-center">
+                    <div>
+                        <h2 class="text-2xl font-heading text-brand-secondary mb-3">Our Mission</h2>
+                        <p class="text-brand-subtext mb-4">To rescue, rehabilitate, and rehome dogs at risk, while promoting responsible pet ownership and compassion for animals in our community.</p>
+                        <h2 class="text-2xl font-heading text-brand-secondary mb-3">Our Story</h2>
+                        <p class="text-brand-subtext">Founded in 2023 by a group of passionate animal lovers, Pawsitive Connections started as a small foster network and has grown into a beacon of hope for countless dogs. We believe every dog deserves a chance at a happy life.</p>
+                    </div>
+                    <div class="bg-gray-200 border-2 border-dashed border-gray-400 rounded-xl w-full h-64 flex items-center justify-center text-gray-500">
+                        Team Photo Placeholder
+                    </div>
+                </div>
+            </div>
+
+            <div class="grid md:grid-cols-2 gap-8">
+                <div class="bg-white p-8 rounded-xl shadow-lg">
+                    <h2 class="text-2xl font-heading text-brand-secondary mb-6">Contact Us</h2>
+                    <form id="contact-form" class="space-y-4">
+                        <div>
+                            <label for="contact-name" class="form-label">Name*</label>
+                            <input type="text" id="contact-name" class="form-input" required>
+                        </div>
+                        <div>
+                            <label for="contact-email" class="form-label">Email*</label>
+                            <input type="email" id="contact-email" class="form-input" required>
+                        </div>
+                        <div>
+                            <label for="contact-subject" class="form-label">Subject</label>
+                            <input type="text" id="contact-subject" class="form-input">
+                        </div>
+                        <div>
+                            <label for="contact-message" class="form-label">Message*</label>
+                            <textarea id="contact-message" rows="4" class="form-input" required></textarea>
+                        </div>
+                        <button type="submit" class="btn btn-primary w-full">Send Message</button>
+                        <p id="contact-status" class="text-center mt-2"></p>
+                    </form>
+                </div>
+                <div class="bg-white p-8 rounded-xl shadow-lg">
+                    <h2 class="text-2xl font-heading text-brand-secondary mb-6">Our Location</h2>
+                    <p class="text-brand-subtext mb-2"><strong class="text-brand-text">Address:</strong> 123 Puppy Lane, Dogtown, CA 90210</p>
+                    <p class="text-brand-subtext mb-2"><strong class="text-brand-text">Email:</strong> info@pawsitiveconnections.org</p>
+                    <p class="text-brand-subtext mb-4"><strong class="text-brand-text">Phone:</strong> (555) 123-4567</p>
+                    <div class="bg-gray-200 border-2 border-dashed border-gray-400 rounded-xl w-full h-64 flex items-center justify-center text-gray-500">
+                        Google Maps Placeholder
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Blog / Resources Section -->
+        <section id="blog" class="page-section space-y-8">
+            <h1 class="text-4xl font-heading text-brand-primary text-center mb-8">Pawsitive Tails & Tips</h1>
+            <div id="blog-posts-list" class="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
+                <!-- Blog posts will be dynamically inserted here -->
+            </div>
+        </section>
+
+    </main>
+
+    <!-- Footer -->
+    <footer id="footer" class="bg-slate-800 text-slate-300 py-12 mt-16">
+        <div class="container mx-auto px-4 sm:px-6 lg:px-8 text-center">
+            <p class="font-heading text-2xl text-white mb-2">Pawsitive<span class="text-brand-accent">Connections</span></p>
+            <p class="mb-4">Connecting loving homes with deserving dogs.</p>
+            <div class="flex justify-center space-x-6 mb-6">
+                <a href="#" class="hover:text-brand-primary transition-colors">
+                    <svg class="w-6 h-6" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path fill-rule="evenodd" d="M22 12c0-5.523-4.477-10-10-10S2 6.477 2 12c0 4.991 3.657 9.128 8.438 9.878v-6.987h-2.54V12h2.54V9.797c0-2.506 1.492-3.89 3.777-3.89 1.094 0 2.238.195 2.238.195v2.46h-1.26c-1.243 0-1.63.771-1.63 1.562V12h2.773l-.443 2.89h-2.33v6.988C18.343 21.128 22 16.991 22 12z" clip-rule="evenodd" /></svg>
+                </a>
+                <a href="#" class="hover:text-brand-primary transition-colors">
+                   <svg class="w-6 h-6" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path fill-rule="evenodd" d="M12.315 2c2.43 0 2.784.013 3.808.06 1.064.049 1.791.218 2.427.465a4.902 4.902 0 011.772 1.153 4.902 4.902 0 011.153 1.772c.247.636.416 1.363.465 2.427.048 1.024.06 1.378.06 3.808s-.012 2.784-.06 3.808c-.049 1.064-.218 1.791-.465 2.427a4.902 4.902 0 01-1.153 1.772 4.902 4.902 0 01-1.772 1.153c-.636.247-1.363.416-2.427.465-1.024.048-1.378.06-3.808.06s-2.784-.012-3.808-.06c-1.064-.049-1.791-.218-2.427-.465a4.902 4.902 0 01-1.772-1.153 4.902 4.902 0 01-1.153-1.772c-.247-.636-.416-1.363-.465-2.427-.048-1.024-.06-1.378-.06-3.808s.012-2.784.06-3.808c.049-1.064.218-1.791.465-2.427a4.902 4.902 0 011.153-1.772A4.902 4.902 0 015.45 2.525c.636-.247 1.363-.416 2.427-.465C8.901 2.013 9.256 2 11.685 2h.63zm-.001 1.802c-2.596 0-2.883.011-3.904.057-.938.043-1.517.2-1.944.377a2.926 2.926 0 00-1.079.728 2.926 2.926 0 00-.728 1.079c-.177.427-.334.996-.377 1.944-.046 1.02-.057 1.308-.057 3.904s.011 2.884.057 3.904c.043.938.2 1.517.377 1.944a2.926 2.926 0 00.728 1.079 2.926 2.926 0 001.079.728c.427.177.996.334 1.944.377 1.02.046 1.308.057 3.904.057s2.884-.011 3.904-.057c.938-.043 1.517-.2 1.944-.377a2.926 2.926 0 001.079-.728 2.926 2.926 0 00.728-1.079c.177-.427.334-.996.377-1.944.046-1.02.057-1.308.057-3.904s-.011-2.884-.057-3.904c-.043-.938-.2-1.517-.377-1.944a2.926 2.926 0 00-.728-1.079 2.926 2.926 0 00-1.079-.728c-.427-.177-.996-.334-1.944-.377-1.02-.046-1.308-.057-3.904-.057zM12 6.836a5.164 5.164 0 100 10.328 5.164 5.164 0 000-10.328zm0 8.528a3.364 3.364 0 110-6.728 3.364 3.364 0 010 6.728zm5.438-8.217a1.218 1.218 0 100-2.436 1.218 1.218 0 000 2.436z" clip-rule="evenodd" /></svg>
+                </a>
+                <a href="#" class="hover:text-brand-primary transition-colors">
+                    <svg class="w-6 h-6" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path d="M8.29 20.251c7.547 0 11.675-6.253 11.675-11.675 0-.178 0-.355-.012-.53A8.348 8.348 0 0022 5.92a8.19 8.19 0 01-2.357.646 4.118 4.118 0 001.804-2.27 8.224 8.224 0 01-2.605.996 4.107 4.107 0 00-6.993 3.743 11.65 11.65 0 01-8.457-4.287 4.106 4.106 0 001.27 5.477A4.072 4.072 0 012.8 9.713v.052a4.105 4.105 0 003.292 4.022 4.095 4.095 0 01-1.853.07 4.108 4.108 0 003.834 2.85A8.233 8.233 0 012 18.407a11.616 11.616 0 006.29 1.84" /></svg>
+                </a>
+            </div>
+            <p class="text-sm text-slate-400">&copy; <span id="current-year"></span> Pawsitive Connections. All Rights Reserved.</p>
+            <p class="text-xs text-slate-500 mt-1">
+                <a href="#" class="hover:text-brand-accent">Privacy Policy</a> | <a href="#" class="hover:text-brand-accent">Terms of Service</a>
+            </p>
+        </div>
+    </footer>
+    
+    <!-- Back to top button -->
+    <button id="back-to-top" class="hidden fixed bottom-6 right-6 bg-orange-500 hover:bg-orange-600 text-white p-3 rounded-full shadow-lg transition-opacity duration-300 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-offset-2">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M5 15l7-7 7 7" />
+        </svg>
+    </button>
+
+    <script>
+        // Dog Data
+        const dogsData = [
+            { id: 1, name: 'Buddy', breed: 'Golden Retriever', age: 'Young', ageValue: 2, size: 'Large', location: 'Shelter A', short_description: 'Friendly and energetic, loves to play fetch.', images: [`https://placedog.net/600/400?id=1`, `https://placedog.net/600/400?id=2`, `https://placedog.net/600/400?id=3`], personality: ['Playful', 'Loyal', 'Intelligent'], health_status: 'Vaccinated, Dewormed', spay_neuter_status: 'Neutered', adoption_requirements: ['Fenced yard', 'Active family'], special_needs: null, story: 'Buddy was found as a stray and is now looking for a loving family to call his own. He is quick to learn and eager to please.' },
+            { id: 2, name: 'Lucy', breed: 'Beagle', age: 'Adult', ageValue: 5, size: 'Medium', location: 'Foster Home B', short_description: 'Sweet and gentle, enjoys cuddles and walks.', images: [`https://placedog.net/600/400?id=4`, `https://placedog.net/600/400?id=5`], personality: ['Affectionate', 'Curious', 'Good with kids'], health_status: 'Vaccinated, Microchipped', spay_neuter_status: 'Spayed', adoption_requirements: ['Regular walks', 'Lots of love'], special_needs: 'Slightly overweight, needs diet management.', story: 'Lucy came to us from an overcrowded shelter. She is a wonderful companion who just wants a comfy lap and a kind hand.' },
+            { id: 3, name: 'Max', breed: 'German Shepherd', age: 'Puppy', ageValue: 0.5, size: 'Large', location: 'Shelter A', short_description: 'Curious and playful puppy, full of beans!', images: [`https://placedog.net/600/400?id=6`, `https://placedog.net/600/400?id=7`], personality: ['Energetic', 'Smart', 'Trainable'], health_status: 'First vaccinations complete', spay_neuter_status: 'Not yet (too young)', adoption_requirements: ['Experienced owner', 'Puppy training classes'], special_needs: null, story: 'Max and his littermates were born in our care. He is a bundle of joy ready for an active home.' },
+            { id: 4, name: 'Daisy', breed: 'Poodle Mix', age: 'Senior', ageValue: 8, size: 'Small', location: 'Foster Home C', short_description: 'Calm and loving senior, perfect lap dog.', images: [`https://placedog.net/600/400?id=8`, `https://placedog.net/600/400?id=9`], personality: ['Gentle', 'Quiet', 'Loves naps'], health_status: 'Vaccinated, Senior health check done', spay_neuter_status: 'Spayed', adoption_requirements: ['Quiet home', 'Soft bed'], special_needs: 'Requires daily joint supplement.', story: 'Daisy is a sweet senior girl whose owner could no longer care for her. She is looking for a peaceful retirement home.' },
+            { id: 5, name: 'Rocky', breed: 'Labrador Retriever', age: 'Young', ageValue: 3, size: 'Large', location: 'Shelter A', short_description: 'Goofy and playful, great family dog.', images: [`https://placedog.net/600/400?id=11`, `https://placedog.net/600/400?id=12`], personality: ['Friendly', 'Outgoing', 'Eager to please'], health_status: 'Fully vaccinated, Healthy', spay_neuter_status: 'Neutered', adoption_requirements: ['Active family', 'Room to run'], special_needs: null, story: 'Rocky loves everyone he meets! He enjoys playing with toys, going for runs, and snuggling up after a long day of fun.' },
+            { id: 6, name: 'Bella', breed: 'Chihuahua', age: 'Adult', ageValue: 4, size: 'Small', location: 'Foster Home D', short_description: 'Sassy and affectionate, a true companion.', images: [`https://placedog.net/600/400?id=13`, `https://placedog.net/600/400?id=14`], personality: ['Spirited', 'Loyal', 'Cuddly'], health_status: 'Vaccinated, Dental cleaning done', spay_neuter_status: 'Spayed', adoption_requirements: ['Someone home often', 'No large dogs'], special_needs: null, story: 'Bella is a tiny dog with a big personality. She bonds strongly with her person and loves to be spoiled.' },
+            { id: 7, name: 'Charlie', breed: 'Mixed Breed', age: 'Puppy', ageValue: 0.8, size: 'Medium', location: 'Shelter B', short_description: 'Shy but sweet, needs a patient adopter.', images: [`https://placedog.net/600/400?id=15`], personality: ['Timid', 'Gentle', 'Curious'], health_status: 'Vaccinations ongoing', spay_neuter_status: 'Not yet', adoption_requirements: ['Quiet home', 'Patience and positive reinforcement'], special_needs: 'Needs socialization.', story: 'Charlie was rescued from a difficult situation and is still learning to trust. With a little time and love, he will blossom.' },
+            { id: 8, name: 'Cooper', breed: 'Boxer', age: 'Adult', ageValue: 6, size: 'Large', location: 'Foster Home A', short_description: 'Playful and protective, very loyal.', images: [`https://placedog.net/600/400?id=16`, `https://placedog.net/600/400?id=17`], personality: ['Brave', 'Energetic', 'Devoted'], health_status: 'Healthy, Vaccinated', spay_neuter_status: 'Neutered', adoption_requirements: ['Experienced Boxer owner', 'Secure yard'], special_needs: null, story: 'Cooper is a typical Boxer - full of life and love for his family. He needs an owner who understands the breed.' }
+        ];
+
+        // Blog Data
+        const blogPosts = [
+            { id: 1, title: 'Adoption Success: Max Finds His Forever Home', image: 'https://placedog.net/400/300?id=20', date: 'October 26, 2023', snippet: 'Read about Max\'s journey from a playful puppy in our shelter to a cherished member of his new family...', content: 'Full content here...' },
+            { id: 2, title: '5 Tips for Welcoming a New Dog', image: 'https://placedog.net/400/300?id=21', date: 'October 15, 2023', snippet: 'Bringing a new dog home is exciting! Here are five essential tips to make the transition smooth for everyone...', content: 'Full content here...' },
+            { id: 3, title: 'Upcoming Adoption Event: Fall Frolic!', image: 'https://placedog.net/400/300?id=22', date: 'October 5, 2023', snippet: 'Join us on November 4th for our Fall Frolic adoption event! Meet adoptable dogs, enjoy activities, and more...', content: 'Full content here...' },
+            { id: 4, title: 'The Importance of Spaying/Neutering Your Pet', image: 'https://placedog.net/400/300?id=23', date: 'September 20, 2023', snippet: 'Learn about the health and community benefits of spaying or neutering your furry companions.', content: 'Full content here...' }
+        ];
+
+        let currentPage = 'home';
+        let currentDogId = null;
+        let currentCarouselIndex = 0;
+
+        // DOM Elements
+        const mainContent = document.getElementById('main-content');
+        const pageSections = document.querySelectorAll('.page-section');
+        const navLinks = document.querySelectorAll('.nav-link');
+        const mobileNavLinks = document.querySelectorAll('.mobile-nav-link');
+        const navTriggers = document.querySelectorAll('.nav-trigger');
+        const mobileMenuButton = document.getElementById('mobile-menu-button');
+        const mobileMenu = document.getElementById('mobile-menu');
+        
+        const dogListingsContainer = document.getElementById('dog-listings');
+        const dogProfileContainer = document.getElementById('dog-profile');
+        const filterBreedSelect = document.getElementById('filter-breed');
+        const filterAgeSelect = document.getElementById('filter-age');
+        const filterSizeSelect = document.getElementById('filter-size');
+        const applyFiltersBtn = document.getElementById('apply-filters-btn');
+        const resetFiltersBtn = document.getElementById('reset-filters-btn');
+        const noDogsFoundMessage = document.getElementById('no-dogs-found');
+
+        const adoptionForm = document.getElementById('adoption-form');
+        const applicationDogName = document.getElementById('application-dog-name');
+        const applicationStatus = document.getElementById('application-status');
+
+        const donationAmountButtons = document.querySelectorAll('.donation-amount');
+        const customDonationAmountInput = document.getElementById('custom-donation-amount');
+        const processDonationBtn = document.getElementById('process-donation-btn');
+        const donationStatus = document.getElementById('donation-status');
+        
+        const volunteerForm = document.getElementById('volunteer-form');
+        const volunteerStatus = document.getElementById('volunteer-status');
+        const fosterForm = document.getElementById('foster-form');
+        const fosterStatus = document.getElementById('foster-status');
+        const contactForm = document.getElementById('contact-form');
+        const contactStatus = document.getElementById('contact-status');
+
+        const blogPostsListContainer = document.getElementById('blog-posts-list');
+        const featuredDogsContainer = document.getElementById('featured-dogs-list');
+
+        const backToTopButton = document.getElementById('back-to-top');
+
+        // --- Page Navigation ---
+        function showPage(pageId, dogId = null) {
+            currentPage = pageId;
+            currentDogId = dogId;
+
+            pageSections.forEach(section => {
+                section.classList.remove('active');
+            });
+            const targetPage = document.getElementById(pageId);
+            if (targetPage) {
+                targetPage.classList.add('active');
+            }
+
+            updateActiveNavLinks();
+            window.scrollTo(0, 0); // Scroll to top on page change
+
+            // Specific actions for pages
+            if (pageId === 'dogs') {
+                populateFilters();
+                renderDogList(dogsData);
+            } else if (pageId === 'dog-profile' && dogId) {
+                renderDogProfile(dogId);
+            } else if (pageId === 'application' && dogId) {
+                const dog = dogsData.find(d => d.id === dogId);
+                applicationDogName.textContent = dog ? `Applying to adopt ${dog.name}` : 'Applying for a wonderful dog!';
+            } else if (pageId === 'application' && !dogId){
+                 applicationDogName.textContent = 'Fill out our general adoption application.';
+            } else if (pageId === 'blog') {
+                renderBlogPosts();
+            } else if (pageId === 'home') {
+                renderFeaturedDogs();
+            }
+
+            // Close mobile menu if open
+            mobileMenu.classList.add('hidden');
+        }
+
+        function updateActiveNavLinks() {
+            navLinks.forEach(link => {
+                if (link.dataset.page === currentPage) {
+                    link.classList.add('nav-link-active');
+                } else {
+                    link.classList.remove('nav-link-active');
+                }
+            });
+            mobileNavLinks.forEach(link => {
+                if (link.dataset.page === currentPage) {
+                    link.classList.add('nav-link-active-mobile');
+                } else {
+                    link.classList.remove('nav-link-active-mobile');
+                }
+            });
+        }
+
+        navTriggers.forEach(trigger => {
+            trigger.addEventListener('click', (e) => {
+                e.preventDefault();
+                const pageId = trigger.dataset.page;
+                const dogId = trigger.dataset.dogId ? parseInt(trigger.dataset.dogId) : null;
+                if (pageId) {
+                    showPage(pageId, dogId);
+                }
+            });
+        });
+
+        mobileMenuButton.addEventListener('click', () => {
+            mobileMenu.classList.toggle('hidden');
+        });
+
+        // --- Dog Listings & Filters ---
+        function populateFilters() {
+            const breeds = [...new Set(dogsData.map(dog => dog.breed))].sort();
+            filterBreedSelect.innerHTML = '<option value="">All Breeds</option>'; // Reset
+            breeds.forEach(breed => {
+                const option = document.createElement('option');
+                option.value = breed;
+                option.textContent = breed;
+                filterBreedSelect.appendChild(option);
+            });
+        }
+
+        function renderDogCard(dog) {
+            return `
+                <div class="bg-white rounded-xl shadow-lg overflow-hidden transform hover:scale-105 transition-transform duration-300 flex flex-col">
+                    <img src="${dog.images[0]}" alt="${dog.name}" class="w-full h-56 object-cover">
+                    <div class="p-6 flex flex-col flex-grow">
+                        <h3 class="text-2xl font-bold font-heading text-brand-secondary mb-2">${dog.name}</h3>
+                        <p class="text-brand-subtext mb-1"><span class="font-semibold">Breed:</span> ${dog.breed}</p>
+                        <p class="text-brand-subtext mb-1"><span class="font-semibold">Age:</span> ${dog.age}</p>
+                        <p class="text-brand-subtext mb-4"><span class="font-semibold">Size:</span> ${dog.size}</p>
+                        <p class="text-brand-subtext text-sm mb-4 flex-grow">${dog.short_description}</p>
+                        <button data-page="dog-profile" data-dog-id="${dog.id}" class="nav-trigger btn btn-primary mt-auto w-full">View Profile</button>
+                    </div>
+                </div>
+            `;
+        }
+
+        function renderDogList(dogsToRender) {
+            if (dogsToRender.length === 0) {
+                dogListingsContainer.innerHTML = '';
+                noDogsFoundMessage.classList.remove('hidden');
+            } else {
+                dogListingsContainer.innerHTML = dogsToRender.map(renderDogCard).join('');
+                noDogsFoundMessage.classList.add('hidden');
+            }
+            // Re-attach event listeners for newly created buttons
+            document.querySelectorAll('#dog-listings .nav-trigger').forEach(trigger => {
+                 trigger.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    const pageId = trigger.dataset.page;
+                    const dogId = parseInt(trigger.dataset.dogId);
+                    showPage(pageId, dogId);
+                });
+            });
+        }
+        
+        function applyFilters() {
+            const breedFilter = filterBreedSelect.value;
+            const ageFilter = filterAgeSelect.value;
+            const sizeFilter = filterSizeSelect.value;
+
+            const filteredDogs = dogsData.filter(dog => {
+                const ageMatch = !ageFilter || dog.age === ageFilter;
+                const breedMatch = !breedFilter || dog.breed === breedFilter;
+                const sizeMatch = !sizeFilter || dog.size === sizeFilter;
+                return ageMatch && breedMatch && sizeMatch;
+            });
+            renderDogList(filteredDogs);
+        }
+
+        applyFiltersBtn.addEventListener('click', applyFilters);
+        resetFiltersBtn.addEventListener('click', () => {
+            filterBreedSelect.value = '';
+            filterAgeSelect.value = '';
+            filterSizeSelect.value = '';
+            renderDogList(dogsData);
+        });
+
+
+        // --- Dog Profile Page ---
+        function renderDogProfile(dogId) {
+            const dog = dogsData.find(d => d.id === dogId);
+            if (!dog) {
+                dogProfileContainer.innerHTML = '<p class="text-center text-red-500">Dog not found.</p>';
+                return;
+            }
+            currentCarouselIndex = 0; // Reset carousel index
+
+            dogProfileContainer.innerHTML = `
+                <button data-page="dogs" class="nav-trigger btn btn-outline mb-8">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 inline mr-2" viewBox="0 0 20 20" fill="currentColor">
+                      <path fill-rule="evenodd" d="M9.707 16.707a1 1 0 01-1.414 0l-6-6a1 1 0 010-1.414l6-6a1 1 0 011.414 1.414L5.414 9H17a1 1 0 110 2H5.414l4.293 4.293a1 1 0 010 1.414z" clip-rule="evenodd" />
+                    </svg>
+                    Back to All Dogs
+                </button>
+                <div class="bg-white p-6 sm:p-8 rounded-xl shadow-xl">
+                    <div class="grid md:grid-cols-2 gap-8">
+                        <!-- Image Carousel -->
+                        <div>
+                            <div class="carousel-container rounded-lg shadow-md mb-4 relative aspect-square">
+                                <div class="carousel-track h-full">
+                                    ${dog.images.map((img, index) => `
+                                        <div class="carousel-item h-full">
+                                            <img src="${img}" alt="${dog.name} - image ${index + 1}" class="w-full h-full object-cover rounded-lg">
+                                        </div>
+                                    `).join('')}
+                                </div>
+                                ${dog.images.length > 1 ? `
+                                <button id="carousel-prev" class="absolute top-1/2 left-2 transform -translate-y-1/2 bg-black bg-opacity-50 text-white p-2 rounded-full hover:bg-opacity-75 focus:outline-none">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" /></svg>
+                                </button>
+                                <button id="carousel-next" class="absolute top-1/2 right-2 transform -translate-y-1/2 bg-black bg-opacity-50 text-white p-2 rounded-full hover:bg-opacity-75 focus:outline-none">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" /></svg>
+                                </button>
+                                ` : ''}
+                            </div>
+                            ${dog.images.length > 1 ? `
+                            <div class="flex space-x-2 overflow-x-auto pb-2">
+                                ${dog.images.map((img, index) => `
+                                    <img src="${img}" alt="Thumbnail ${index + 1}" class="w-20 h-20 object-cover rounded-md cursor-pointer border-2 ${index === 0 ? 'border-orange-500' : 'border-transparent'} hover:border-orange-400 carousel-thumb" data-index="${index}">
+                                `).join('')}
+                            </div>
+                            ` : ''}
+                        </div>
+
+                        <!-- Dog Info -->
+                        <div class="space-y-6">
+                            <h1 class="text-4xl lg:text-5xl font-bold font-heading text-brand-primary">${dog.name}</h1>
+                            <div class="grid grid-cols-2 gap-4 text-brand-subtext border-t border-b border-slate-200 py-4">
+                                <p><strong class="text-brand-text">Breed:</strong> ${dog.breed}</p>
+                                <p><strong class="text-brand-text">Age:</strong> ${dog.age} (${dog.ageValue} years)</p>
+                                <p><strong class="text-brand-text">Size:</strong> ${dog.size}</p>
+                                <p><strong class="text-brand-text">Location:</strong> ${dog.location}</p>
+                            </div>
+                            
+                            <div>
+                                <h2 class="text-2xl font-semibold font-heading text-brand-secondary mb-2">About ${dog.name}</h2>
+                                <p class="text-brand-subtext leading-relaxed">${dog.story}</p>
+                            </div>
+
+                            <div>
+                                <h3 class="text-xl font-semibold font-heading text-brand-text mb-2">Personality Traits:</h3>
+                                <div class="flex flex-wrap gap-2">
+                                    ${dog.personality.map(trait => `<span class="bg-teal-100 text-teal-700 px-3 py-1 rounded-full text-sm">${trait}</span>`).join('')}
+                                </div>
+                            </div>
+                            
+                            <div>
+                                <h3 class="text-xl font-semibold font-heading text-brand-text mb-2">Health & Care</h3>
+                                <ul class="list-disc list-inside text-brand-subtext space-y-1">
+                                    <li><strong>Health Status:</strong> ${dog.health_status}</li>
+                                    <li><strong>Spay/Neuter:</strong> ${dog.spay_neuter_status}</li>
+                                    ${dog.special_needs ? `<li><strong>Special Needs:</strong> ${dog.special_needs}</li>` : ''}
+                                </ul>
+                            </div>
+
+                            <div>
+                                <h3 class="text-xl font-semibold font-heading text-brand-text mb-2">Adoption Requirements</h3>
+                                <ul class="list-disc list-inside text-brand-subtext space-y-1">
+                                    ${dog.adoption_requirements.map(req => `<li>${req}</li>`).join('')}
+                                </ul>
+                            </div>
+                            
+                            <button data-page="application" data-dog-id="${dog.id}" class="nav-trigger btn btn-primary w-full text-lg">Apply to Adopt ${dog.name}</button>
+                        </div>
+                    </div>
+                </div>
+            `;
+            // Re-attach event listeners for dynamic content
+            dogProfileContainer.querySelectorAll('.nav-trigger').forEach(trigger => {
+                 trigger.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    const pageId = trigger.dataset.page;
+                    const dogIdForApp = trigger.dataset.dogId ? parseInt(trigger.dataset.dogId) : null;
+                    showPage(pageId, dogIdForApp);
+                });
+            });
+            setupCarousel(dog.images.length);
+        }
+
+        // --- Carousel Logic ---
+        function setupCarousel(numImages) {
+            if (numImages <= 1) return;
+
+            const track = dogProfileContainer.querySelector('.carousel-track');
+            const prevButton = dogProfileContainer.querySelector('#carousel-prev');
+            const nextButton = dogProfileContainer.querySelector('#carousel-next');
+            const thumbs = dogProfileContainer.querySelectorAll('.carousel-thumb');
+
+            function goToSlide(index) {
+                if (index < 0) index = numImages - 1;
+                if (index >= numImages) index = 0;
+                currentCarouselIndex = index;
+                track.style.transform = `translateX(-${currentCarouselIndex * 100}%)`;
+                thumbs.forEach((thumb, i) => {
+                    thumb.classList.toggle('border-orange-500', i === currentCarouselIndex);
+                    thumb.classList.toggle('border-transparent', i !== currentCarouselIndex);
+                });
+            }
+
+            prevButton.addEventListener('click', () => goToSlide(currentCarouselIndex - 1));
+            nextButton.addEventListener('click', () => goToSlide(currentCarouselIndex + 1));
+            thumbs.forEach(thumb => {
+                thumb.addEventListener('click', () => goToSlide(parseInt(thumb.dataset.index)));
+            });
+        }
+
+        // --- Forms Handling ---
+        function handleFormSubmit(form, statusElement, successMessage) {
+            form.addEventListener('submit', (e) => {
+                e.preventDefault();
+                // Basic validation check
+                let isValid = true;
+                form.querySelectorAll('[required]').forEach(input => {
+                    if (!input.value.trim() && input.type !== 'checkbox') {
+                        isValid = false;
+                        input.classList.add('border-red-500');
+                    } else if (input.type === 'checkbox' && !input.checked) {
+                        isValid = false;
+                        // You might want to highlight the checkbox label or checkbox itself
+                    } else {
+                        input.classList.remove('border-red-500');
+                    }
+                });
+
+                if (isValid) {
+                    statusElement.textContent = successMessage;
+                    statusElement.className = 'text-center mt-4 text-green-600';
+                    form.reset();
+                } else {
+                    statusElement.textContent = 'Please fill all required fields.';
+                    statusElement.className = 'text-center mt-4 text-red-600';
+                }
+                setTimeout(() => { statusElement.textContent = ''; }, 5000);
+            });
+        }
+        
+        handleFormSubmit(adoptionForm, applicationStatus, 'Application submitted successfully! We will contact you soon.');
+        handleFormSubmit(volunteerForm, volunteerStatus, 'Thank you for your interest! We will be in touch.');
+        handleFormSubmit(fosterForm, fosterStatus, 'Foster application received! We appreciate your willingness to help.');
+        handleFormSubmit(contactForm, contactStatus, 'Message sent! We will get back to you shortly.');
+
+        // --- Donation Logic ---
+        let selectedDonationAmount = null;
+        donationAmountButtons.forEach(button => {
+            button.addEventListener('click', () => {
+                donationAmountButtons.forEach(btn => btn.classList.replace('btn-primary','btn-outline'));
+                button.classList.replace('btn-outline','btn-primary');
+                selectedDonationAmount = parseFloat(button.dataset.amount);
+                customDonationAmountInput.value = ''; 
+            });
+        });
+
+        customDonationAmountInput.addEventListener('input', () => {
+            selectedDonationAmount = parseFloat(customDonationAmountInput.value) || null;
+            donationAmountButtons.forEach(btn => btn.classList.replace('btn-primary','btn-outline'));
+        });
+
+        processDonationBtn.addEventListener('click', () => {
+            if (selectedDonationAmount && selectedDonationAmount > 0) {
+                donationStatus.textContent = `Thank you for your generous (mock) donation of $${selectedDonationAmount}!`;
+                donationStatus.className = 'text-center mt-4 text-green-600';
+                // Reset
+                selectedDonationAmount = null;
+                customDonationAmountInput.value = '';
+                donationAmountButtons.forEach(btn => btn.classList.replace('btn-primary','btn-outline'));
+            } else {
+                donationStatus.textContent = 'Please select or enter a donation amount.';
+                donationStatus.className = 'text-center mt-4 text-red-600';
+            }
+            setTimeout(() => { donationStatus.textContent = ''; }, 5000);
+        });
+        
+        // --- Blog Posts ---
+        function renderBlogPosts() {
+            blogPostsListContainer.innerHTML = blogPosts.map(post => `
+                <article class="bg-white rounded-xl shadow-lg overflow-hidden flex flex-col">
+                    <img src="${post.image}" alt="${post.title}" class="w-full h-48 object-cover">
+                    <div class="p-6 flex flex-col flex-grow">
+                        <h3 class="text-xl font-bold font-heading text-brand-secondary mb-2">${post.title}</h3>
+                        <p class="text-xs text-brand-subtext mb-3">${post.date}</p>
+                        <p class="text-brand-subtext text-sm mb-4 flex-grow">${post.snippet}</p>
+                        <a href="#" data-page="blog" data-post-id="${post.id}" class="nav-trigger text-brand-primary hover:underline font-semibold mt-auto self-start">Read More &rarr;</a>
+                    </div>
+                </article>
+            `).join('');
+             // Add event listeners for 'Read More', could lead to a modal or full page view if implemented further.
+        }
+
+        // --- Featured Dogs on Homepage ---
+        function renderFeaturedDogs() {
+            const featured = dogsData.slice(0, 3); // Show first 3 dogs as featured
+            if (featuredDogsContainer) {
+                 featuredDogsContainer.innerHTML = featured.map(renderDogCard).join('');
+                 // Re-attach event listeners for newly created buttons
+                featuredDogsContainer.querySelectorAll('.nav-trigger').forEach(trigger => {
+                     trigger.addEventListener('click', (e) => {
+                        e.preventDefault();
+                        const pageId = trigger.dataset.page;
+                        const dogId = parseInt(trigger.dataset.dogId);
+                        showPage(pageId, dogId);
+                    });
+                });
+            }
+        }
+
+        // --- Back to Top Button ---
+        window.addEventListener('scroll', () => {
+            if (window.pageYOffset > 300) {
+                backToTopButton.classList.remove('hidden');
+            } else {
+                backToTopButton.classList.add('hidden');
+            }
+        });
+
+        backToTopButton.addEventListener('click', () => {
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        });
+
+        // --- Initial Setup ---
+        document.addEventListener('DOMContentLoaded', () => {
+            document.getElementById('current-year').textContent = new Date().getFullYear();
+            showPage('home'); // Show home page by default
+        });
+
+    </script>
+
+</body>
+</html>

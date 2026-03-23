@@ -1,0 +1,9 @@
+{
+  "web_id": "web_99",
+  "task_id": 1,
+  "task_type": "dynamic",
+  "instruction": "Task: Click a word tile to toggle its selection state.\nExpected Result: Tile selection toggles (e.g., visually highlighted with lift/brighten on select, normal state on deselect). A maximum of 4 words can be selected. The 'Submit Group' button is enabled only when exactly 4 words are selected, otherwise it is disabled.\n\nNote: The task is only considered successful if the expected result is achieved; otherwise, it is deemed infeasible.",
+  "max_steps": 15,
+  "expected": "Tile selection toggles (e.g., visually highlighted with lift/brighten on select, normal state on deselect). A maximum of 4 words can be selected. The 'Submit Group' button is enabled only when exactly 4 words are selected, otherwise it is disabled.",
+  "label": 1
+}

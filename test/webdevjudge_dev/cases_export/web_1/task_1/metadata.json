@@ -1,0 +1,9 @@
+{
+  "web_id": "web_1",
+  "task_id": 1,
+  "task_type": "dynamic",
+  "instruction": "Task: Navigate by clicking a main menu item (e.g., 'Store', 'Community', 'Library')\nExpected Result: The main content area of the page updates to display content relevant to the selected menu item (simulated page change).\n\nNote: The task is only considered successful if the expected result is achieved; otherwise, it is deemed infeasible.",
+  "max_steps": 15,
+  "expected": "The main content area of the page updates to display content relevant to the selected menu item (simulated page change).",
+  "label": 0
+}

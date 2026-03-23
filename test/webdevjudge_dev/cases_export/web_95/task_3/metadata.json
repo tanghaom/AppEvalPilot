@@ -1,0 +1,9 @@
+{
+  "web_id": "web_95",
+  "task_id": 3,
+  "task_type": "dynamic",
+  "instruction": "Task: Apply a filter (e.g., select 'Culture' category) in the 'Explore' section to refine a list of items\nExpected Result: The list of displayed items (e.g., destinations) dynamically updates to show only items matching the applied filter.\n\nNote: The task is only considered successful if the expected result is achieved; otherwise, it is deemed infeasible.",
+  "max_steps": 15,
+  "expected": "The list of displayed items (e.g., destinations) dynamically updates to show only items matching the applied filter.",
+  "label": 0
+}

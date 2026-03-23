@@ -1,0 +1,9 @@
+{
+  "web_id": "web_19",
+  "task_id": 2,
+  "task_type": "dynamic",
+  "instruction": "Task: Click a button in the toolbar to apply formatting (e.g., Bold).\nExpected Result: Selected text in the editor is formatted, or the editor mode changes for new text (e.g., text becomes bold).\n\nNote: The task is only considered successful if the expected result is achieved; otherwise, it is deemed infeasible.",
+  "max_steps": 15,
+  "expected": "Selected text in the editor is formatted, or the editor mode changes for new text (e.g., text becomes bold).",
+  "label": 1
+}

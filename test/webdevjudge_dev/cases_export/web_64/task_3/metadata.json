@@ -1,0 +1,9 @@
+{
+  "web_id": "web_64",
+  "task_id": 3,
+  "task_type": "dynamic",
+  "instruction": "Task: Click an 'Unlock Details' or 'Reveal' button/CTA associated with a product item in a list or grid.\nExpected Result: Previously hidden detailed information about the specific product (e.g., extended description, more images/videos) is revealed on the page.\n\nNote: The task is only considered successful if the expected result is achieved; otherwise, it is deemed infeasible.",
+  "max_steps": 15,
+  "expected": "Previously hidden detailed information about the specific product (e.g., extended description, more images/videos) is revealed on the page.",
+  "label": 0
+}

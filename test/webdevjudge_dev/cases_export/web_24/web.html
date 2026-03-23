@@ -1,0 +1,771 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Coinbase Clone</title>
+    <script src="https://cdn.tailwindcss.com?plugins=forms"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        /* Custom scrollbar for webkit browsers */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #f1f1f1;
+            border-radius: 10px;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #c4c4c4;
+            border-radius: 10px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #a1a1a1;
+        }
+        /* Basic styles for chart canvas responsiveness */
+        .chart-container {
+            position: relative;
+            height: 300px; /* Default height, can be adjusted */
+            width: 100%;
+        }
+        .sidebar-icon svg {
+            width: 1.25rem; /* 20px */
+            height: 1.25rem; /* 20px */
+        }
+        /* Active sidebar link style */
+        .sidebar-link.active {
+            background-color: #e0e7ff; /* Tailwind's indigo-100 or blue-100 */
+            color: #0052FF; /* Coinbase blue */
+            font-weight: 600;
+        }
+        .sidebar-link.active svg {
+            color: #0052FF; /* Coinbase blue */
+        }
+        .cb-primary-blue { color: #0052FF; }
+        .cb-bg-primary-blue { background-color: #0052FF; }
+        .cb-hover-bg-primary-blue-dark:hover { background-color: #0041CC; } /* Darker shade of primary blue */
+
+        /* Mobile sidebar transition */
+        #sidebar {
+            transition: transform 0.3s ease-in-out;
+        }
+        .mobile-sidebar-hidden {
+            transform: translateX(-100%);
+        }
+        @media (min-width: 1024px) { /* lg breakpoint */
+            .mobile-sidebar-hidden {
+                transform: translateX(0);
+            }
+        }
+    </style>
+</head>
+<body class="bg-slate-100 flex antialiased text-slate-800">
+
+    <!-- Sidebar -->
+    <nav id="sidebar" class="fixed lg:static inset-y-0 left-0 z-30 bg-white w-64 h-screen border-r border-slate-200 flex-shrink-0 p-4 space-y-4 mobile-sidebar-hidden lg:mobile-sidebar-hidden">
+        <!-- Logo -->
+        <div class="flex items-center space-x-2 px-2 mb-6">
+            <svg class="h-8 w-8 text-blue-600" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+                <path fill-rule="evenodd" clip-rule="evenodd" d="M12 2C17.5228 2 22 6.47715 22 12C22 17.5228 17.5228 22 12 22C6.47715 22 2 17.5228 2 12C2 6.47715 6.47715 2 12 2ZM12 4C7.58172 4 4 7.58172 4 12C4 16.4183 7.58172 20 12 20C16.4183 20 20 16.4183 20 12C20 7.58172 16.4183 4 12 4ZM12 6C10.3431 6 9 7.34315 9 9V15C9 16.6569 10.3431 18 12 18C13.6569 18 15 16.6569 15 15V9C15 7.34315 13.6569 6 12 6Z"/>
+            </svg>
+            <span class="text-2xl font-bold cb-primary-blue">coinbase</span>
+        </div>
+
+        <!-- Navigation Links -->
+        <div id="sidebarNavLinks" class="space-y-1">
+            <!-- Links will be injected by JS -->
+        </div>
+
+        <!-- Sidebar Footer (Optional) -->
+        <div class="absolute bottom-4 left-4 right-4 space-y-2">
+            <button class="w-full flex items-center space-x-2 p-2 rounded-md text-slate-600 hover:bg-slate-100">
+                <span class="sidebar-icon" id="settingsIcon"></span>
+                <span>Settings</span>
+            </button>
+        </div>
+    </nav>
+
+    <!-- Main content wrapper -->
+    <div class="flex-1 flex flex-col h-screen overflow-y-auto">
+        <!-- Topbar -->
+        <header id="topbar" class="sticky top-0 z-20 bg-white/80 backdrop-blur-md border-b border-slate-200 p-4">
+            <div class="flex items-center justify-between">
+                <!-- Mobile Menu Toggle -->
+                <button id="mobileMenuButton" class="lg:hidden p-2 text-slate-600 hover:text-blue-600">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path></svg>
+                </button>
+                
+                <!-- Search (simplified) -->
+                <div class="relative hidden sm:block">
+                    <span class="absolute inset-y-0 left-0 pl-3 flex items-center">
+                        <svg class="h-5 w-5 text-slate-400" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z" clip-rule="evenodd"></path>
+                        </svg>
+                    </span>
+                    <input type="text" placeholder="Search" class="pl-10 pr-4 py-2 w-64 rounded-md border border-slate-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition">
+                </div>
+
+                <!-- Actions -->
+                <div class="flex items-center space-x-4">
+                    <button id="buySellButtonHeader" class="px-4 py-2 text-sm font-semibold text-white cb-bg-primary-blue rounded-md cb-hover-bg-primary-blue-dark transition">
+                        Buy / Sell
+                    </button>
+                    <button class="p-2 text-slate-500 hover:text-blue-600 relative">
+                        <span id="notificationIcon"></span>
+                        <span id="notificationBadge" class="absolute top-0 right-0 w-2 h-2 bg-red-500 rounded-full"></span>
+                    </button>
+                    <div class="relative">
+                        <button id="userMenuButton" class="flex items-center space-x-2 p-1 rounded-full hover:bg-slate-200">
+                            <div class="w-8 h-8 rounded-full bg-slate-300 flex items-center justify-center text-slate-600 font-semibold" id="userAvatar">SN</div>
+                            <svg class="w-4 h-4 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+                        </button>
+                        <!-- User dropdown menu (mock) -->
+                        <div id="userDropdown" class="hidden absolute right-0 mt-2 w-48 bg-white rounded-md shadow-xl py-1 z-50">
+                            <a href="#" class="block px-4 py-2 text-sm text-slate-700 hover:bg-slate-100">Profile</a>
+                            <a href="#" class="block px-4 py-2 text-sm text-slate-700 hover:bg-slate-100">Settings</a>
+                            <a href="#" class="block px-4 py-2 text-sm text-slate-700 hover:bg-slate-100">Sign Out</a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <!-- Page Content -->
+        <main id="pageContent" class="flex-1 p-4 sm:p-6 lg:p-8 space-y-6">
+            <!-- Content will be injected by JS -->
+        </main>
+    </div>
+
+    <!-- Modal container -->
+    <div id="modalBackdrop" class="fixed inset-0 bg-black bg-opacity-60 hidden items-center justify-center p-4 z-50">
+        <div id="modalContainer" class="bg-white p-6 rounded-lg shadow-xl w-full max-w-md transform transition-all">
+            <div class="flex justify-between items-center mb-4">
+                <h3 id="modalTitle" class="text-xl font-semibold text-slate-800">Modal Title</h3>
+                <button id="closeModalButton" class="text-slate-500 hover:text-slate-700">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                </button>
+            </div>
+            <div id="modalBody">
+                <!-- Modal content goes here -->
+            </div>
+            <div id="modalActions" class="mt-6 flex justify-end space-x-3">
+                <!-- Modal actions go here -->
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const ICONS = {
+            home: `<svg fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"></path></svg>`,
+            assets: `<svg fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"></path></svg>`,
+            trade: `<svg fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"></path></svg>`,
+            notifications: `<svg fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"></path></svg>`,
+            explore: `<svg fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v11.494m0 0A8.001 8.001 0 0020.75 12H3.25a8.001 8.001 0 009.75 5.747z"></path></svg>`,
+            learn: `<svg fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M12 14l9-5-9-5-9 5 9 5z"></path><path d="M12 14l6.16-3.422a12.083 12.083 0 01.665 6.479A11.952 11.952 0 0012 20.055a11.952 11.952 0 00-6.824-2.998 12.078 12.078 0 01.665-6.479L12 14z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 14l9-5-9-5-9 5 9 5zm0 0l6.16-3.422a12.083 12.083 0 01.665 6.479A11.952 11.952 0 0012 20.055a11.952 11.952 0 00-6.824-2.998 12.078 12.078 0 01.665-6.479L12 14zm-4 6v-7.5l4-2.222"></path></svg>`,
+            settings: `<svg fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>`,
+        };
+
+        let state = {
+            currentView: 'home',
+            user: {
+                name: "Satoshi N.",
+                initials: "SN",
+                balance: 52300.75,
+                balanceChange: 125.30,
+                balanceChangePercent: 0.24,
+                notificationsCount: 3,
+            },
+            assets: [
+                { id: 'btc', name: 'Bitcoin', symbol: 'BTC', balance: 1.5, price: 29850.75, value: 44776.12, change24h: 2.1, color: 'bg-orange-500', chartData: [30,32,31,33,35,34,36] },
+                { id: 'eth', name: 'Ethereum', symbol: 'ETH', balance: 10, price: 1850.25, value: 18502.50, change24h: -1.5, color: 'bg-slate-500', chartData: [22,21,23,22,21,20,19] },
+                { id: 'usdc', name: 'USD Coin', symbol: 'USDC', balance: 5000, price: 1.00, value: 5000.00, change24h: 0.01, color: 'bg-blue-500', chartData: [1,1,1,1,1,1,1] },
+            ],
+            watchlist: [
+                { id: 'sol', name: 'Solana', symbol: 'SOL', price: 42.50, change24h: 5.8, color: 'bg-purple-500', chartData: [38,39,40,42,43,42,42.5] },
+                { id: 'ada', name: 'Cardano', symbol: 'ADA', price: 0.38, change24h: -0.9, color: 'bg-sky-500', chartData: [0.4,0.39,0.39,0.38,0.385,0.38,0.38] },
+                { id: 'doge', name: 'Dogecoin', symbol: 'DOGE', price: 0.075, change24h: 1.2, color: 'bg-yellow-400', chartData: [0.07,0.072,0.071,0.073,0.075,0.074,0.075] },
+            ],
+            trade: {
+                selectedAsset: 'btc',
+                assetsForTrade: [
+                    { id: 'btc', name: 'Bitcoin', symbol: 'BTC', price: 29850.75, color: 'bg-orange-500' },
+                    { id: 'eth', name: 'Ethereum', symbol: 'ETH', price: 1850.25, color: 'bg-slate-500' },
+                    { id: 'sol', name: 'Solana', symbol: 'SOL', price: 42.50, color: 'bg-purple-500' },
+                    { id: 'usdc', name: 'USD Coin', symbol: 'USDC', price: 1.00, color: 'bg-blue-500' },
+                ],
+                tradeMode: 'buy', // 'buy' or 'sell'
+                mainChartInstance: null,
+            }
+        };
+
+        const sidebarNavLinks = [
+            { id: 'home', text: 'Home', icon: ICONS.home },
+            { id: 'assets', text: 'Assets', icon: ICONS.assets },
+            { id: 'trade', text: 'Trade', icon: ICONS.trade },
+            { id: 'explore', text: 'Explore', icon: ICONS.explore, disabled: true },
+            { id: 'learn', text: 'Learn & Earn', icon: ICONS.learn, disabled: true },
+            { id: 'notifications_nav', text: 'Notifications', icon: ICONS.notifications, disabled: true },
+        ];
+
+        // Utility Functions
+        const formatCurrency = (amount, RSupto = 2) => amount.toLocaleString('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: RSupto, maximumFractionDigits:RSupto });
+        const formatPercent = (percent) => `${percent >= 0 ? '+' : ''}${percent.toFixed(2)}%`;
+        
+        function createSparkline(canvasId, data, color) {
+            const ctx = document.getElementById(canvasId).getContext('2d');
+            new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: data.map((_, i) => i),
+                    datasets: [{
+                        data: data,
+                        borderColor: color,
+                        borderWidth: 2,
+                        tension: 0.4,
+                        pointRadius: 0,
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: { x: { display: false }, y: { display: false } },
+                    plugins: { legend: { display: false }, tooltip: { enabled: false } },
+                }
+            });
+        }
+
+        // Render Functions
+        function renderSidebar() {
+            const navLinksContainer = document.getElementById('sidebarNavLinks');
+            navLinksContainer.innerHTML = sidebarNavLinks.map(link => `
+                <a href="#" id="nav-${link.id}" class="sidebar-link flex items-center space-x-3 p-2 rounded-md text-slate-600 hover:bg-slate-100 ${link.id === state.currentView ? 'active' : ''} ${link.disabled ? 'opacity-50 cursor-not-allowed' : ''}" data-view="${link.id}">
+                    <span class="sidebar-icon">${link.icon}</span>
+                    <span>${link.text}</span>
+                </a>
+            `).join('');
+
+            document.getElementById('settingsIcon').innerHTML = ICONS.settings;
+
+            // Add event listeners
+            sidebarNavLinks.forEach(link => {
+                if (!link.disabled) {
+                    document.getElementById(`nav-${link.id}`).addEventListener('click', (e) => {
+                        e.preventDefault();
+                        navigateTo(link.id);
+                    });
+                }
+            });
+        }
+        
+        function renderTopbar() {
+            document.getElementById('userAvatar').textContent = state.user.initials;
+            document.getElementById('notificationIcon').innerHTML = ICONS.notifications;
+            if (state.user.notificationsCount === 0) {
+                document.getElementById('notificationBadge').classList.add('hidden');
+            } else {
+                document.getElementById('notificationBadge').classList.remove('hidden');
+            }
+        }
+
+        function navigateTo(viewId) {
+            state.currentView = viewId;
+            renderPageContent();
+            updateActiveNavLink();
+            
+            // Close mobile sidebar if open
+            const sidebar = document.getElementById('sidebar');
+            if (!sidebar.classList.contains('lg:mobile-sidebar-hidden')) { // Check if it's in mobile overlay mode
+                 sidebar.classList.add('mobile-sidebar-hidden');
+            }
+        }
+
+        function updateActiveNavLink() {
+            document.querySelectorAll('.sidebar-link').forEach(link => {
+                link.classList.remove('active');
+                if (link.dataset.view === state.currentView) {
+                    link.classList.add('active');
+                }
+            });
+        }
+
+        function renderPageContent() {
+            const pageContent = document.getElementById('pageContent');
+            switch (state.currentView) {
+                case 'home':
+                    pageContent.innerHTML = renderHome();
+                    initHomeCharts();
+                    break;
+                case 'assets':
+                    pageContent.innerHTML = renderAssets();
+                    initAssetSparklines();
+                    break;
+                case 'trade':
+                    pageContent.innerHTML = renderTrade();
+                    initTradePage();
+                    break;
+                default:
+                    pageContent.innerHTML = `<h1 class="text-2xl font-semibold">Page not found</h1><p>This page (${state.currentView}) is under construction.</p>`;
+            }
+        }
+
+        function renderHome() {
+            return `
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    <!-- Portfolio Balance -->
+                    <div class="lg:col-span-2 bg-white p-6 rounded-xl shadow-sm">
+                        <h2 class="text-sm text-slate-500 mb-1">Your balance</h2>
+                        <p class="text-3xl font-bold mb-1">${formatCurrency(state.user.balance)}</p>
+                        <div class="flex items-center text-sm ${state.user.balanceChange >= 0 ? 'text-green-500' : 'text-red-500'}">
+                            <span>${state.user.balanceChange >= 0 ? '▲' : '▼'} ${formatCurrency(Math.abs(state.user.balanceChange))} (${formatPercent(state.user.balanceChangePercent)})</span>
+                            <span class="text-slate-400 ml-1">in last 24h</span>
+                        </div>
+                        <div class="mt-6 flex space-x-3">
+                            <button class="px-4 py-2 text-sm font-semibold text-white cb-bg-primary-blue rounded-md cb-hover-bg-primary-blue-dark">Add cash</button>
+                            <button class="px-4 py-2 text-sm font-semibold text-blue-600 border border-blue-600 rounded-md hover:bg-blue-50">Cash out</button>
+                        </div>
+                    </div>
+
+                    <!-- Quick Actions -->
+                    <div class="bg-white p-6 rounded-xl shadow-sm space-y-3">
+                         <h2 class="text-lg font-semibold mb-2">Quick Actions</h2>
+                         <button class="w-full text-left p-3 rounded-md hover:bg-slate-50 flex items-center space-x-3">
+                            <span class="p-2 bg-blue-100 rounded-full text-blue-600">${ICONS.trade}</span>
+                            <span>Buy / Sell Crypto</span>
+                         </button>
+                         <button class="w-full text-left p-3 rounded-md hover:bg-slate-50 flex items-center space-x-3">
+                            <span class="p-2 bg-green-100 rounded-full text-green-600">${ICONS.learn}</span>
+                            <span>Earn Rewards</span>
+                         </button>
+                    </div>
+                </div>
+
+                <!-- Your Assets -->
+                <div class="bg-white p-6 rounded-xl shadow-sm">
+                    <h2 class="text-xl font-semibold mb-4">Your Assets</h2>
+                    <div class="space-y-4">
+                        ${state.assets.slice(0, 3).map(asset => `
+                            <div class="flex items-center justify-between p-3 rounded-lg hover:bg-slate-50 transition-colors">
+                                <div class="flex items-center space-x-3">
+                                    <div class="w-10 h-10 rounded-full ${asset.color} flex items-center justify-center text-white font-bold text-lg">${asset.symbol.charAt(0)}</div>
+                                    <div>
+                                        <p class="font-semibold">${asset.name}</p>
+                                        <p class="text-sm text-slate-500">${asset.symbol}</p>
+                                    </div>
+                                </div>
+                                <div class="w-20 h-10 hidden sm:block">
+                                    <canvas id="sparkline-home-${asset.id}"></canvas>
+                                </div>
+                                <div class="text-right">
+                                    <p class="font-semibold">${formatCurrency(asset.value)}</p>
+                                    <p class="text-sm ${asset.change24h >= 0 ? 'text-green-500' : 'text-red-500'}">${formatPercent(asset.change24h)}</p>
+                                </div>
+                            </div>
+                        `).join('')}
+                    </div>
+                    <button onclick="navigateTo('assets')" class="mt-4 text-sm text-blue-600 font-semibold hover:underline">View all assets</button>
+                </div>
+
+                <!-- Watchlist -->
+                <div class="bg-white p-6 rounded-xl shadow-sm">
+                    <h2 class="text-xl font-semibold mb-4">Watchlist</h2>
+                    <div class="space-y-2">
+                        ${state.watchlist.map(item => `
+                            <div class="flex items-center justify-between p-3 rounded-lg hover:bg-slate-50 transition-colors">
+                                <div class="flex items-center space-x-3">
+                                    <div class="w-10 h-10 rounded-full ${item.color} flex items-center justify-center text-white font-bold text-lg">${item.symbol.charAt(0)}</div>
+                                    <div>
+                                        <p class="font-semibold">${item.name}</p>
+                                        <p class="text-sm text-slate-500">${item.symbol}</p>
+                                    </div>
+                                </div>
+                                <div class="w-20 h-10 hidden sm:block">
+                                    <canvas id="sparkline-watchlist-${item.id}"></canvas>
+                                </div>
+                                <div class="text-right">
+                                    <p class="font-semibold">${formatCurrency(item.price, item.price < 1 ? 4 : 2)}</p>
+                                    <p class="text-sm ${item.change24h >= 0 ? 'text-green-500' : 'text-red-500'}">${formatPercent(item.change24h)}</p>
+                                </div>
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+            `;
+        }
+        
+        function initHomeCharts() {
+            state.assets.slice(0, 3).forEach(asset => {
+                if (document.getElementById(`sparkline-home-${asset.id}`)) {
+                    createSparkline(`sparkline-home-${asset.id}`, asset.chartData, asset.change24h >= 0 ? '#22C55E' : '#EF4444');
+                }
+            });
+            state.watchlist.forEach(item => {
+                 if (document.getElementById(`sparkline-watchlist-${item.id}`)) {
+                    createSparkline(`sparkline-watchlist-${item.id}`, item.chartData, item.change24h >= 0 ? '#22C55E' : '#EF4444');
+                 }
+            });
+        }
+
+        function renderAssets() {
+            return `
+                <div class="bg-white p-6 rounded-xl shadow-sm">
+                    <div class="flex justify-between items-center mb-6">
+                        <h1 class="text-2xl font-semibold">Your Assets</h1>
+                        <button class="px-4 py-2 text-sm font-semibold text-white cb-bg-primary-blue rounded-md cb-hover-bg-primary-blue-dark">Add Asset</button>
+                    </div>
+                    <div class="overflow-x-auto">
+                        <table class="w-full">
+                            <thead>
+                                <tr class="text-left text-xs text-slate-500 uppercase border-b">
+                                    <th class="py-3 px-2">Asset</th>
+                                    <th class="py-3 px-2 hidden sm:table-cell">Balance</th>
+                                    <th class="py-3 px-2">Price</th>
+                                    <th class="py-3 px-2 hidden md:table-cell">24h Change</th>
+                                    <th class="py-3 px-2 hidden lg:table-cell">Allocation</th>
+                                    <th class="py-3 px-2 text-right">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${state.assets.map(asset => `
+                                    <tr class="border-b border-slate-100 hover:bg-slate-50">
+                                        <td class="py-4 px-2">
+                                            <div class="flex items-center space-x-3">
+                                                <div class="w-8 h-8 rounded-full ${asset.color} flex items-center justify-center text-white font-bold text-sm">${asset.symbol.charAt(0)}</div>
+                                                <div>
+                                                    <p class="font-semibold">${asset.name}</p>
+                                                    <p class="text-sm text-slate-500">${asset.symbol}</p>
+                                                </div>
+                                            </div>
+                                        </td>
+                                        <td class="py-4 px-2 hidden sm:table-cell">
+                                            <p class="font-medium">${asset.balance.toFixed(asset.symbol === 'USDC' ? 2 : 6)} ${asset.symbol}</p>
+                                            <p class="text-sm text-slate-500">${formatCurrency(asset.value)}</p>
+                                        </td>
+                                        <td class="py-4 px-2">${formatCurrency(asset.price, asset.price < 1 ? 4: 2)}</td>
+                                        <td class="py-4 px-2 hidden md:table-cell ${asset.change24h >= 0 ? 'text-green-500' : 'text-red-500'}">${formatPercent(asset.change24h)}</td>
+                                        <td class="py-4 px-2 hidden lg:table-cell">
+                                            <div class="w-20 h-8">
+                                                 <canvas id="sparkline-asset-${asset.id}"></canvas>
+                                            </div>
+                                        </td>
+                                        <td class="py-4 px-2 text-right">
+                                            <button class="text-blue-600 hover:text-blue-800 text-sm font-medium mr-2">Buy</button>
+                                            <button class="text-blue-600 hover:text-blue-800 text-sm font-medium">Sell</button>
+                                        </td>
+                                    </tr>
+                                `).join('')}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            `;
+        }
+
+        function initAssetSparklines() {
+            state.assets.forEach(asset => {
+                const canvasId = `sparkline-asset-${asset.id}`;
+                if (document.getElementById(canvasId)) {
+                    createSparkline(canvasId, asset.chartData, asset.change24h >= 0 ? '#22C55E' : '#EF4444');
+                }
+            });
+        }
+        
+        function renderTrade() {
+            const selectedAsset = state.trade.assetsForTrade.find(a => a.id === state.trade.selectedAsset);
+            return `
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    <!-- Main Chart and Asset Info -->
+                    <div class="lg:col-span-2 bg-white p-6 rounded-xl shadow-sm">
+                        <div class="flex items-center justify-between mb-4">
+                            <div class="flex items-center space-x-3">
+                                <div class="w-10 h-10 rounded-full ${selectedAsset.color} flex items-center justify-center text-white font-bold text-lg">${selectedAsset.symbol.charAt(0)}</div>
+                                <div>
+                                    <h1 class="text-2xl font-semibold">${selectedAsset.name} (${selectedAsset.symbol})</h1>
+                                    <p class="text-slate-500">${formatCurrency(selectedAsset.price)} <span class="${state.assets.find(a=>a.id === selectedAsset.id)?.change24h >= 0 ? 'text-green-500' : 'text-red-500'} text-sm">${formatPercent(state.assets.find(a=>a.id === selectedAsset.id)?.change24h || 0)}</span></p>
+                                </div>
+                            </div>
+                            <select id="tradeAssetSelect" class="p-2 border border-slate-300 rounded-md focus:ring-blue-500 focus:border-blue-500">
+                                ${state.trade.assetsForTrade.map(asset => `
+                                    <option value="${asset.id}" ${asset.id === state.trade.selectedAsset ? 'selected' : ''}>${asset.symbol}/USD</option>
+                                `).join('')}
+                            </select>
+                        </div>
+                        <div class="chart-container mb-6">
+                            <canvas id="mainTradeChart"></canvas>
+                        </div>
+                        <div class="text-xs text-slate-500">Note: Chart data is illustrative.</div>
+                    </div>
+
+                    <!-- Trade Panel -->
+                    <div class="bg-white p-6 rounded-xl shadow-sm">
+                        <div class="flex border-b border-slate-200 mb-4">
+                            <button id="tradeModeBuy" class="flex-1 py-3 text-center font-semibold ${state.trade.tradeMode === 'buy' ? 'text-blue-600 border-b-2 border-blue-600' : 'text-slate-500 hover:text-slate-700'}">Buy</button>
+                            <button id="tradeModeSell" class="flex-1 py-3 text-center font-semibold ${state.trade.tradeMode === 'sell' ? 'text-blue-600 border-b-2 border-blue-600' : 'text-slate-500 hover:text-slate-700'}">Sell</button>
+                        </div>
+                        
+                        <div class="space-y-4">
+                            <div>
+                                <label for="tradeAmountCrypto" class="block text-sm font-medium text-slate-700">Amount (${selectedAsset.symbol})</label>
+                                <input type="number" id="tradeAmountCrypto" name="tradeAmountCrypto" placeholder="0.00" class="mt-1 block w-full p-2 border border-slate-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500">
+                            </div>
+                            <div>
+                                <label for="tradeAmountFiat" class="block text-sm font-medium text-slate-700">Total (USD)</label>
+                                <input type="number" id="tradeAmountFiat" name="tradeAmountFiat" placeholder="0.00" class="mt-1 block w-full p-2 border border-slate-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500">
+                            </div>
+                            <div class="text-sm text-slate-500">Available: ${formatCurrency(state.user.balance)} USD</div>
+                            <button id="executeTradeBtn" class="w-full py-3 px-4 font-semibold text-white rounded-md transition ${state.trade.tradeMode === 'buy' ? 'bg-green-500 hover:bg-green-600' : 'bg-red-500 hover:bg-red-600'}">
+                                ${state.trade.tradeMode === 'buy' ? 'Buy' : 'Sell'} ${selectedAsset.symbol}
+                            </button>
+                        </div>
+                         <div id="tradeSummary" class="mt-4 text-sm text-slate-600"></div>
+                    </div>
+                </div>
+
+                <!-- Simplified Trade History (Placeholder) -->
+                <div class="mt-6 bg-white p-6 rounded-xl shadow-sm">
+                    <h2 class="text-xl font-semibold mb-4">Recent Trades</h2>
+                    <p class="text-slate-500">No recent trades for ${selectedAsset.symbol}. This is a placeholder.</p>
+                </div>
+            `;
+        }
+        
+        function initTradePage() {
+            const selectedAsset = state.trade.assetsForTrade.find(a => a.id === state.trade.selectedAsset);
+            const assetData = state.assets.find(a => a.id === selectedAsset.id) || state.watchlist.find(a => a.id === selectedAsset.id);
+
+            // Main chart
+            const ctx = document.getElementById('mainTradeChart').getContext('2d');
+            if (state.trade.mainChartInstance) {
+                state.trade.mainChartInstance.destroy();
+            }
+            // Dummy historical data for chart
+            let basePrice = selectedAsset.price;
+            const historicalData = Array.from({length: 30}, (_, i) => basePrice * (1 + (Math.random() - 0.5) * 0.1) * (1 + i*0.005) );
+            
+            state.trade.mainChartInstance = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: Array.from({length: 30}, (_, i) => `T-${29-i}`), // Mock labels
+                    datasets: [{
+                        label: `${selectedAsset.symbol} Price (USD)`,
+                        data: historicalData,
+                        borderColor: '#0052FF', // Coinbase blue
+                        backgroundColor: 'rgba(0, 82, 255, 0.1)',
+                        fill: true,
+                        tension: 0.1,
+                        pointRadius: 2,
+                        pointBackgroundColor: '#0052FF'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: false,
+                            ticks: { callback: value => formatCurrency(value, 2) }
+                        }
+                    },
+                    plugins: { legend: { display: false } }
+                }
+            });
+
+            // Event Listeners for trade page
+            document.getElementById('tradeAssetSelect').addEventListener('change', (e) => {
+                state.trade.selectedAsset = e.target.value;
+                renderPageContent(); // Re-render to update selected asset info and chart
+            });
+
+            document.getElementById('tradeModeBuy').addEventListener('click', () => {
+                state.trade.tradeMode = 'buy';
+                renderPageContent();
+            });
+            document.getElementById('tradeModeSell').addEventListener('click', () => {
+                state.trade.tradeMode = 'sell';
+                renderPageContent();
+            });
+
+            const cryptoAmountInput = document.getElementById('tradeAmountCrypto');
+            const fiatAmountInput = document.getElementById('tradeAmountFiat');
+            
+            cryptoAmountInput.addEventListener('input', (e) => {
+                const cryptoAmount = parseFloat(e.target.value);
+                if (!isNaN(cryptoAmount) && cryptoAmount > 0) {
+                    fiatAmountInput.value = (cryptoAmount * selectedAsset.price).toFixed(2);
+                } else {
+                    fiatAmountInput.value = '';
+                }
+                updateTradeSummary();
+            });
+
+            fiatAmountInput.addEventListener('input', (e) => {
+                const fiatAmount = parseFloat(e.target.value);
+                if (!isNaN(fiatAmount) && fiatAmount > 0) {
+                    cryptoAmountInput.value = (fiatAmount / selectedAsset.price).toFixed(8);
+                } else {
+                    cryptoAmountInput.value = '';
+                }
+                updateTradeSummary();
+            });
+            
+            document.getElementById('executeTradeBtn').addEventListener('click', handleExecuteTrade);
+        }
+
+        function updateTradeSummary() {
+            const cryptoAmount = parseFloat(document.getElementById('tradeAmountCrypto').value);
+            const fiatAmount = parseFloat(document.getElementById('tradeAmountFiat').value);
+            const selectedAsset = state.trade.assetsForTrade.find(a => a.id === state.trade.selectedAsset);
+            const summaryDiv = document.getElementById('tradeSummary');
+
+            if (!isNaN(cryptoAmount) && cryptoAmount > 0 && !isNaN(fiatAmount) && fiatAmount > 0) {
+                const action = state.trade.tradeMode === 'buy' ? 'Buying' : 'Selling';
+                summaryDiv.textContent = `${action} ${cryptoAmount.toFixed(8)} ${selectedAsset.symbol} for approximately ${formatCurrency(fiatAmount)}.`;
+            } else {
+                summaryDiv.textContent = '';
+            }
+        }
+        
+        function handleExecuteTrade() {
+            const cryptoAmount = parseFloat(document.getElementById('tradeAmountCrypto').value);
+            const fiatAmount = parseFloat(document.getElementById('tradeAmountFiat').value);
+            const selectedAsset = state.trade.assetsForTrade.find(a => a.id === state.trade.selectedAsset);
+
+            if (isNaN(cryptoAmount) || cryptoAmount <= 0 || isNaN(fiatAmount) || fiatAmount <= 0) {
+                openModal("Error", "<p>Please enter a valid amount.</p>", `<button id="confirmError" class="px-4 py-2 text-sm font-semibold text-white cb-bg-primary-blue rounded-md cb-hover-bg-primary-blue-dark">OK</button>`);
+                document.getElementById('confirmError').onclick = closeModal;
+                return;
+            }
+
+            const action = state.trade.tradeMode === 'buy' ? 'Buy' : 'Sell';
+            const title = `${action} ${selectedAsset.symbol}`;
+            const body = `
+                <p>You are about to ${state.trade.tradeMode} approximately <strong>${cryptoAmount.toFixed(8)} ${selectedAsset.symbol}</strong> for <strong>${formatCurrency(fiatAmount)}</strong>.</p>
+                <p class="mt-2 text-sm text-slate-500">This is a mock transaction. No real ${state.trade.tradeMode} will occur.</p>
+            `;
+            const actions = `
+                <button id="cancelTrade" class="px-4 py-2 text-sm font-semibold text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-md">Cancel</button>
+                <button id="confirmTrade" class="px-4 py-2 text-sm font-semibold text-white ${state.trade.tradeMode === 'buy' ? 'bg-green-500 hover:bg-green-600' : 'bg-red-500 hover:bg-red-600'} rounded-md">Confirm ${action}</button>
+            `;
+            openModal(title, body, actions);
+
+            document.getElementById('cancelTrade').onclick = closeModal;
+            document.getElementById('confirmTrade').onclick = () => {
+                // Mock transaction processing
+                alert(`${action} order for ${cryptoAmount.toFixed(8)} ${selectedAsset.symbol} submitted (mock).`);
+                // Potentially update balance or asset list here in a real app
+                closeModal();
+                document.getElementById('tradeAmountCrypto').value = '';
+                document.getElementById('tradeAmountFiat').value = '';
+                document.getElementById('tradeSummary').textContent = '';
+            };
+        }
+
+        // Modal Functions
+        const modalBackdrop = document.getElementById('modalBackdrop');
+        const modalContainer = document.getElementById('modalContainer');
+        const modalTitle = document.getElementById('modalTitle');
+        const modalBody = document.getElementById('modalBody');
+        const modalActions = document.getElementById('modalActions');
+        const closeModalButton = document.getElementById('closeModalButton');
+
+        function openModal(title, bodyHtml, actionsHtml = '') {
+            modalTitle.textContent = title;
+            modalBody.innerHTML = bodyHtml;
+            modalActions.innerHTML = actionsHtml;
+            modalBackdrop.classList.remove('hidden');
+            modalBackdrop.classList.add('flex');
+            // Animate modal appearance
+            modalContainer.classList.remove('opacity-0', 'scale-95');
+            modalContainer.classList.add('opacity-100', 'scale-100');
+        }
+
+        function closeModal() {
+            modalContainer.classList.add('opacity-0', 'scale-95'); // Start fade out animation
+            setTimeout(() => {
+                 modalBackdrop.classList.add('hidden');
+                 modalBackdrop.classList.remove('flex');
+            }, 200); // Match transition duration
+        }
+        closeModalButton.addEventListener('click', closeModal);
+        modalBackdrop.addEventListener('click', (event) => {
+            if (event.target === modalBackdrop) {
+                closeModal();
+            }
+        });
+        
+        // Event Listeners
+        document.addEventListener('DOMContentLoaded', () => {
+            renderSidebar();
+            renderTopbar();
+            renderPageContent(); // Initial page render
+            updateActiveNavLink();
+
+            // User menu dropdown toggle
+            const userMenuButton = document.getElementById('userMenuButton');
+            const userDropdown = document.getElementById('userDropdown');
+            userMenuButton.addEventListener('click', () => {
+                userDropdown.classList.toggle('hidden');
+            });
+            // Hide dropdown if clicked outside
+            document.addEventListener('click', (event) => {
+                if (!userMenuButton.contains(event.target) && !userDropdown.contains(event.target)) {
+                    userDropdown.classList.add('hidden');
+                }
+            });
+
+            // Mobile sidebar toggle
+            const mobileMenuButton = document.getElementById('mobileMenuButton');
+            const sidebar = document.getElementById('sidebar');
+            mobileMenuButton.addEventListener('click', () => {
+                sidebar.classList.toggle('mobile-sidebar-hidden');
+            });
+            // Close sidebar if clicked outside on mobile
+             document.addEventListener('click', (event) => {
+                if (!sidebar.contains(event.target) && !mobileMenuButton.contains(event.target) && window.innerWidth < 1024) {
+                   if(!sidebar.classList.contains('mobile-sidebar-hidden')) {
+                       sidebar.classList.add('mobile-sidebar-hidden');
+                   }
+                }
+            });
+
+
+            // Buy/Sell button in header
+            document.getElementById('buySellButtonHeader').addEventListener('click', () => {
+                // For simplicity, this button can navigate to trade page or open a simplified modal
+                // Here, let's open a simplified Buy modal
+                const selectedAsset = state.trade.assetsForTrade[0]; // Default to BTC
+                const title = `Buy ${selectedAsset.symbol}`;
+                const body = `
+                    <div class="space-y-3">
+                        <div>
+                            <label class="text-sm font-medium text-slate-600">Asset</label>
+                            <p class="font-semibold text-lg">${selectedAsset.name} (${selectedAsset.symbol})</p>
+                        </div>
+                        <div>
+                            <label for="modalBuyAmount" class="block text-sm font-medium text-slate-700">Amount (USD)</label>
+                            <input type="number" id="modalBuyAmount" placeholder="100.00" class="mt-1 block w-full p-2 border border-slate-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500">
+                        </div>
+                         <p class="text-xs text-slate-500">Current price: ${formatCurrency(selectedAsset.price)} per ${selectedAsset.symbol}</p>
+                    </div>`;
+                const actions = `
+                    <button id="cancelSimpleBuy" class="px-4 py-2 text-sm font-semibold text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-md">Cancel</button>
+                    <button id="confirmSimpleBuy" class="px-4 py-2 text-sm font-semibold text-white bg-green-500 hover:bg-green-600 rounded-md">Buy ${selectedAsset.symbol}</button>
+                `;
+                openModal(title, body, actions);
+
+                document.getElementById('cancelSimpleBuy').onclick = closeModal;
+                document.getElementById('confirmSimpleBuy').onclick = () => {
+                    const amount = document.getElementById('modalBuyAmount').value;
+                    if (amount && parseFloat(amount) > 0) {
+                        alert(`Mock Buy: ${parseFloat(amount) / selectedAsset.price} ${selectedAsset.symbol} for ${formatCurrency(parseFloat(amount))}`);
+                        closeModal();
+                    } else {
+                        alert("Please enter a valid amount.");
+                    }
+                };
+            });
+        });
+
+    </script>
+</body>
+</html>

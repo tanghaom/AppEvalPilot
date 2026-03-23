@@ -1,0 +1,9 @@
+{
+  "web_id": "web_72",
+  "task_id": 5,
+  "task_type": "dynamic",
+  "instruction": "Task: Click a button or switch to toggle the application's theme between dark and light modes.\nExpected Result: The overall color scheme of the page (backgrounds, text colors, component styles) instantly changes to reflect the selected theme.\n\nNote: The task is only considered successful if the expected result is achieved; otherwise, it is deemed infeasible.",
+  "max_steps": 15,
+  "expected": "The overall color scheme of the page (backgrounds, text colors, component styles) instantly changes to reflect the selected theme.",
+  "label": 1
+}

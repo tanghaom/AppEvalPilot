@@ -1,0 +1,9 @@
+{
+  "web_id": "web_29",
+  "task_id": 3,
+  "task_type": "dynamic",
+  "instruction": "Task: Click on a specific property listing from a search results page.\nExpected Result: The content area updates to display the detailed information page for the clicked property.\n\nNote: The task is only considered successful if the expected result is achieved; otherwise, it is deemed infeasible.",
+  "max_steps": 15,
+  "expected": "The content area updates to display the detailed information page for the clicked property.",
+  "label": 0
+}

@@ -1,0 +1,9 @@
+{
+  "web_id": "web_100",
+  "task_id": 5,
+  "task_type": "dynamic",
+  "instruction": "Task: Click the label for a switch element (e.g., the one associated with `switch-1`) to toggle its state.\nExpected Result: The switch's visual appearance changes: its background (controlled by `label::before`) activates/deactivates, its knob (controlled by `label::after`) moves to the opposite side, and the associated hidden checkbox input's `checked` property is updated.\n\nNote: The task is only considered successful if the expected result is achieved; otherwise, it is deemed infeasible.",
+  "max_steps": 15,
+  "expected": "The switch's visual appearance changes: its background (controlled by `label::before`) activates/deactivates, its knob (controlled by `label::after`) moves to the opposite side, and the associated hidden checkbox input's `checked` property is updated.",
+  "label": 1
+}

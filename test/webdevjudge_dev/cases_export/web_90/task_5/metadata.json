@@ -1,0 +1,9 @@
+{
+  "web_id": "web_90",
+  "task_id": 5,
+  "task_type": "dynamic",
+  "instruction": "Task: Click a 'Load More' button at the end of the news feed (if not all articles/dates are initially displayed).\nExpected Result: Additional older news items (or news items for subsequent dates) are appended to the visible list on the page. The button might be hidden if no more items can be loaded.\n\nNote: The task is only considered successful if the expected result is achieved; otherwise, it is deemed infeasible.",
+  "max_steps": 15,
+  "expected": "Additional older news items (or news items for subsequent dates) are appended to the visible list on the page. The button might be hidden if no more items can be loaded.",
+  "label": 0
+}

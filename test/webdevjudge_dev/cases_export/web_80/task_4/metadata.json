@@ -1,0 +1,9 @@
+{
+  "web_id": "web_80",
+  "task_id": 4,
+  "task_type": "dynamic",
+  "instruction": "Task: User clicks a 'Generate' or 'Run Model' button.\nExpected Result: The application processes the input text using the selected model and current parameters (simulated client-side) and displays the generated output in a designated output area.\n\nNote: The task is only considered successful if the expected result is achieved; otherwise, it is deemed infeasible.",
+  "max_steps": 15,
+  "expected": "The application processes the input text using the selected model and current parameters (simulated client-side) and displays the generated output in a designated output area.",
+  "label": 0
+}

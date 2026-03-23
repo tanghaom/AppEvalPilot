@@ -1,0 +1,9 @@
+{
+  "web_id": "web_0",
+  "task_id": 5,
+  "task_type": "dynamic",
+  "instruction": "Task: Click the 'Privacy Policy' link in the footer\nExpected Result: A section or modal displaying placeholder privacy policy text is shown within the page.\n\nNote: The task is only considered successful if the expected result is achieved; otherwise, it is deemed infeasible.",
+  "max_steps": 15,
+  "expected": "A section or modal displaying placeholder privacy policy text is shown within the page.",
+  "label": 0
+}

@@ -1,0 +1,9 @@
+{
+  "web_id": "web_27",
+  "task_id": 3,
+  "task_type": "dynamic",
+  "instruction": "Task: Interact with actionable game elements like pickups (health, ammo, weapons) or doors/switches (e.g., by pressing an 'E' key).\nExpected Result: The player successfully collects an item (updating their status/inventory) or activates an object (e.g., a door opens, a platform moves), allowing progression or resource gain.\n\nNote: The task is only considered successful if the expected result is achieved; otherwise, it is deemed infeasible.",
+  "max_steps": 15,
+  "expected": "The player successfully collects an item (updating their status/inventory) or activates an object (e.g., a door opens, a platform moves), allowing progression or resource gain.",
+  "label": 0
+}

@@ -1,0 +1,9 @@
+{
+  "web_id": "web_84",
+  "task_id": 3,
+  "task_type": "dynamic",
+  "instruction": "Task: After pressing 'i' and selecting a component from the browser (component preview is now following the mouse cursor over the canvas), but before clicking to place it, press the 'r' key.\nExpected Result: The visual preview of the component under the mouse cursor rotates by 90 degrees clockwise. Subsequent presses of 'r' in this state should continue to rotate the preview.\n\nNote: The task is only considered successful if the expected result is achieved; otherwise, it is deemed infeasible.",
+  "max_steps": 15,
+  "expected": "The visual preview of the component under the mouse cursor rotates by 90 degrees clockwise. Subsequent presses of 'r' in this state should continue to rotate the preview.",
+  "label": 1
+}

@@ -1,0 +1,9 @@
+{
+  "web_id": "web_59",
+  "task_id": 1,
+  "task_type": "dynamic",
+  "instruction": "Task: Click a 'Start Game' button\nExpected Result: The game board initializes, the score resets to zero, any previous game state is cleared, and the first tetromino begins to fall from the top center of the playfield.\n\nNote: The task is only considered successful if the expected result is achieved; otherwise, it is deemed infeasible.",
+  "max_steps": 15,
+  "expected": "The game board initializes, the score resets to zero, any previous game state is cleared, and the first tetromino begins to fall from the top center of the playfield.",
+  "label": 1
+}

@@ -1,0 +1,9 @@
+{
+  "web_id": "web_98",
+  "task_id": 4,
+  "task_type": "dynamic",
+  "instruction": "Task: In the sidebar's 'Decks' list, click a specific deck item.\nExpected Result: The main display area updates to show placeholder content or details specific to the clicked deck.\n\nNote: The task is only considered successful if the expected result is achieved; otherwise, it is deemed infeasible.",
+  "max_steps": 15,
+  "expected": "The main display area updates to show placeholder content or details specific to the clicked deck.",
+  "label": 1
+}

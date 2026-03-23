@@ -1,0 +1,9 @@
+{
+  "web_id": "web_67",
+  "task_id": 3,
+  "task_type": "dynamic",
+  "instruction": "Task: Select a chat session from a displayed list of (simulated) previous chats (e.g., in a sidebar).\nExpected Result: The conversation content (user messages and simulated AI responses) of the selected chat session is loaded into the main conversation display area.\n\nNote: The task is only considered successful if the expected result is achieved; otherwise, it is deemed infeasible.",
+  "max_steps": 15,
+  "expected": "The conversation content (user messages and simulated AI responses) of the selected chat session is loaded into the main conversation display area.",
+  "label": 1
+}

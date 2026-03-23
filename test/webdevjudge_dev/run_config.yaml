@@ -1,0 +1,104 @@
+# webdevjudge_dev 跑测配置
+# 任务来源：case/web_*/task_*/metadata.json（自动扫描，无需 Excel）
+# URL 为本地 file:// 路径（自动开启 --disable-web-security）
+# 执行: conda activate appeval && cd /data/zhijieliu/AppEvalPilot/test/webdevjudge_dev && python run_test.py
+
+# 运行参数
+tasks: 0          # 跑多少个任务，0=全部（101 个）
+workers: 30       # 并行 worker 数
+model: remote     # local | remote
+serial_per_url: true   # 同一 web 的 tasks 串行（共用同一 HTML 文件），不同 web 并行
+
+# 本地 file:// 页面必须禁用 web security
+chrome_disable_web_security: true
+
+# 两轮/回退测试（checkpoint）开关
+save_checkpoint: true
+save_checkpoint_per_step: true
+save_profile_per_step: true
+resume_checkpoint_path: "/data/zhijieliu/AppEvalPilot/work_dirs/webdevjudge_41-100_round1_gemini-3-flash-preview"
+resume_target_step: null
+
+# 真实标签 Excel（case_name 列格式 web_0_1，label 列为 0/1）
+# 跑完后自动写回 os_agent_score，并保存为 *_scored.xlsx
+label_excel: "mgx跑测_WebDevJudge_三合一_拆分case_带label_gemini_VF_update_part_1_and_2.xlsx"
+
+cuda_devices: [0]
+
+# TellVerifier（校验结果）
+tell_verifier:
+  api_type: openai
+  model: gpt-4o
+  base_url: https://newapi.deepwisdom.ai/v1
+  api_key: "sk-pjcPRz1QM2qP8KBaAYTqCKRC37eJU11JnPonjsTsVT9b5iDp"
+  stream: "false"
+  max_token: 8192
+
+# SupervisorJudge（轨迹分析）
+supervisor_judge:
+  api_type: openai
+  model: claude-sonnet-4-6
+  base_url: https://newapi.deepwisdom.ai/v1
+  api_key: "sk-pjcPRz1QM2qP8KBaAYTqCKRC37eJU11JnPonjsTsVT9b5iDp"
+  stream: "false"
+  max_token: 8192
+
+# 本地模型配置
+local:
+  config_file: test/webdevjudge_dev/run_config.yaml
+  llm:
+    api_type: openai
+    model: osagent-base
+    base_url: http://172.31.0.5:8080/v1
+    api_key: not-needed
+    stream: "false"
+    max_token: 8192
+  base_display: 400
+  base_chrome_port: 11000
+  log_dir_prefix: webdevjudge_fn_retry_new
+  a11y_mode: cdp
+  # agent_class: text_agent
+  think_history_images: 1
+  result_excel: webdevjudge_results_local.xlsx
+  score_column: os_agent_score
+  evidence_column: evidence
+  max_iters: 10
+  post_action_wait_sec: 1.5
+  max_retry_uncertain: 1
+  branching_n_candidates: 5  # 大模型生成候选 retry 方案数（>=2 启用 retry 节点）
+  branching_k: 3             # 强模型从候选中选择前 k 个按序尝试
+  branching_env_fail_threshold: 1.0  # 设为 1.0 基本等于关闭阈值早停
+  branching_p_branch_fail_given_agent:
+    A: 0.6
+    B: 0.5
+    C: 0.4
+
+# 远程模型配置
+remote:
+  config_file: test/webdevjudge_dev/run_config.yaml
+  llm:
+    api_type: openai
+    model: gemini-3-flash-preview
+    base_url: https://newapi.deepwisdom.ai/v1
+    api_key: "sk-pjcPRz1QM2qP8KBaAYTqCKRC37eJU11JnPonjsTsVT9b5iDp"
+    stream: "false"
+    max_token: 8192
+  base_display: 500
+  base_chrome_port: 12000
+  log_dir_prefix: webdevjudge_41-100_fn_round2
+  agent_class: text_agent
+  a11y_mode: cdp
+  think_history_images: 1
+  result_excel: webdevjudge_41-100_fn_round2_results.xlsx
+  score_column: os_agent_score
+  evidence_column: evidence
+  max_iters: 15
+  post_action_wait_sec: 1.5
+  max_retry_uncertain: 1
+  branching_n_candidates: 5   # 大模型生成候选 retry 方案数（>=2 启用 retry 节点）
+  branching_k: 3              # 强模型从候选中选择前 k 个按序尝试
+  branching_env_fail_threshold: 1.0  # 设为 1.0 基本等于关闭阈值早停
+  branching_p_branch_fail_given_agent:
+    A: 0.6
+    B: 0.5
+    C: 0.4

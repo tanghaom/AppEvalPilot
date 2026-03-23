@@ -1,0 +1,9 @@
+{
+  "web_id": "web_50",
+  "task_id": 2,
+  "task_type": "dynamic",
+  "instruction": "Task: Click a 'Start Game' button.\nExpected Result: The game initializes: the maze, Pacman, ghosts, and pellets are displayed, score and lives are set, and active gameplay begins.\n\nNote: The task is only considered successful if the expected result is achieved; otherwise, it is deemed infeasible.",
+  "max_steps": 15,
+  "expected": "The game initializes: the maze, Pacman, ghosts, and pellets are displayed, score and lives are set, and active gameplay begins.",
+  "label": 0
+}

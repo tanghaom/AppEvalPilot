@@ -1,0 +1,9 @@
+{
+  "web_id": "web_17",
+  "task_id": 4,
+  "task_type": "dynamic",
+  "instruction": "Task: Aim at an in-game target and initiate a shoot action.\nExpected Result: The targeted element visually responds if hit (e.g., changes appearance, plays an animation, or is removed).\n\nNote: The task is only considered successful if the expected result is achieved; otherwise, it is deemed infeasible.",
+  "max_steps": 15,
+  "expected": "The targeted element visually responds if hit (e.g., changes appearance, plays an animation, or is removed).",
+  "label": 1
+}

@@ -1,0 +1,9 @@
+{
+  "web_id": "web_94",
+  "task_id": 1,
+  "task_type": "dynamic",
+  "instruction": "Task: Click a law title (e.g., 'GESETZ 1 STELLE NIE DEN MEISTER IN DEN SCHATTEN') in the Table of Contents.\nExpected Result: The view scrolls to and displays the full content of the selected law.\n\nNote: The task is only considered successful if the expected result is achieved; otherwise, it is deemed infeasible.",
+  "max_steps": 15,
+  "expected": "The view scrolls to and displays the full content of the selected law.",
+  "label": 0
+}

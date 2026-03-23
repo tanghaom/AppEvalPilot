@@ -1,0 +1,9 @@
+{
+  "web_id": "web_47",
+  "task_id": 4,
+  "task_type": "dynamic",
+  "instruction": "Task: Click a 'Clear Chat' button or similar control.\nExpected Result: All messages are removed from the chat display area, leaving it empty.\n\nNote: The task is only considered successful if the expected result is achieved; otherwise, it is deemed infeasible.",
+  "max_steps": 15,
+  "expected": "All messages are removed from the chat display area, leaving it empty.",
+  "label": 0
+}

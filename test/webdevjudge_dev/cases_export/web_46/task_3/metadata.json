@@ -1,0 +1,9 @@
+{
+  "web_id": "web_46",
+  "task_id": 3,
+  "task_type": "dynamic",
+  "instruction": "Task: For a displayed event and table, click an 'Add Player to Table' button and select a player from a dropdown list of available players.\nExpected Result: The selected player's name is shown as seated at that table, and the table's occupancy status (e.g., '3/9 players') updates visually.\n\nNote: The task is only considered successful if the expected result is achieved; otherwise, it is deemed infeasible.",
+  "max_steps": 15,
+  "expected": "The selected player's name is shown as seated at that table, and the table's occupancy status (e.g., '3/9 players') updates visually.",
+  "label": 0
+}

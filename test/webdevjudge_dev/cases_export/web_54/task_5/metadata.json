@@ -1,0 +1,9 @@
+{
+  "web_id": "web_54",
+  "task_id": 5,
+  "task_type": "dynamic",
+  "instruction": "Task: Submit a new comment on a post by typing text into a comment input field and clicking a 'Submit Comment' button.\nExpected Result: The new comment is visibly added to the comments section of the respective post.\n\nNote: The task is only considered successful if the expected result is achieved; otherwise, it is deemed infeasible.",
+  "max_steps": 15,
+  "expected": "The new comment is visibly added to the comments section of the respective post.",
+  "label": 0
+}

@@ -1,0 +1,9 @@
+{
+  "web_id": "web_51",
+  "task_id": 2,
+  "task_type": "dynamic",
+  "instruction": "Task: Modify a property (e.g., background color, font size) of the previewed component using a control in a 'Design' or 'Appearance' customization panel.\nExpected Result: The live preview of the component updates instantly to reflect the modified property.\n\nNote: The task is only considered successful if the expected result is achieved; otherwise, it is deemed infeasible.",
+  "max_steps": 15,
+  "expected": "The live preview of the component updates instantly to reflect the modified property.",
+  "label": 0
+}

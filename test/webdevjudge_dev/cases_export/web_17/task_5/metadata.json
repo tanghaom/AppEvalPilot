@@ -1,0 +1,9 @@
+{
+  "web_id": "web_17",
+  "task_id": 5,
+  "task_type": "dynamic",
+  "instruction": "Task: Activate a 'reset game' function (e.g., click a button or press a key).\nExpected Result: The game session (player position, targets, score if any) resets to its initial state.\n\nNote: The task is only considered successful if the expected result is achieved; otherwise, it is deemed infeasible.",
+  "max_steps": 15,
+  "expected": "The game session (player position, targets, score if any) resets to its initial state.",
+  "label": 0
+}

@@ -1,0 +1,913 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Question Bank Manager</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Custom scrollbar for webkit browsers */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #f0f4f8; /* A lighter slate-100 */
+            border-radius: 10px;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #94a3b8; /* slate-400 */
+            border-radius: 10px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #64748b; /* slate-500 */
+        }
+
+        /* Basic transition for page visibility (can be enhanced with JS if needed) */
+        .page {
+            display: none;
+        }
+        .page.active {
+            display: block;
+            animation: fadeIn 0.3s ease-in-out;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* Drag over effect for drop zone */
+        .drag-over {
+            border-color: #2563eb; /* blue-600 */
+            background-color: #dbeafe; /* blue-100 */
+        }
+        
+        .active-nav-link {
+            background-color: #2563eb; /* blue-600 */
+            color: white;
+        }
+        .active-nav-link svg {
+            color: white;
+        }
+        .nav-link:not(.active-nav-link) svg {
+            color: #94a3b8; /* slate-400 */
+        }
+        .nav-link:not(.active-nav-link):hover svg {
+            color: white;
+        }
+    </style>
+</head>
+<body class="bg-slate-100 font-sans antialiased">
+    <div class="flex h-screen">
+        <!-- Sidebar -->
+        <nav id="sidebar" class="bg-slate-800 text-slate-300 w-64 space-y-6 py-7 px-2 absolute inset-y-0 left-0 transform -translate-x-full md:relative md:translate-x-0 transition-transform duration-200 ease-in-out z-30 shadow-lg">
+            <!-- Logo / App Name -->
+            <a href="#" data-page="dashboard" class="nav-link-logo text-white text-2xl font-semibold px-4 flex items-center space-x-2 mb-6">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-8 h-8 text-blue-400">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 6.042A8.967 8.967 0 0 0 6 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 0 1 6 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 0 1 6-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0 0 18 18a8.967 8.967 0 0 0-6 2.292m0-14.25v14.25" />
+                </svg>
+                <span>QB Manager</span>
+            </a>
+
+            <!-- Nav Links -->
+            <div class="space-y-1">
+                <a href="#" data-page="dashboard" class="nav-link group flex items-center space-x-3 px-4 py-2.5 rounded-md hover:bg-slate-700 hover:text-white transition duration-150">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="m2.25 12 8.954-8.955c.44-.439 1.152-.439 1.591 0L21.75 12M4.5 9.75v10.125c0 .621.504 1.125 1.125 1.125H9.75v-4.875c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21h4.125c.621 0 1.125-.504 1.125-1.125V9.75M8.25 21h7.5" />
+                    </svg>
+                    <span>Dashboard</span>
+                </a>
+                <a href="#" data-page="upload" class="nav-link group flex items-center space-x-3 px-4 py-2.5 rounded-md hover:bg-slate-700 hover:text-white transition duration-150">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 16.5V9.75m0 0 3 3m-3-3-3 3M6.75 19.5a4.5 4.5 0 0 1-1.41-8.775 5.25 5.25 0 0 1 10.32-2.033A5.25 5.25 0 0 1 19.5 12v2.25A4.5 4.5 0 0 1 15.25 19.5h-8.5Z" />
+                    </svg>
+                    <span>Upload Bank</span>
+                </a>
+                <a href="#" data-page="library" class="nav-link group flex items-center space-x-3 px-4 py-2.5 rounded-md hover:bg-slate-700 hover:text-white transition duration-150">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 12.75V12A2.25 2.25 0 0 1 4.5 9.75h15A2.25 2.25 0 0 1 21.75 12v.75m-8.69-6.44-2.12-2.12a1.5 1.5 0 0 0-1.061-.44H4.5A2.25 2.25 0 0 0 2.25 6v12a2.25 2.25 0 0 0 2.25 2.25h15A2.25 2.25 0 0 0 21.75 18V9a2.25 2.25 0 0 0-2.25-2.25h-5.379a1.5 1.5 0 0 1-1.06-.44Z" />
+                    </svg>
+                    <span>Library</span>
+                </a>
+                <a href="#" data-page="quiz-generation" class="nav-link group flex items-center space-x-3 px-4 py-2.5 rounded-md hover:bg-slate-700 hover:text-white transition duration-150">
+                     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M9.813 15.904 9 18.75l-.813-2.846a4.5 4.5 0 0 0-3.09-3.09L1.25 12l2.846-.813a4.5 4.5 0 0 0 3.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 0 0 3.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 0 0-3.09 3.09ZM18.25 12h.008v.008h-.008V12Zm0 0h.008v.008h-.008V12Zm0 0h.008v.008h-.008V12Zm0 0h.008v.008h-.008V12Z" />
+                    </svg>
+                    <span>Generate Quiz</span>
+                </a>
+            </div>
+        </nav>
+
+        <!-- Main Content Area -->
+        <div class="flex-1 flex flex-col overflow-hidden">
+            <!-- Top bar for mobile nav toggle and page title -->
+            <header class="bg-white shadow md:hidden">
+                <div class="px-4 sm:px-6 py-3 flex justify-between items-center">
+                    <button id="mobileMenuButton" class="text-slate-600 focus:outline-none">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" />
+                        </svg>
+                    </button>
+                    <h1 id="currentPageTitle" class="text-xl font-semibold text-slate-700">Dashboard</h1>
+                    <div class="w-6"></div> <!-- Spacer -->
+                </div>
+            </header>
+
+            <main class="flex-1 overflow-x-hidden overflow-y-auto bg-slate-100 p-4 sm:p-6 lg:p-8">
+                <!-- Page Content Goes Here -->
+                <div id="page-dashboard" class="page">
+                    <h1 class="text-3xl font-bold text-slate-800 mb-6">Welcome to QB Manager!</h1>
+                    <p class="text-slate-600 mb-8">Manage your question banks efficiently and generate quizzes with ease.</p>
+                    
+                    <div class="mb-8">
+                        <button id="dashboardUploadButton" class="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-6 rounded-lg shadow-md hover:shadow-lg transition duration-150 flex items-center space-x-2 text-lg">
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M12 16.5V9.75m0 0 3 3m-3-3-3 3M6.75 19.5a4.5 4.5 0 0 1-1.41-8.775 5.25 5.25 0 0 1 10.32-2.033A5.25 5.25 0 0 1 19.5 12v2.25A4.5 4.5 0 0 1 15.25 19.5h-8.5Z" />
+                            </svg>
+                            <span>Upload New Question Bank</span>
+                        </button>
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+                        <div class="bg-white p-6 rounded-xl shadow-lg">
+                            <h3 class="text-slate-500 text-sm font-medium">Total Question Banks</h3>
+                            <p id="statsTotalBanks" class="text-3xl font-bold text-blue-600">0</p>
+                        </div>
+                        <div class="bg-white p-6 rounded-xl shadow-lg">
+                            <h3 class="text-slate-500 text-sm font-medium">Total Questions</h3>
+                            <p id="statsTotalQuestions" class="text-3xl font-bold text-blue-600">0</p>
+                        </div>
+                        <div class="bg-white p-6 rounded-xl shadow-lg">
+                            <h3 class="text-slate-500 text-sm font-medium">Courses Covered</h3>
+                            <p id="statsCoursesCovered" class="text-3xl font-bold text-blue-600">0</p>
+                        </div>
+                    </div>
+
+                    <div class="bg-white p-6 rounded-xl shadow-lg">
+                        <h2 class="text-xl font-semibold text-slate-700 mb-4">Quick Search</h2>
+                        <div class="flex">
+                            <input type="text" placeholder="Search questions or banks..." class="w-full px-4 py-2.5 border border-slate-300 rounded-l-md focus:ring-blue-500 focus:border-blue-500 outline-none">
+                            <button class="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-4 py-2.5 rounded-r-md">
+                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z" />
+                                </svg>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="page-upload" class="page">
+                    <h1 class="text-3xl font-bold text-slate-800 mb-6">Upload Question Bank</h1>
+                    <div class="bg-white p-6 sm:p-8 rounded-xl shadow-lg space-y-6">
+                        <div>
+                            <label for="uploadDropZone" class="block text-sm font-medium text-slate-700 mb-1">Upload File</label>
+                            <div id="uploadDropZone" class="mt-1 flex justify-center px-6 pt-10 pb-12 border-2 border-slate-300 border-dashed rounded-md hover:border-blue-500 transition-colors">
+                                <div class="space-y-1 text-center">
+                                    <svg class="mx-auto h-12 w-12 text-slate-400" stroke="currentColor" fill="none" viewBox="0 0 48 48" aria-hidden="true">
+                                        <path d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28m0 0l4 4m4-24h8m-4-4v8m-12 4h.02" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+                                    </svg>
+                                    <div class="flex text-sm text-slate-600">
+                                        <label for="uploadFileInput" class="relative cursor-pointer bg-white rounded-md font-medium text-blue-600 hover:text-blue-500 focus-within:outline-none focus-within:ring-2 focus-within:ring-offset-2 focus-within:ring-blue-500">
+                                            <span>Upload a file</span>
+                                            <input id="uploadFileInput" name="uploadFileInput" type="file" class="sr-only" multiple>
+                                        </label>
+                                        <p class="pl-1">or drag and drop</p>
+                                    </div>
+                                    <p class="text-xs text-slate-500">PDF, DOCX, TXT, JPG, PNG up to 10MB</p>
+                                    <p id="uploadedFileName" class="text-sm text-slate-700 font-medium mt-2"></p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div>
+                            <label for="uploadSourceSelect" class="block text-sm font-medium text-slate-700">Source of Question Bank</label>
+                            <select id="uploadSourceSelect" class="mt-1 block w-full py-2.5 px-3 border border-slate-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
+                                <option>Previous Exam</option>
+                                <option>Textbook</option>
+                                <option>Quiz</option>
+                                <option>Internet</option>
+                                <option>Other</option>
+                            </select>
+                        </div>
+                        <div class="flex items-center">
+                            <input id="uploadAutodetectCheckbox" type="checkbox" class="h-4 w-4 text-blue-600 border-slate-300 rounded focus:ring-blue-500">
+                            <label for="uploadAutodetectCheckbox" class="ml-2 block text-sm text-slate-700">Attempt to autodetect source</label>
+                        </div>
+
+                        <div id="uploadProgressContainer" class="hidden space-y-2">
+                            <div class="flex justify-between text-sm font-medium text-slate-700">
+                                <span id="uploadStatusMessage">Uploading...</span>
+                                <span id="uploadProgressPercentage">0%</span>
+                            </div>
+                            <div class="w-full bg-slate-200 rounded-full h-2.5">
+                                <div id="uploadProgressBar" class="bg-blue-600 h-2.5 rounded-full transition-all duration-300 ease-out" style="width: 0%"></div>
+                            </div>
+                        </div>
+                        
+                        <div>
+                            <button id="startUploadButton" class="w-full flex justify-center py-3 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:bg-slate-400">
+                                Start Upload Process
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="page-review" class="page">
+                    <h1 class="text-3xl font-bold text-slate-800 mb-6">Review Extracted Questions</h1>
+                    <div id="reviewFileDetails" class="bg-white p-6 rounded-xl shadow-lg mb-6">
+                        <h2 class="text-xl font-semibold text-slate-700 mb-2">File Details</h2>
+                        <p class="text-slate-600"><strong>Filename:</strong> <span id="reviewFileName">N/A</span></p>
+                        <p class="text-slate-600"><strong>Source:</strong> <span id="reviewFileSource">N/A</span></p>
+                    </div>
+
+                    <div id="reviewQuestionsContainer" class="space-y-6">
+                        <!-- JS will populate this -->
+                        <p class="text-slate-500 text-center py-4">No questions to review yet. Upload a file first.</p>
+                    </div>
+
+                    <div class="mt-8 flex justify-end space-x-3">
+                        <button id="reviewPreviousButton" class="py-2 px-4 border border-slate-300 rounded-md text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50">Previous</button>
+                        <button id="reviewNextButton" class="py-2 px-4 border border-slate-300 rounded-md text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50">Next</button>
+                        <button id="reviewSaveChangesButton" class="py-2.5 px-6 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500">
+                            Save Changes & Finish Review
+                        </button>
+                    </div>
+                </div>
+                
+                <div id="page-library" class="page">
+                    <h1 class="text-3xl font-bold text-slate-800 mb-6">Question Bank Library</h1>
+                    <div class="bg-white p-4 sm:p-6 rounded-xl shadow-lg">
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                            <input type="text" id="librarySearchInput" placeholder="Search by name, course, topic..." class="col-span-1 md:col-span-2 px-4 py-2.5 border border-slate-300 rounded-md focus:ring-blue-500 focus:border-blue-500">
+                            <select id="libraryFilterSource" class="px-4 py-2.5 border border-slate-300 rounded-md focus:ring-blue-500 focus:border-blue-500 bg-white">
+                                <option value="">All Sources</option>
+                                <option>Previous Exam</option>
+                                <option>Textbook</option>
+                                <option>Quiz</option>
+                                <option>Internet</option>
+                                <option>Other</option>
+                            </select>
+                        </div>
+                        <div class="overflow-x-auto">
+                            <table class="min-w-full divide-y divide-slate-200">
+                                <thead class="bg-slate-50">
+                                    <tr>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Name</th>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Course</th>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Source</th>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Date Uploaded</th>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Questions</th>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="libraryTableBody" class="bg-white divide-y divide-slate-200">
+                                    <!-- JS will populate this -->
+                                    <tr><td colspan="6" class="px-6 py-10 text-center text-slate-500">No question banks found.</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="page-quiz-generation" class="page">
+                    <h1 class="text-3xl font-bold text-slate-800 mb-6">Generate Quiz</h1>
+                    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                        <div class="lg:col-span-2 bg-white p-6 rounded-xl shadow-lg">
+                            <h2 class="text-xl font-semibold text-slate-700 mb-4">Select Questions</h2>
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
+                                <select id="quizFilterCourse" class="px-4 py-2.5 border border-slate-300 rounded-md focus:ring-blue-500 focus:border-blue-500 bg-white">
+                                    <option value="">Filter by Course</option>
+                                    <!-- JS populates courses -->
+                                </select>
+                                <select id="quizFilterTopic" class="px-4 py-2.5 border border-slate-300 rounded-md focus:ring-blue-500 focus:border-blue-500 bg-white">
+                                    <option value="">Filter by Topic</option>
+                                    <!-- JS populates topics -->
+                                </select>
+                            </div>
+                            <div id="quizQuestionsForSelectionContainer" class="max-h-96 overflow-y-auto border border-slate-200 rounded-md p-4 space-y-3">
+                                <!-- JS will populate this -->
+                                <p class="text-slate-500 text-center py-4">No questions available for selected filters or no banks uploaded.</p>
+                            </div>
+                        </div>
+
+                        <div class="lg:col-span-1 bg-white p-6 rounded-xl shadow-lg space-y-6">
+                            <h2 class="text-xl font-semibold text-slate-700 mb-2">Quiz Settings</h2>
+                            <div>
+                                <label for="quizNumQuestionsInput" class="block text-sm font-medium text-slate-700">Number of Questions</label>
+                                <input type="number" id="quizNumQuestionsInput" value="10" min="1" class="mt-1 w-full px-3 py-2 border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                            </div>
+                            <div>
+                                <label for="quizTimeLimitInput" class="block text-sm font-medium text-slate-700">Time Limit (minutes, 0 for no limit)</label>
+                                <input type="number" id="quizTimeLimitInput" value="60" min="0" class="mt-1 w-full px-3 py-2 border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                            </div>
+                            <div class="space-y-2">
+                                <div class="flex items-center">
+                                    <input id="quizRandomOrderCheckbox" type="checkbox" checked class="h-4 w-4 text-blue-600 border-slate-300 rounded focus:ring-blue-500">
+                                    <label for="quizRandomOrderCheckbox" class="ml-2 block text-sm text-slate-700">Randomize question order</label>
+                                </div>
+                                <div class="flex items-center">
+                                    <input id="quizRandomAnswersCheckbox" type="checkbox" checked class="h-4 w-4 text-blue-600 border-slate-300 rounded focus:ring-blue-500">
+                                    <label for="quizRandomAnswersCheckbox" class="ml-2 block text-sm text-slate-700">Randomize answer choice order (MCQ)</label>
+                                </div>
+                            </div>
+                            <button id="generateQuizButton" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-4 rounded-md shadow-md hover:shadow-lg transition duration-150">
+                                Generate Quiz
+                            </button>
+                        </div>
+                    </div>
+
+                    <div id="quizPreviewArea" class="mt-8 bg-white p-6 rounded-xl shadow-lg hidden">
+                        <h2 class="text-2xl font-semibold text-slate-700 mb-4">Quiz Preview</h2>
+                        <div id="quizPreviewContent" class="space-y-4">
+                            <!-- JS populates this -->
+                        </div>
+                        <div class="mt-6 flex space-x-3">
+                            <button class="py-2 px-4 border border-slate-300 rounded-md text-sm font-medium text-slate-700 hover:bg-slate-50">Print Quiz</button>
+                            <button class="py-2 px-4 border border-slate-300 rounded-md text-sm font-medium text-slate-700 hover:bg-slate-50">Export as PDF</button>
+                        </div>
+                    </div>
+                </div>
+
+            </main>
+        </div>
+    </div>
+
+    <script>
+        const app = {
+            state: {
+                currentPage: 'dashboard',
+                questionBanks: [
+                    // Mock data for initial display
+                    {
+                        id: 'qb1', name: 'CS101 Midterm F23', fileName: 'cs101_midterm.pdf', source: 'Previous Exam', dateUploaded: '2023-10-15', numQuestions: 25, course: 'CS101', topic: 'Data Structures',
+                        questions: [
+                            { id: 'q1_1', text: 'What is a Doubly Linked List?', type: 'FR', answerText: 'A linked list where each node has a pointer to the next node and a pointer to the previous node.', course: 'CS101', topic: 'Linked Lists', subtopic: 'Doubly Linked List', confidence: 0.95, reviewed: true },
+                            { id: 'q1_2', text: 'Big O notation for binary search?', type: 'MC', choices: [{id:'c1', text:'O(n)'}, {id:'c2', text:'O(log n)'}, {id:'c3', text:'O(n^2)'}], correctChoiceId: 'c2', course: 'CS101', topic: 'Algorithms', subtopic: 'Search Algorithms', confidence: 0.99, reviewed: true },
+                        ]
+                    },
+                    {
+                        id: 'qb2', name: 'Physics HW Set 3', fileName: 'physics_hw3.docx', source: 'Textbook', dateUploaded: '2023-11-02', numQuestions: 10, course: 'PHY205', topic: 'Newtonian Mechanics',
+                        questions: [
+                            { id: 'q2_1', text: 'State Newton\'s First Law.', type: 'FR', answerText: 'An object at rest stays at rest and an object in motion stays in motion with the same speed and in the same direction unless acted upon by an unbalanced force.', course: 'PHY205', topic: 'Laws of Motion', subtopic: 'First Law', confidence: 0.98, reviewed: true },
+                        ]
+                    }
+                ],
+                currentFileForReview: null, // { fileName, source, questions: [ { id, text, type, choices?, correctChoiceId?, answerText?, course, topic, subtopic, confidence, reviewed } ] }
+                currentReviewQuestionIndex: 0,
+                uploadedFileHandle: null,
+            },
+
+            init() {
+                this.initNavigation();
+                this.initDashboard();
+                this.initUploadPage();
+                this.initReviewPage();
+                this.initLibraryPage();
+                this.initQuizGenerationPage();
+                
+                this.navigateTo(this.state.currentPage); // Initial page load
+                this.updateDashboardStats(); // Initial stats
+            },
+
+            initNavigation() {
+                const navLinks = document.querySelectorAll('.nav-link, .nav-link-logo');
+                navLinks.forEach(link => {
+                    link.addEventListener('click', (e) => {
+                        e.preventDefault();
+                        const pageId = link.dataset.page;
+                        this.navigateTo(pageId);
+                    });
+                });
+
+                document.getElementById('mobileMenuButton').addEventListener('click', () => {
+                    document.getElementById('sidebar').classList.toggle('-translate-x-full');
+                });
+
+                document.getElementById('dashboardUploadButton').addEventListener('click', () => {
+                    this.navigateTo('upload');
+                });
+            },
+
+            navigateTo(pageId) {
+                if (!pageId) return;
+                this.state.currentPage = pageId;
+                document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+                document.getElementById(`page-${pageId}`).classList.add('active');
+
+                document.querySelectorAll('.nav-link').forEach(nl => {
+                    nl.classList.remove('active-nav-link');
+                    if (nl.dataset.page === pageId) {
+                        nl.classList.add('active-nav-link');
+                    }
+                });
+                
+                const pageTitles = {
+                    'dashboard': 'Dashboard', 'upload': 'Upload Bank', 'review': 'Review Questions', 
+                    'library': 'Library', 'quiz-generation': 'Generate Quiz'
+                };
+                document.getElementById('currentPageTitle').textContent = pageTitles[pageId] || 'QB Manager';
+
+                // Close mobile sidebar on navigation
+                if (!document.getElementById('sidebar').classList.contains('md:relative')) { // If mobile view
+                    document.getElementById('sidebar').classList.add('-translate-x-full');
+                }
+
+                // Specific page load actions
+                if (pageId === 'library') this.renderLibraryTable();
+                if (pageId === 'dashboard') this.updateDashboardStats();
+                if (pageId === 'quiz-generation') this.populateQuizFiltersAndQuestions();
+            },
+
+            // Dashboard
+            initDashboard() {
+                // Search bar is UI only for now
+            },
+
+            updateDashboardStats() {
+                const totalBanks = this.state.questionBanks.length;
+                const totalQuestions = this.state.questionBanks.reduce((sum, bank) => sum + bank.numQuestions, 0);
+                const courses = new Set(this.state.questionBanks.map(bank => bank.course));
+                
+                document.getElementById('statsTotalBanks').textContent = totalBanks;
+                document.getElementById('statsTotalQuestions').textContent = totalQuestions;
+                document.getElementById('statsCoursesCovered').textContent = courses.size;
+            },
+
+            // Upload Page
+            initUploadPage() {
+                const dropZone = document.getElementById('uploadDropZone');
+                const fileInput = document.getElementById('uploadFileInput');
+                const startUploadButton = document.getElementById('startUploadButton');
+                const uploadedFileNameEl = document.getElementById('uploadedFileName');
+
+                dropZone.addEventListener('dragover', (e) => {
+                    e.preventDefault();
+                    dropZone.classList.add('drag-over');
+                });
+                dropZone.addEventListener('dragleave', () => dropZone.classList.remove('drag-over'));
+                dropZone.addEventListener('drop', (e) => {
+                    e.preventDefault();
+                    dropZone.classList.remove('drag-over');
+                    if (e.dataTransfer.files.length) {
+                        this.state.uploadedFileHandle = e.dataTransfer.files[0];
+                        uploadedFileNameEl.textContent = `Selected file: ${this.state.uploadedFileHandle.name}`;
+                    }
+                });
+                fileInput.addEventListener('change', (e) => {
+                    if (e.target.files.length) {
+                        this.state.uploadedFileHandle = e.target.files[0];
+                        uploadedFileNameEl.textContent = `Selected file: ${this.state.uploadedFileHandle.name}`;
+                    }
+                });
+
+                startUploadButton.addEventListener('click', () => this.simulateUploadProcess());
+            },
+
+            simulateUploadProcess() {
+                if (!this.state.uploadedFileHandle) {
+                    alert('Please select a file to upload.');
+                    return;
+                }
+                const progressContainer = document.getElementById('uploadProgressContainer');
+                const progressBar = document.getElementById('uploadProgressBar');
+                const progressPercentage = document.getElementById('uploadProgressPercentage');
+                const statusMessage = document.getElementById('uploadStatusMessage');
+                const startUploadButton = document.getElementById('startUploadButton');
+
+                startUploadButton.disabled = true;
+                progressContainer.classList.remove('hidden');
+                progressBar.style.width = '0%';
+                progressPercentage.textContent = '0%';
+                
+                const stages = [
+                    { status: "Uploading...", duration: 500, progress: 25 },
+                    { status: "Processing with OCR...", duration: 1000, progress: 50 },
+                    { status: "Extracting Questions...", duration: 1000, progress: 75 },
+                    { status: "Categorizing...", duration: 500, progress: 100 }
+                ];
+
+                let currentProgress = 0;
+                let stageIndex = 0;
+
+                function nextStage() {
+                    if (stageIndex < stages.length) {
+                        const stage = stages[stageIndex];
+                        statusMessage.textContent = stage.status;
+                        progressBar.style.width = `${stage.progress}%`;
+                        progressPercentage.textContent = `${stage.progress}%`;
+                        currentProgress = stage.progress;
+                        stageIndex++;
+                        setTimeout(nextStage, stage.duration);
+                    } else {
+                        // Upload complete
+                        statusMessage.textContent = "Processing Complete!";
+                        setTimeout(() => {
+                            this.prepareReviewData();
+                            this.navigateTo('review');
+                            progressContainer.classList.add('hidden'); // Reset for next time
+                            startUploadButton.disabled = false;
+                            document.getElementById('uploadedFileName').textContent = "";
+                            this.state.uploadedFileHandle = null;
+                        }, 500);
+                    }
+                }
+                nextStage.call(this);
+            },
+            
+            prepareReviewData() {
+                // Mock extracted data based on uploaded file (name only for now)
+                const fileName = this.state.uploadedFileHandle ? this.state.uploadedFileHandle.name : 'mock_document.pdf';
+                const source = document.getElementById('uploadSourceSelect').value;
+
+                this.state.currentFileForReview = {
+                    fileName: fileName,
+                    source: source,
+                    questions: [
+                        { id: `q_${Date.now()}_1`, text: 'What is the capital of France?', type: 'MC', choices: [{id:'c1', text:'Berlin'}, {id:'c2', text:'Madrid'}, {id:'c3', text:'Paris'}], correctChoiceId: 'c3', course: 'Geography', topic: 'Europe', subtopic: 'Capitals', confidence: 0.90, reviewed: false },
+                        { id: `q_${Date.now()}_2`, text: 'Explain the theory of relativity.', type: 'FR', answerText: '', course: 'Physics', topic: 'Modern Physics', subtopic: 'Relativity', confidence: 0.75, reviewed: false },
+                        { id: `q_${Date.now()}_3`, text: '2 + 2 = ?', type: 'MC', choices: [{id:'c1', text:'3'}, {id:'c2', text:'4'}, {id:'c3', text:'5'}], correctChoiceId: 'c2', course: 'Math', topic: 'Arithmetic', subtopic: 'Addition', confidence: 0.99, reviewed: false }
+                    ]
+                };
+                this.state.currentReviewQuestionIndex = 0;
+                this.renderReviewQuestion();
+            },
+
+            // Review Page
+            initReviewPage() {
+                document.getElementById('reviewPreviousButton').addEventListener('click', () => {
+                    if (this.state.currentReviewQuestionIndex > 0) {
+                        this.saveCurrentReviewQuestion(); // Save before navigating
+                        this.state.currentReviewQuestionIndex--;
+                        this.renderReviewQuestion();
+                    }
+                });
+                document.getElementById('reviewNextButton').addEventListener('click', () => {
+                    if (this.state.currentFileForReview && this.state.currentReviewQuestionIndex < this.state.currentFileForReview.questions.length - 1) {
+                        this.saveCurrentReviewQuestion(); // Save before navigating
+                        this.state.currentReviewQuestionIndex++;
+                        this.renderReviewQuestion();
+                    }
+                });
+                document.getElementById('reviewSaveChangesButton').addEventListener('click', () => {
+                    this.saveCurrentReviewQuestion(); // Save the very last question
+                    this.finalizeReview();
+                });
+            },
+
+            renderReviewQuestion() {
+                if (!this.state.currentFileForReview) return;
+
+                document.getElementById('reviewFileName').textContent = this.state.currentFileForReview.fileName;
+                document.getElementById('reviewFileSource').textContent = this.state.currentFileForReview.source;
+
+                const container = document.getElementById('reviewQuestionsContainer');
+                container.innerHTML = ''; // Clear previous question
+
+                const question = this.state.currentFileForReview.questions[this.state.currentReviewQuestionIndex];
+                if (!question) {
+                    container.innerHTML = '<p class="text-slate-500 text-center py-4">No more questions to review.</p>';
+                    return;
+                }
+
+                const qDiv = document.createElement('div');
+                qDiv.className = 'bg-white p-6 rounded-xl shadow-lg space-y-4';
+                qDiv.innerHTML = `
+                    <div class="flex justify-between items-center">
+                        <h3 class="text-lg font-semibold text-slate-700">Question ${this.state.currentReviewQuestionIndex + 1} of ${this.state.currentFileForReview.questions.length}</h3>
+                        ${question.confidence ? `<span class="text-sm text-slate-500">Confidence: ${(question.confidence * 100).toFixed(0)}%</span>` : ''}
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700">Question Text</label>
+                        <textarea data-field="text" class="mt-1 block w-full px-3 py-2 border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm" rows="3">${question.text}</textarea>
+                    </div>
+                    <div data-answers-container>
+                        ${question.type === 'MC' ? this.renderMCAnswers(question) : this.renderFRAnswer(question)}
+                    </div>
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700">Course</label>
+                            <input type="text" data-field="course" value="${question.course || ''}" class="mt-1 block w-full px-3 py-2 border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700">Topic</label>
+                            <input type="text" data-field="topic" value="${question.topic || ''}" class="mt-1 block w-full px-3 py-2 border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700">Subtopic</label>
+                            <input type="text" data-field="subtopic" value="${question.subtopic || ''}" class="mt-1 block w-full px-3 py-2 border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
+                        </div>
+                    </div>
+                     <div class="flex items-center">
+                        <input type="checkbox" data-field="reviewed" ${question.reviewed ? 'checked' : ''} class="h-4 w-4 text-blue-600 border-slate-300 rounded focus:ring-blue-500">
+                        <label class="ml-2 block text-sm text-slate-700">Mark as Reviewed</label>
+                    </div>
+                `;
+                container.appendChild(qDiv);
+
+                // Add event listeners for dynamic MC elements
+                if (question.type === 'MC') {
+                    qDiv.querySelector('.add-choice-btn').addEventListener('click', () => this.addMCChoice(question));
+                    qDiv.querySelectorAll('.delete-choice-btn').forEach(btn => {
+                        btn.addEventListener('click', (e) => this.deleteMCChoice(question, e.target.closest('button').dataset.choiceId));
+                    });
+                }
+                
+                // Update button states
+                document.getElementById('reviewPreviousButton').disabled = this.state.currentReviewQuestionIndex === 0;
+                document.getElementById('reviewNextButton').disabled = this.state.currentReviewQuestionIndex === this.state.currentFileForReview.questions.length - 1;
+            },
+            
+            renderMCAnswers(question) {
+                let choicesHTML = question.choices.map((choice, index) => `
+                    <div class="flex items-center space-x-2 mb-2">
+                        <input type="radio" name="correctAnswer_${question.id}" value="${choice.id}" ${question.correctChoiceId === choice.id ? 'checked' : ''} class="h-4 w-4 text-blue-600 border-slate-300 focus:ring-blue-500">
+                        <input type="text" value="${choice.text}" data-choice-id="${choice.id}" class="flex-grow px-3 py-2 border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
+                        <button type="button" data-choice-id="${choice.id}" class="delete-choice-btn p-1 text-red-500 hover:text-red-700">
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5"><path stroke-linecap="round" stroke-linejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12.56 0c.342.052.682.107 1.022.166m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0" /></svg>
+                        </button>
+                    </div>
+                `).join('');
+                return `
+                    <label class="block text-sm font-medium text-slate-700">Answer Choices (select correct one)</label>
+                    ${choicesHTML}
+                    <button type="button" class="add-choice-btn mt-2 text-sm text-blue-600 hover:text-blue-800 flex items-center space-x-1">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" /></svg>
+                        <span>Add Choice</span>
+                    </button>
+                `;
+            },
+
+            addMCChoice(question) {
+                const newChoiceId = `c${Date.now()}`;
+                question.choices.push({ id: newChoiceId, text: '' });
+                this.saveCurrentReviewQuestion(); // Save the state change
+                this.renderReviewQuestion(); // Re-render to show new choice
+            },
+
+            deleteMCChoice(question, choiceIdToDelete) {
+                question.choices = question.choices.filter(c => c.id !== choiceIdToDelete);
+                if (question.correctChoiceId === choiceIdToDelete) {
+                    question.correctChoiceId = null; // Or set to first choice if available
+                }
+                this.saveCurrentReviewQuestion();
+                this.renderReviewQuestion();
+            },
+
+            renderFRAnswer(question) {
+                return `
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700">Correct Answer</label>
+                        <textarea data-field="answerText" class="mt-1 block w-full px-3 py-2 border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm" rows="3">${question.answerText || ''}</textarea>
+                    </div>
+                `;
+            },
+
+            saveCurrentReviewQuestion() {
+                if (!this.state.currentFileForReview || !this.state.currentFileForReview.questions.length) return;
+                
+                const question = this.state.currentFileForReview.questions[this.state.currentReviewQuestionIndex];
+                const qDiv = document.getElementById('reviewQuestionsContainer').firstChild;
+                if (!qDiv) return; // Should not happen if question is rendered
+
+                question.text = qDiv.querySelector('textarea[data-field="text"]').value;
+                question.course = qDiv.querySelector('input[data-field="course"]').value;
+                question.topic = qDiv.querySelector('input[data-field="topic"]').value;
+                question.subtopic = qDiv.querySelector('input[data-field="subtopic"]').value;
+                question.reviewed = qDiv.querySelector('input[data-field="reviewed"]').checked;
+
+                if (question.type === 'MC') {
+                    const choiceInputs = qDiv.querySelectorAll('input[type="text"][data-choice-id]');
+                    choiceInputs.forEach(input => {
+                        const choice = question.choices.find(c => c.id === input.dataset.choiceId);
+                        if (choice) choice.text = input.value;
+                    });
+                    const checkedRadio = qDiv.querySelector('input[type="radio"]:checked');
+                    if (checkedRadio) question.correctChoiceId = checkedRadio.value;
+                } else if (question.type === 'FR') {
+                    question.answerText = qDiv.querySelector('textarea[data-field="answerText"]').value;
+                }
+            },
+
+            finalizeReview() {
+                if (!this.state.currentFileForReview) return;
+                const newBank = {
+                    id: `qb${Date.now()}`,
+                    name: this.state.currentFileForReview.fileName.split('.')[0], // Basic name from filename
+                    fileName: this.state.currentFileForReview.fileName,
+                    source: this.state.currentFileForReview.source,
+                    dateUploaded: new Date().toISOString().split('T')[0],
+                    numQuestions: this.state.currentFileForReview.questions.length,
+                    course: this.state.currentFileForReview.questions.length > 0 ? this.state.currentFileForReview.questions[0].course : 'General', // Default course if not set
+                    topic: this.state.currentFileForReview.questions.length > 0 ? this.state.currentFileForReview.questions[0].topic : 'General', // Default topic
+                    questions: this.state.currentFileForReview.questions
+                };
+                this.state.questionBanks.push(newBank);
+                this.state.currentFileForReview = null; // Clear review state
+                alert('Question bank saved successfully!');
+                this.navigateTo('library');
+            },
+
+            // Library Page
+            initLibraryPage() {
+                document.getElementById('librarySearchInput').addEventListener('input', () => this.renderLibraryTable());
+                document.getElementById('libraryFilterSource').addEventListener('change', () => this.renderLibraryTable());
+            },
+
+            renderLibraryTable() {
+                const tbody = document.getElementById('libraryTableBody');
+                tbody.innerHTML = ''; // Clear existing rows
+
+                const searchTerm = document.getElementById('librarySearchInput').value.toLowerCase();
+                const filterSource = document.getElementById('libraryFilterSource').value;
+
+                const filteredBanks = this.state.questionBanks.filter(bank => {
+                    const matchesSearch = bank.name.toLowerCase().includes(searchTerm) ||
+                                        (bank.course && bank.course.toLowerCase().includes(searchTerm)) ||
+                                        (bank.topic && bank.topic.toLowerCase().includes(searchTerm));
+                    const matchesSource = !filterSource || bank.source === filterSource;
+                    return matchesSearch && matchesSource;
+                });
+
+
+                if (filteredBanks.length === 0) {
+                    tbody.innerHTML = `<tr><td colspan="6" class="px-6 py-10 text-center text-slate-500">No question banks match your criteria.</td></tr>`;
+                    return;
+                }
+
+                filteredBanks.forEach(bank => {
+                    const row = tbody.insertRow();
+                    row.innerHTML = `
+                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-slate-900">${bank.name}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-slate-500">${bank.course || 'N/A'}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-slate-500">${bank.source}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-slate-500">${bank.dateUploaded}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-slate-500">${bank.numQuestions}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-2">
+                            <button data-id="${bank.id}" class="edit-bank-btn text-blue-600 hover:text-blue-800">
+                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5 inline-block"><path stroke-linecap="round" stroke-linejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0 1 15.75 21H5.25A2.25 2.25 0 0 1 3 18.75V8.25A2.25 2.25 0 0 1 5.25 6H10" /></svg> Edit
+                            </button>
+                            <button data-id="${bank.id}" class="delete-bank-btn text-red-600 hover:text-red-800">
+                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5 inline-block"><path stroke-linecap="round" stroke-linejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12.56 0c.342.052.682.107 1.022.166m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0" /></svg> Delete
+                            </button>
+                            <button data-id="${bank.id}" class="export-bank-btn text-green-600 hover:text-green-800">
+                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5 inline-block"><path stroke-linecap="round" stroke-linejoin="round" d="M9 8.25H7.5a2.25 2.25 0 0 0-2.25 2.25v9a2.25 2.25 0 0 0 2.25 2.25h9a2.25 2.25 0 0 0 2.25-2.25v-9a2.25 2.25 0 0 0-2.25-2.25H15M9 12l3 3m0 0 3-3m-3 3V2.25" /></svg> Export
+                            </button>
+                        </td>
+                    `;
+                    row.querySelector('.edit-bank-btn').addEventListener('click', (e) => this.editBank(e.currentTarget.dataset.id));
+                    row.querySelector('.delete-bank-btn').addEventListener('click', (e) => this.deleteBank(e.currentTarget.dataset.id));
+                    row.querySelector('.export-bank-btn').addEventListener('click', (e) => this.exportBank(e.currentTarget.dataset.id));
+                });
+            },
+
+            editBank(bankId) {
+                alert(`Editing bank ${bankId} - (Not fully implemented in this demo)`);
+                // Potentially, this could load the bank's questions into the review interface
+                // or a dedicated metadata editing modal.
+            },
+
+            deleteBank(bankId) {
+                if (confirm('Are you sure you want to delete this question bank?')) {
+                    this.state.questionBanks = this.state.questionBanks.filter(b => b.id !== bankId);
+                    this.renderLibraryTable();
+                    this.updateDashboardStats(); // Update stats after deletion
+                }
+            },
+
+            exportBank(bankId) {
+                const bank = this.state.questionBanks.find(b => b.id === bankId);
+                if (!bank) return;
+                // Simple JSON export for demo
+                const jsonData = JSON.stringify(bank, null, 2);
+                const blob = new Blob([jsonData], { type: 'application/json' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `${bank.name.replace(/\s+/g, '_')}_export.json`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+                alert(`Exporting bank ${bank.name} as JSON.`);
+            },
+
+            // Quiz Generation Page
+            initQuizGenerationPage() {
+                document.getElementById('quizFilterCourse').addEventListener('change', () => this.populateQuizFiltersAndQuestions());
+                document.getElementById('quizFilterTopic').addEventListener('change', () => this.populateQuizFiltersAndQuestions());
+                document.getElementById('generateQuizButton').addEventListener('click', () => this.generateQuiz());
+            },
+
+            populateQuizFiltersAndQuestions() {
+                const allQuestions = this.state.questionBanks.flatMap(bank => bank.questions.map(q => ({...q, bankName: bank.name})));
+                
+                const courseFilter = document.getElementById('quizFilterCourse');
+                const topicFilter = document.getElementById('quizFilterTopic');
+                const selectedCourse = courseFilter.value;
+                const selectedTopic = topicFilter.value;
+
+                // Populate filters
+                const courses = [...new Set(allQuestions.map(q => q.course))].filter(Boolean);
+                const topics = [...new Set(allQuestions.filter(q => !selectedCourse || q.course === selectedCourse).map(q => q.topic))].filter(Boolean);
+
+                this.populateSelect(courseFilter, courses, "Filter by Course");
+                this.populateSelect(topicFilter, topics, "Filter by Topic");
+                courseFilter.value = selectedCourse; // Preserve selection
+                topicFilter.value = selectedTopic; // Preserve selection
+
+                // Filter questions
+                const filteredQuestions = allQuestions.filter(q => 
+                    (!selectedCourse || q.course === selectedCourse) &&
+                    (!selectedTopic || q.topic === selectedTopic)
+                );
+
+                const container = document.getElementById('quizQuestionsForSelectionContainer');
+                container.innerHTML = '';
+                if (filteredQuestions.length === 0) {
+                    container.innerHTML = '<p class="text-slate-500 text-center py-4">No questions match filters.</p>';
+                    return;
+                }
+
+                filteredQuestions.forEach(q => {
+                    const div = document.createElement('div');
+                    div.className = 'flex items-start space-x-3 p-3 bg-slate-50 rounded-md border border-slate-200';
+                    div.innerHTML = `
+                        <input type="checkbox" id="quizq_${q.id}" data-question-id="${q.id}" class="mt-1 h-4 w-4 text-blue-600 border-slate-300 rounded focus:ring-blue-500">
+                        <label for="quizq_${q.id}" class="flex-1 text-sm text-slate-700">
+                            <span class="font-medium">${q.text.substring(0,100)}${q.text.length > 100 ? '...' : ''}</span><br>
+                            <span class="text-xs text-slate-500">${q.course || ''} > ${q.topic || ''} (From: ${q.bankName})</span>
+                        </label>
+                    `;
+                    container.appendChild(div);
+                });
+            },
+
+            populateSelect(selectElement, options, defaultOptionText) {
+                const currentValue = selectElement.value; // Preserve current selection if possible
+                selectElement.innerHTML = `<option value="">${defaultOptionText}</option>`;
+                options.forEach(opt => {
+                    const option = document.createElement('option');
+                    option.value = opt;
+                    option.textContent = opt;
+                    selectElement.appendChild(option);
+                });
+                selectElement.value = currentValue;
+            },
+
+            generateQuiz() {
+                const numQuestions = parseInt(document.getElementById('quizNumQuestionsInput').value) || 10;
+                const selectedQuestionIds = Array.from(document.querySelectorAll('#quizQuestionsForSelectionContainer input[type="checkbox"]:checked'))
+                                               .map(cb => cb.dataset.questionId);
+                
+                let allAvailableQuestions = this.state.questionBanks.flatMap(bank => bank.questions);
+                let questionsForQuiz = allAvailableQuestions.filter(q => selectedQuestionIds.includes(q.id));
+
+                if (questionsForQuiz.length === 0) {
+                    alert("Please select some questions for the quiz.");
+                    return;
+                }
+                
+                // Randomize and pick number of questions
+                if (document.getElementById('quizRandomOrderCheckbox').checked) {
+                    questionsForQuiz.sort(() => Math.random() - 0.5);
+                }
+                questionsForQuiz = questionsForQuiz.slice(0, numQuestions);
+
+                const previewArea = document.getElementById('quizPreviewArea');
+                const previewContent = document.getElementById('quizPreviewContent');
+                previewContent.innerHTML = '';
+
+                questionsForQuiz.forEach((q, index) => {
+                    const qDiv = document.createElement('div');
+                    qDiv.className = 'py-3 border-b border-slate-200';
+                    let answerHtml = '';
+                    if (q.type === 'MC') {
+                        let choices = [...q.choices];
+                        if (document.getElementById('quizRandomAnswersCheckbox').checked) {
+                            choices.sort(() => Math.random() - 0.5);
+                        }
+                        answerHtml = '<ul class="list-disc list-inside pl-4 mt-1 space-y-1">';
+                        choices.forEach(choice => {
+                            answerHtml += `<li class="text-sm text-slate-600">${choice.text}</li>`;
+                        });
+                        answerHtml += '</ul>';
+                    } else { // FR
+                        answerHtml = '<div class="mt-2 h-16 border border-dashed border-slate-300 rounded-md"></div>'; // Placeholder for answer space
+                    }
+                    qDiv.innerHTML = `
+                        <p class="font-semibold text-slate-800">${index + 1}. ${q.text}</p>
+                        ${answerHtml}
+                    `;
+                    previewContent.appendChild(qDiv);
+                });
+
+                previewArea.classList.remove('hidden');
+                previewArea.scrollIntoView({ behavior: 'smooth' });
+            }
+        };
+
+        document.addEventListener('DOMContentLoaded', () => app.init());
+    </script>
+</body>
+</html>

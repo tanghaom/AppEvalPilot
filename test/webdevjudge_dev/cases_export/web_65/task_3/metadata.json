@@ -1,0 +1,9 @@
+{
+  "web_id": "web_65",
+  "task_id": 3,
+  "task_type": "dynamic",
+  "instruction": "Task: Click a 'Skip Pair' button.\nExpected Result: The current pair of images is dismissed without any change to Elo ratings, and a new pair of images with their prompts is displayed.\n\nNote: The task is only considered successful if the expected result is achieved; otherwise, it is deemed infeasible.",
+  "max_steps": 15,
+  "expected": "The current pair of images is dismissed without any change to Elo ratings, and a new pair of images with their prompts is displayed.",
+  "label": 0
+}

@@ -1,0 +1,9 @@
+{
+  "web_id": "web_71",
+  "task_id": 4,
+  "task_type": "dynamic",
+  "instruction": "Task: Click a 'View Cart' or 'Shopping Cart' button/icon.\nExpected Result: A section or modal displays the current items in the cart, including their names, quantities (default 1), prices, and a calculated total price.\n\nNote: The task is only considered successful if the expected result is achieved; otherwise, it is deemed infeasible.",
+  "max_steps": 15,
+  "expected": "A section or modal displays the current items in the cart, including their names, quantities (default 1), prices, and a calculated total price.",
+  "label": 0
+}

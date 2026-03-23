@@ -1,0 +1,9 @@
+{
+  "web_id": "web_34",
+  "task_id": 1,
+  "task_type": "dynamic",
+  "instruction": "Task: Type 'example.com' into an address bar element and click a 'Go' button or press Enter.\nExpected Result: The page's main content area updates to simulate loading 'https://example.com', or displays 'https://example.com' as the target URL.\n\nNote: The task is only considered successful if the expected result is achieved; otherwise, it is deemed infeasible.",
+  "max_steps": 15,
+  "expected": "The page's main content area updates to simulate loading 'https://example.com', or displays 'https://example.com' as the target URL.",
+  "label": 0
+}

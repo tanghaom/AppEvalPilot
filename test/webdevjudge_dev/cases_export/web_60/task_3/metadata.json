@@ -1,0 +1,9 @@
+{
+  "web_id": "web_60",
+  "task_id": 3,
+  "task_type": "dynamic",
+  "instruction": "Task: Click on a dashboard metric card (e.g., 'Temperature Status', 'Humidity Status').\nExpected Result: A modal window or an inline expanded section appears, displaying a (mock) historical data chart or more detailed information for the selected metric.\n\nNote: The task is only considered successful if the expected result is achieved; otherwise, it is deemed infeasible.",
+  "max_steps": 15,
+  "expected": "A modal window or an inline expanded section appears, displaying a (mock) historical data chart or more detailed information for the selected metric.",
+  "label": 0
+}

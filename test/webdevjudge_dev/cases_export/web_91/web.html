@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Interactive Toast Notifications</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Custom scrollbar for better aesthetics if content overflows (optional) */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #f0f2f5; /* Tailwind gray-100 equivalent */
+            border-radius: 10px;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #a0aec0; /* Tailwind gray-400 equivalent */
+            border-radius: 10px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #718096; /* Tailwind gray-500 equivalent */
+        }
+
+        /* Toast list container */
+        #toast-list {
+            list-style: none;
+            display: flex;
+            flex-direction: column-reverse; /* Newest toasts at the visual bottom, older ones pushed up */
+            gap: 0.5rem; /* 8px gap between toasts, adjust as needed */
+            position: fixed;
+            bottom: 1.5rem; /* 24px */
+            right: 1.5rem;  /* 24px */
+            width: max-content;
+            min-width: 320px; /* Tailwind: min-w-xs */
+            max-width: calc(100vw - 3rem); /* Ensure it doesn't overflow viewport */
+            z-index: 9999;
+        }
+
+        /* Base style for individual toast list items */
+        #toast-list li {
+            display: flex;
+            align-items: center;
+            border-radius: 0.5rem; /* rounded-lg */
+            /* Using Tailwind's shadow-xl for a more pronounced effect */
+            box-shadow: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
+            
+            /* Transition properties for smooth animations */
+            opacity: 0;
+            /* Initial position for entry animation: off-screen to the right and slightly down */
+            transform: translateX(calc(100% + 1.5rem)) translateY(10px) rotate(5deg);
+            /* Spring-like transition for entry, smoother for opacity/other transforms */
+            transition: transform 0.4s cubic-bezier(0.68, -0.55, 0.27, 1.55), 
+                        opacity 0.3s ease-in-out;
+            will-change: transform, opacity;
+            width: 100%; /* Take full width of 'ol' container */
+            
+            /* Apply backdrop-filter for a frosted glass effect if background has opacity */
+            backdrop-filter: blur(12px); 
+            -webkit-backdrop-filter: blur(12px); /* Safari support */
+        }
+
+        /* Styles for visible toasts, applied when data-visible="true" */
+        /* These define the "stacked" appearance. Newest is :last-child due to appendChild. */
+
+        /* Newest toast (visually at the bottom due to column-reverse) */
+        #toast-list li[data-visible="true"]:last-child {
+            transform: translateX(0) translateY(0) rotate(0deg);
+            opacity: 1;
+            z-index: 30;
+        }
+
+        /* Second newest toast (visually above the newest) */
+        #toast-list li[data-visible="true"]:nth-last-child(2) {
+            transform: translateX(0) translateY(-12px) rotate(-1.5deg); /* Shifted up, slightly rotated */
+            opacity: 0.95;
+            z-index: 20;
+        }
+
+        /* Third newest toast (visually above the second newest) */
+        #toast-list li[data-visible="true"]:nth-last-child(3) {
+            transform: translateX(0) translateY(-24px) rotate(-3deg); /* Shifted more up, more rotated */
+            opacity: 0.9;
+            z-index: 10;
+        }
+
+        /* Older toasts (if maxToasts allows more, or during transition, visually at the very top) */
+        #toast-list li[data-visible="true"]:nth-last-child(n+4) {
+            transform: translateX(0) translateY(-36px) rotate(-4.5deg);
+            opacity: 0.85;
+            z-index: 5;
+        }
+
+        /* Specific exit animation style (applied via JS before removal) */
+        #toast-list li.toast-exit {
+            opacity: 0 !important; /* Ensure opacity goes to 0 */
+            /* Slide out to the right (matching entry but reversed), slightly faster */
+            transform: translateX(calc(100% + 1.5rem)) translateY(10px) rotate(5deg) !important; 
+            transition-duration: 0.3s; /* Faster exit */
+        }
+    </style>
+</head>
+<body class="bg-slate-100 text-slate-800 flex flex-col items-center justify-center min-h-screen p-6 selection:bg-sky-500 selection:text-white">
+
+    <div class="bg-white p-8 rounded-xl shadow-2xl w-full max-w-lg">
+        <h1 class="text-3xl font-bold text-center text-sky-600 mb-10">Toast Notification System</h1>
+        <div class="space-y-4">
+            <button onclick="showToast('This is an informational message.', 'info')"
+                    class="w-full bg-blue-500 hover:bg-blue-600 text-white font-semibold py-3 px-5 rounded-lg shadow-md hover:shadow-lg transition-all duration-150 ease-in-out focus:outline-none focus:ring-2 focus:ring-blue-400 focus:ring-opacity-75 transform hover:scale-[1.02]">
+                Show Info Toast
+            </button>
+            <button onclick="showToast('Action completed successfully! Your profile has been updated.', 'success')"
+                    class="w-full bg-green-500 hover:bg-green-600 text-white font-semibold py-3 px-5 rounded-lg shadow-md hover:shadow-lg transition-all duration-150 ease-in-out focus:outline-none focus:ring-2 focus:ring-green-400 focus:ring-opacity-75 transform hover:scale-[1.02]">
+                Show Success Toast
+            </button>
+            <button onclick="showToast('Warning: Your session is about to expire in 5 minutes.', 'warning')"
+                    class="w-full bg-yellow-500 hover:bg-yellow-600 text-white font-semibold py-3 px-5 rounded-lg shadow-md hover:shadow-lg transition-all duration-150 ease-in-out focus:outline-none focus:ring-2 focus:ring-yellow-400 focus:ring-opacity-75 transform hover:scale-[1.02]">
+                Show Warning Toast
+            </button>
+            <button onclick="showToast('Error: Could not connect to the server. Please try again later.', 'error')"
+                    class="w-full bg-red-500 hover:bg-red-600 text-white font-semibold py-3 px-5 rounded-lg shadow-md hover:shadow-lg transition-all duration-150 ease-in-out focus:outline-none focus:ring-2 focus:ring-red-400 focus:ring-opacity-75 transform hover:scale-[1.02]">
+                Show Error Toast
+            </button>
+             <button onclick="showToast('This is a rather long and elaborate piece of information, designed specifically to test how the toast notification gracefully handles a more substantial amount of text content. It should wrap nicely and remain readable.', 'info')"
+                    class="w-full bg-indigo-500 hover:bg-indigo-600 text-white font-semibold py-3 px-5 rounded-lg shadow-md hover:shadow-lg transition-all duration-150 ease-in-out focus:outline-none focus:ring-2 focus:ring-indigo-400 focus:ring-opacity-75 transform hover:scale-[1.02]">
+                Show Long Info Toast
+            </button>
+        </div>
+    </div>
+
+    <!-- Toast container: aria-live announces changes to screen readers -->
+    <div id="toast-outer-container" aria-live="assertive" aria-atomic="false">
+        <ol id="toast-list"></ol>
+    </div>
+
+    <script>
+        const icons = {
+            info: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-6 h-6 text-blue-300"><path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a.75.75 0 000 1.5h.253a.25.25 0 01.244.304l-.459 2.066A1.75 1.75 0 0010.747 15H11a.75.75 0 000-1.5h-.253a.25.25 0 01-.244-.304l.459-2.066A1.75 1.75 0 009.253 9H9z" clip-rule="evenodd" /></svg>`,
+            success: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-6 h-6 text-green-300"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.857-9.809a.75.75 0 00-1.214-.882l-3.483 4.79-1.88-1.88a.75.75 0 10-1.06 1.061l2.5 2.5a.75.75 0 001.137-.089l4-5.5z" clip-rule="evenodd" /></svg>`,
+            warning: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-6 h-6 text-yellow-300"><path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-6.75 4.5a.75.75 0 001.5 0v-2.5a.75.75 0 00-1.5 0v2.5zM10 6.5a1 1 0 100-2 1 1 0 000 2z" clip-rule="evenodd" /></svg>`,
+            error: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-6 h-6 text-red-300"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.28 7.22a.75.75 0 00-1.06 1.06L8.94 10l-1.72 1.72a.75.75 0 101.06 1.06L10 11.06l1.72 1.72a.75.75 0 101.06-1.06L11.06 10l1.72-1.72a.75.75 0 00-1.06-1.06L10 8.94 8.28 7.22z" clip-rule="evenodd" /></svg>`,
+        };
+
+        // Define base classes for toasts and type-specific variations
+        // Using 80% opacity for background to let backdrop-filter work well
+        const typeStyles = {
+            info:    { bg: 'bg-slate-800/80', border: 'border-blue-500', textIconColor: 'text-blue-300' },
+            success: { bg: 'bg-slate-800/80', border: 'border-green-500', textIconColor: 'text-green-300' },
+            warning: { bg: 'bg-slate-800/80', border: 'border-yellow-500', textIconColor: 'text-yellow-300' },
+            error:   { bg: 'bg-slate-800/80', border: 'border-red-500', textIconColor: 'text-red-300' },
+        };
+
+        // Duration for animations (must match CSS transition durations for exit)
+        const REMOVAL_ANIMATION_DURATION = 300; // Corresponds to 0.3s in CSS for .toast-exit
+
+        function showToast(message, type = 'info') {
+            const toastList = document.getElementById('toast-list');
+            if (!toastList) {
+                console.error('Toast list element (#toast-list) not found.');
+                return;
+            }
+
+            const toastItem = document.createElement('li');
+            const styles = typeStyles[type] || typeStyles.info;
+            
+            // Base classes + type specific. Added general border for better definition.
+            toastItem.className = `p-4 border-l-4 ${styles.bg} ${styles.border} border border-slate-700/50 text-slate-100 flex items-start gap-3`;
+            toastItem.setAttribute('role', (type === 'error' || type === 'warning') ? 'alert' : 'status');
+
+            // Update icon color dynamically based on type
+            const iconSvg = (icons[type] || icons.info).replace('currentColor', styles.textIconColor);
+
+            toastItem.innerHTML = `
+                <div class="flex-shrink-0 pt-0.5">${iconSvg}</div>
+                <div class="flex-grow text-sm font-medium">${message}</div>
+                <button type="button" class="ml-auto flex-shrink-0 p-1 -m-1 rounded-md text-slate-400 hover:text-slate-100 hover:bg-white/10 focus:outline-none focus:ring-2 focus:ring-white/50 transition-colors" aria-label="Close">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-5 h-5"><path d="M6.28 5.22a.75.75 0 00-1.06 1.06L8.94 10l-3.72 3.72a.75.75 0 101.06 1.06L10 11.06l3.72 3.72a.75.75 0 101.06-1.06L11.06 10l3.72-3.72a.75.75 0 00-1.06-1.06L10 8.94 6.28 5.22z" /></svg>
+                </button>
+            `;
+            
+            toastItem.querySelector('button[aria-label="Close"]').addEventListener('click', (e) => {
+                e.stopPropagation(); // Prevent any other click listeners on the toast itself
+                dismissToast(toastItem);
+            });
+
+            toastList.appendChild(toastItem);
+
+            // Force reflow to ensure initial styles (opacity: 0, off-screen transform) are applied
+            // before triggering the transition to the visible state.
+            // Reading a property like offsetHeight is a common way to do this.
+            // eslint-disable-next-line no-unused-expressions
+            toastItem.offsetHeight; 
+
+            // Animate in: set data-visible="true" in the next frame
+            requestAnimationFrame(() => {
+                toastItem.setAttribute('data-visible', 'true');
+            });
+
+            const baseDelay = 5000; // All toasts get the same base lifetime (5 seconds)
+            
+            const selfDismissTimer = setTimeout(() => {
+                dismissToast(toastItem);
+            }, baseDelay);
+            
+            toastItem.dataset.timerId = selfDismissTimer.toString(); // Store timer ID
+
+            // Maintain maximum number of toasts
+            const maxToasts = 3;
+            const currentToastElements = Array.from(toastList.children);
+            if (currentToastElements.length > maxToasts) {
+                const oldestToast = currentToastElements[0]; // First child in DOM is the oldest
+                dismissToast(oldestToast); // This will also clear its timer
+            }
+        }
+        
+        function dismissToast(toastItem) {
+            if (!toastItem || !toastItem.parentNode || toastItem.classList.contains('toast-exit')) {
+                // Already removed, being removed, or invalid
+                return;
+            }
+
+            // Clear its self-dismiss timer if it's still pending
+            const timerId = parseInt(toastItem.dataset.timerId);
+            if (!isNaN(timerId)) {
+                clearTimeout(timerId);
+            }
+            
+            toastItem.classList.add('toast-exit'); // Add class to trigger exit animation
+
+            // Remove toast from DOM after animation completes
+            setTimeout(() => {
+                if (toastItem.parentNode) {
+                    toastItem.remove();
+                }
+                // Note: CSS :nth-last-child selectors will automatically re-evaluate and
+                // animate remaining toasts to their new positions if needed.
+            }, REMOVAL_ANIMATION_DURATION);
+        }
+
+    </script>
+
+</body>
+</html>

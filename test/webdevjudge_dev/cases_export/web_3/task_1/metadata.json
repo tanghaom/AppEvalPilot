@@ -1,0 +1,9 @@
+{
+  "web_id": "web_3",
+  "task_id": 1,
+  "task_type": "dynamic",
+  "instruction": "Task: Select a time scale for the financial graph (e.g., 10 minutes, 1 hour, 1 day).\nExpected Result: The graph visualization updates to display data corresponding to the selected time scale.\n\nNote: The task is only considered successful if the expected result is achieved; otherwise, it is deemed infeasible.",
+  "max_steps": 15,
+  "expected": "The graph visualization updates to display data corresponding to the selected time scale.",
+  "label": 1
+}

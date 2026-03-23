@@ -1,0 +1,896 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GAS Work Hub</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        /* Custom scrollbar for a more polished look */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #f1f1f1;
+            border-radius: 10px;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #cbd5e1; /* slate-300 */
+            border-radius: 10px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8; /* slate-500 */
+        }
+
+        /* Basic transition for page content visibility */
+        .page-content {
+            transition: opacity 0.3s ease-in-out, transform 0.3s ease-in-out;
+        }
+        .page-content.hidden {
+            opacity: 0;
+            transform: translateY(10px);
+            pointer-events: none;
+            position: absolute; /* To prevent layout shifts when hidden */
+        }
+        .page-content.visible {
+            opacity: 1;
+            transform: translateY(0);
+            position: relative; /* Back to normal flow */
+        }
+
+        /* Heart icon animation */
+        .favorite-icon svg {
+            transition: transform 0.2s ease-in-out, fill 0.2s ease-in-out;
+        }
+        .favorite-icon:hover svg {
+            transform: scale(1.2);
+        }
+        .favorite-icon.favorited svg {
+            fill: currentColor; /* Uses text-pink-500 */
+        }
+
+        /* Chart.js responsive canvas */
+        .chart-container {
+            position: relative;
+            height: 40vh; /* Adjust as needed */
+            width: 100%;
+        }
+        
+        /* Custom focus rings for better accessibility and aesthetics */
+        *:focus-visible {
+            outline: 2px solid #fbbf24; /* amber-400 */
+            outline-offset: 2px;
+            border-radius: 4px;
+        }
+        /* Tailwind uses box-shadow for focus rings by default, this provides an alternative */
+        .custom-focus-ring:focus-visible {
+            box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.4); /* Equivalent to ring-indigo-500/40 */
+        }
+    </style>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: {
+                            light: '#818cf8', // indigo-400
+                            DEFAULT: '#6366f1', // indigo-500
+                            dark: '#4f46e5',  // indigo-600
+                        },
+                        secondary: {
+                            light: '#f472b6', // pink-400
+                            DEFAULT: '#ec4899', // pink-500
+                            dark: '#db2777',   // pink-600
+                        },
+                        accent: {
+                            light: '#fbbf24', // amber-400
+                            DEFAULT: '#f59e0b', // amber-500
+                            dark: '#d97706',   // amber-600
+                        },
+                        neutral: {
+                            100: '#f3f4f6', // gray-100
+                            200: '#e5e7eb', // gray-200
+                            300: '#d1d5db', // gray-300
+                            700: '#374151', // gray-700
+                            900: '#111827', // gray-900
+                        },
+                        success: '#10b981', // emerald-500
+                        warning: '#f59e0b', // amber-500
+                        error: '#ef4444',   // red-500
+                    },
+                    animation: {
+                        'fade-in': 'fadeIn 0.5s ease-out forwards',
+                        'slide-in-up': 'slideInUp 0.5s ease-out forwards',
+                    },
+                    keyframes: {
+                        fadeIn: {
+                            '0%': { opacity: 0 },
+                            '100%': { opacity: 1 },
+                        },
+                        slideInUp: {
+                            '0%': { opacity: 0, transform: 'translateY(20px)' },
+                            '100%': { opacity: 1, transform: 'translateY(0)' },
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+<body class="bg-neutral-100 font-sans antialiased">
+    <div class="flex h-screen overflow-hidden">
+        <!-- Sidebar -->
+        <aside class="w-64 bg-gradient-to-b from-primary-dark to-primary text-white flex flex-col transition-all duration-300 ease-in-out">
+            <div class="p-6 flex items-center space-x-3 border-b border-primary-light/30">
+                <!-- Heroicon: building-office-2 -->
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-10 h-10 text-accent-light">
+                    <path fill-rule="evenodd" d="M1.5 2.25a.75.75 0 0 1 .75-.75h3a.75.75 0 0 1 .75.75v3a.75.75 0 0 1-.75.75h-3a.75.75 0 0 1-.75-.75v-3ZM1.5 9a.75.75 0 0 1 .75-.75h3a.75.75 0 0 1 .75.75v3a.75.75 0 0 1-.75.75h-3a.75.75 0 0 1-.75-.75v-3ZM1.5 15.75a.75.75 0 0 1 .75-.75h3a.75.75 0 0 1 .75.75v3a.75.75 0 0 1-.75.75h-3a.75.75 0 0 1-.75-.75v-3ZM8.25 2.25a.75.75 0 0 1 .75-.75h3a.75.75 0 0 1 .75.75v3a.75.75 0 0 1-.75.75h-3a.75.75 0 0 1-.75-.75v-3ZM8.25 9a.75.75 0 0 1 .75-.75h3a.75.75 0 0 1 .75.75v3a.75.75 0 0 1-.75.75h-3a.75.75 0 0 1-.75-.75v-3ZM8.25 15.75a.75.75 0 0 1 .75-.75h3a.75.75 0 0 1 .75.75v3a.75.75 0 0 1-.75.75h-3a.75.75 0 0 1-.75-.75v-3ZM15 2.25a.75.75 0 0 1 .75-.75h3a.75.75 0 0 1 .75.75v3a.75.75 0 0 1-.75.75h-3a.75.75 0 0 1-.75-.75v-3ZM15 9a.75.75 0 0 1 .75-.75h3a.75.75 0 0 1 .75.75v3a.75.75 0 0 1-.75.75h-3a.75.75 0 0 1-.75-.75v-3ZM15 15.75a.75.75 0 0 1 .75-.75h3a.75.75 0 0 1 .75.75v3a.75.75 0 0 1-.75.75h-3a.75.75 0 0 1-.75-.75v-3Z" clip-rule="evenodd" />
+                    <path d="M22.5 8.25a.75.75 0 0 0-.75-.75H15a.75.75 0 0 0-.75.75v.75c0 .414.336.75.75.75H22.5v3H15c-.414 0-.75.336-.75.75v.75a.75.75 0 0 0 .75.75h7.5a.75.75 0 0 0 .75-.75V8.25Z" />
+                </svg>
+                <h1 class="text-2xl font-semibold tracking-tight">Work Hub</h1>
+            </div>
+            <nav class="flex-1 p-4 space-y-2">
+                <a href="#" data-page="resource-hub" class="nav-link active-nav-link group">
+                    <!-- Heroicon: home -->
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-5 h-5 mr-3"><path d="M11.47 3.841a.75.75 0 0 1 1.06 0l8.69 8.69a.75.75 0 1 0 1.06-1.061l-8.689-8.69a2.25 2.25 0 0 0-3.182 0l-8.69 8.69a.75.75 0 1 0 1.061 1.06l8.69-8.69Z" /><path d="m12 5.432 8.159 8.159c.03.03.06.058.091.086v6.198c0 1.035-.84 1.875-1.875 1.875H15a.75.75 0 0 1-.75-.75v-4.5a.75.75 0 0 0-.75-.75h-3a.75.75 0 0 0-.75.75V21a.75.75 0 0 1-.75.75H5.625a1.875 1.875 0 0 1-1.875-1.875v-6.198a2.29 2.29 0 0 0 .091-.086L12 5.432Z" /></svg>
+                    Resource Hub
+                </a>
+                <a href="#" data-page="reporting" class="nav-link group">
+                    <!-- Heroicon: chart-bar -->
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-5 h-5 mr-3"><path d="M18.375 2.25c-1.035 0-1.875.84-1.875 1.875v15.75c0 1.035.84 1.875 1.875 1.875h.75c1.035 0 1.875-.84 1.875-1.875V4.125c0-1.036-.84-1.875-1.875-1.875h-.75ZM9.75 8.625c-1.036 0-1.875.84-1.875 1.875v11.25c0 1.035.84 1.875 1.875 1.875h.75c1.035 0 1.875-.84 1.875-1.875V10.5c0-1.036-.84-1.875-1.875-1.875h-.75ZM3 13.5c-1.036 0-1.875.84-1.875 1.875v6.375c0 1.035.84 1.875 1.875 1.875h.75c1.035 0 1.875-.84 1.875-1.875V15.375c0-1.036-.84-1.875-1.875-1.875h-.75Z" /></svg>
+                    Reporting
+                </a>
+                <a href="#" data-page="automation" class="nav-link group">
+                    <!-- Heroicon: play-circle -->
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-5 h-5 mr-3"><path fill-rule="evenodd" d="M2.25 12c0-5.385 4.365-9.75 9.75-9.75s9.75 4.365 9.75 9.75-4.365 9.75-9.75 9.75S2.25 17.385 2.25 12Zm14.024-.983a1.125 1.125 0 0 1 0 1.966l-5.603 3.113A1.125 1.125 0 0 1 9 15.113V8.887c0-.857.921-1.4 1.671-.983l5.603 3.113Z" clip-rule="evenodd" /></svg>
+                    Automation
+                </a>
+                <a href="#" data-page="tools" class="nav-link group">
+                    <!-- Heroicon: wrench-screwdriver -->
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-5 h-5 mr-3"><path fill-rule="evenodd" d="M11.094 1.524a.75.75 0 0 1 .626.852l-.707 4.952a.75.75 0 0 0 .305.722l2.967 2.036a.75.75 0 0 1 .218.99l-2.38 4.08a.75.75 0 0 1-.978.245l-2.34-.936a.75.75 0 0 0-.584 0l-2.34.936a.75.75 0 0 1-.978-.245l-2.38-4.08a.75.75 0 0 1 .218-.99l2.967-2.036a.75.75 0 0 0 .305-.722l-.707-4.952a.75.75 0 0 1 .626-.852GM2.572 6.822l.02.019a.75.75 0 0 0 .207-.017l.02-.005C6.494 5.83 9.693 5.25 12 5.25s5.506.581 9.181 1.575l.02.005a.75.75 0 0 0 .207.017l.02-.019C22.037 7.15 22.5 7.9 22.5 8.912v1.172a3.752 3.752 0 0 1-2.074 3.404l-1.097.549a.75.75 0 0 1-.471 0l-1.097-.549a3.752 3.752 0 0 1-2.074-3.404V8.912c0-.428.09-.828.254-1.192C14.963 7.27 13.548 7 12 7c-1.548 0-2.963.27-4.07.72-.164.364-.254.764-.254 1.192v1.172a3.752 3.752 0 0 1-2.074 3.404l-1.097.549a.75.75 0 0 1-.471 0l-1.097-.549A3.752 3.752 0 0 1 1.5 10.084V8.912c0-1.012.463-1.762 1.072-2.09Z" clip-rule="evenodd" /></svg>
+                    Other Tools
+                </a>
+            </nav>
+            <div class="p-4 mt-auto border-t border-primary-light/30">
+                <button id="gas-sync-button" class="w-full flex items-center justify-center py-2.5 px-4 text-sm font-medium text-white bg-primary-light/50 hover:bg-primary-light/70 rounded-lg focus:outline-none focus:ring-2 focus:ring-accent-light focus:ring-offset-2 focus:ring-offset-primary-dark custom-focus-ring">
+                    <!-- Heroicon: arrow-path -->
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-5 h-5 mr-2"><path fill-rule="evenodd" d="M4.755 10.059a7.5 7.5 0 0 1 12.548-3.364l.269-.269A1.5 1.5 0 0 1 21 8.25l-2.286 6.857a.75.75 0 0 1-1.06.44l-6.857-2.286a.75.75 0 0 1 .44-1.06l.271.09a5.25 5.25 0 0 0-9.256-2.136L4.755 10.059Zm14.491 3.891a1.5 1.5 0 0 1-1.06-.44l-.271-.09a5.25 5.25 0 0 0-9.256 2.136L9.47 15.866A7.5 7.5 0 0 1 3.009 9.53l-.269.269a.75.75 0 0 1 .056 1.057l2.286 6.857a.75.75 0 0 1-.44 1.06l-6.857 2.286a.75.75 0 0 1-1.057-.056L3 21.25l6.857-2.286a1.5 1.5 0 0 1 1.06.44l.269.269a7.5 7.5 0 0 1-12.548 3.364l-.269.269A1.5 1.5 0 0 1 0 15.75l2.286-6.857a.75.75 0 0 1 1.06-.44l6.857 2.286a.75.75 0 0 1-.44 1.06l-.271-.09a5.25 5.25 0 0 0 9.256 2.136l.27-.091a.75.75 0 0 1 1.06.44l2.286 6.857a.75.75 0 0 1-.44 1.06l-6.857 2.286a.75.75 0 0 1-1.057-.056L13.5 18l-6.857 2.286a1.5 1.5 0 0 1-1.06-.44l-.269-.269a7.5 7.5 0 0 1 12.548-3.364l.269-.269a1.5 1.5 0 0 1 2.122-.002l.269.269a.75.75 0 0 1 .056 1.057l-2.286 6.857a.75.75 0 0 1-.44 1.06L9.75 22.5a.75.75 0 0 1-.056-1.057L9.963 21.25l6.857-2.286a1.5 1.5 0 0 1 1.06-.44l.269.269a7.5 7.5 0 0 1-1.913 4.33Z" clip-rule="evenodd" /></svg>
+                    Sync with Google
+                </button>
+                <p id="sync-status" class="text-xs text-center mt-2 text-primary-light/70"></p>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="flex-1 p-6 lg:p-8 overflow-y-auto bg-neutral-100">
+            <div id="page-loader" class="fixed inset-0 bg-neutral-100/80 backdrop-blur-sm flex items-center justify-center z-50">
+                <div class="text-center">
+                    <svg class="animate-spin h-12 w-12 text-primary-dark mx-auto" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    <p class="mt-4 text-lg font-semibold text-neutral-700">Loading your workspace...</p>
+                </div>
+            </div>
+
+            <!-- Resource Hub Page -->
+            <div id="page-resource-hub" class="page-content visible space-y-6">
+                <header class="flex flex-col md:flex-row justify-between md:items-center gap-4">
+                    <div>
+                        <h2 class="text-3xl font-bold text-neutral-900">Resource Hub</h2>
+                        <p class="text-neutral-500">Quick access to your essential files and links.</p>
+                    </div>
+                    <div class="flex items-center space-x-2">
+                        <div class="relative flex-grow md:flex-grow-0">
+                            <input type="text" id="resource-search" placeholder="Search resources..." class="pl-10 pr-4 py-2.5 border border-neutral-300 rounded-lg w-full md:w-72 focus:ring-2 focus:ring-primary focus:border-primary custom-focus-ring">
+                            <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                <!-- Heroicon: magnifying-glass -->
+                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-5 h-5 text-neutral-500"><path fill-rule="evenodd" d="M9 3.5a5.5 5.5 0 1 0 0 11 5.5 5.5 0 0 0 0-11ZM2 9a7 7 0 1 1 12.452 4.391l3.328 3.329a.75.75 0 1 1-1.06 1.06l-3.329-3.328A7 7 0 0 1 2 9Z" clip-rule="evenodd" /></svg>
+                            </div>
+                        </div>
+                        <select id="category-filter" class="py-2.5 px-4 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary custom-focus-ring bg-white">
+                            <option value="all">All Categories</option>
+                        </select>
+                    </div>
+                </header>
+                <div id="resource-list" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                    <!-- Resource cards will be injected here by JavaScript -->
+                </div>
+                <div id="no-resources-message" class="hidden text-center py-12">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-16 h-16 mx-auto text-neutral-400 mb-4">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z" />
+                    </svg>
+                    <p class="text-xl font-semibold text-neutral-700">No resources found.</p>
+                    <p class="text-neutral-500">Try adjusting your search or filter, or add new resources.</p>
+                </div>
+            </div>
+
+            <!-- Reporting Page -->
+            <div id="page-reporting" class="page-content hidden space-y-6">
+                <header>
+                    <h2 class="text-3xl font-bold text-neutral-900">Reporting Dashboard</h2>
+                    <p class="text-neutral-500">Performance insights and task monitoring.</p>
+                </header>
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <div class="bg-white p-6 rounded-xl shadow-lg">
+                        <h3 class="text-xl font-semibold text-neutral-700 mb-4">Team Performance</h3>
+                        <div class="chart-container"><canvas id="performanceChart"></canvas></div>
+                    </div>
+                    <div class="bg-white p-6 rounded-xl shadow-lg">
+                        <h3 class="text-xl font-semibold text-neutral-700 mb-4">Task Completion Status</h3>
+                        <div class="chart-container"><canvas id="taskStatusChart"></canvas></div>
+                    </div>
+                </div>
+                <div class="bg-white p-6 rounded-xl shadow-lg">
+                    <h3 class="text-xl font-semibold text-neutral-700 mb-4">Submission Times Overview</h3>
+                    <div class="chart-container h-[50vh]"><canvas id="submissionTimesChart"></canvas></div>
+                </div>
+                <div class="bg-white p-6 rounded-xl shadow-lg">
+                    <h3 class="text-xl font-semibold text-neutral-700 mb-4">Deadline Tracker</h3>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left" id="deadlineTable">
+                            <thead class="bg-neutral-50">
+                                <tr>
+                                    <th class="p-3 text-sm font-semibold text-neutral-700">Task</th>
+                                    <th class="p-3 text-sm font-semibold text-neutral-700">Assigned To</th>
+                                    <th class="p-3 text-sm font-semibold text-neutral-700">Due Date</th>
+                                    <th class="p-3 text-sm font-semibold text-neutral-700">Status</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <!-- Table rows will be injected here -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Automation Page -->
+            <div id="page-automation" class="page-content hidden space-y-6">
+                <header>
+                    <h2 class="text-3xl font-bold text-neutral-900">Task Automation</h2>
+                    <p class="text-neutral-500">Run your Google Apps Scripts with a single click.</p>
+                </header>
+                <div id="automation-scripts-list" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    <!-- Automation script cards will be injected here -->
+                </div>
+                <div id="automation-log" class="bg-white p-6 rounded-xl shadow-lg mt-6">
+                    <h3 class="text-xl font-semibold text-neutral-700 mb-4">Automation Log</h3>
+                    <div id="log-entries" class="max-h-60 overflow-y-auto space-y-2 text-sm">
+                        <p class="text-neutral-500 italic">No script activity yet.</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Other Tools Page -->
+            <div id="page-tools" class="page-content hidden">
+                <header>
+                    <h2 class="text-3xl font-bold text-neutral-900">Other Tools</h2>
+                    <p class="text-neutral-500">Additional utilities and integrations.</p>
+                </header>
+                <div class="mt-6 bg-white p-8 rounded-xl shadow-lg text-center">
+                    <!-- Heroicon: puzzle-piece -->
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-16 h-16 mx-auto text-primary mb-4">
+                        <path d="M11.25 4.533A9.707 9.707 0 0 0 6 3a9.735 9.735 0 0 0-3.25.555.75.75 0 0 0-.5.707v14.5a.75.75 0 0 0 .5.707A9.716 9.716 0 0 0 6 21a9.742 9.742 0 0 0 3.055-.723.75.75 0 0 1 .69-.015L12 21.75l2.255-1.503a.75.75 0 0 1 .69.015A9.742 9.742 0 0 0 18 21a9.716 9.716 0 0 0 3.25-.555.75.75 0 0 0 .5-.707V4.262a.75.75 0 0 0-.5-.707A9.735 9.735 0 0 0 18 3a9.707 9.707 0 0 0-5.25 1.533c-.487.289-.966.54-1.436.769a3.374 3.374 0 0 1-2.618 0c-.47-.23-.949-.48-1.436-.77Z" />
+                        <path fill-rule="evenodd" d="M12 14.25a3 3 0 1 0 0-6 3 3 0 0 0 0 6Zm1.5-3a1.5 1.5 0 1 1-3 0 1.5 1.5 0 0 1 3 0Z" clip-rule="evenodd" />
+                    </svg>
+                    <h3 class="text-2xl font-semibold text-neutral-700">More Tools Coming Soon!</h3>
+                    <p class="text-neutral-500 mt-2">This section will house additional helpful tools and integrations for your workflow.</p>
+                </div>
+            </div>
+
+            <!-- Toast Notification Area -->
+            <div id="toast-container" class="fixed bottom-5 right-5 space-y-3 z-[100]">
+                <!-- Toasts will be appended here -->
+            </div>
+
+        </main>
+    </div>
+
+<script>
+const App = {
+    // ------------- STATE ------------- //
+    state: {
+        currentPage: 'resource-hub',
+        resources: [],
+        filteredResources: [],
+        categories: [],
+        searchTerm: '',
+        selectedCategory: 'all',
+        automationScripts: [],
+        charts: {}, // To store Chart.js instances
+    },
+
+    // ------------- MOCK DATA ------------- //
+    // In a real GAS app, this data would be fetched using google.script.run
+    mockData: {
+        resources: [
+            { id: '1', title: 'Q3 Sales Tracker', description: 'Google Sheet for tracking quarterly sales performance and targets for Q3.', link: '#', category: 'Sales', lastAccessed: '2024-07-28', isFavorite: true, iconType: 'sheet' },
+            { id: '2', title: 'Project Phoenix Plan', description: 'Google Doc outlining the strategy for Project Phoenix.', link: '#', category: 'Projects', lastAccessed: '2024-07-25', isFavorite: false, iconType: 'doc' },
+            { id: '3', title: 'Marketing Campaign ROI', description: 'Google Sheet analyzing return on investment for recent marketing campaigns.', link: '#', category: 'Marketing', lastAccessed: '2024-07-22', isFavorite: false, iconType: 'sheet' },
+            { id: '4', title: 'Client Onboarding Deck', description: 'Google Slides presentation for new client onboarding.', link: '#', category: 'Clients', lastAccessed: '2024-07-29', isFavorite: true, iconType: 'slide' },
+            { id: '5', title: 'Competitor Analysis Q3', description: 'Detailed analysis of key competitors for the current quarter.', link: '#', category: 'Strategy', lastAccessed: '2024-07-15', isFavorite: false, iconType: 'doc' },
+            { id: '6', title: 'Shared Drive - Design Assets', description: 'Central repository for all design assets and brand guidelines.', link: '#', category: 'Design', lastAccessed: '2024-07-30', isFavorite: true, iconType: 'drive' },
+            { id: '7', title: 'Employee Handbook', description: 'Official company employee handbook.', link: '#', category: 'HR', lastAccessed: '2024-06-01', isFavorite: false, iconType: 'doc' },
+            { id: '8', title: 'Development Sprint Board', description: 'Trello board link for current development sprint.', link: '#', category: 'Development', lastAccessed: '2024-07-29', isFavorite: false, iconType: 'custom' },
+        ],
+        automationScripts: [
+            { id: 'script1', name: 'Generate Weekly Sales Report', description: 'Compiles sales data and emails the weekly summary.', serverFunctionName: 'runWeeklySalesReport' },
+            { id: 'script2', name: 'Archive Old Files', description: 'Moves files older than 6 months to the archive folder.', serverFunctionName: 'runArchiveOldFiles' },
+            { id: 'script3', name: 'Sync Client Data', description: 'Updates client information from CRM to a master Google Sheet.', serverFunctionName: 'runSyncClientData' },
+            { id: 'script4', name: 'Daily Backup Script', description: 'Performs a daily backup of critical spreadsheets.', serverFunctionName: 'runDailyBackup' },
+        ],
+        reporting: {
+            performance: {
+                labels: ['Team Alpha', 'Team Bravo', 'Team Charlie', 'Team Delta'],
+                data: [85, 92, 78, 88],
+            },
+            taskStatus: {
+                labels: ['Completed', 'In Progress', 'Overdue', 'Not Started'],
+                data: [120, 45, 15, 20],
+            },
+            submissionTimes: {
+                labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
+                datasets: [
+                    { label: 'Avg. Submission Time (hours)', data: [2.5, 2.1, 3.0, 2.8, 3.5, 1.5, 1.0], borderColor: '#6366f1', tension: 0.1, fill: false },
+                    { label: 'Tasks Submitted', data: [15, 18, 22, 20, 25, 8, 5], borderColor: '#ec4899', tension: 0.1, fill: false }
+                ]
+            },
+            deadlines: [
+                { task: 'Q3 Financial Report', assignedTo: 'Alice Johnson', dueDate: '2024-08-15', status: 'In Progress' },
+                { task: 'Marketing Strategy Presentation', assignedTo: 'Bob Williams', dueDate: '2024-08-10', status: 'Completed' },
+                { task: 'Software Update Deployment', assignedTo: 'Tech Team', dueDate: '2024-07-28', status: 'Overdue' },
+                { task: 'New Feature Design Mockups', assignedTo: 'Carol Davis', dueDate: '2024-08-05', status: 'In Progress' },
+                { task: 'Client Follow-ups Q2', assignedTo: 'David Brown', dueDate: '2024-07-30', status: 'Completed' },
+            ]
+        }
+    },
+
+    // ------------- INITIALIZATION ------------- //
+    init() {
+        this.showLoader();
+        // Simulate fetching initial data (replace with actual google.script.run calls)
+        setTimeout(() => {
+            this.state.resources = [...this.mockData.resources];
+            this.state.filteredResources = [...this.state.resources];
+            this.state.automationScripts = [...this.mockData.automationScripts];
+            
+            this.populateCategories();
+            this.renderResourceHub();
+            this.renderAutomationPage();
+            this.setupEventListeners();
+            this.navigateTo(this.state.currentPage, true); // Navigate to initial page
+            this.hideLoader();
+            this.showToast('Workspace loaded successfully!', 'success');
+        }, 1500); 
+    },
+
+    showLoader() {
+        document.getElementById('page-loader').classList.remove('hidden');
+    },
+
+    hideLoader() {
+        document.getElementById('page-loader').classList.add('hidden');
+    },
+
+    // ------------- NAVIGATION ------------- //
+    navigateTo(pageId, isInitialLoad = false) {
+        document.querySelectorAll('.page-content').forEach(page => {
+            if (page.id === `page-${pageId}`) {
+                page.classList.remove('hidden');
+                page.classList.add('visible');
+                // Add animation class if not initial load for better effect
+                if (!isInitialLoad) {
+                    page.classList.add('animate-fade-in');
+                    setTimeout(() => page.classList.remove('animate-fade-in'), 500);
+                }
+            } else {
+                page.classList.add('hidden');
+                page.classList.remove('visible', 'animate-fade-in');
+            }
+        });
+
+        document.querySelectorAll('.nav-link').forEach(link => {
+            if (link.dataset.page === pageId) {
+                link.classList.add('active-nav-link');
+            } else {
+                link.classList.remove('active-nav-link');
+            }
+        });
+        this.state.currentPage = pageId;
+
+        // If navigating to reporting, initialize charts
+        if (pageId === 'reporting' && !this.state.charts.performanceChart) {
+            this.initCharts();
+        }
+    },
+
+    // ------------- EVENT LISTENERS ------------- //
+    setupEventListeners() {
+        // Navigation links
+        document.querySelectorAll('.nav-link').forEach(link => {
+            link.addEventListener('click', (e) => {
+                e.preventDefault();
+                const pageId = link.dataset.page;
+                this.navigateTo(pageId);
+            });
+        });
+
+        // Resource Hub: Search and Filter
+        document.getElementById('resource-search').addEventListener('input', (e) => {
+            this.state.searchTerm = e.target.value.toLowerCase();
+            this.filterAndRenderResources();
+        });
+
+        document.getElementById('category-filter').addEventListener('change', (e) => {
+            this.state.selectedCategory = e.target.value;
+            this.filterAndRenderResources();
+        });
+
+        // GAS Sync Button (Placeholder)
+        document.getElementById('gas-sync-button').addEventListener('click', () => {
+            this.handleGASSync();
+        });
+    },
+
+    // ------------- RESOURCE HUB LOGIC ------------- //
+    populateCategories() {
+        const categories = new Set(['all']);
+        this.state.resources.forEach(res => categories.add(res.category));
+        this.state.categories = Array.from(categories);
+
+        const filterDropdown = document.getElementById('category-filter');
+        filterDropdown.innerHTML = ''; // Clear existing options
+
+        this.state.categories.forEach(cat => {
+            const option = document.createElement('option');
+            option.value = cat.toLowerCase();
+            option.textContent = cat === 'all' ? 'All Categories' : cat;
+            filterDropdown.appendChild(option);
+        });
+    },
+
+    filterAndRenderResources() {
+        let resources = [...this.state.resources];
+        if (this.state.selectedCategory !== 'all') {
+            resources = resources.filter(res => res.category.toLowerCase() === this.state.selectedCategory);
+        }
+        if (this.state.searchTerm) {
+            resources = resources.filter(res => 
+                res.title.toLowerCase().includes(this.state.searchTerm) || 
+                res.description.toLowerCase().includes(this.state.searchTerm)
+            );
+        }
+        this.state.filteredResources = resources;
+        this.renderResourceHub();
+    },
+
+    renderResourceHub() {
+        const resourceList = document.getElementById('resource-list');
+        resourceList.innerHTML = ''; // Clear existing cards
+
+        const noResourcesMessage = document.getElementById('no-resources-message');
+
+        if (this.state.filteredResources.length === 0) {
+            noResourcesMessage.classList.remove('hidden');
+            resourceList.classList.add('hidden');
+        } else {
+            noResourcesMessage.classList.add('hidden');
+            resourceList.classList.remove('hidden');
+            this.state.filteredResources.forEach(resource => {
+                const card = this.createResourceCard(resource);
+                resourceList.appendChild(card);
+            });
+        }
+    },
+
+    createResourceIcon(iconType) {
+        let iconSVG = '';
+        let bgColor = 'bg-neutral-200'; // Default gray for custom/unknown
+
+        switch (iconType) {
+            case 'sheet': // Google Sheets
+                iconSVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-8 h-8 text-green-700"><path d="M4.5 3.375A1.875 1.875 0 0 0 2.625 5.25v13.5A1.875 1.875 0 0 0 4.5 20.625h15A1.875 1.875 0 0 0 21.375 18.75V5.25A1.875 1.875 0 0 0 19.5 3.375h-15Zm10.5 4.875a.75.75 0 0 0-1.5 0v6a.75.75 0 0 0 1.5 0v-6ZM7.5 10.5a.75.75 0 0 1 .75-.75h3a.75.75 0 0 1 0 1.5h-3a.75.75 0 0 1-.75-.75Z" /></svg>`;
+                bgColor = 'bg-green-100';
+                break;
+            case 'doc': // Google Docs
+                iconSVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-8 h-8 text-blue-700"><path d="M5.625 1.5c-1.036 0-1.875.84-1.875 1.875v17.25c0 1.035.84 1.875 1.875 1.875h12.75c1.035 0 1.875-.84 1.875-1.875V12.75A3.75 3.75 0 0 0 16.5 9h-1.875a.375.375 0 0 1-.375-.375V4.875A3.75 3.75 0 0 0 10.5 1.5H5.625Zm3.75 7.5a.75.75 0 0 0 0 1.5h4.5a.75.75 0 0 0 0-1.5h-4.5Z" /></svg>`;
+                bgColor = 'bg-blue-100';
+                break;
+            case 'slide': // Google Slides
+                iconSVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-8 h-8 text-yellow-600"><path d="M3.375 3C2.339 3 1.5 3.84 1.5 4.875v14.25C1.5 20.16 2.339 21 3.375 21h17.25c1.035 0 1.875-.84 1.875-1.875V4.875C22.5 3.84 21.661 3 20.625 3H3.375Z" /></svg>`;
+                bgColor = 'bg-yellow-100';
+                break;
+            case 'drive': // Google Drive
+                iconSVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-8 h-8 text-gray-700"><path d="M1.5 8.303a1.5 1.5 0 0 1 1.008-.498l4.128-.002a1.5 1.5 0 0 1 1.473 1.053L8.75 11.25l-.842 3.465a1.5 1.5 0 0 1-1.473 1.053l-4.128.002a1.5 1.5 0 0 1-1.008-.498L1.5 8.303ZM10.25 11.25 12 8.018l1.75 3.232-1.75 3.232L10.25 11.25Z" /><path d="m13.657 15.717 4.128.002a1.5 1.5 0 0 0 1.008-.498l-.208-7.417a1.5 1.5 0 0 0-1.008-.498l-4.128.002a1.5 1.5 0 0 0-1.473 1.053L11.25 11.25l.842 3.465a1.5 1.5 0 0 0 1.473 1.053Zm.643-8.967 4.128-.002a1.5 1.5 0 0 1 1.008.498l.208 7.417A1.5 1.5 0 0 1 21 15.717l-4.128-.002a1.5 1.5 0 0 1-1.473-1.053L14.75 11.25l-.842-3.465a1.5 1.5 0 0 1 1.473-1.053Z" /></svg>`;
+                bgColor = 'bg-gray-200';
+                break;
+            default: // Placeholder div for custom/unknown
+                return `<div class="flex items-center justify-center ${bgColor} border-2 border-dashed border-neutral-300 rounded-xl w-16 h-16">
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-8 h-8 text-neutral-400">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m2.25 0H7.5m0 0H6.375m0 0A2.25 2.25 0 0 0 4.125 4.5v15A2.25 2.25 0 0 0 6.375 21.75h11.25A2.25 2.25 0 0 0 20 19.5V7.5a2.25 2.25 0 0 0-2.25-2.25h-1.5m-3 0V3.75m0 0A2.25 2.25 0 0 0 9.75 1.5h-3A2.25 2.25 0 0 0 4.5 3.75M10.5 6h4.5M10.5 9h4.5M10.5 12h4.5m-4.5 3h4.5m-4.5 3h4.5M10.5 21h4.5" />
+                            </svg>
+                        </div>`;
+        }
+        return `<div class="flex items-center justify-center ${bgColor} rounded-xl w-16 h-16 p-2">${iconSVG}</div>`;
+    },
+
+    createResourceCard(resource) {
+        const card = document.createElement('div');
+        card.className = 'resource-card bg-white rounded-xl shadow-lg hover:shadow-xl transition-shadow duration-300 flex flex-col overflow-hidden animate-slide-in-up';
+        card.style.animationDelay = `${this.state.filteredResources.indexOf(resource) * 0.05}s`;
+
+        const lastAccessedDate = new Date(resource.lastAccessed);
+        const timeDiff = new Date() - lastAccessedDate;
+        const daysAgo = Math.floor(timeDiff / (1000 * 60 * 60 * 24));
+        let lastAccessedText;
+        if (daysAgo === 0) lastAccessedText = "Today";
+        else if (daysAgo === 1) lastAccessedText = "Yesterday";
+        else lastAccessedText = `${daysAgo} days ago`;
+        
+        card.innerHTML = `
+            <div class="p-5 flex-grow">
+                <div class="flex items-start justify-between mb-3">
+                    ${this.createResourceIcon(resource.iconType)}
+                    <button class="favorite-icon ${resource.isFavorite ? 'favorited text-secondary' : 'text-neutral-400 hover:text-secondary-light'}" data-id="${resource.id}" title="Toggle favorite">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" class="w-6 h-6" fill="${resource.isFavorite ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="2">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12Z" />
+                        </svg>
+                    </button>
+                </div>
+                <h3 class="text-lg font-semibold text-neutral-900 mb-1">
+                    <a href="${resource.link}" target="_blank" class="hover:text-primary hover:underline focus:outline-none custom-focus-ring rounded">${resource.title}</a>
+                </h3>
+                <p class="text-sm text-neutral-500 mb-3 h-16 overflow-hidden text-ellipsis">${resource.description}</p>
+            </div>
+            <div class="bg-neutral-50 px-5 py-3 border-t border-neutral-200 flex justify-between items-center">
+                <span class="text-xs text-neutral-500">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-4 h-4 inline mr-1 align-text-bottom"><path fill-rule="evenodd" d="M10 18a8 8 0 1 0 0-16 8 8 0 0 0 0 16Zm.75-13a.75.75 0 0 0-1.5 0v5c0 .414.336.75.75.75h4a.75.75 0 0 0 0-1.5h-3.25V5Z" clip-rule="evenodd" /></svg>
+                    Last accessed: ${lastAccessedText}
+                </span>
+                <span class="text-xs font-medium text-primary bg-primary-light/20 px-2 py-1 rounded-full">${resource.category}</span>
+            </div>
+        `;
+
+        card.querySelector('.favorite-icon').addEventListener('click', (e) => {
+            e.stopPropagation(); // Prevent link click if icon is part of the link area
+            this.toggleFavorite(resource.id);
+        });
+        return card;
+    },
+
+    toggleFavorite(resourceId) {
+        const resource = this.state.resources.find(r => r.id === resourceId);
+        if (resource) {
+            resource.isFavorite = !resource.isFavorite;
+            // In a real app, you'd persist this change via google.script.run
+            // For example: google.script.run.withSuccessHandler(...).updateFavoriteStatus(resourceId, resource.isFavorite);
+            this.showToast(`'${resource.title}' ${resource.isFavorite ? 'added to' : 'removed from'} favorites.`, 'info');
+            this.filterAndRenderResources(); // Re-render to reflect change
+        }
+    },
+
+    // ------------- REPORTING PAGE LOGIC ------------- //
+    initCharts() {
+        const reportData = this.mockData.reporting;
+
+        // Performance Chart (Bar)
+        if (this.state.charts.performanceChart) this.state.charts.performanceChart.destroy();
+        const perfCtx = document.getElementById('performanceChart').getContext('2d');
+        this.state.charts.performanceChart = new Chart(perfCtx, {
+            type: 'bar',
+            data: {
+                labels: reportData.performance.labels,
+                datasets: [{
+                    label: 'Performance Score',
+                    data: reportData.performance.data,
+                    backgroundColor: ['#6366f1', '#818cf8', '#a5b4fc', '#c7d2fe'], // Indigo shades
+                    borderColor: '#4f46e5',
+                    borderWidth: 1
+                }]
+            },
+            options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true, suggestedMax: 100 } } }
+        });
+
+        // Task Status Chart (Doughnut)
+        if (this.state.charts.taskStatusChart) this.state.charts.taskStatusChart.destroy();
+        const taskCtx = document.getElementById('taskStatusChart').getContext('2d');
+        this.state.charts.taskStatusChart = new Chart(taskCtx, {
+            type: 'doughnut',
+            data: {
+                labels: reportData.taskStatus.labels,
+                datasets: [{
+                    label: 'Task Status',
+                    data: reportData.taskStatus.data,
+                    backgroundColor: ['#10b981', '#f59e0b', '#ef4444', '#6b7280'], // Emerald, Amber, Red, Gray
+                    hoverOffset: 4
+                }]
+            },
+            options: { responsive: true, maintainAspectRatio: false }
+        });
+
+        // Submission Times Chart (Line)
+        if (this.state.charts.submissionTimesChart) this.state.charts.submissionTimesChart.destroy();
+        const submissionCtx = document.getElementById('submissionTimesChart').getContext('2d');
+        this.state.charts.submissionTimesChart = new Chart(submissionCtx, {
+            type: 'line',
+            data: {
+                labels: reportData.submissionTimes.labels,
+                datasets: reportData.submissionTimes.datasets,
+            },
+            options: { responsive: true, maintainAspectRatio: false, interaction: { mode: 'index', intersect: false }, scales: { y: { beginAtZero: true } } }
+        });
+
+        // Deadline Table
+        this.renderDeadlineTable(reportData.deadlines);
+        // In a real app: google.script.run.withSuccessHandler(App.renderDeadlineTable).getDeadlineData();
+    },
+
+    renderDeadlineTable(deadlines) {
+        const tableBody = document.getElementById('deadlineTable').getElementsByTagName('tbody')[0];
+        tableBody.innerHTML = ''; // Clear existing rows
+        if (!deadlines || deadlines.length === 0) {
+            tableBody.innerHTML = `<tr><td colspan="4" class="p-4 text-center text-neutral-500">No deadline data available.</td></tr>`;
+            return;
+        }
+        deadlines.forEach(item => {
+            let statusClass = '';
+            switch (item.status.toLowerCase()) {
+                case 'completed': statusClass = 'bg-success/20 text-success'; break;
+                case 'in progress': statusClass = 'bg-warning/20 text-warning'; break;
+                case 'overdue': statusClass = 'bg-error/20 text-error'; break;
+                default: statusClass = 'bg-neutral-200 text-neutral-700';
+            }
+            const row = tableBody.insertRow();
+            row.className = 'border-b border-neutral-200 hover:bg-neutral-50/50 transition-colors';
+            row.innerHTML = `
+                <td class="p-3 text-sm text-neutral-700 font-medium">${item.task}</td>
+                <td class="p-3 text-sm text-neutral-600">${item.assignedTo}</td>
+                <td class="p-3 text-sm text-neutral-600">${new Date(item.dueDate).toLocaleDateString()}</td>
+                <td class="p-3 text-sm"><span class="px-2 py-1 rounded-full text-xs font-semibold ${statusClass}">${item.status}</span></td>
+            `;
+        });
+    },
+
+
+    // ------------- AUTOMATION PAGE LOGIC ------------- //
+    renderAutomationPage() {
+        const scriptList = document.getElementById('automation-scripts-list');
+        scriptList.innerHTML = '';
+        this.state.automationScripts.forEach(script => {
+            const card = this.createAutomationScriptCard(script);
+            scriptList.appendChild(card);
+        });
+    },
+
+    createAutomationScriptCard(script) {
+        const card = document.createElement('div');
+        card.className = 'bg-white rounded-xl shadow-lg p-6 flex flex-col justify-between animate-slide-in-up';
+        card.style.animationDelay = `${this.state.automationScripts.indexOf(script) * 0.05}s`;
+
+        card.innerHTML = `
+            <div>
+                <h3 class="text-lg font-semibold text-neutral-900 mb-2">${script.name}</h3>
+                <p class="text-sm text-neutral-500 mb-4">${script.description}</p>
+            </div>
+            <button data-script-id="${script.id}" class="run-script-btn mt-auto w-full bg-primary hover:bg-primary-dark text-white font-medium py-2.5 px-4 rounded-lg flex items-center justify-center transition-colors duration-150 custom-focus-ring">
+                <!-- Heroicon: play -->
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-5 h-5 mr-2"><path d="M6.3 2.841A1.5 1.5 0 0 0 4 4.11V15.89a1.5 1.5 0 0 0 2.3 1.269l9.344-5.89a1.5 1.5 0 0 0 0-2.538L6.3 2.84Z" /></svg>
+                Run Script
+            </button>
+        `;
+        card.querySelector('.run-script-btn').addEventListener('click', () => this.runAutomationScript(script));
+        return card;
+    },
+
+    runAutomationScript(script) {
+        this.addLogEntry(`Starting script: "${script.name}"...`, 'info');
+        const button = document.querySelector(`.run-script-btn[data-script-id="${script.id}"]`);
+        const originalButtonText = button.innerHTML;
+        button.disabled = true;
+        button.innerHTML = `
+            <svg class="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
+            Running...`;
+
+        // Simulate google.script.run
+        // In a real app:
+        // google.script.run
+        //   .withSuccessHandler(App.handleScriptSuccess.bind(App, script, button, originalButtonText))
+        //   .withFailureHandler(App.handleScriptFailure.bind(App, script, button, originalButtonText))
+        //   [script.serverFunctionName](); // or pass arguments if needed
+        
+        // Mock execution
+        setTimeout(() => {
+            const success = Math.random() > 0.3; // Simulate random success/failure
+            if (success) {
+                this.handleScriptSuccess(script, button, originalButtonText, "Script completed successfully.");
+            } else {
+                this.handleScriptFailure(script, button, originalButtonText, { message: "Script failed due to a simulated error." });
+            }
+        }, 2000 + Math.random() * 2000); // Random execution time
+    },
+
+    handleScriptSuccess(script, button, originalButtonText, response) {
+        this.addLogEntry(`Script "${script.name}" completed: ${response}`, 'success');
+        this.showToast(`Script "${script.name}" ran successfully!`, 'success');
+        button.disabled = false;
+        button.innerHTML = originalButtonText;
+    },
+
+    handleScriptFailure(script, button, originalButtonText, error) {
+        this.addLogEntry(`Error running script "${script.name}": ${error.message || error}`, 'error');
+        this.showToast(`Script "${script.name}" failed: ${error.message || 'Unknown error'}`, 'error');
+        button.disabled = false;
+        button.innerHTML = originalButtonText;
+    },
+
+    addLogEntry(message, type = 'info') {
+        const logEntriesDiv = document.getElementById('log-entries');
+        if (logEntriesDiv.querySelector('p.italic')) {
+            logEntriesDiv.innerHTML = ''; // Clear "No script activity" message
+        }
+        const entry = document.createElement('p');
+        const timestamp = new Date().toLocaleTimeString();
+        let textColor = 'text-neutral-600';
+        if (type === 'success') textColor = 'text-success';
+        if (type === 'error') textColor = 'text-error';
+        
+        entry.className = `${textColor} break-words`;
+        entry.innerHTML = `<span class="font-mono text-xs text-neutral-400">[${timestamp}]</span> ${message}`;
+        logEntriesDiv.prepend(entry); // Add new entries at the top
+        // Keep log to a reasonable size (e.g., 50 entries)
+        if (logEntriesDiv.children.length > 50) {
+            logEntriesDiv.removeChild(logEntriesDiv.lastChild);
+        }
+    },
+    
+    // ------------- GOOGLE APPS SCRIPT INTEGRATION ------------- //
+    handleGASSync() {
+        const syncButton = document.getElementById('gas-sync-button');
+        const syncStatus = document.getElementById('sync-status');
+        
+        syncButton.disabled = true;
+        syncButton.classList.add('opacity-75', 'cursor-not-allowed');
+        syncStatus.textContent = 'Syncing...';
+        syncStatus.classList.remove('text-success', 'text-error');
+        syncStatus.classList.add('text-primary-light/90');
+
+        // This is where you'd call google.script.run to fetch/update data
+        // For example:
+        // google.script.run
+        //     .withSuccessHandler(App.handleSyncSuccess)
+        //     .withFailureHandler(App.handleSyncFailure)
+        //     .fetchAllData(); 
+
+        // Simulate a sync operation
+        setTimeout(() => {
+            const success = Math.random() > 0.2; // Simulate success/failure
+            if (success) {
+                this.handleSyncSuccess({ message: "Data synced successfully at " + new Date().toLocaleTimeString() });
+            } else {
+                this.handleSyncFailure({ message: "Sync failed. Please try again." });
+            }
+        }, 2500);
+    },
+
+    handleSyncSuccess(response) {
+        const syncButton = document.getElementById('gas-sync-button');
+        const syncStatus = document.getElementById('sync-status');
+
+        syncButton.disabled = false;
+        syncButton.classList.remove('opacity-75', 'cursor-not-allowed');
+        syncStatus.textContent = response.message || 'Sync successful!';
+        syncStatus.classList.remove('text-primary-light/90', 'text-error');
+        syncStatus.classList.add('text-success');
+        this.showToast('Data synced successfully!', 'success');
+
+        // Potentially re-fetch and re-render data here
+        // App.state.resources = updatedResourcesFromResponse;
+        // App.populateCategories();
+        // App.filterAndRenderResources();
+        // etc.
+    },
+
+    handleSyncFailure(error) {
+        const syncButton = document.getElementById('gas-sync-button');
+        const syncStatus = document.getElementById('sync-status');
+        
+        syncButton.disabled = false;
+        syncButton.classList.remove('opacity-75', 'cursor-not-allowed');
+        syncStatus.textContent = error.message || 'Sync failed.';
+        syncStatus.classList.remove('text-primary-light/90', 'text-success');
+        syncStatus.classList.add('text-error');
+        this.showToast('Error syncing data: ' + (error.message || 'Unknown error'), 'error');
+    },
+
+    // ------------- UTILITIES ------------- //
+    showToast(message, type = 'info', duration = 3000) {
+        const toastContainer = document.getElementById('toast-container');
+        const toast = document.createElement('div');
+        
+        let bgColor, textColor, iconSVG;
+        switch(type) {
+            case 'success':
+                bgColor = 'bg-success'; textColor = 'text-white';
+                iconSVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-5 h-5"><path fill-rule="evenodd" d="M10 18a8 8 0 1 0 0-16 8 8 0 0 0 0 16Zm3.857-9.809a.75.75 0 0 0-1.214-.882l-3.483 4.79-1.88-1.88a.75.75 0 1 0-1.06 1.061l2.5 2.5a.75.75 0 0 0 1.137-.089l4-5.5Z" clip-rule="evenodd" /></svg>`;
+                break;
+            case 'error':
+                bgColor = 'bg-error'; textColor = 'text-white';
+                iconSVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-5 h-5"><path fill-rule="evenodd" d="M10 18a8 8 0 1 0 0-16 8 8 0 0 0 0 16Zm3.857-9.809a.75.75 0 0 0-1.214-.882l-3.483 4.79-1.88-1.88a.75.75 0 1 0-1.06 1.061l2.5 2.5a.75.75 0 0 0 1.137-.089l4-5.5Z" clip-rule="evenodd" /></svg>`; // Placeholder, should be error icon
+                break;
+            case 'warning':
+                bgColor = 'bg-warning'; textColor = 'text-neutral-900';
+                iconSVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-5 h-5"><path fill-rule="evenodd" d="M18 10a8 8 0 1 1-16 0 8 8 0 0 1 16 0Zm-8-5a.75.75 0 0 1 .75.75v4.5a.75.75 0 0 1-1.5 0v-4.5A.75.75 0 0 1 10 5Zm0 10a1 1 0 1 0 0-2 1 1 0 0 0 0 2Z" clip-rule="evenodd" /></svg>`;
+                break;
+            default: // info
+                bgColor = 'bg-primary'; textColor = 'text-white';
+                iconSVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-5 h-5"><path fill-rule="evenodd" d="M18 10a8 8 0 1 1-16 0 8 8 0 0 1 16 0Zm-7-4a1 1 0 1 1-2 0 1 1 0 0 1 2 0ZM9 9a.75.75 0 0 0 0 1.5h.253a.25.25 0 0 1 .244.304l-.459 2.066A1.75 1.75 0 0 0 10.747 15H11a.75.75 0 0 0 0-1.5h-.253a.25.25 0 0 1-.244-.304l.459-2.066A1.75 1.75 0 0 0 9.253 9H9Z" clip-rule="evenodd" /></svg>`;
+        }
+        
+        toast.className = `${bgColor} ${textColor} p-4 rounded-lg shadow-xl flex items-center space-x-3 animate-fade-in`;
+        toast.innerHTML = `
+            <span>${iconSVG}</span>
+            <span>${message}</span>
+        `;
+        
+        toastContainer.appendChild(toast);
+        
+        setTimeout(() => {
+            toast.classList.add('animate-[fadeOut_0.5s_ease-out_forwards]'); // Tailwind needs keyframes for fadeOut
+            setTimeout(() => toast.remove(), 500);
+        }, duration);
+    }
+};
+
+// Expose handlers for google.script.run if needed globally, or pass App context.
+// window.App = App; // If you need to call App.handleSyncSuccess etc. directly from GAS success handlers.
+
+document.addEventListener('DOMContentLoaded', () => {
+    App.init();
+});
+
+// Add fadeOut keyframes if not present in Tailwind config (or if using custom animation names)
+// This is a workaround if you can't add it to tailwind.config.js within this HTML file
+const styleSheet = document.createElement("style");
+styleSheet.type = "text/css";
+styleSheet.innerText = `
+  @keyframes fadeOut {
+    from { opacity: 1; }
+    to { opacity: 0; }
+  }
+  .animate-fadeOut {
+    animation: fadeOut 0.5s ease-out forwards;
+  }
+  .active-nav-link {
+    background-color: rgba(251, 191, 36, 0.15); /* amber-400 with opacity */
+    color: #fbbf24; /* amber-400 */
+    font-weight: 600;
+    border-left: 4px solid #fbbf24; /* amber-400 */
+    padding-left: calc(1rem - 4px); /* Adjust padding to account for border */
+  }
+  .nav-link {
+    display: flex;
+    align-items: center;
+    padding: 0.75rem 1rem;
+    border-radius: 0.5rem;
+    transition: all 0.2s ease-in-out;
+    color: #e0e7ff; /* indigo-200 for non-active */
+  }
+  .nav-link:hover {
+    background-color: rgba(251, 191, 36, 0.1); /* amber-400 with lower opacity */
+    color: #fde68a; /* amber-200 */
+  }
+  .nav-link.active-nav-link svg, .nav-link:hover svg {
+    color: #fbbf24; /* amber-400 */
+  }
+`;
+document.head.appendChild(styleSheet);
+
+</script>
+</body>
+</html>

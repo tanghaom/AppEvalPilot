@@ -1,0 +1,9 @@
+{
+  "web_id": "web_62",
+  "task_id": 2,
+  "task_type": "dynamic",
+  "instruction": "Task: Select an existing account (e.g., from a list or by inputting its account number), input a deposit amount, and click a 'Deposit' button.\nExpected Result: The selected account's displayed balance updates, and the deposit is logged in a visible transaction history section.\n\nNote: The task is only considered successful if the expected result is achieved; otherwise, it is deemed infeasible.",
+  "max_steps": 15,
+  "expected": "The selected account's displayed balance updates, and the deposit is logged in a visible transaction history section.",
+  "label": 1
+}

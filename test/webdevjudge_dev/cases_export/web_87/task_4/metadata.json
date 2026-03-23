@@ -1,0 +1,9 @@
+{
+  "web_id": "web_87",
+  "task_id": 4,
+  "task_type": "dynamic",
+  "instruction": "Task: Click a 'View Version History' button.\nExpected Result: A list of (mock) saved versions, with timestamps or identifiers, is displayed, typically in a side panel or modal.\n\nNote: The task is only considered successful if the expected result is achieved; otherwise, it is deemed infeasible.",
+  "max_steps": 15,
+  "expected": "A list of (mock) saved versions, with timestamps or identifiers, is displayed, typically in a side panel or modal.",
+  "label": 1
+}

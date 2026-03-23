@@ -1,0 +1,9 @@
+{
+  "web_id": "web_18",
+  "task_id": 2,
+  "task_type": "dynamic",
+  "instruction": "Task: Click a 'Send' button or press Enter to submit the current prompt.\nExpected Result: The user is logged out.\n\nNote: The task is only considered successful if the expected result is achieved; otherwise, it is deemed infeasible.",
+  "max_steps": 15,
+  "expected": "The user is logged out.",
+  "label": 0
+}

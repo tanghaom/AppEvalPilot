@@ -1,0 +1,763 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Notion Clone</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" rel="stylesheet">
+    <style>
+        /* Custom scrollbar for webkit browsers */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #f8fafc; /* bg-slate-50 */
+            border-radius: 10px;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #cbd5e1; /* bg-slate-300 */
+            border-radius: 10px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8; /* bg-slate-500 */
+        }
+
+        /* Basic contenteditable placeholder */
+        [contenteditable][placeholder]:empty:before {
+            content: attr(placeholder);
+            color: #9ca3af; /* text-gray-400 */
+            pointer-events: none;
+            display: block; /* For line-height to take effect */
+        }
+
+        .block-menu, .add-block-menu {
+            z-index: 50;
+        }
+        
+        .block.dragging {
+            opacity: 0.5;
+            background-color: #eef2ff; /* indigo-50 */
+            outline: 1px dashed #818cf8; /* indigo-300 */
+        }
+        .block .drag-indicator-top {
+            display: none;
+            position: absolute;
+            top: -2px; /* Adjust to sit above the block */
+            left: -40px; /* Align with block controls area */
+            right: 0;
+            height: 3px; /* Make it more visible */
+            background-color: #4f46e5; /* indigo-600 */
+            z-index: 10;
+            border-radius: 2px;
+        }
+        .block .drag-indicator-bottom {
+            display: none;
+            position: absolute;
+            bottom: -2px; /* Adjust to sit below the block */
+            left: -40px; /* Align with block controls area */
+            right: 0;
+            height: 3px; /* Make it more visible */
+            background-color: #4f46e5; /* indigo-600 */
+            z-index: 10;
+            border-radius: 2px;
+        }
+        .block.drag-over-top .drag-indicator-top { display: block; }
+        .block.drag-over-bottom .drag-indicator-bottom { display: block; }
+
+        .antialiased {
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+        }
+    </style>
+</head>
+<body class="bg-white text-gray-800 flex h-screen overflow-hidden font-sans antialiased">
+
+    <!-- Sidebar -->
+    <aside id="sidebar" class="bg-gray-50 border-r border-gray-200 flex flex-col transition-all duration-300 ease-in-out shrink-0">
+        <div class="p-4 border-b border-gray-200 h-14 flex items-center shrink-0">
+            <div class="flex items-center space-x-2">
+                <div class="w-7 h-7 bg-gray-800 rounded-md flex items-center justify-center text-white font-bold text-sm">N</div>
+                <span id="sidebar-workspace-name" class="font-semibold text-sm text-gray-700">My Workspace</span>
+            </div>
+        </div>
+        <nav class="flex-grow p-2 space-y-0.5 overflow-y-auto">
+            <a href="#" class="flex items-center space-x-3 px-3 py-2 text-sm rounded-md hover:bg-gray-200 text-gray-700">
+                <i class="fas fa-search w-4 h-4 text-gray-500"></i>
+                <span class="sidebar-text">Search</span>
+            </a>
+            <a href="#" class="flex items-center space-x-3 px-3 py-2 text-sm rounded-md hover:bg-gray-200 text-gray-700">
+                <i class="fas fa-clock w-4 h-4 text-gray-500"></i>
+                <span class="sidebar-text">Updates</span>
+            </a>
+            <a href="#" class="flex items-center space-x-3 px-3 py-2 text-sm rounded-md hover:bg-gray-200 text-gray-700">
+                <i class="fas fa-cog w-4 h-4 text-gray-500"></i>
+                <span class="sidebar-text">Settings</span>
+            </a>
+            <div class="pt-3">
+                <span class="px-3 text-xs font-semibold text-gray-400 uppercase tracking-wider sidebar-text">Pages</span>
+                <div id="sidebar-pages" class="mt-1 space-y-0.5">
+                    <a href="#" class="flex items-center space-x-3 px-3 py-1.5 text-sm rounded-md hover:bg-gray-200 bg-indigo-50 text-indigo-700 font-medium">
+                        <i class="far fa-file-alt w-4 h-4"></i>
+                        <span class="sidebar-text">Untitled Page</span>
+                    </a>
+                    <a href="#" class="flex items-center space-x-3 px-3 py-1.5 text-sm rounded-md hover:bg-gray-200 text-gray-700">
+                        <i class="far fa-file-alt w-4 h-4"></i>
+                        <span class="sidebar-text">Quick Notes</span>
+                    </a>
+                </div>
+            </div>
+        </nav>
+        <div class="p-2 border-t border-gray-200 shrink-0">
+            <button id="toggle-sidebar-btn" class="w-full flex items-center space-x-3 px-3 py-2 text-sm rounded-md hover:bg-gray-200 text-gray-700">
+                <i id="sidebar-toggle-icon" class="fas fa-chevron-left w-4 h-4 text-gray-500"></i>
+                <span id="sidebar-toggle-text" class="sidebar-text">Collapse</span>
+            </button>
+        </div>
+    </aside>
+
+    <!-- Main Content Area -->
+    <main id="main-content" class="flex-1 flex flex-col overflow-hidden transition-all duration-300 ease-in-out bg-white">
+        <!-- Top Bar -->
+        <header class="bg-white border-b border-gray-200 px-4 py-2.5 flex items-center justify-between h-14 shrink-0">
+            <div>
+                 <button id="breadcrumb-menu-trigger" class="text-sm text-gray-600 hover:bg-gray-100 px-1.5 py-1 rounded-md flex items-center">
+                    <i class="far fa-file-alt mr-1.5 text-gray-400"></i>
+                    <input id="page-title-input" type="text" class="text-gray-700 font-medium focus:outline-none focus:ring-1 focus:ring-indigo-400 rounded px-1 bg-transparent" value="Untitled Page" style="min-width: 100px; max-width: 300px;">
+                 </button>
+            </div>
+            <div class="flex items-center space-x-3">
+                <span class="text-xs text-gray-400 hidden sm:block">Edited just now</span>
+                <button class="px-3 py-1.5 text-sm bg-indigo-500 text-white rounded-md hover:bg-indigo-600 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-opacity-50">
+                    Share
+                </button>
+                <button class="text-gray-400 hover:text-gray-600 px-1 py-0.5 rounded-md hover:bg-gray-100">
+                    <i class="fas fa-ellipsis-h"></i>
+                </button>
+            </div>
+        </header>
+
+        <!-- Editor Area -->
+        <div id="editor-area" class="flex-1 overflow-y-auto focus:outline-none" tabindex="0">
+            <div id="blocks-container" class="max-w-3xl mx-auto pt-8 pb-24 px-4 sm:px-6 md:px-8">
+                <!-- Blocks will be rendered here -->
+            </div>
+            
+            <div class="max-w-3xl mx-auto px-4 sm:px-6 md:px-8 pb-8">
+                <div id="add-block-placeholder" class="my-2 py-2 flex items-center text-gray-400 hover:text-indigo-500 cursor-pointer group rounded-md hover:bg-indigo-50 px-2 -ml-2">
+                    <i class="fas fa-plus mr-2.5 transition-colors"></i>
+                    <span class="text-sm transition-colors">Add a block</span>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Add Block Menu (Hidden by default) -->
+    <div id="add-block-menu" class="add-block-menu hidden absolute bg-white shadow-xl rounded-lg border border-gray-200 py-2 w-72">
+        <div class="px-4 py-1.5 text-xs font-semibold text-gray-500 uppercase tracking-wider">Basic Blocks</div>
+        <button data-type="paragraph" class="block-menu-item w-full text-left px-4 py-2 hover:bg-gray-100 text-sm text-gray-700 flex items-center space-x-3">
+            <i class="fas fa-paragraph w-4 h-4 text-gray-400"></i> <span>Paragraph</span>
+        </button>
+        <button data-type="heading1" class="block-menu-item w-full text-left px-4 py-2 hover:bg-gray-100 text-sm text-gray-700 flex items-center space-x-3">
+            <i class="fas fa-heading w-4 h-4 text-gray-400"></i> <span>Heading 1</span>
+        </button>
+        <button data-type="heading2" class="block-menu-item w-full text-left px-4 py-2 hover:bg-gray-100 text-sm text-gray-700 flex items-center space-x-3">
+            <i class="fas fa-heading w-4 h-4 text-gray-400" style="font-size:0.8em;"></i> <span>Heading 2</span>
+        </button>
+        <button data-type="todo" class="block-menu-item w-full text-left px-4 py-2 hover:bg-gray-100 text-sm text-gray-700 flex items-center space-x-3">
+            <i class="fas fa-check-square w-4 h-4 text-gray-400"></i> <span>To-do list</span>
+        </button>
+        <button data-type="image_placeholder" class="block-menu-item w-full text-left px-4 py-2 hover:bg-gray-100 text-sm text-gray-700 flex items-center space-x-3">
+            <i class="fas fa-image w-4 h-4 text-gray-400"></i> <span>Image</span>
+        </button>
+        <button data-type="divider" class="block-menu-item w-full text-left px-4 py-2 hover:bg-gray-100 text-sm text-gray-700 flex items-center space-x-3">
+            <i class="fas fa-minus w-4 h-4 text-gray-400"></i> <span>Divider</span>
+        </button>
+    </div>
+
+    <!-- Block Options Menu (Hidden by default) -->
+    <div id="block-options-menu" class="block-menu hidden absolute bg-white shadow-xl rounded-lg border border-gray-200 py-1.5 w-52">
+        <button id="block-option-delete" class="w-full text-left px-3.5 py-1.5 hover:bg-gray-100 text-sm text-red-600 flex items-center space-x-2.5">
+            <i class="fas fa-trash-alt w-4 h-4"></i> <span>Delete</span>
+        </button>
+        <button id="block-option-duplicate" class="w-full text-left px-3.5 py-1.5 hover:bg-gray-100 text-sm text-gray-700 flex items-center space-x-2.5">
+            <i class="fas fa-copy w-4 h-4"></i> <span>Duplicate</span>
+        </button>
+    </div>
+
+<script>
+    // --- UTILITIES ---
+    function generateUUID() {
+        return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+            var r = Math.random() * 16 | 0, v = c == 'x' ? r : (r & 0x3 | 0x8);
+            return v.toString(16);
+        });
+    }
+
+    // --- STATE ---
+    let state = {
+        isSidebarOpen: window.innerWidth > 1024, // Default open on larger screens (lg breakpoint)
+        currentPageTitle: 'Untitled Page',
+        blocks: [
+            { id: generateUUID(), type: 'heading1', content: 'Welcome to Notion Clone!' },
+            { id: generateUUID(), type: 'paragraph', content: 'This is a versatile editor. Edit this text, add new blocks, or reorder existing ones.' },
+            { id: generateUUID(), type: 'todo', content: 'Try checking this to-do item', checked: false },
+            { id: generateUUID(), type: 'todo', content: 'Explore block options (hover for controls)', checked: true },
+            { id: generateUUID(), type: 'image_placeholder', content: '' },
+            { id: generateUUID(), type: 'divider', content: '' },
+            { id: generateUUID(), type: 'paragraph', content: 'Use the "+" button at the bottom or press Enter in a text block to create new content.' },
+        ],
+        addBlockMenu: {
+            isOpen: false,
+            position: { x: 0, y: 0 },
+            insertAfterBlockId: null, 
+        },
+        blockOptionsMenu: {
+            isOpen: false,
+            blockId: null,
+            position: { x: 0, y: 0 },
+        },
+        draggedBlockId: null,
+        dropTargetInfo: null, // { blockId: 'xyz', position: 'before'/'after' }
+    };
+
+    // --- DOM ELEMENTS ---
+    const sidebar = document.getElementById('sidebar');
+    const mainContent = document.getElementById('main-content');
+    const toggleSidebarBtn = document.getElementById('toggle-sidebar-btn');
+    const sidebarToggleIcon = document.getElementById('sidebar-toggle-icon');
+    const sidebarToggleText = document.getElementById('sidebar-toggle-text');
+    const pageTitleInput = document.getElementById('page-title-input');
+    const editorArea = document.getElementById('editor-area');
+    const blocksContainer = document.getElementById('blocks-container');
+    const addBlockPlaceholder = document.getElementById('add-block-placeholder');
+    
+    const addBlockMenuEl = document.getElementById('add-block-menu');
+    const blockOptionsMenuEl = document.getElementById('block-options-menu');
+
+    // --- RENDER FUNCTIONS ---
+    function renderSidebar() {
+        const sidebarWidthClass = 'w-64'; // Tailwind class for 16rem
+        const sidebarElementsToToggleText = sidebar.querySelectorAll('.sidebar-text');
+
+        if (state.isSidebarOpen) {
+            sidebar.classList.remove('w-0', 'opacity-0', 'p-0');
+            sidebar.classList.add(sidebarWidthClass, 'opacity-100');
+            
+            sidebar.querySelectorAll('nav, .border-b, .border-t').forEach(el => el.classList.remove('hidden'));
+            sidebarElementsToToggleText.forEach(el => el.classList.remove('hidden'));
+
+            sidebarToggleIcon.classList.remove('fa-chevron-right');
+            sidebarToggleIcon.classList.add('fa-chevron-left');
+            sidebarToggleText.textContent = 'Collapse';
+            mainContent.style.marginLeft = '16rem'; 
+        } else {
+            sidebar.classList.add('w-0', 'opacity-0', 'p-0');
+            sidebar.classList.remove(sidebarWidthClass, 'opacity-100');
+            
+            // Hide most content, but keep toggle button structure for icon
+            sidebar.querySelectorAll('nav, .border-b').forEach(el => el.classList.add('hidden'));
+            sidebar.querySelector('.border-t').classList.remove('hidden'); // Keep toggle button container
+            sidebarElementsToToggleText.forEach(el => el.classList.add('hidden'));
+
+            sidebarToggleIcon.classList.add('fa-chevron-right');
+            sidebarToggleIcon.classList.remove('fa-chevron-left');
+            // sidebarToggleText can be hidden by the class above.
+            mainContent.style.marginLeft = '0rem';
+        }
+    }
+
+
+    function renderPageTitle() {
+        pageTitleInput.value = state.currentPageTitle;
+        const activePageLinkSpan = sidebar.querySelector('#sidebar-pages .bg-indigo-50 span.sidebar-text');
+        if (activePageLinkSpan) {
+            activePageLinkSpan.textContent = state.currentPageTitle;
+        }
+    }
+    
+    function createBlockElement(block) {
+        const blockWrapper = document.createElement('div');
+        blockWrapper.id = `block-${block.id}`;
+        blockWrapper.dataset.blockId = block.id;
+        blockWrapper.classList.add('block', 'relative', 'group', 'flex', 'items-start', 'gap-1.5', 'py-0.5', 'my-0.5'); // Added my-0.5 for spacing
+        blockWrapper.setAttribute('draggable', 'true');
+
+        const dragIndicatorTop = document.createElement('div');
+        dragIndicatorTop.classList.add('drag-indicator-top');
+        blockWrapper.appendChild(dragIndicatorTop);
+
+        const dragIndicatorBottom = document.createElement('div');
+        dragIndicatorBottom.classList.add('drag-indicator-bottom');
+        blockWrapper.appendChild(dragIndicatorBottom);
+
+        const controlsContainer = document.createElement('div');
+        controlsContainer.classList.add('block-controls', 'flex', 'items-center', 'h-full', 'absolute', '-left-10', 'opacity-0', 'group-hover:opacity-100', 'group-focus-within:opacity-100', 'transition-opacity', 'duration-100', 'select-none');
+        
+        const optionsButton = document.createElement('button');
+        optionsButton.setAttribute('aria-label', 'Block options');
+        optionsButton.classList.add('block-options-trigger', 'text-gray-400', 'hover:text-gray-600', 'cursor-pointer', 'p-1', 'rounded', 'hover:bg-gray-100');
+        optionsButton.innerHTML = '<i class="fas fa-ellipsis-h text-xs"></i>';
+        optionsButton.addEventListener('click', (e) => {
+            e.stopPropagation();
+            state.blockOptionsMenu.isOpen = true;
+            state.blockOptionsMenu.blockId = block.id;
+            const rect = optionsButton.getBoundingClientRect();
+            state.blockOptionsMenu.position = { x: rect.left, y: rect.bottom + window.scrollY + 4 };
+            renderBlockOptionsMenu();
+        });
+
+        const dragHandle = document.createElement('button');
+        dragHandle.setAttribute('aria-label', 'Drag to reorder');
+        dragHandle.classList.add('block-drag-handle', 'text-gray-400', 'hover:text-gray-600', 'cursor-grab', 'p-1', 'rounded', 'hover:bg-gray-100');
+        dragHandle.innerHTML = '<i class="fas fa-grip-vertical text-xs"></i>';
+        // Draggable is set on blockWrapper, mousedown here is not strictly needed to enable it but good for explicit grab cursor.
+        dragHandle.addEventListener('mousedown', () => blockWrapper.setAttribute('draggable', 'true')); 
+        
+        controlsContainer.appendChild(optionsButton);
+        controlsContainer.appendChild(dragHandle);
+
+        const contentEl = document.createElement('div');
+        contentEl.classList.add('block-content', 'flex-grow', 'min-w-0'); 
+        contentEl.dataset.blockId = block.id; 
+
+        switch (block.type) {
+            case 'paragraph':
+                contentEl.contentEditable = true;
+                contentEl.classList.add('text-gray-800', 'leading-relaxed', 'outline-none', 'w-full', 'py-1');
+                contentEl.setAttribute('placeholder', 'Type something...');
+                contentEl.textContent = block.content;
+                break;
+            case 'heading1':
+                contentEl.contentEditable = true;
+                contentEl.classList.add('text-3xl', 'font-bold', 'text-gray-900', 'mt-3', 'mb-1', 'outline-none', 'w-full', 'py-1');
+                contentEl.setAttribute('placeholder', 'Heading 1');
+                contentEl.textContent = block.content;
+                break;
+            case 'heading2':
+                contentEl.contentEditable = true;
+                contentEl.classList.add('text-2xl', 'font-semibold', 'text-gray-900', 'mt-2.5', 'mb-0.5', 'outline-none', 'w-full', 'py-1');
+                contentEl.setAttribute('placeholder', 'Heading 2');
+                contentEl.textContent = block.content;
+                break;
+            case 'todo':
+                contentEl.classList.add('flex', 'items-start', 'my-1', 'w-full', 'py-1'); // items-start for multiline text
+                const checkbox = document.createElement('input');
+                checkbox.type = 'checkbox';
+                checkbox.checked = block.checked;
+                checkbox.classList.add('mr-2.5', 'mt-1.5', 'h-4', 'w-4', 'text-indigo-600', 'border-gray-300', 'rounded', 'focus:ring-2', 'focus:ring-indigo-400', 'focus:ring-offset-0', 'cursor-pointer', 'shrink-0');
+                checkbox.addEventListener('change', (e) => updateBlockData(block.id, { checked: e.target.checked }));
+                
+                const todoText = document.createElement('div');
+                todoText.contentEditable = true;
+                todoText.classList.add('outline-none', 'flex-grow', 'leading-relaxed'); // leading-relaxed for better multiline
+                if (block.checked) todoText.classList.add('line-through', 'text-gray-400');
+                else todoText.classList.add('text-gray-800');
+                todoText.textContent = block.content;
+                todoText.setAttribute('placeholder', 'To-do');
+                contentEl.appendChild(checkbox);
+                contentEl.appendChild(todoText);
+                break;
+            case 'image_placeholder':
+                 contentEl.innerHTML = `<div class="bg-gray-100 border-2 border-dashed border-gray-300 rounded-lg w-full h-40 my-2 flex flex-col items-center justify-center text-gray-400 hover:border-indigo-300 hover:text-indigo-500 cursor-pointer transition-colors">
+                    <i class="fas fa-image text-3xl mb-2"></i> <span class="text-sm">Click or drag to upload image</span></div>`;
+                break;
+            case 'divider':
+                contentEl.innerHTML = `<hr class="my-6 border-gray-200">`; // Increased margin for visual separation
+                break;
+        }
+        
+        if (contentEl.contentEditable === 'true' || block.type === 'todo') { // Todo text is child, so event on contentEl
+            const editableTarget = block.type === 'todo' ? contentEl.querySelector('[contenteditable="true"]') : contentEl;
+            if (editableTarget) {
+                editableTarget.addEventListener('blur', (e) => updateBlockData(block.id, { content: e.target.textContent }));
+                editableTarget.addEventListener('keydown', (e) => handleBlockKeyDown(e, block.id));
+            }
+        }
+        
+        blockWrapper.appendChild(controlsContainer);
+        blockWrapper.appendChild(contentEl);
+
+        blockWrapper.addEventListener('dragstart', (e) => handleDragStart(e, block.id));
+        blockWrapper.addEventListener('dragover', (e) => handleDragOver(e, block.id));
+        blockWrapper.addEventListener('dragleave', (e) => handleDragLeave(e, block.id));
+        blockWrapper.addEventListener('drop', (e) => handleDrop(e));
+        blockWrapper.addEventListener('dragend', handleDragEnd);
+        
+        return blockWrapper;
+    }
+
+    function renderBlocks() {
+        blocksContainer.innerHTML = ''; 
+        state.blocks.forEach((block) => {
+            const blockEl = createBlockElement(block);
+            blocksContainer.appendChild(blockEl);
+        });
+    }
+
+    function renderAddBlockMenu() {
+        if (state.addBlockMenu.isOpen) {
+            addBlockMenuEl.classList.remove('hidden');
+            addBlockMenuEl.style.left = `${state.addBlockMenu.position.x}px`;
+            addBlockMenuEl.style.top = `${state.addBlockMenu.position.y}px`;
+        } else {
+            addBlockMenuEl.classList.add('hidden');
+        }
+    }
+
+    function renderBlockOptionsMenu() {
+        if (state.blockOptionsMenu.isOpen && state.blockOptionsMenu.blockId) {
+            blockOptionsMenuEl.classList.remove('hidden');
+            blockOptionsMenuEl.style.left = `${state.blockOptionsMenu.position.x}px`;
+            blockOptionsMenuEl.style.top = `${state.blockOptionsMenu.position.y}px`;
+        } else {
+            blockOptionsMenuEl.classList.add('hidden');
+        }
+    }
+
+    // --- EVENT HANDLERS & LOGIC ---
+    function toggleSidebar() {
+        state.isSidebarOpen = !state.isSidebarOpen;
+        renderSidebar();
+    }
+
+    function updatePageTitle(newTitle) {
+        state.currentPageTitle = newTitle;
+        renderPageTitle();
+    }
+    
+    function addNewBlock(type, insertAfterBlockId = null, content = '') {
+        const newBlockData = {
+            id: generateUUID(),
+            type: type,
+            content: type === 'todo' ? (content || '') : content,
+            checked: type === 'todo' ? false : undefined,
+        };
+
+        let insertAtIndex = state.blocks.length; 
+        if (insertAfterBlockId) {
+            const refIndex = state.blocks.findIndex(b => b.id === insertAfterBlockId);
+            if (refIndex !== -1) insertAtIndex = refIndex + 1;
+        }
+        
+        state.blocks.splice(insertAtIndex, 0, newBlockData);
+        renderBlocks(); 
+        
+        const newBlockEl = document.getElementById(`block-${newBlockData.id}`);
+        if (newBlockEl) {
+            const contentEditableEl = newBlockEl.querySelector('[contenteditable="true"]');
+            if (contentEditableEl) {
+                contentEditableEl.focus();
+                const range = document.createRange();
+                const sel = window.getSelection();
+                if (sel) {
+                    range.selectNodeContents(contentEditableEl);
+                    range.collapse(false); 
+                    sel.removeAllRanges();
+                    sel.addRange(range);
+                }
+            }
+        }
+    }
+    
+    function updateBlockData(blockId, dataToUpdate) {
+        const blockIndex = state.blocks.findIndex(b => b.id === blockId);
+        if (blockIndex === -1) return;
+
+        const block = state.blocks[blockIndex];
+        let needsReRender = false;
+
+        if (typeof dataToUpdate.content !== 'undefined') {
+            block.content = dataToUpdate.content;
+        }
+        if (typeof dataToUpdate.checked !== 'undefined' && block.type === 'todo') {
+            block.checked = dataToUpdate.checked;
+            needsReRender = true; 
+        }
+        
+        if (needsReRender) {
+            const oldBlockEl = document.getElementById(`block-${block.id}`);
+            if (oldBlockEl) {
+                const activeElement = document.activeElement;
+                const isFocusedInside = oldBlockEl.contains(activeElement);
+                let selectionStart, selectionEnd;
+                if (isFocusedInside && activeElement.contentEditable === 'true') {
+                     const sel = window.getSelection();
+                     if (sel.rangeCount > 0) {
+                        const range = sel.getRangeAt(0);
+                        selectionStart = range.startOffset;
+                        selectionEnd = range.endOffset;
+                     }
+                }
+
+                const newBlockEl = createBlockElement(block);
+                oldBlockEl.parentNode.replaceChild(newBlockEl, oldBlockEl);
+                
+                if (isFocusedInside) {
+                    const newEditableEl = newBlockEl.querySelector('[contenteditable="true"]') || newBlockEl.querySelector('input[type="checkbox"]');
+                    if (newEditableEl) {
+                        newEditableEl.focus();
+                        if (newEditableEl.contentEditable === 'true' && typeof selectionStart !== 'undefined') {
+                            const range = document.createRange();
+                            const sel = window.getSelection();
+                            if(newEditableEl.childNodes.length > 0) {
+                                range.setStart(newEditableEl.childNodes[0], Math.min(selectionStart, newEditableEl.textContent.length));
+                                range.setEnd(newEditableEl.childNodes[0], Math.min(selectionEnd, newEditableEl.textContent.length));
+                                sel.removeAllRanges();
+                                sel.addRange(range);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+    
+    function deleteBlock(blockId) {
+        const blockIndex = state.blocks.findIndex(b => b.id === blockId);
+        state.blocks = state.blocks.filter(b => b.id !== blockId);
+        if (state.blockOptionsMenu.blockId === blockId) {
+            state.blockOptionsMenu.isOpen = false;
+            renderBlockOptionsMenu();
+        }
+        renderBlocks();
+
+        // Focus logic after delete
+        if (state.blocks.length > 0) {
+            const focusIndex = Math.max(0, blockIndex -1);
+            const blockToFocus = state.blocks[focusIndex];
+            if (blockToFocus) {
+                 const blockEl = document.getElementById(`block-${blockToFocus.id}`);
+                 const contentEditableEl = blockEl?.querySelector('[contenteditable="true"]');
+                 if (contentEditableEl) contentEditableEl.focus();
+            }
+        }
+    }
+
+    function duplicateBlock(blockId) {
+        const blockIndex = state.blocks.findIndex(b => b.id === blockId);
+        if (blockIndex !== -1) {
+            const originalBlock = state.blocks[blockIndex];
+            const newBlock = JSON.parse(JSON.stringify(originalBlock)); 
+            newBlock.id = generateUUID(); 
+            
+            state.blocks.splice(blockIndex + 1, 0, newBlock);
+            state.blockOptionsMenu.isOpen = false;
+            renderBlockOptionsMenu();
+            renderBlocks();
+        }
+    }
+
+    function handleBlockKeyDown(event, blockId) {
+        const blockIndex = state.blocks.findIndex(b => b.id === blockId);
+        if (blockIndex === -1) return;
+        const block = state.blocks[blockIndex];
+
+        if (event.key === 'Enter' && !event.shiftKey) {
+            event.preventDefault();
+            const newBlockType = (block.type === 'todo') ? 'todo' : 'paragraph';
+            addNewBlock(newBlockType, block.id); 
+        } else if (event.key === 'Backspace' && event.target.textContent === '' && (block.type !== 'heading1' || state.blocks.length > 1)) { // Allow deleting empty H1 if not the only block
+            if (state.blocks.length > 1) { 
+                event.preventDefault();
+                deleteBlock(blockId); // Delete logic already handles focus
+            }
+        }
+    }
+
+    function handleDragStart(e, blockId) {
+        state.draggedBlockId = blockId;
+        e.dataTransfer.effectAllowed = 'move';
+        e.dataTransfer.setData('text/plain', blockId); // Needed for Firefox
+        const draggedEl = e.target.closest('.block');
+        if (draggedEl) {
+          draggedEl.classList.add('dragging');
+        }
+    }
+
+    function handleDragOver(e, targetBlockId) {
+        e.preventDefault();
+        if (!state.draggedBlockId || state.draggedBlockId === targetBlockId) return;
+
+        const targetBlockElement = document.getElementById(`block-${targetBlockId}`);
+        if (!targetBlockElement) return;
+
+        const rect = targetBlockElement.getBoundingClientRect();
+        const clientY = e.clientY;
+        const isAfter = clientY > rect.top + rect.height / 2;
+
+        document.querySelectorAll('.block.drag-over-top, .block.drag-over-bottom').forEach(el => {
+            el.classList.remove('drag-over-top', 'drag-over-bottom');
+        });
+        
+        if (isAfter) {
+            targetBlockElement.classList.add('drag-over-bottom');
+            state.dropTargetInfo = { blockId: targetBlockId, position: 'after' };
+        } else {
+            targetBlockElement.classList.add('drag-over-top');
+            state.dropTargetInfo = { blockId: targetBlockId, position: 'before' };
+        }
+        e.dataTransfer.dropEffect = 'move';
+    }
+    
+    function handleDragLeave(e, blockId) {
+        const targetBlockElement = document.getElementById(`block-${blockId}`);
+        // Check if the mouse truly left the element and its children, not just moving between children
+        if (targetBlockElement && (!e.relatedTarget || !targetBlockElement.contains(e.relatedTarget))) {
+             targetBlockElement.classList.remove('drag-over-top', 'drag-over-bottom');
+             if (state.dropTargetInfo && state.dropTargetInfo.blockId === blockId) {
+                state.dropTargetInfo = null; // Clear if we left this specific target
+             }
+        }
+    }
+
+    function handleDrop(e) { 
+        e.preventDefault();
+        if (!state.draggedBlockId || !state.dropTargetInfo) {
+            cleanupDragDropVisuals();
+            return;
+        }
+
+        const { blockId: targetId, position } = state.dropTargetInfo;
+        
+        const draggedIdx = state.blocks.findIndex(b => b.id === state.draggedBlockId);
+        if (draggedIdx === -1) {
+            cleanupDragDropVisuals();
+            return;
+        }
+
+        const [movedBlock] = state.blocks.splice(draggedIdx, 1);
+        let targetIdx = state.blocks.findIndex(b => b.id === targetId);
+
+        if (targetIdx === -1) { 
+            state.blocks.splice(draggedIdx, 0, movedBlock); // Put it back if target is gone (should not happen)
+        } else {
+            if (position === 'after') {
+                state.blocks.splice(targetIdx + 1, 0, movedBlock);
+            } else { 
+                state.blocks.splice(targetIdx, 0, movedBlock);
+            }
+        }
+        
+        renderBlocks(); 
+        cleanupDragDropVisuals();
+    }
+
+    function handleDragEnd(e) {
+        cleanupDragDropVisuals();
+    }
+
+    function cleanupDragDropVisuals() {
+        state.draggedBlockId = null;
+        state.dropTargetInfo = null;
+        document.querySelectorAll('.block.dragging').forEach(el => el.classList.remove('dragging'));
+        document.querySelectorAll('.block.drag-over-top, .block.drag-over-bottom').forEach(el => {
+            el.classList.remove('drag-over-top', 'drag-over-bottom');
+        });
+    }
+
+
+    // --- INITIALIZATION ---
+    document.addEventListener('DOMContentLoaded', () => {
+        renderSidebar();
+        renderPageTitle();
+        renderBlocks();
+
+        toggleSidebarBtn.addEventListener('click', toggleSidebar);
+        pageTitleInput.addEventListener('input', (e) => updatePageTitle(e.target.value));
+        pageTitleInput.addEventListener('blur', (e) => { // Ensure final update on blur
+            updatePageTitle(e.target.value);
+            // Potentially save/autosave logic here
+        });
+
+
+        addBlockPlaceholder.addEventListener('click', (e) => {
+            state.addBlockMenu.isOpen = true;
+            const rect = addBlockPlaceholder.getBoundingClientRect();
+            
+            // Attempt to position above the placeholder. If not enough space, position below.
+            let topPos = rect.top + window.scrollY - addBlockMenuEl.offsetHeight - 8;
+            if (topPos < window.scrollY + 8) { // Check if it's going off-screen or too close to top
+                topPos = rect.bottom + window.scrollY + 8;
+            }
+
+            state.addBlockMenu.position = { x: rect.left, y: topPos };
+            state.addBlockMenu.insertAfterBlockId = state.blocks.length > 0 ? state.blocks[state.blocks.length - 1].id : null;
+            renderAddBlockMenu();
+        });
+
+        addBlockMenuEl.addEventListener('click', (e) => {
+            const button = e.target.closest('.block-menu-item');
+            if (button) {
+                const type = button.dataset.type;
+                addNewBlock(type, state.addBlockMenu.insertAfterBlockId);
+                state.addBlockMenu.isOpen = false;
+                renderAddBlockMenu();
+            }
+        });
+
+        document.getElementById('block-option-delete').addEventListener('click', () => {
+            if (state.blockOptionsMenu.isOpen && state.blockOptionsMenu.blockId) {
+                deleteBlock(state.blockOptionsMenu.blockId);
+            }
+        });
+        document.getElementById('block-option-duplicate').addEventListener('click', () => {
+             if (state.blockOptionsMenu.isOpen && state.blockOptionsMenu.blockId) {
+                duplicateBlock(state.blockOptionsMenu.blockId);
+            }
+        });
+
+        document.addEventListener('click', (e) => {
+            if (state.addBlockMenu.isOpen && !addBlockMenuEl.contains(e.target) && !addBlockPlaceholder.contains(e.target)) {
+                state.addBlockMenu.isOpen = false;
+                renderAddBlockMenu();
+            }
+            if (state.blockOptionsMenu.isOpen && !blockOptionsMenuEl.contains(e.target) && !e.target.closest('.block-options-trigger')) {
+                state.blockOptionsMenu.isOpen = false;
+                state.blockOptionsMenu.blockId = null;
+                renderBlockOptionsMenu();
+            }
+        });
+
+        editorArea.addEventListener('click', (e) => {
+            // If clicked on editor's empty space (not on a block or placeholder) AND no blocks exist, add one.
+            if (e.target === editorArea && state.blocks.length === 0) {
+                 addNewBlock('paragraph');
+            }
+            // If clicked on padding below blocks, focus last block or add new
+            else if (e.target === blocksContainer.parentNode && state.blocks.length > 0) {
+                const lastBlock = state.blocks[state.blocks.length -1];
+                const lastBlockEl = document.getElementById(`block-${lastBlock.id}`);
+                const contentEditableEl = lastBlockEl?.querySelector('[contenteditable="true"]');
+                if(contentEditableEl) {
+                    contentEditableEl.focus();
+                     const range = document.createRange();
+                     const sel = window.getSelection();
+                     if (sel) {
+                        range.selectNodeContents(contentEditableEl);
+                        range.collapse(false); 
+                        sel.removeAllRanges();
+                        sel.addRange(range);
+                     }
+                }
+            }
+        });
+        
+        window.addEventListener('resize', () => {
+            // Responsive sidebar logic based on viewport width
+            const shouldBeOpen = window.innerWidth > 1024;
+            if (state.isSidebarOpen !== shouldBeOpen) {
+                // This could be problematic if user manually closed/opened.
+                // A better approach involves storing user preference or only auto-adjusting on initial load.
+                // For now, let's keep it simple: if it *was* following the default, adjust.
+                // state.isSidebarOpen = shouldBeOpen;
+                // renderSidebar(); 
+                // Decided against auto-toggling on resize to respect user's manual toggle. Initial state handles it.
+            }
+        });
+
+    });
+</script>
+</body>
+</html>

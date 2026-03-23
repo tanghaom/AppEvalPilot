@@ -1,0 +1,9 @@
+{
+  "web_id": "web_65",
+  "task_id": 5,
+  "task_type": "dynamic",
+  "instruction": "Task: Click a 'Reset Ratings' button.\nExpected Result: All simulated Elo ratings for all models are reset to their initial default values, and the comparison interface is reset or presents a new initial pair.\n\nNote: The task is only considered successful if the expected result is achieved; otherwise, it is deemed infeasible.",
+  "max_steps": 15,
+  "expected": "All simulated Elo ratings for all models are reset to their initial default values, and the comparison interface is reset or presents a new initial pair.",
+  "label": 0
+}

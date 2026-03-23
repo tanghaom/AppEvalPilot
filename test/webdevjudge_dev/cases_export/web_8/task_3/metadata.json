@@ -1,0 +1,9 @@
+{
+  "web_id": "web_8",
+  "task_id": 3,
+  "task_type": "dynamic",
+  "instruction": "Task: Scroll the page up or down.\nExpected Result: Scroll-triggered animations are activated and parallax effects become visible.\n\nNote: The task is only considered successful if the expected result is achieved; otherwise, it is deemed infeasible.",
+  "max_steps": 15,
+  "expected": "Scroll-triggered animations are activated and parallax effects become visible.",
+  "label": 0
+}

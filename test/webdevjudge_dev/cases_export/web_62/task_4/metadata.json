@@ -1,0 +1,9 @@
+{
+  "web_id": "web_62",
+  "task_id": 4,
+  "task_type": "dynamic",
+  "instruction": "Task: Select/input source and destination account numbers, input a transfer amount, and click a 'Transfer Funds' button.\nExpected Result: Displayed balances of both source and destination accounts update (if source account has sufficient funds), and the transfer is logged in the transaction history section.\n\nNote: The task is only considered successful if the expected result is achieved; otherwise, it is deemed infeasible.",
+  "max_steps": 15,
+  "expected": "Displayed balances of both source and destination accounts update (if source account has sufficient funds), and the transfer is logged in the transaction history section.",
+  "label": 1
+}

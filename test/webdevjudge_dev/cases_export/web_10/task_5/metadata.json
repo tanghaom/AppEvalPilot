@@ -1,0 +1,9 @@
+{
+  "web_id": "web_10",
+  "task_id": 5,
+  "task_type": "dynamic",
+  "instruction": "Task: Trigger a command palette (e.g., via button or keyboard shortcut) and select a simple editor command (e.g., 'Toggle Word Wrap').\nExpected Result: The command palette overlay appears, allows command selection, and the editor's state updates to reflect the chosen command (e.g., word wrap is enabled/disabled).\n\nNote: The task is only considered successful if the expected result is achieved; otherwise, it is deemed infeasible.",
+  "max_steps": 15,
+  "expected": "The command palette overlay appears, allows command selection, and the editor's state updates to reflect the chosen command (e.g., word wrap is enabled/disabled).",
+  "label": 0
+}

@@ -1,0 +1,9 @@
+{
+  "web_id": "web_48",
+  "task_id": 4,
+  "task_type": "dynamic",
+  "instruction": "Task: Drag a content block handle and drop the block into a new position between two other existing blocks.\nExpected Result: The block is visually moved and re-inserted at the new position, and other blocks adjust accordingly.\n\nNote: The task is only considered successful if the expected result is achieved; otherwise, it is deemed infeasible.",
+  "max_steps": 15,
+  "expected": "The block is visually moved and re-inserted at the new position, and other blocks adjust accordingly.",
+  "label": 1
+}

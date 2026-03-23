@@ -1,0 +1,9 @@
+{
+  "web_id": "web_99",
+  "task_id": 2,
+  "task_type": "dynamic",
+  "instruction": "Task: Click the 'Submit Group' button (when enabled with 4 words selected).\nExpected Result: If the submitted group is correct: the 4 words visually lock into their category (e.g., color change, subtle zoom-in animation) and become non-interactive. If all 4 categories are now solved, a 'Congratulations! You solved it!' message and win animation (e.g., confetti) are displayed. If the group is incorrect: the 4 words shake and flash red. The life counter decreases (with a visual effect like shrinking/fading). If lives remain, a 'Try again! Lives remaining: X' message appears, and the submitted words are deselected. If no lives remain, a 'Game Over. Better luck tomorrow!' message is displayed, and correct answers are revealed (e.g., with a smooth fade-in effect).\n\nNote: The task is only considered successful if the expected result is achieved; otherwise, it is deemed infeasible.",
+  "max_steps": 15,
+  "expected": "If the submitted group is correct: the 4 words visually lock into their category (e.g., color change, subtle zoom-in animation) and become non-interactive. If all 4 categories are now solved, a 'Congratulations! You solved it!' message and win animation (e.g., confetti) are displayed. If the group is incorrect: the 4 words shake and flash red. The life counter decreases (with a visual effect like shrinking/fading). If lives remain, a 'Try again! Lives remaining: X' message appears, and the submitted words are deselected. If no lives remain, a 'Game Over. Better luck tomorrow!' message is displayed, and correct answers are revealed (e.g., with a smooth fade-in effect).",
+  "label": 1
+}

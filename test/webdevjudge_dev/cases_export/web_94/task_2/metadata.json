@@ -1,0 +1,9 @@
+{
+  "web_id": "web_94",
+  "task_id": 2,
+  "task_type": "dynamic",
+  "instruction": "Task: Click a 'Next Law' or 'Previous Law' button when viewing a law's content.\nExpected Result: The page displays the content of the subsequent or preceding law, respectively.\n\nNote: The task is only considered successful if the expected result is achieved; otherwise, it is deemed infeasible.",
+  "max_steps": 15,
+  "expected": "The page displays the content of the subsequent or preceding law, respectively.",
+  "label": 0
+}

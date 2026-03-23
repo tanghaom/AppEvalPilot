@@ -1,0 +1,9 @@
+{
+  "web_id": "web_6",
+  "task_id": 5,
+  "task_type": "dynamic",
+  "instruction": "Task: Click on the user's profile icon or name in the header/navigation to open a menu.\nExpected Result: A dropdown menu appears, showing options like 'View Profile', 'Settings', or 'Log Out' (simulated actions).\n\nNote: The task is only considered successful if the expected result is achieved; otherwise, it is deemed infeasible.",
+  "max_steps": 15,
+  "expected": "A dropdown menu appears, showing options like 'View Profile', 'Settings', or 'Log Out' (simulated actions).",
+  "label": 0
+}

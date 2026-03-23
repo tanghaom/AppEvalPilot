@@ -1,0 +1,9 @@
+{
+  "web_id": "web_49",
+  "task_id": 3,
+  "task_type": "dynamic",
+  "instruction": "Task: Click into an input field (e.g., 'Username', 'Email', or 'Password').\nExpected Result: The placeholder label for that input field animates to float above the input area (possibly with a neon outline or bounce effect), and the field receives focus.\n\nNote: The task is only considered successful if the expected result is achieved; otherwise, it is deemed infeasible.",
+  "max_steps": 15,
+  "expected": "The placeholder label for that input field animates to float above the input area (possibly with a neon outline or bounce effect), and the field receives focus.",
+  "label": 1
+}

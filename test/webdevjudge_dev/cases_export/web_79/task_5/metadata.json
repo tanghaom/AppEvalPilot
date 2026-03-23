@@ -1,0 +1,9 @@
+{
+  "web_id": "web_79",
+  "task_id": 5,
+  "task_type": "dynamic",
+  "instruction": "Task: Type text into the search input field.\nExpected Result: The list of items dynamically filters to display only items whose names match or contain the entered search text.\n\nNote: The task is only considered successful if the expected result is achieved; otherwise, it is deemed infeasible.",
+  "max_steps": 15,
+  "expected": "The list of items dynamically filters to display only items whose names match or contain the entered search text.",
+  "label": 1
+}

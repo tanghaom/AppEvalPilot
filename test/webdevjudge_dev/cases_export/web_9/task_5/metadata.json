@@ -1,0 +1,9 @@
+{
+  "web_id": "web_9",
+  "task_id": 5,
+  "task_type": "dynamic",
+  "instruction": "Task: Click an application icon in the simulated taskbar.\nExpected Result: The corresponding application window is brought to the front/focused or restored if minimized.\n\nNote: The task is only considered successful if the expected result is achieved; otherwise, it is deemed infeasible.",
+  "max_steps": 15,
+  "expected": "The corresponding application window is brought to the front/focused or restored if minimized.",
+  "label": 1
+}

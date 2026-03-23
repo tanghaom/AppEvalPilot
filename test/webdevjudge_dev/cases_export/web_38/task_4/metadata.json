@@ -1,0 +1,9 @@
+{
+  "web_id": "web_38",
+  "task_id": 4,
+  "task_type": "dynamic",
+  "instruction": "Task: After successfully logging in, click the user menu button (the one displaying 'username' and a chevron icon).\nExpected Result: A dropdown menu appears containing items like 'My Stream', 'Guide', 'Settings', 'Logout', etc.\n\nNote: The task is only considered successful if the expected result is achieved; otherwise, it is deemed infeasible.",
+  "max_steps": 15,
+  "expected": "A dropdown menu appears containing items like 'My Stream', 'Guide', 'Settings', 'Logout', etc.",
+  "label": 1
+}

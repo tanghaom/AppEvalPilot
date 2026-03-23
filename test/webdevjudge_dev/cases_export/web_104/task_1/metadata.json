@@ -1,0 +1,9 @@
+{
+  "web_id": "web_104",
+  "task_id": 1,
+  "task_type": "dynamic",
+  "instruction": "Task: Input a URL into an address bar and initiate navigation (e.g., by pressing Enter or clicking a 'Go' button).\nExpected Result: The input field attempts to prepend 'https://' if no scheme is present. A simulated loading progress bar is displayed. Simulated web content corresponding to the URL is shown. The URL is added to a simulated browsing history.\n\nNote: The task is only considered successful if the expected result is achieved; otherwise, it is deemed infeasible.",
+  "max_steps": 15,
+  "expected": "The input field attempts to prepend 'https://' if no scheme is present. A simulated loading progress bar is displayed. Simulated web content corresponding to the URL is shown. The URL is added to a simulated browsing history.",
+  "label": 1
+}

@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VS Code Clone</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Custom scrollbar for a more VSCode like feel */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #2D3748; /* slate-700 */
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #4A5568; /* slate-600 */
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #718096; /* slate-500 */
+        }
+        /* For Firefox */
+        html {
+            scrollbar-width: thin;
+            scrollbar-color: #4A5568 #2D3748;
+        }
+        .font-mono { /* Ensure a nice monospace font is used */
+            font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, Courier, monospace;
+        }
+    </style>
+</head>
+<body class="bg-slate-900 text-slate-200 font-sans antialiased overflow-hidden">
+
+    <div id="app-container" class="flex flex-col h-screen">
+        <!-- Title Bar -->
+        <div id="title-bar" class="h-8 bg-slate-800 flex items-center justify-between px-3 text-xs border-b border-slate-700 flex-shrink-0">
+            <div class="flex items-center space-x-3">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-5 h-5 text-sky-500">
+                    <path d="M10.5 4.5a3 3 0 0 0-3 3v10.5a3 3 0 0 0 3 3h3a3 3 0 0 0 3-3V7.5a3 3 0 0 0-3-3h-3Zm0 1.5h3a1.5 1.5 0 0 1 1.5 1.5v10.5a1.5 1.5 0 0 1-1.5 1.5h-3a1.5 1.5 0 0 1-1.5-1.5V7.5a1.5 1.5 0 0 1 1.5-1.5Z" />
+                </svg>
+                <span class="hover:bg-slate-700 px-1.5 py-0.5 rounded-sm cursor-default">File</span>
+                <span class="hover:bg-slate-700 px-1.5 py-0.5 rounded-sm cursor-default">Edit</span>
+                <span class="hover:bg-slate-700 px-1.5 py-0.5 rounded-sm cursor-default">View</span>
+                <span class="hover:bg-slate-700 px-1.5 py-0.5 rounded-sm cursor-default">Go</span>
+            </div>
+            <div id="current-file-title" class="text-slate-400">VSCode Clone</div>
+            <div class="flex items-center space-x-2">
+                <div class="w-3 h-3 bg-slate-600 rounded-full hover:bg-yellow-500 cursor-pointer"></div>
+                <div class="w-3 h-3 bg-slate-600 rounded-full hover:bg-green-500 cursor-pointer"></div>
+                <div class="w-3 h-3 bg-slate-600 rounded-full hover:bg-red-500 cursor-pointer"></div>
+            </div>
+        </div>
+
+        <!-- Main Content Area -->
+        <div class="flex flex-1 overflow-hidden">
+            <!-- Activity Bar -->
+            <div id="activity-bar" class="w-12 bg-slate-800 flex flex-col items-center justify-between py-2 border-r border-slate-700 flex-shrink-0">
+                <div id="activity-bar-main" class="space-y-1 w-full">
+                    <!-- Activity Icons will go here -->
+                </div>
+                <div id="activity-bar-secondary" class="space-y-1 w-full">
+                    <!-- Secondary icons (Account, Settings) -->
+                </div>
+            </div>
+
+            <!-- Sidebar -->
+            <div id="sidebar" class="w-72 bg-slate-800 border-r border-slate-700 flex-shrink-0 flex flex-col overflow-y-auto">
+                <!-- Sidebar content (e.g., File Explorer) will go here -->
+            </div>
+
+            <!-- Editor & Panel Area -->
+            <div class="flex flex-col flex-1 overflow-hidden">
+                <!-- Editor Tabs -->
+                <div id="editor-tabs-container" class="h-10 bg-slate-800 flex items-end border-b border-slate-700 overflow-x-auto flex-shrink-0">
+                    <!-- Editor tabs will go here -->
+                </div>
+
+                <!-- Editor Content -->
+                <div id="editor-content-area" class="flex-1 bg-slate-900 overflow-auto">
+                    <!-- Editor content will go here -->
+                </div>
+
+                <!-- Panel -->
+                <div id="panel-container" class="h-1/3 bg-slate-800 border-t border-slate-700 flex flex-col flex-shrink-0">
+                    <!-- Panel Tabs -->
+                    <div id="panel-tabs-container" class="h-8 bg-slate-800 flex items-center px-2 space-x-1 border-b border-slate-700 flex-shrink-0">
+                        <!-- Panel tabs will go here -->
+                    </div>
+                    <!-- Panel Content -->
+                    <div id="panel-content-area" class="flex-1 p-3 overflow-auto font-mono text-sm">
+                        <!-- Panel content will go here -->
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Status Bar -->
+        <div id="status-bar" class="h-6 bg-sky-600 text-sky-100 flex items-center justify-between px-3 text-xs flex-shrink-0">
+            <div class="flex items-center space-x-3">
+                <span class="hover:bg-sky-700 px-1 rounded-sm cursor-pointer">main*</span>
+                <span id="status-bar-ln-col" class="hover:bg-sky-700 px-1 rounded-sm cursor-pointer">Ln 1, Col 1</span>
+            </div>
+            <div class="flex items-center space-x-3">
+                <span id="status-bar-language" class="hover:bg-sky-700 px-1 rounded-sm cursor-pointer">Plain Text</span>
+                <span>UTF-8</span>
+                <span>CRLF</span>
+                <span class="hover:bg-sky-700 px-1 rounded-sm cursor-pointer">Notifications</span>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const ICONS = {
+            EXPLORER: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-6 h-6"><path d="M5.625 1.5c-1.036 0-1.875.84-1.875 1.875v17.25c0 1.035.84 1.875 1.875 1.875h12.75c1.035 0 1.875-.84 1.875-1.875V12.75A3.75 3.75 0 0 0 16.5 9h-1.875a.375.375 0 0 1-.375-.375V6.375A3.75 3.75 0 0 0 10.5 2.625H5.625Zm1.875 3.75V20.25h1.5V9A.75.75 0 0 1 9.75 8.25h1.5V5.25h-3.375A.375.375 0 0 1 7.5 4.875Z" /><path d="M12.75 3.001H15A2.25 2.25 0 0 1 17.25 5.25v2.25H15a2.25 2.25 0 0 1-2.25-2.25V3.001Z" /></svg>`,
+            SEARCH: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-6 h-6"><path fill-rule="evenodd" d="M10.5 3.75a6.75 6.75 0 1 0 0 13.5 6.75 6.75 0 0 0 0-13.5ZM2.25 10.5a8.25 8.25 0 1 1 14.59 5.28l4.69 4.69a.75.75 0 1 1-1.06 1.06l-4.69-4.69A8.25 8.25 0 0 1 2.25 10.5Z" clip-rule="evenodd" /></svg>`,
+            SOURCE_CONTROL: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-6 h-6"><path fill-rule="evenodd" d="M1.75 1A1.75 1.75 0 0 0 0 2.75v3.5A1.75 1.75 0 0 0 1.75 8h3.5A1.75 1.75 0 0 0 7 6.25v-3.5A1.75 1.75 0 0 0 5.25 1h-3.5ZM9.25 10A1.75 1.75 0 0 0 7.5 11.75v3.5A1.75 1.75 0 0 0 9.25 17h3.5A1.75 1.75 0 0 0 14.5 15.25v-3.5A1.75 1.75 0 0 0 12.75 10h-3.5ZM7.5 2.75V6.25h2.25a.75.75 0 0 1 .75.75v2.25H12a.75.75 0 0 1 .75.75v2.25h2.25a.75.75 0 0 1 .75.75V17.5a.75.75 0 0 1-.75.75h-2.25v2.25a.75.75 0 0 1-.75.75H9a.75.75 0 0 1-.75-.75V18.25H6A2.75 2.75 0 0 1 3.25 15.5V13h2.25A.75.75 0 0 1 6.25 12.25v-2.25H4.5a.75.75 0 0 1-.75-.75V7.75A.75.75 0 0 1 4.5 7H6A2.75 2.75 0 0 1 8.75 4.25V2h-2.25A.75.75 0 0 1 5.75 2.75v.001Z" clip-rule="evenodd" /></svg>`,
+            DEBUG: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-6 h-6"><path d="M12.75 2.25a.75.75 0 0 0-1.5 0v2.395c-.263.043-.52.097-.772.162l-1.34.334a.75.75 0 0 0-.522 1.01l.088.354-.05.049a.75.75 0 0 0-.262 1.033l.523.871-.662.381a.75.75 0 0 0-.324 1.033l.603.821-.74.478a.75.75 0 0 0-.104 1.047l.636.953-.86.515a.75.75 0 0 0 .047 1.296l1.009.378-.963.555a.75.75 0 0 0 .162 1.268l1.072.214-.972.561a.75.75 0 0 0 .324 1.246l1.08-.06.001.002.002.001.002.001.001.001.002.001h.004l.006.002h.001l.001.001.001.001h.002l.002.001.001.001.001.001h.001l.001-.001h.001l.001-.001h.001l.001-.001h.001l.001-.001h.002l.001-.001.001-.001.002-.001h.001l.001-.001.002-.001.002-.001.006-.002h.004l.002-.001.001-.001.002-.001.001-.001.002-.001.001-.001.001-.001h.001l1.08.06a.75.75 0 0 0 .324-1.246l-.972-.561 1.072-.214a.75.75 0 0 0 .162-1.268l-.963-.555 1.01-.378a.75.75 0 0 0 .046-1.296l-.86-.515.636-.953a.75.75 0 0 0-.104-1.047l-.74-.478.603-.821a.75.75 0 0 0-.324-1.033l-.662-.381.523-.871a.75.75 0 0 0-.262-1.033l-.05-.049.088-.354a.75.75 0 0 0-.522-1.01l-1.34-.334a12.69 12.69 0 0 0-.772-.162V2.25Z" /><path fill-rule="evenodd" d="M9.007 11.727c.347.442.29.928-.098 1.224l-2.231 1.69a.75.75 0 0 0 .952 1.254l2.23-1.69c.389-.295.875-.342 1.224-.098l1.69 1.145a.75.75 0 0 0 1.254-.952l-1.69-2.23c-.295-.389-.342-.875-.098-1.224l1.145-1.69a.75.75 0 0 0-.952-1.254l-2.23 1.69c-.389.295-.928.249-1.224.098l-1.69-1.145a.75.75 0 0 0-1.254.952l1.69 2.23Z" clip-rule="evenodd" /></svg>`,
+            EXTENSIONS: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-6 h-6"><path d="M1.5 8.25A2.25 2.25 0 0 1 3.75 6H8V1.5a.75.75 0 0 1 .75-.75h4.5a.75.75 0 0 1 .75.75V6h4.25A2.25 2.25 0 0 1 22.5 8.25v3.989a.75.75 0 0 1-1.036.68l-2.964-.889a.75.75 0 0 0-.64.076l-2.25 1.5a.75.75 0 0 1-.82.001L12.5 12.22a.75.75 0 0 0-.998 0L9.25 13.72a.75.75 0 0 1-.82-.001l-2.25-1.5a.75.75 0 0 0-.64-.076l-2.964.889A.75.75 0 0 1 1.5 12.24V8.25ZM22.5 15a.75.75 0 0 1-.75.75h-.75a.75.75 0 0 0-.75.75v2.25H18a.75.75 0 0 1-.75.75h-4.5a.75.75 0 0 1-.75-.75H9.75v-2.25a.75.75 0 0 0-.75-.75h-.75A.75.75 0 0 1 7.5 15v4.25A2.25 2.25 0 0 0 9.75 21.5H11V22.5a.75.75 0 0 0 1.5 0V21.5h1.5V22.5a.75.75 0 0 0 1.5 0V21.5h1.25A2.25 2.25 0 0 0 19.5 19.25V15Z" /></svg>`,
+            ACCOUNT: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-6 h-6"><path fill-rule="evenodd" d="M18.685 19.097A9.723 9.723 0 0 0 21.75 12c0-5.385-4.365-9.75-9.75-9.75S2.25 6.615 2.25 12a9.723 9.723 0 0 0 3.065 7.097A9.716 9.716 0 0 0 12 21.75a9.716 9.716 0 0 0 6.685-2.653Zm-12.54-1.285A7.486 7.486 0 0 1 12 15a7.486 7.486 0 0 1 5.855 2.812A8.224 8.224 0 0 1 12 20.25a8.224 8.224 0 0 1-5.855-2.438ZM15.75 9a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0Z" clip-rule="evenodd" /></svg>`,
+            SETTINGS: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-6 h-6"><path fill-rule="evenodd" d="M11.078 2.25c-.917 0-1.699.663-1.948 1.567L9.03 4.285C7.451 4.649 6.038 5.503 4.903 6.638L3.44 6.043a1.95 1.95 0 0 0-2.256.313L.313 7.229a1.95 1.95 0 0 0 .313 2.256l.996 1.463c-.18.949-.295 1.925-.295 2.919s.115 1.97.295 2.919l-.996 1.463a1.95 1.95 0 0 0-.313 2.256l.874.874a1.95 1.95 0 0 0 2.256.313l1.463-.996c1.135 1.135 2.55 1.989 4.129 2.353l.101.434c.25.904 1.03.1.567 1.948h3.844c.918 0 1.699-.663 1.948-1.567l.101-.434c1.578-.364 2.994-1.218 4.129-2.353l1.463.996a1.95 1.95 0 0 0 2.256-.313l.874-.874a1.95 1.95 0 0 0 .313-2.256l-.996-1.463a6.501 6.501 0 0 0 .295-2.919s-.115-1.97-.295-2.919l.996-1.463a1.95 1.95 0 0 0-.313-2.256L21.469.313a1.95 1.95 0 0 0-2.256-.313l-1.463.996C16.617 5.503 15.204 4.649 13.625 4.285l-.099-.434A1.95 1.95 0 0 0 11.078 2.25ZM12 8.25a3.75 3.75 0 1 0 0 7.5 3.75 3.75 0 0 0 0-7.5Z" clip-rule="evenodd" /></svg>`,
+            FILE: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-5 h-5"><path fill-rule="evenodd" d="M4 2a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V6.414A2.25 2.25 0 0 0 17.207 5L13 1.793A2.25 2.25 0 0 0 11.586 1H5.25A1.25 1.25 0 0 0 4 2Zm0 1h7.586L16 7.414V16a.5.5 0 0 1-.5.5H4a.5.5 0 0 1-.5-.5V3a.5.5 0 0 1 .5-.5Z" clip-rule="evenodd" /></svg>`,
+            FOLDER: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-5 h-5"><path fill-rule="evenodd" d="M2 3.5A1.5 1.5 0 0 1 3.5 2h4.155a1.5 1.5 0 0 1 1.06.44l1.134 1.133a.75.75 0 0 0 .53.227h4.121A1.5 1.5 0 0 1 16 5.5v1.75c0 .414.336.75.75.75h.25a.75.75 0 0 0 .75-.75V5.5A2.5 2.5 0 0 0 15.055 3H10.934a.75.75 0 0 1-.53-.22L9.272 1.646A2.5 2.5 0 0 0 7.655 1H3.5A2.5 2.5 0 0 0 1 3.5v11A2.5 2.5 0 0 0 3.5 17h13A2.5 2.5 0 0 0 19 14.5v-2.75a.75.75 0 0 0-.75-.75h-.25a.75.75 0 0 0-.75.75V14.5a1 1 0 0 1-1 1h-13a1 1 0 0 1-1-1v-11Z" clip-rule="evenodd" /></svg>`,
+            CHEVRON_RIGHT: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-4 h-4"><path fill-rule="evenodd" d="M8.22 5.22a.75.75 0 0 1 1.06 0l4.25 4.25a.75.75 0 0 1 0 1.06l-4.25 4.25a.75.75 0 0 1-1.06-1.06L11.94 10 8.22 6.28a.75.75 0 0 1 0-1.06Z" clip-rule="evenodd" /></svg>`,
+            CLOSE: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-4 h-4"><path d="M6.28 5.22a.75.75 0 0 0-1.06 1.06L8.94 10l-3.72 3.72a.75.75 0 1 0 1.06 1.06L10 11.06l3.72 3.72a.75.75 0 1 0 1.06-1.06L11.06 10l3.72-3.72a.75.75 0 0 0-1.06-1.06L10 8.94 6.28 5.22Z" /></svg>`,
+        };
+
+        let state = {
+            activeActivity: 'explorer',
+            sidebarVisible: true,
+            openFiles: [],
+            activeFileId: null,
+            fileSystem: [
+                { id: 'readme.md', name: 'README.md', type: 'file', language: 'markdown', content: '# VSCode Clone\n\nThis is a clone of VS Code, built with HTML, Tailwind CSS, and JavaScript.\n\n## Features\n\n- File Explorer\n- Editor Tabs\n- Syntax Highlighting (basic for JS, CSS, MD)\n- Panel (Terminal, Problems, Output)\n\nDouble-click files in the explorer to open them.\n\n

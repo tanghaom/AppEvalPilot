@@ -1,0 +1,9 @@
+{
+  "web_id": "web_18",
+  "task_id": 4,
+  "task_type": "dynamic",
+  "instruction": "Task: Scroll the chat display area to view older messages when content overflows.\nExpected Result: The user is logged out.\n\nNote: The task is only considered successful if the expected result is achieved; otherwise, it is deemed infeasible.",
+  "max_steps": 15,
+  "expected": "The user is logged out.",
+  "label": 0
+}

@@ -1,0 +1,579 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-R8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My Chrome Clone</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Custom scrollbar for webkit browsers (like Chrome) */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #f1f1f1;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #888;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #555;
+        }
+        .tab-favicon {
+            width: 16px;
+            height: 16px;
+            margin-right: 8px;
+            background-color: #e0e0e0; /* bg-gray-200 */
+            border: 1px dashed #a0a0a0; /* border-gray-400 */
+            border-radius: 0.25rem; /* rounded */
+            display: inline-block;
+            flex-shrink: 0;
+        }
+        /* Basic progress bar animation */
+        #progressBar {
+            transition: width 0.3s ease-out, opacity 0.3s ease-out;
+        }
+        .modal-backdrop {
+            background-color: rgba(0,0,0,0.5);
+        }
+    </style>
+</head>
+<body class="bg-slate-200 h-screen flex flex-col overflow-hidden">
+
+    <!-- Browser UI -->
+    <div id="browser" class="flex flex-col h-full shadow-2xl rounded-lg m-0 sm:m-2 bg-slate-100 border border-slate-300">
+
+        <!-- Tabs Bar -->
+        <div class="bg-slate-800 p-1 flex items-center space-x-1">
+            <div id="tabsContainer" class="flex-grow flex items-end h-[40px] overflow-x-auto">
+                <!-- Tabs will be rendered here -->
+            </div>
+            <button id="addTabBtn" class="p-2 text-slate-300 hover:bg-slate-700 rounded-md">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" /></svg>
+            </button>
+        </div>
+
+        <!-- Navigation and Address Bar -->
+        <div class="bg-slate-700 p-2 flex items-center space-x-2 relative">
+            <button id="backBtn" class="p-2 text-slate-300 hover:bg-slate-600 rounded-md disabled:opacity-50 disabled:cursor-not-allowed">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" /></svg>
+            </button>
+            <button id="forwardBtn" class="p-2 text-slate-300 hover:bg-slate-600 rounded-md disabled:opacity-50 disabled:cursor-not-allowed">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5"><path stroke-linecap="round" stroke-linejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" /></svg>
+            </button>
+            <button id="reloadBtn" class="p-2 text-slate-300 hover:bg-slate-600 rounded-md">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5"><path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99" /></svg>
+            </button>
+            <input type="text" id="addressBar" class="flex-grow p-2 rounded-full bg-slate-800 text-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm" placeholder="Search Google or type a URL">
+            
+            <div class="relative">
+                <button id="menuBtn" class="p-2 text-slate-300 hover:bg-slate-600 rounded-md">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6.75a.75.75 0 110-1.5.75.75 0 010 1.5zM12 12.75a.75.75 0 110-1.5.75.75 0 010 1.5zM12 18.75a.75.75 0 110-1.5.75.75 0 010 1.5z" /></svg>
+                </button>
+                <div id="menuDropdown" class="hidden absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 z-20 text-slate-700">
+                    <a href="#" id="historyBtn" class="block px-4 py-2 text-sm hover:bg-slate-100">History</a>
+                    <a href="#" id="uaBtn" class="block px-4 py-2 text-sm hover:bg-slate-100">Change User Agent</a>
+                </div>
+            </div>
+             <!-- Progress Bar container (relative positioning for the bar itself) -->
+            <div id="progressBarContainer" class="absolute left-0 bottom-0 w-full h-[3px] bg-transparent">
+                 <div id="progressBar" class="h-full bg-blue-500" style="width: 0%;"></div>
+            </div>
+        </div>
+        
+        <!-- Content Area -->
+        <div class="flex-grow relative bg-white">
+            <iframe id="contentFrame" class="w-full h-full border-0" sandbox="allow-forms allow-modals allow-pointer-lock allow-popups allow-popups-to-escape-sandbox allow-presentation allow-same-origin allow-scripts allow-top-navigation allow-top-navigation-by-user-activation"></iframe>
+            <!-- Note on sandbox: allow-scripts and allow-same-origin are powerful. Be cautious.
+                 For more security, one might remove allow-scripts if not needed or restrict further.
+                 allow-top-navigation-by-user-activation is important for links to work.
+            -->
+        </div>
+    </div>
+
+    <!-- History Modal -->
+    <div id="historyModal" class="fixed inset-0 z-30 items-center justify-center bg-black/50 hidden">
+        <div class="bg-white p-6 rounded-lg shadow-xl w-full max-w-lg max-h-[80vh] flex flex-col">
+            <div class="flex justify-between items-center mb-4">
+                <h2 class="text-xl font-semibold text-slate-700">History (Active Tab)</h2>
+                <button id="closeHistoryModalBtn" class="text-slate-500 hover:text-slate-700">&times;</button>
+            </div>
+            <ul id="historyList" class="overflow-y-auto space-y-1 text-sm">
+                <!-- History items will be rendered here -->
+            </ul>
+        </div>
+    </div>
+
+    <!-- User Agent Modal -->
+    <div id="uaModal" class="fixed inset-0 z-30 items-center justify-center bg-black/50 hidden">
+        <div class="bg-white p-6 rounded-lg shadow-xl w-full max-w-md">
+            <div class="flex justify-between items-center mb-4">
+                <h2 class="text-xl font-semibold text-slate-700">Change User Agent</h2>
+                <button id="closeUAModalBtn" class="text-slate-500 hover:text-slate-700">&times;</button>
+            </div>
+            <div id="uaList" class="space-y-2 text-sm">
+                <!-- UA options will be rendered here -->
+            </div>
+            <p class="mt-4 text-xs text-slate-500">Note: Changing User Agent here is for demonstration. It will not alter the HTTP headers sent by the iframe for web requests due to browser security restrictions. This setting primarily affects `navigator.userAgent` accessible by scripts on *this* page.</p>
+        </div>
+    </div>
+
+    <script>
+        const initialNewTabPageContent = `
+            <style>
+                body { margin: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; background-color: #f8f9fa; color: #343a40; }
+                h1 { font-size: 2.5em; font-weight: 300; margin-bottom: 0.5em; }
+                p { color: #6c757d; }
+                .search-container { margin-top: 2em; width: 60%; max-width: 500px; }
+                .search-bar { width: 100%; padding: 0.75em 1.5em; font-size: 1em; border: 1px solid #ced4da; border-radius: 24px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+                .search-bar:focus { outline: none; border-color: #80bdff; box-shadow: 0 0 0 0.2rem rgba(0,123,255,.25); }
+            </style>
+            <body>
+                <h1>New Tab</h1>
+                <p>Welcome to your custom browser experience!</p>
+                <div class="search-container">
+                    <input type="text" class="search-bar" placeholder="Search (decorative)">
+                </div>
+            </body>
+        `;
+        const newTabPageUrl = `data:text/html;charset=utf-8,${encodeURIComponent(initialNewTabPageContent)}`;
+
+        const USER_AGENTS = [
+            { name: "Default (Current Browser)", value: navigator.userAgent },
+            { name: "Chrome (Windows)", value: "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/99.0.4844.51 Safari/537.36" },
+            { name: "Firefox (Windows)", value: "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:97.0) Gecko/20100101 Firefox/97.0" },
+            { name: "Safari (iPhone)", value: "Mozilla/5.0 (iPhone; CPU iPhone OS 15_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/15.0 Mobile/15E148 Safari/604.1" },
+            { name: "Edge (Windows)", value: "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/99.0.4844.51 Safari/537.36 Edg/99.0.1150.36" },
+        ];
+
+        let state = {
+            tabs: [],
+            activeTabId: null,
+            currentUserAgent: USER_AGENTS[0].value,
+            isHistoryModalOpen: false,
+            isUAModalOpen: false,
+            isMenuDropdownOpen: false,
+        };
+
+        // DOM Elements
+        const tabsContainer = document.getElementById('tabsContainer');
+        const addTabBtn = document.getElementById('addTabBtn');
+        const backBtn = document.getElementById('backBtn');
+        const forwardBtn = document.getElementById('forwardBtn');
+        const reloadBtn = document.getElementById('reloadBtn');
+        const addressBar = document.getElementById('addressBar');
+        const contentFrame = document.getElementById('contentFrame');
+        const progressBar = document.getElementById('progressBar');
+        
+        const menuBtn = document.getElementById('menuBtn');
+        const menuDropdown = document.getElementById('menuDropdown');
+        const historyBtn = document.getElementById('historyBtn');
+        const uaBtn = document.getElementById('uaBtn');
+
+        const historyModal = document.getElementById('historyModal');
+        const closeHistoryModalBtn = document.getElementById('closeHistoryModalBtn');
+        const historyList = document.getElementById('historyList');
+
+        const uaModal = document.getElementById('uaModal');
+        const closeUAModalBtn = document.getElementById('closeUAModalBtn');
+        const uaList = document.getElementById('uaList');
+
+        // Helper Functions
+        function getActiveTab() {
+            return state.tabs.find(tab => tab.id === state.activeTabId);
+        }
+
+        function sanitizeTitle(title) {
+            if (!title || typeof title !== 'string') return 'Untitled';
+            return title.replace(/</g, '&lt;').replace(/>/g, '&gt;').substring(0, 30) + (title.length > 30 ? '...' : '');
+        }
+        
+        function ensureHttps(url) {
+            if (!url.startsWith('http://') && !url.startsWith('https://') && !url.startsWith('data:') && !url.startsWith('about:')) {
+                return 'https://' + url;
+            }
+            return url;
+        }
+
+        // Render Functions
+        function renderTabs() {
+            tabsContainer.innerHTML = '';
+            state.tabs.forEach(tab => {
+                const tabEl = document.createElement('div');
+                tabEl.className = `flex items-center justify-between min-w-[150px] max-w-[200px] h-[40px] px-3 py-2 cursor-pointer border-t-2 ${tab.id === state.activeTabId ? 'bg-slate-700 border-blue-500 text-white' : 'bg-slate-800 border-transparent text-slate-400 hover:bg-slate-700/70'}`;
+                tabEl.dataset.tabId = tab.id;
+                
+                const faviconEl = document.createElement('div');
+                faviconEl.className = 'tab-favicon'; // Placeholder styling
+
+                const titleEl = document.createElement('span');
+                titleEl.className = 'truncate text-xs flex-grow mx-1';
+                titleEl.textContent = sanitizeTitle(tab.title);
+                
+                const closeBtn = document.createElement('button');
+                closeBtn.className = `ml-2 p-0.5 rounded hover:bg-slate-500/50 ${tab.id === state.activeTabId ? 'text-white' : 'text-slate-400'}`;
+                closeBtn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-3 h-3"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>';
+                closeBtn.onclick = (e) => {
+                    e.stopPropagation();
+                    closeTab(tab.id);
+                };
+
+                tabEl.appendChild(faviconEl);
+                tabEl.appendChild(titleEl);
+                tabEl.appendChild(closeBtn);
+                tabEl.onclick = () => switchTab(tab.id);
+                tabsContainer.appendChild(tabEl);
+            });
+        }
+
+        function renderActiveTabContent() {
+            const activeTab = getActiveTab();
+            if (!activeTab) return;
+
+            addressBar.value = (activeTab.url === newTabPageUrl) ? '' : activeTab.url;
+            
+            if (contentFrame.src !== activeTab.url && activeTab.url !== 'about:blank') { // 'about:blank' can be initial state
+                 if (activeTab.isLoading) {
+                    progressBar.style.width = '30%'; // Initial progress
+                    setTimeout(() => { if(getActiveTab()?.isLoading) progressBar.style.width = '70%'; }, 100);
+                 }
+                 contentFrame.src = activeTab.url;
+            } else if (activeTab.url === newTabPageUrl && contentFrame.src !== newTabPageUrl) {
+                 contentFrame.src = newTabPageUrl;
+            } else if (activeTab.url === 'about:blank' && contentFrame.src !== 'about:blank') {
+                 contentFrame.src = 'about:blank';
+            }
+
+
+            updateNavControls();
+        }
+
+        function updateNavControls() {
+            const activeTab = getActiveTab();
+            if (!activeTab) {
+                backBtn.disabled = true;
+                forwardBtn.disabled = true;
+                reloadBtn.disabled = true;
+                return;
+            }
+            backBtn.disabled = activeTab.historyIndex <= 0;
+            forwardBtn.disabled = activeTab.historyIndex >= activeTab.history.length - 1;
+            reloadBtn.disabled = activeTab.url === newTabPageUrl || activeTab.url === 'about:blank';
+        }
+
+        function renderHistoryModal() {
+            const activeTab = getActiveTab();
+            historyList.innerHTML = '';
+            if (!activeTab || activeTab.history.length === 0) {
+                historyList.innerHTML = '<li class="text-slate-500">No history for this tab yet.</li>';
+                return;
+            }
+            // Show in reverse chronological order
+            [...activeTab.history].reverse().forEach(url => {
+                const li = document.createElement('li');
+                const a = document.createElement('a');
+                a.href = '#';
+                a.textContent = url;
+                a.className = 'block p-2 hover:bg-slate-100 rounded truncate';
+                a.onclick = (e) => {
+                    e.preventDefault();
+                    navigateTo(url);
+                    closeHistoryModal();
+                };
+                li.appendChild(a);
+                historyList.appendChild(li);
+            });
+        }
+        
+        function renderUAModal() {
+            uaList.innerHTML = '';
+            USER_AGENTS.forEach(ua => {
+                const div = document.createElement('div');
+                div.className = 'flex items-center';
+                const input = document.createElement('input');
+                input.type = 'radio';
+                input.name = 'userAgent';
+                input.id = `ua-${ua.name.replace(/\s+/g, '-')}`;
+                input.value = ua.value;
+                input.checked = ua.value === state.currentUserAgent;
+                input.className = 'mr-2';
+                input.onchange = () => {
+                    state.currentUserAgent = ua.value;
+                    // Note: This only changes navigator.userAgent for *this page's scripts*.
+                    // It does NOT change the UA for iframe requests.
+                    // To demonstrate, you could have a script on this page log navigator.userAgent.
+                    console.log("User Agent changed to (for this page's context):", state.currentUserAgent);
+                    // Potentially reload active tab to see if server-side UA sniffing changes anything
+                    // This would require a server that sniffs UA and changes content.
+                    // For now, it's just a state change.
+                    // if (getActiveTab()) reloadTab(); 
+                };
+                const label = document.createElement('label');
+                label.htmlFor = input.id;
+                label.textContent = ua.name;
+                label.className = "text-slate-600";
+                div.appendChild(input);
+                div.appendChild(label);
+                uaList.appendChild(div);
+            });
+        }
+
+        // Event Handlers & Actions
+        function navigateTo(url, isBackForward = false) {
+            const activeTab = getActiveTab();
+            if (!activeTab) return;
+
+            const finalUrl = ensureHttps(url);
+            
+            activeTab.isLoading = true;
+            progressBar.style.opacity = '1';
+            progressBar.style.width = '30%';
+            setTimeout(() => { if(activeTab.isLoading) progressBar.style.width = '70%'; }, 150);
+
+            activeTab.url = finalUrl; // Update URL immediately for address bar sync
+            
+            if (!isBackForward) {
+                // If it's a new navigation, and different from current, update history
+                if (activeTab.history[activeTab.historyIndex] !== finalUrl) {
+                    activeTab.history = activeTab.history.slice(0, activeTab.historyIndex + 1);
+                    activeTab.history.push(finalUrl);
+                    activeTab.historyIndex = activeTab.history.length - 1;
+                }
+            }
+            
+            renderTabs(); // Update title potentially
+            renderActiveTabContent(); // This sets iframe.src
+        }
+
+        contentFrame.onload = () => {
+            const activeTab = getActiveTab();
+            if (!activeTab) return;
+
+            activeTab.isLoading = false;
+            progressBar.style.width = '100%';
+            setTimeout(() => {
+                 progressBar.style.width = '0%';
+                 progressBar.style.opacity = '0';
+            }, 500);
+
+            let frameTitle = 'Loading...';
+            let frameUrl = activeTab.url; // Fallback to intended URL
+
+            try {
+                // Accessing contentDocument or contentWindow might be blocked by cross-origin policy
+                if (contentFrame.contentDocument && contentFrame.contentDocument.title) {
+                    frameTitle = contentFrame.contentDocument.title;
+                }
+                 // contentWindow.location.href can be blocked by CORS
+                if (contentFrame.contentWindow && contentFrame.contentWindow.location.href && contentFrame.contentWindow.location.href !== 'about:blank') {
+                   // This check is important: if navigation failed and it's still on about:blank, don't use it
+                   if (contentFrame.contentWindow.location.href !== 'about:srcdoc') { // srcdoc is also a common internal state
+                       frameUrl = contentFrame.contentWindow.location.href;
+                   }
+                }
+            } catch (e) {
+                console.warn("Cross-origin restriction: Cannot access iframe's title or URL.", e);
+                // Use the URL we tried to navigate to if title/url access fails
+                frameTitle = activeTab.url.split('/')[2] || 'Loaded Page'; // Use domain as title
+            }
+            
+            activeTab.title = frameTitle || (frameUrl === newTabPageUrl ? 'New Tab' : frameUrl);
+            
+            // Update current URL in history if it changed due to internal navigation and is accessible
+            if (frameUrl !== activeTab.url && frameUrl !== newTabPageUrl && frameUrl !== 'about:blank') {
+                activeTab.url = frameUrl;
+                // If this was an internal navigation, it should also be added to history
+                if (activeTab.history[activeTab.historyIndex] !== frameUrl) {
+                    activeTab.history = activeTab.history.slice(0, activeTab.historyIndex + 1);
+                    activeTab.history.push(frameUrl);
+                    activeTab.historyIndex = activeTab.history.length - 1;
+                }
+            }
+
+            renderTabs();
+            renderActiveTabContent(); // Update address bar if needed
+        };
+
+        contentFrame.onerror = () => {
+            const activeTab = getActiveTab();
+            if (activeTab) activeTab.isLoading = false;
+            progressBar.style.width = '0%';
+            progressBar.style.opacity = '0';
+            // Could display an error page in the iframe
+            // contentFrame.src = `data:text/html, <h1>Error loading page: ${activeTab ? activeTab.url : ''}</h1>`;
+            console.error("Error loading content in iframe for URL:", activeTab ? activeTab.url : 'unknown');
+            if (activeTab) activeTab.title = "Error";
+            renderTabs();
+            updateNavControls();
+        };
+
+        function addNewTab(url = newTabPageUrl, makeActive = true) {
+            const newTab = {
+                id: Date.now(),
+                url: url,
+                title: url === newTabPageUrl ? 'New Tab' : url,
+                history: [url],
+                historyIndex: 0,
+                isLoading: false,
+            };
+            state.tabs.push(newTab);
+            if (makeActive || !state.activeTabId) {
+                switchTab(newTab.id);
+            } else {
+                renderTabs();
+            }
+            return newTab;
+        }
+
+        function switchTab(tabId) {
+            state.activeTabId = tabId;
+            const activeTab = getActiveTab();
+            if (activeTab) {
+                renderTabs();
+                renderActiveTabContent();
+            }
+        }
+
+        function closeTab(tabId) {
+            const tabIndex = state.tabs.findIndex(tab => tab.id === tabId);
+            if (tabIndex === -1) return;
+
+            state.tabs.splice(tabIndex, 1);
+
+            if (state.activeTabId === tabId) {
+                if (state.tabs.length > 0) {
+                    const newActiveIndex = Math.max(0, tabIndex - 1);
+                    state.activeTabId = state.tabs[newActiveIndex].id;
+                } else {
+                    state.activeTabId = null; // Will be handled by addNewTab if all closed
+                }
+            }
+
+            if (state.tabs.length === 0) {
+                addNewTab(); // Always keep at least one tab
+            } else {
+                renderTabs();
+                if (state.activeTabId === tabId || state.tabs.find(t => t.id === state.activeTabId)) {
+                     renderActiveTabContent(); // Re-render if active tab changed or content might need update
+                }
+            }
+        }
+        
+        function goBack() {
+            const activeTab = getActiveTab();
+            if (activeTab && activeTab.historyIndex > 0) {
+                activeTab.historyIndex--;
+                navigateTo(activeTab.history[activeTab.historyIndex], true);
+            }
+        }
+
+        function goForward() {
+            const activeTab = getActiveTab();
+            if (activeTab && activeTab.historyIndex < activeTab.history.length - 1) {
+                activeTab.historyIndex++;
+                navigateTo(activeTab.history[activeTab.historyIndex], true);
+            }
+        }
+
+        function reloadTab() {
+            const activeTab = getActiveTab();
+            if (activeTab && activeTab.url !== newTabPageUrl) {
+                activeTab.isLoading = true; // Explicitly set loading state
+                renderTabs(); // Show loading indicator if any
+                progressBar.style.opacity = '1';
+                progressBar.style.width = '30%';
+                contentFrame.src = 'about:blank'; // Force reload by changing src first
+                setTimeout(() => { // Ensure blank is processed before reloading actual URL
+                    contentFrame.src = activeTab.url;
+                    if(activeTab.isLoading) progressBar.style.width = '70%';
+                }, 50);
+            }
+        }
+        
+        addressBar.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                let url = addressBar.value.trim();
+                if (url) {
+                    navigateTo(url);
+                }
+            }
+        });
+
+        addTabBtn.onclick = () => addNewTab();
+        backBtn.onclick = goBack;
+        forwardBtn.onclick = goForward;
+        reloadBtn.onclick = reloadTab;
+
+        // Menu Dropdown Logic
+        menuBtn.addEventListener('click', () => {
+            state.isMenuDropdownOpen = !state.isMenuDropdownOpen;
+            menuDropdown.classList.toggle('hidden', !state.isMenuDropdownOpen);
+        });
+
+        document.addEventListener('click', (event) => {
+            if (!menuBtn.contains(event.target) && !menuDropdown.contains(event.target)) {
+                if (state.isMenuDropdownOpen) {
+                    state.isMenuDropdownOpen = false;
+                    menuDropdown.classList.add('hidden');
+                }
+            }
+        });
+        
+        // Modal Logic
+        function openHistoryModal() {
+            renderHistoryModal();
+            historyModal.classList.remove('hidden');
+            historyModal.classList.add('flex');
+            state.isMenuDropdownOpen = false;
+            menuDropdown.classList.add('hidden');
+        }
+        function closeHistoryModal() {
+            historyModal.classList.add('hidden');
+            historyModal.classList.remove('flex');
+        }
+        historyBtn.onclick = openHistoryModal;
+        closeHistoryModalBtn.onclick = closeHistoryModal;
+
+        function openUAModal() {
+            renderUAModal();
+            uaModal.classList.remove('hidden');
+            uaModal.classList.add('flex');
+            state.isMenuDropdownOpen = false;
+            menuDropdown.classList.add('hidden');
+        }
+        function closeUAModal() {
+            uaModal.classList.add('hidden');
+            uaModal.classList.remove('flex');
+        }
+        uaBtn.onclick = openUAModal;
+        closeUAModalBtn.onclick = closeUAModal;
+
+        // Close modals with Escape key
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                closeHistoryModal();
+                closeUAModal();
+                if (state.isMenuDropdownOpen) {
+                    state.isMenuDropdownOpen = false;
+                    menuDropdown.classList.add('hidden');
+                }
+            }
+        });
+
+
+        // Initialization
+        function init() {
+            addNewTab('https://www.google.com/webhp?igu=1'); // Start with Google (igu=1 to bypass some consent popups)
+            // Or start with new tab page:
+            // addNewTab(newTabPageUrl); 
+            renderUAModal(); // Populate UA options once
+        }
+
+        init();
+
+    </script>
+
+</body>
+</html>

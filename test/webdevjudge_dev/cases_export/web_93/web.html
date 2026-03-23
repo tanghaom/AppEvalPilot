@@ -1,0 +1,589 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EMDR Chronological Targeting Plan</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Custom scrollbar for WebKit browsers */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #f1f1f1;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #888;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #555;
+        }
+        .timeline-container-min-h {
+            min-height: 200px; /* Ensure container has some height even when empty */
+        }
+        /* Smooth transition for height */
+        .details-transition {
+            transition: max-height 0.5s ease-in-out, opacity 0.5s ease-in-out;
+            max-height: 0;
+            opacity: 0;
+            overflow: hidden;
+        }
+        .details-transition.expanded {
+            max-height: 500px; /* Adjust as needed for content */
+            opacity: 1;
+        }
+        /* Modal backdrop */
+        .modal-backdrop {
+            background-color: rgba(0, 0, 0, 0.5);
+        }
+    </style>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: {
+                            light: '#60a5fa', // blue-400
+                            DEFAULT: '#3b82f6', // blue-500
+                            dark: '#2563eb', // blue-600
+                            darker: '#1d4ed8', // blue-700
+                        },
+                        secondary: {
+                            light: '#f3f4f6', // gray-100
+                            DEFAULT: '#e5e7eb', // gray-200
+                            dark: '#d1d5db', // gray-300
+                        },
+                        accent: {
+                            DEFAULT: '#10b981', // emerald-500
+                            dark: '#059669', // emerald-600
+                        },
+                        danger: {
+                            DEFAULT: '#ef4444', // red-500
+                            dark: '#dc2626', // red-600
+                        },
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    },
+                    spacing: {
+                        '128': '32rem',
+                    }
+                }
+            }
+        }
+    </script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" integrity="sha512-iecdLmaskl7CVkqkXNQ/ZH/XLlvWZOJyj7Yy7tcenmpD1ypASozpmT/E0iPtmFIB46ZmdtAc9eNBvH0H/ZpiBw==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body class="font-sans bg-secondary-light text-gray-800 min-h-screen antialiased">
+
+    <!-- Header -->
+    <header class="bg-primary text-white shadow-md">
+        <div class="container mx-auto px-4 sm:px-6 py-4 flex justify-between items-center">
+            <h1 class="text-xl sm:text-2xl font-bold flex items-center">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-7 h-7 mr-2">
+                    <path d="M11.25 4.533A9.707 9.707 0 0 0 6 3a9.735 9.735 0 0 0-3.25.555.75.75 0 0 0-.5.707v14.5a.75.75 0 0 0 .5.707A9.716 9.716 0 0 0 6 21v-2.142a5.239 5.239 0 0 1-.25-1.423A9.735 9.735 0 0 1 6 3.918c2.044 0 3.86.721 5.25 1.906v14.272A9.735 9.735 0 0 0 18 21a9.707 9.707 0 0 0 5.25-1.533.75.75 0 0 0 .5-.707V4.202a.75.75 0 0 0-.5-.707A9.716 9.716 0 0 0 18 3v2.142a5.239 5.239 0 0 1 .25 1.423A9.735 9.735 0 0 1 18 20.082c-2.044 0-3.86-.721-5.25-1.906V4.533Z" />
+                </svg>
+                CBT Timeline Targets
+            </h1>
+        </div>
+    </header>
+
+    <main class="container mx-auto p-4 sm:p-6">
+        <!-- Onboarding Modal -->
+        <div id="onboardingModal" class="fixed inset-0 modal-backdrop flex items-center justify-center z-50 hidden p-4">
+            <div class="bg-white p-6 sm:p-8 rounded-lg shadow-2xl max-w-lg w-full transform transition-all scale-95 opacity-0" id="onboardingModalContent">
+                <!-- Content will be injected by JS -->
+            </div>
+        </div>
+
+        <!-- Entry Form Modal -->
+        <div id="entryFormModal" class="fixed inset-0 modal-backdrop flex items-center justify-center z-40 hidden p-4">
+            <div class="bg-white p-6 sm:p-8 rounded-lg shadow-2xl max-w-xl w-full max-h-[90vh] overflow-y-auto transform transition-all scale-95 opacity-0" id="entryFormModalContent">
+                <h2 id="entryFormTitle" class="text-2xl font-semibold mb-6 text-primary-dark">Add New Timeline Entry</h2>
+                <form id="entryForm">
+                    <div class="mb-4">
+                        <label for="entryTitle" class="block text-sm font-medium text-gray-700 mb-1">Title</label>
+                        <input type="text" id="entryTitle" name="title" required class="w-full p-3 border border-secondary-dark rounded-md shadow-sm focus:ring-primary focus:border-primary" placeholder="e.g., Childhood Bullying Incident">
+                    </div>
+                    <div class="mb-4">
+                        <label for="entryDate" class="block text-sm font-medium text-gray-700 mb-1">Date</label>
+                        <input type="date" id="entryDate" name="date" required class="w-full p-3 border border-secondary-dark rounded-md shadow-sm focus:ring-primary focus:border-primary">
+                    </div>
+                    <div class="mb-4">
+                        <label for="negativeCognition" class="block text-sm font-medium text-gray-700 mb-1">Negative Cognition</label>
+                        <select id="negativeCognition" name="negativeCognition" class="w-full p-3 border border-secondary-dark rounded-md shadow-sm focus:ring-primary focus:border-primary bg-white">
+                            <option value="">Select negative belief</option>
+                        </select>
+                    </div>
+                    <div class="mb-4">
+                        <label for="positiveCognition" class="block text-sm font-medium text-gray-700 mb-1">Positive Cognition</label>
+                        <select id="positiveCognition" name="positiveCognition" class="w-full p-3 border border-secondary-dark rounded-md shadow-sm focus:ring-primary focus:border-primary bg-white">
+                            <option value="">Select positive belief</option>
+                        </select>
+                    </div>
+                    <div class="mb-6">
+                        <label for="entryNotes" class="block text-sm font-medium text-gray-700 mb-1">Notes</label>
+                        <textarea id="entryNotes" name="notes" rows="4" class="w-full p-3 border border-secondary-dark rounded-md shadow-sm focus:ring-primary focus:border-primary" placeholder="Additional details, feelings, SUDS rating..."></textarea>
+                    </div>
+                    <div class="flex justify-end space-x-3">
+                        <button type="button" id="cancelEntryForm" class="px-4 py-2 text-gray-700 bg-secondary-dark hover:bg-gray-400 rounded-md font-medium transition-colors">Cancel</button>
+                        <button type="submit" class="px-6 py-2 text-white bg-primary hover:bg-primary-dark rounded-md font-medium transition-colors shadow-sm">Save Entry</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Progress Bar -->
+        <div class="my-6 p-4 bg-white rounded-lg shadow">
+            <h3 class="text-lg font-semibold text-gray-700 mb-2">Your Progress</h3>
+            <div class="w-full bg-secondary-DEFAULT rounded-full h-6">
+                <div id="progressBar" class="bg-accent h-6 rounded-full text-xs font-medium text-white text-center p-1 leading-none transition-all duration-500" style="width: 0%">0%</div>
+            </div>
+            <p id="progressText" class="text-sm text-gray-600 mt-2 text-center">Add entries to see your progress!</p>
+        </div>
+        
+        <div class="flex justify-center mb-8 mt-8">
+            <button id="addEntryButton" class="bg-primary hover:bg-primary-dark text-white font-bold py-3 px-6 rounded-lg shadow-md hover:shadow-lg transition-all duration-150 ease-in-out transform hover:scale-105 flex items-center">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-5 h-5 mr-2">
+                    <path fill-rule="evenodd" d="M12 3.75a.75.75 0 0 1 .75.75v6.75h6.75a.75.75 0 0 1 0 1.5h-6.75v6.75a.75.75 0 0 1-1.5 0v-6.75H4.5a.75.75 0 0 1 0-1.5h6.75V4.5a.75.75 0 0 1 .75-.75Z" clip-rule="evenodd" />
+                </svg>
+                Add New Timeline Entry
+            </button>
+        </div>
+
+        <!-- Timeline Section -->
+        <div id="timelineContainer" class="relative max-w-4xl mx-auto py-8 timeline-container-min-h">
+            <!-- Central Line -->
+            <div class="absolute top-0 bottom-0 left-1/2 w-1 bg-primary-light transform -translate-x-1/2 hidden" id="centralTimelineLine"></div>
+            <!-- Entries will be injected here by JS -->
+            <div id="noEntriesMessage" class="text-center text-gray-500 py-10 hidden">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-16 h-16 mx-auto text-gray-400 mb-4">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M8.25 6.75h7.5M8.25 12h7.5m-7.5 5.25h7.5M3.75 6.75h.007v.008H3.75V6.75Zm.375 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0ZM3.75 12h.007v.008H3.75V12Zm.375 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm-.375 5.25h.007v.008H3.75v-.008Zm.375 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Z" />
+                </svg>
+                <h3 class="text-xl font-semibold text-gray-700">Your timeline is empty.</h3>
+                <p class="mt-1">Click "Add New Timeline Entry" to begin mapping your experiences.</p>
+            </div>
+        </div>
+    </main>
+
+    <footer class="text-center py-8 text-sm text-gray-500 border-t border-secondary-dark mt-12">
+        <p>&copy; <span id="currentYear"></span> CBT Timeline Tool. For illustrative purposes.</p>
+    </footer>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            // State variables
+            let entries = [];
+            let editingEntryId = null;
+            let currentOnboardingStep = 0;
+
+            const MAX_PROGRESS_ENTRIES = 10; // For progress bar calculation
+
+            // DOM Elements
+            const timelineContainer = document.getElementById('timelineContainer');
+            const centralTimelineLine = document.getElementById('centralTimelineLine');
+            const addEntryButton = document.getElementById('addEntryButton');
+            const entryFormModal = document.getElementById('entryFormModal');
+            const entryFormModalContent = document.getElementById('entryFormModalContent');
+            const entryForm = document.getElementById('entryForm');
+            const entryFormTitle = document.getElementById('entryFormTitle');
+            const cancelEntryFormButton = document.getElementById('cancelEntryForm');
+            const noEntriesMessage = document.getElementById('noEntriesMessage');
+            
+            const onboardingModal = document.getElementById('onboardingModal');
+            const onboardingModalContent = document.getElementById('onboardingModalContent');
+
+            const progressBar = document.getElementById('progressBar');
+            const progressText = document.getElementById('progressText');
+
+            document.getElementById('currentYear').textContent = new Date().getFullYear();
+
+            const NEGATIVE_COGNITIONS = [
+                "I am not safe", "I am not good enough", "I am powerless", "I am not in control",
+                "I am a failure", "I am unlovable", "I am helpless", "I am to blame", "I am worthless",
+                "I should have known better", "I cannot trust myself", "I cannot trust others", "It's my fault"
+            ];
+            const POSITIVE_COGNITIONS = [
+                "I am safe now", "I am good enough", "I have choices", "I am in control",
+                "I can succeed", "I am lovable", "I am capable", "I did the best I could", "I am worthy",
+                "I learn and grow", "I can trust myself", "I can choose who to trust", "I am not to blame"
+            ];
+
+            const ONBOARDING_STEPS = [
+                {
+                    title: "Welcome to Your CBT Timeline!",
+                    content: "<p class='text-gray-600 mb-4'>This tool helps you track significant events and related cognitions. It's a way to visually organize your experiences for Cognitive Behavioral Therapy or EMDR targeting.</p><p class='text-gray-600 mb-6'>Let's walk through how to use it.</p>",
+                    imagePlaceholder: true,
+                    imageText: "Visualize Your Journey"
+                },
+                {
+                    title: "Adding Timeline Entries",
+                    content: "<p class='text-gray-600 mb-4'>Click the 'Add New Timeline Entry' button to start. This will open a form where you can input details about an event, memory, or thought pattern.</p>",
+                    imagePlaceholder: true,
+                    imageText: "Button: Add New Entry"
+                },
+                {
+                    title: "Filling in the Details",
+                    content: "<p class='text-gray-600 mb-4'>For each entry, you'll provide a <strong>Title</strong>, <strong>Date</strong>, and select relevant <strong>Negative</strong> and <strong>Positive Cognitions</strong>. Use the <strong>Notes</strong> field for any additional context, feelings, or SUDs ratings.</p>",
+                    imagePlaceholder: true,
+                    imageText: "Form: Title, Date, Cognitions, Notes"
+                },
+                {
+                    title: "Navigating Your Timeline",
+                    content: "<p class='text-gray-600 mb-4'>Your entries will appear on a chronological timeline. You can expand each entry to see its full details, edit it, or remove it if needed.</p>",
+                    imagePlaceholder: true,
+                    imageText: "Timeline View: Expand/Collapse"
+                },
+                {
+                    title: "Tracking Your Progress",
+                    content: "<p class='text-gray-600 mb-4'>The progress bar gives you a motivational overview of your work. Keep adding entries to see it grow!</p><p class='text-gray-600 mb-6'>You're all set to begin!</p>",
+                    imagePlaceholder: true,
+                    imageText: "Progress Bar: Visual Motivation"
+                }
+            ];
+
+            function populateCognitionDropdowns() {
+                const negCognitionSelect = document.getElementById('negativeCognition');
+                const posCognitionSelect = document.getElementById('positiveCognition');
+                
+                NEGATIVE_COGNITIONS.forEach(cognition => {
+                    const option = document.createElement('option');
+                    option.value = cognition;
+                    option.textContent = cognition;
+                    negCognitionSelect.appendChild(option);
+                });
+
+                POSITIVE_COGNITIONS.forEach(cognition => {
+                    const option = document.createElement('option');
+                    option.value = cognition;
+                    option.textContent = cognition;
+                    posCognitionSelect.appendChild(option);
+                });
+            }
+
+            function saveToLocalStorage() {
+                localStorage.setItem('emdrTimelineEntries', JSON.stringify(entries));
+            }
+
+            function loadFromLocalStorage() {
+                const storedEntries = localStorage.getItem('emdrTimelineEntries');
+                if (storedEntries) {
+                    entries = JSON.parse(storedEntries);
+                }
+            }
+
+            function formatDateForDisplay(dateString) {
+                if (!dateString) return 'N/A';
+                const options = { year: 'numeric', month: 'long', day: 'numeric' };
+                return new Date(dateString + 'T00:00:00').toLocaleDateString(undefined, options); // Ensure date is parsed as local
+            }
+            
+            function renderTimeline() {
+                timelineContainer.innerHTML = ''; // Clear existing entries, but keep the central line div template
+                // Re-add central line
+                const lineDiv = document.createElement('div');
+                lineDiv.id = 'centralTimelineLine';
+                lineDiv.className = 'absolute top-0 bottom-0 left-1/2 w-1 bg-primary-light transform -translate-x-1/2';
+                timelineContainer.appendChild(lineDiv);
+
+                const noEntriesMsgDiv = document.createElement('div');
+                noEntriesMsgDiv.id = 'noEntriesMessage';
+                noEntriesMsgDiv.className = 'text-center text-gray-500 py-10';
+                noEntriesMsgDiv.innerHTML = `
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-16 h-16 mx-auto text-gray-400 mb-4">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M8.25 6.75h7.5M8.25 12h7.5m-7.5 5.25h7.5M3.75 6.75h.007v.008H3.75V6.75Zm.375 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0ZM3.75 12h.007v.008H3.75V12Zm.375 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm-.375 5.25h.007v.008H3.75v-.008Zm.375 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Z" />
+                    </svg>
+                    <h3 class="text-xl font-semibold text-gray-700">Your timeline is empty.</h3>
+                    <p class="mt-1">Click "Add New Timeline Entry" to begin mapping your experiences.</p>
+                `;
+                timelineContainer.appendChild(noEntriesMsgDiv);
+
+
+                if (entries.length === 0) {
+                    document.getElementById('centralTimelineLine').classList.add('hidden');
+                    document.getElementById('noEntriesMessage').classList.remove('hidden');
+                    return;
+                }
+                
+                document.getElementById('centralTimelineLine').classList.remove('hidden');
+                document.getElementById('noEntriesMessage').classList.add('hidden');
+
+                const sortedEntries = [...entries].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+
+                sortedEntries.forEach((entry, index) => {
+                    const entryElementWrapper = document.createElement('div');
+                    entryElementWrapper.className = 'mb-10 flex relative';
+
+                    const contentSide = document.createElement('div');
+                    contentSide.className = 'w-1/2 py-2';
+
+                    const dot = document.createElement('div');
+                    dot.className = 'absolute top-5 w-4 h-4 bg-primary rounded-full border-4 border-white shadow-md transform -translate-y-1/2 z-10';
+
+                    const card = document.createElement('div');
+                    card.className = 'bg-white p-4 sm:p-5 rounded-xl shadow-lg hover:shadow-xl transition-shadow duration-300 ease-in-out';
+                    
+                    const header = document.createElement('div');
+                    header.className = 'flex justify-between items-center mb-3';
+                    
+                    const titleDateDiv = document.createElement('div');
+                    const title = document.createElement('h3');
+                    title.className = 'font-semibold text-lg text-primary-darker';
+                    title.textContent = entry.title || 'Untitled Entry';
+                    const date = document.createElement('p');
+                    date.className = 'text-xs text-gray-500';
+                    date.textContent = formatDateForDisplay(entry.date);
+                    titleDateDiv.appendChild(title);
+                    titleDateDiv.appendChild(date);
+
+                    const toggleButton = document.createElement('button');
+                    toggleButton.className = 'p-2 text-primary hover:text-primary-dark transition-colors';
+                    toggleButton.innerHTML = `<i class="fas fa-chevron-down transition-transform duration-300 ${entry.collapsed ? '' : 'rotate-180'}"></i>`;
+                    toggleButton.onclick = () => toggleCollapse(entry.id);
+                    
+                    header.appendChild(titleDateDiv);
+                    header.appendChild(toggleButton);
+
+                    const details = document.createElement('div');
+                    details.className = `details-transition space-y-3 ${entry.collapsed ? '' : 'expanded'}`;
+                    details.innerHTML = `
+                        <div>
+                            <strong class="block text-sm font-medium text-gray-700">Negative Cognition:</strong>
+                            <p class="text-gray-600 text-sm">${entry.negativeCognition || 'N/A'}</p>
+                        </div>
+                        <div>
+                            <strong class="block text-sm font-medium text-gray-700">Positive Cognition:</strong>
+                            <p class="text-gray-600 text-sm">${entry.positiveCognition || 'N/A'}</p>
+                        </div>
+                        <div>
+                            <strong class="block text-sm font-medium text-gray-700">Notes:</strong>
+                            <p class="text-gray-600 text-sm whitespace-pre-wrap">${entry.notes || 'No notes.'}</p>
+                        </div>
+                        <div class="mt-4 pt-3 border-t border-secondary-DEFAULT flex justify-end space-x-2">
+                            <button class="edit-entry-btn text-sm px-3 py-1.5 bg-accent/80 hover:bg-accent text-white rounded-md transition-colors" data-id="${entry.id}">
+                                <i class="fas fa-pencil-alt mr-1"></i> Edit
+                            </button>
+                            <button class="delete-entry-btn text-sm px-3 py-1.5 bg-danger/80 hover:bg-danger text-white rounded-md transition-colors" data-id="${entry.id}">
+                                <i class="fas fa-trash-alt mr-1"></i> Delete
+                            </button>
+                        </div>
+                    `;
+
+                    card.appendChild(header);
+                    card.appendChild(details);
+                    contentSide.appendChild(card);
+
+                    const spacer = document.createElement('div');
+                    spacer.className = 'w-1/2 py-2';
+
+                    if (index % 2 === 0) { // Right side
+                        entryElementWrapper.classList.add('justify-start');
+                        contentSide.classList.add('pl-8'); // Space from center line for content
+                        dot.classList.add('left-1/2', '-ml-2'); // Position dot on the line
+                        entryElementWrapper.appendChild(spacer); // Spacer on left
+                        entryElementWrapper.appendChild(contentSide);
+                    } else { // Left side
+                        entryElementWrapper.classList.add('justify-end');
+                        contentSide.classList.add('pr-8'); // Space from center line for content
+                        card.classList.add('text-left'); // Ensure card content is left-aligned
+                        dot.classList.add('left-1/2', '-ml-2'); // Position dot on the line
+                        entryElementWrapper.appendChild(contentSide);
+                        entryElementWrapper.appendChild(spacer); // Spacer on right
+                    }
+                    
+                    entryElementWrapper.appendChild(dot); // Append dot last to ensure it's on top if z-index issues
+                    timelineContainer.appendChild(entryElementWrapper);
+                });
+
+                // Add event listeners for new edit/delete buttons
+                document.querySelectorAll('.edit-entry-btn').forEach(btn => {
+                    btn.addEventListener('click', (e) => openEntryFormModal(e.currentTarget.dataset.id));
+                });
+                document.querySelectorAll('.delete-entry-btn').forEach(btn => {
+                    btn.addEventListener('click', (e) => deleteTimelineEntry(e.currentTarget.dataset.id));
+                });
+                updateProgressBar();
+            }
+            
+            function toggleModal(modalElement, contentElement, show) {
+                if (show) {
+                    modalElement.classList.remove('hidden');
+                    setTimeout(() => { // Allow display block to take effect before transition
+                        contentElement.classList.remove('scale-95', 'opacity-0');
+                        contentElement.classList.add('scale-100', 'opacity-100');
+                    }, 50);
+                } else {
+                    contentElement.classList.remove('scale-100', 'opacity-100');
+                    contentElement.classList.add('scale-95', 'opacity-0');
+                    setTimeout(() => {
+                        modalElement.classList.add('hidden');
+                    }, 300); // Match transition duration
+                }
+            }
+
+            function openEntryFormModal(id = null) {
+                editingEntryId = id;
+                entryForm.reset(); // Clear form
+                if (id) {
+                    const entry = entries.find(e => e.id === id);
+                    if (entry) {
+                        entryFormTitle.textContent = 'Edit Timeline Entry';
+                        document.getElementById('entryTitle').value = entry.title;
+                        document.getElementById('entryDate').value = entry.date;
+                        document.getElementById('negativeCognition').value = entry.negativeCognition;
+                        document.getElementById('positiveCognition').value = entry.positiveCognition;
+                        document.getElementById('entryNotes').value = entry.notes;
+                    }
+                } else {
+                    entryFormTitle.textContent = 'Add New Timeline Entry';
+                }
+                toggleModal(entryFormModal, entryFormModalContent, true);
+                document.getElementById('entryTitle').focus();
+            }
+
+            function closeEntryFormModal() {
+                toggleModal(entryFormModal, entryFormModalContent, false);
+                editingEntryId = null;
+            }
+            
+            entryForm.addEventListener('submit', (event) => {
+                event.preventDefault();
+                const formData = new FormData(event.target);
+                const entryData = {
+                    title: formData.get('title'),
+                    date: formData.get('date'),
+                    negativeCognition: formData.get('negativeCognition'),
+                    positiveCognition: formData.get('positiveCognition'),
+                    notes: formData.get('notes'),
+                    collapsed: true, // Default or preserve existing
+                };
+
+                if (editingEntryId) {
+                    const index = entries.findIndex(e => e.id === editingEntryId);
+                    if (index !== -1) {
+                        entryData.id = editingEntryId;
+                        entryData.collapsed = entries[index].collapsed; // Preserve collapsed state
+                        entries[index] = entryData;
+                    }
+                } else {
+                    entryData.id = Date.now().toString();
+                    entries.push(entryData);
+                }
+                
+                saveToLocalStorage();
+                renderTimeline();
+                closeEntryFormModal();
+            });
+
+            cancelEntryFormButton.addEventListener('click', closeEntryFormModal);
+            addEntryButton.addEventListener('click', () => openEntryFormModal());
+
+            function deleteTimelineEntry(id) {
+                if (confirm('Are you sure you want to delete this entry?')) {
+                    entries = entries.filter(entry => entry.id !== id);
+                    saveToLocalStorage();
+                    renderTimeline();
+                }
+            }
+
+            function toggleCollapse(id) {
+                const index = entries.findIndex(e => e.id === id);
+                if (index !== -1) {
+                    entries[index].collapsed = !entries[index].collapsed;
+                    saveToLocalStorage();
+                    renderTimeline(); // Could optimize to only re-render the item
+                }
+            }
+
+            function updateProgressBar() {
+                const count = entries.length;
+                const percentage = Math.min((count / MAX_PROGRESS_ENTRIES) * 100, 100);
+                progressBar.style.width = `${percentage}%`;
+                progressBar.textContent = `${Math.round(percentage)}%`;
+
+                if (count === 0) {
+                    progressText.textContent = "Add entries to see your progress!";
+                } else if (percentage < 30) {
+                    progressText.textContent = "Great start! Keep adding milestones.";
+                } else if (percentage < 70) {
+                    progressText.textContent = "You're making good progress! Keep it up.";
+                } else if (percentage < 100) {
+                    progressText.textContent = "Almost there! Fantastic work.";
+                } else {
+                    progressText.textContent = `Awesome! You've reached ${MAX_PROGRESS_ENTRIES} milestones. Keep going!`;
+                }
+            }
+
+            // Onboarding Logic
+            function renderOnboardingStep(stepIndex) {
+                const step = ONBOARDING_STEPS[stepIndex];
+                onboardingModalContent.innerHTML = `
+                    <h2 class="text-2xl font-semibold mb-2 text-primary-dark">${step.title}</h2>
+                    ${step.content}
+                    ${step.imagePlaceholder ? `<div class="my-6 bg-secondary border-2 border-dashed rounded-xl w-full h-32 sm:h-40 flex items-center justify-center text-gray-400 text-sm">${step.imageText}</div>` : ''}
+                    <div class="mt-8 flex ${stepIndex === 0 ? 'justify-end' : 'justify-between'} items-center">
+                        ${stepIndex > 0 ? `<button id="prevOnboarding" class="px-4 py-2 text-gray-700 bg-secondary-dark hover:bg-gray-400 rounded-md font-medium transition-colors">Previous</button>` : '<div></div>'}
+                        <div>
+                            ${stepIndex < ONBOARDING_STEPS.length - 1 ? `<button id="skipOnboarding" class="px-4 py-2 text-sm text-gray-600 hover:text-primary rounded-md font-medium transition-colors mr-2">Skip</button>` : ''}
+                            <button id="nextOnboarding" class="px-6 py-2 text-white bg-primary hover:bg-primary-dark rounded-md font-medium transition-colors shadow-sm">
+                                ${stepIndex === ONBOARDING_STEPS.length - 1 ? 'Done' : 'Next'}
+                            </button>
+                        </div>
+                    </div>
+                `;
+
+                if (stepIndex > 0) {
+                    document.getElementById('prevOnboarding').addEventListener('click', prevOnboardingStep);
+                }
+                document.getElementById('nextOnboarding').addEventListener('click', nextOnboardingStep);
+                if (stepIndex < ONBOARDING_STEPS.length - 1) {
+                    document.getElementById('skipOnboarding').addEventListener('click', completeOnboarding);
+                }
+            }
+
+            function showOnboarding() {
+                currentOnboardingStep = 0;
+                renderOnboardingStep(currentOnboardingStep);
+                toggleModal(onboardingModal, onboardingModalContent, true);
+            }
+
+            function nextOnboardingStep() {
+                currentOnboardingStep++;
+                if (currentOnboardingStep < ONBOARDING_STEPS.length) {
+                    renderOnboardingStep(currentOnboardingStep);
+                } else {
+                    completeOnboarding();
+                }
+            }
+
+            function prevOnboardingStep() {
+                currentOnboardingStep--;
+                if (currentOnboardingStep >= 0) {
+                    renderOnboardingStep(currentOnboardingStep);
+                }
+            }
+
+            function completeOnboarding() {
+                toggleModal(onboardingModal, onboardingModalContent, false);
+                localStorage.setItem('onboardingCompleted', 'true');
+            }
+
+            function checkAndShowOnboarding() {
+                if (localStorage.getItem('onboardingCompleted') !== 'true') {
+                    showOnboarding();
+                }
+            }
+
+            // Initial Setup
+            populateCognitionDropdowns();
+            loadFromLocalStorage();
+            renderTimeline();
+            updateProgressBar();
+            checkAndShowOnboarding();
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,9 @@
+{
+  "web_id": "web_100",
+  "task_id": 2,
+  "task_type": "dynamic",
+  "instruction": "Task: Click the circular play/pause button.\nExpected Result: The button's icon toggles between play and pause symbols, its shadow style changes (via `shadow` class toggle), and the `paused` class on background wave elements (`.circle__back-1`, `.circle__back-2`) toggles, altering their animation state.\n\nNote: The task is only considered successful if the expected result is achieved; otherwise, it is deemed infeasible.",
+  "max_steps": 15,
+  "expected": "The button's icon toggles between play and pause symbols, its shadow style changes (via `shadow` class toggle), and the `paused` class on background wave elements (`.circle__back-1`, `.circle__back-2`) toggles, altering their animation state.",
+  "label": 1
+}

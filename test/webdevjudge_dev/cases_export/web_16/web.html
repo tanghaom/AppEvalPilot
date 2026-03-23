@@ -1,0 +1,626 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>IMDb Movie Search</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/cheerio/1.0.0-rc.12/cheerio.min.js" integrity="sha512-HGK4stepBUQCildSdrjdFOQUps3msGJGTjtGvicLQQChpRCC_LhQDHEuwqsRSJQsplGBCVQQZBsppKxOUCVwsQ==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+        :root {
+            --background: 222.2 84% 4.9%; /* e.g., slate-950 */
+            --foreground: 210 40% 98%; /* e.g., slate-50 */
+            --card: 222.2 80% 5.9%; /* Slightly lighter than background for cards */
+            --card-foreground: 210 40% 98%;
+            --popover: 222.2 84% 4.9%; /* Background for popovers like search dropdown */
+            --popover-foreground: 210 40% 98%;
+            --primary: 217.2 91.2% 59.8%; /* e.g., blue-500 */
+            --primary-foreground: 210 40% 98%; 
+            --secondary: 217.2 32.6% 17.5%; /* e.g., slate-800 */
+            --secondary-foreground: 210 40% 98%;
+            --muted: 217.2 32.6% 17.5%;
+            --muted-foreground: 215 20.2% 65.1%; /* e.g., slate-400 */
+            --accent: 217.2 32.6% 17.5%;
+            --accent-foreground: 210 40% 98%;
+            --destructive: 0 72.2% 50.6%; /* A noticeable red */
+            --destructive-foreground: 210 40% 98%;
+            --border: 217.2 32.6% 25.5%; /* e.g., slate-700 or slate-800 boundary */
+            --input: 217.2 32.6% 20.5%;  /* Background for input fields */
+            --ring: 217.2 91.2% 59.8%; /* Focus ring color, same as primary */
+            --radius: 0.5rem; /* Default border radius */
+        }
+        body {
+            scrollbar-width: thin;
+            scrollbar-color: hsl(var(--muted-foreground)) hsl(var(--background));
+            font-family: 'Inter', sans-serif;
+        }
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: hsl(var(--background)); }
+        ::-webkit-scrollbar-thumb { background: hsl(var(--muted-foreground)); border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: hsl(var(--accent-foreground)); }
+
+        .placeholder-icon-svg { /* Renamed to avoid conflict */
+            width: 40%;
+            height: 40%;
+            stroke: hsl(var(--muted-foreground));
+        }
+        .rating-pill { @apply px-2.5 py-0.5 rounded-full text-xs font-medium tracking-wide; }
+        .rating-pill-None { @apply bg-green-500/10 text-green-400 border border-green-500/20; }
+        .rating-pill-Mild { @apply bg-yellow-500/10 text-yellow-400 border border-yellow-500/20; }
+        .rating-pill-Moderate { @apply bg-orange-500/10 text-orange-400 border border-orange-500/20; }
+        .rating-pill-Severe { @apply bg-red-500/10 text-red-400 border border-red-500/20; }
+        .rating-pill-Unknown { @apply bg-slate-500/10 text-slate-400 border border-slate-500/20; }
+
+        .aspect-poster {
+            position: relative;
+            width: 100%;
+            padding-bottom: 150%; /* 2:3 aspect ratio */
+        }
+        .aspect-poster > img, .aspect-poster > div {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+        }
+        .aspect-poster > img { object-fit: cover; }
+        .aspect-poster > div { display: flex; align-items: center; justify-content: center; }
+    </style>
+    <script>
+        tailwind.config = {
+            darkMode: 'class', // Apply 'dark' class to <html>
+            theme: {
+                extend: {
+                    colors: {
+                        background: 'hsl(var(--background))',
+                        foreground: 'hsl(var(--foreground))',
+                        card: 'hsl(var(--card))',
+                        'card-foreground': 'hsl(var(--card-foreground))',
+                        popover: 'hsl(var(--popover))',
+                        'popover-foreground': 'hsl(var(--popover-foreground))',
+                        primary: 'hsl(var(--primary))',
+                        'primary-foreground': 'hsl(var(--primary-foreground))',
+                        secondary: 'hsl(var(--secondary))',
+                        'secondary-foreground': 'hsl(var(--secondary-foreground))',
+                        muted: 'hsl(var(--muted))',
+                        'muted-foreground': 'hsl(var(--muted-foreground))',
+                        accent: 'hsl(var(--accent))',
+                        'accent-foreground': 'hsl(var(--accent-foreground))',
+                        destructive: 'hsl(var(--destructive))',
+                        'destructive-foreground': 'hsl(var(--destructive-foreground))',
+                        border: 'hsl(var(--border))',
+                        input: 'hsl(var(--input))',
+                        ring: 'hsl(var(--ring))',
+                    },
+                    borderRadius: {
+                        lg: `var(--radius)`,
+                        md: `calc(var(--radius) - 2px)`,
+                        sm: `calc(var(--radius) - 4px)`,
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    },
+                }
+            }
+        }
+    </script>
+</head>
+<body class="bg-background text-foreground min-h-screen antialiased">
+    <div id="app-container" class="container mx-auto p-4 md:p-8 max-w-5xl">
+        <!-- Search View -->
+        <div id="search-view" class="space-y-6">
+            <header class="text-center py-6 md:py-8">
+                <h1 class="text-4xl md:text-5xl font-extrabold tracking-tight">MovieDB Search</h1>
+                <p class="text-lg text-muted-foreground mt-2">Find information about your favorite movies and TV shows from IMDb.</p>
+            </header>
+            
+            <div class="relative max-w-xl mx-auto">
+                <div class="flex items-center bg-input border border-border rounded-lg shadow-sm focus-within:ring-2 focus-within:ring-primary/80 focus-within:border-primary/80">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-5 h-5 text-muted-foreground ml-4 shrink-0">
+                        <path fill-rule="evenodd" d="M9 3.5a5.5 5.5 0 1 0 0 11 5.5 5.5 0 0 0 0-11ZM2 9a7 7 0 1 1 12.452 4.391l3.328 3.329a.75.75 0 1 1-1.06 1.06l-3.329-3.328A7 7 0 0 1 2 9Z" clip-rule="evenodd" />
+                    </svg>
+                    <input id="search-input" type="text" placeholder="Search e.g. The Matrix, Breaking Bad..." class="w-full pl-3 pr-4 py-3 bg-transparent text-foreground placeholder-muted-foreground outline-none text-base appearance-none">
+                    <div id="search-loader" class="hidden mr-3">
+                         <svg class="animate-spin h-5 w-5 text-primary" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                    </div>
+                </div>
+                <div id="search-results-dropdown" class="absolute z-10 w-full mt-1.5 bg-popover border border-border rounded-md shadow-lg hidden max-h-[calc(5*76px)] overflow-y-auto">
+                    <!-- Search results populated here -->
+                </div>
+            </div>
+            <div id="search-message" class="text-center text-muted-foreground min-h-[24px] pt-2"></div>
+        </div>
+
+        <!-- Details View -->
+        <div id="details-view" class="hidden space-y-6">
+            <button id="back-button" class="inline-flex items-center justify-center rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 hover:bg-accent hover:text-accent-foreground h-10 px-4 py-2 text-muted-foreground">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-4 h-4 mr-2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" />
+                </svg>
+                Back to Search
+            </button>
+            
+            <div id="details-loader" class="flex flex-col items-center justify-center text-muted-foreground text-lg py-20 space-y-4">
+                <svg class="animate-spin h-10 w-10 text-primary" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                <span>Loading details...</span>
+            </div>
+            <div id="details-error-message" class="text-center text-destructive min-h-[24px] py-10 text-lg"></div>
+            
+            <article id="movie-content-wrapper" class="hidden bg-card p-5 md:p-8 rounded-lg shadow-xl">
+                <div class="md:grid md:grid-cols-12 md:gap-x-8 md:gap-y-6">
+                    <div class="md:col-span-4 lg:col-span-3">
+                        <div class="aspect-poster rounded-md overflow-hidden bg-muted border border-border shadow-md">
+                            <img id="details-poster-img" src="" alt="Poster" class="hidden w-full h-full object-cover">
+                            <div id="details-poster-placeholder" class="w-full h-full bg-muted"> <!-- The user required placeholder: <div class="bg-gray-200 border-2 border-dashed rounded-xl w-16 h-16" />. This is a general one for the large poster -->
+                                 <div class="bg-slate-700 border-2 border-dashed border-slate-500 rounded-xl w-full h-full flex items-center justify-center">
+                                    <svg class="placeholder-icon-svg" viewBox="0 0 24 24" fill="none" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></svg>
+                                 </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="md:col-span-8 lg:col-span-9 mt-6 md:mt-0 space-y-5">
+                        <div>
+                            <h2 id="details-title" class="text-3xl md:text-4xl font-bold tracking-tight text-card-foreground"></h2>
+                            <div class="flex flex-wrap items-center gap-x-4 gap-y-1 text-muted-foreground mt-2.5 text-sm md:text-base">
+                                <span id="details-year"></span>
+                                <span id="details-type" class="hidden"></span>
+                                <span id="details-rating-wrapper" class="flex items-center">
+                                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-4 h-4 text-yellow-400 mr-1.5">
+                                        <path fill-rule="evenodd" d="M10.788 3.21c.448-1.077 1.976-1.077 2.424 0l2.082 5.007 5.404.433c1.164.093 1.636 1.545.749 2.305l-4.117 3.527 1.257 5.273c.271 1.136-.964 2.033-1.96 1.425L12 18.354 7.373 21.18c-.996.608-2.231-.29-1.96-1.425l1.257-5.273-4.117-3.527c-.887-.76-.415-2.212.749-2.305l5.404.433 2.082-5.007z" clip-rule="evenodd" />
+                                    </svg>
+                                    <span id="details-rating"></span>
+                                </span>
+                                <span id="details-seasons-episodes" class="hidden font-medium"></span>
+                            </div>
+                        </div>
+                        
+                        <div class="pt-1">
+                            <h3 class="text-xl font-semibold text-card-foreground mb-1.5">Plot Summary</h3>
+                            <p id="details-plot" class="text-foreground/80 leading-relaxed text-sm md:text-base"></p>
+                        </div>
+
+                        <div id="parental-guide-section" class="pt-3">
+                            <h3 class="text-xl font-semibold text-card-foreground mb-3">Parental Guide</h3>
+                            <div id="parental-guide-content" class="space-y-4">
+                                <!-- Populated by JS -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </article>
+        </div>
+    </div>
+
+    <script type="module">
+        const $ = cheerio; // Make Cheerio available
+
+        // --- DOM Elements ---
+        const searchView = document.getElementById('search-view');
+        const detailsView = document.getElementById('details-view');
+        const searchInput = document.getElementById('search-input');
+        const searchLoader = document.getElementById('search-loader');
+        const searchResultsDropdown = document.getElementById('search-results-dropdown');
+        const searchMessage = document.getElementById('search-message');
+        
+        const backButton = document.getElementById('back-button');
+        const detailsLoader = document.getElementById('details-loader');
+        const detailsErrorMessage = document.getElementById('details-error-message');
+        const movieContentWrapper = document.getElementById('movie-content-wrapper');
+
+        const detailsPosterImg = document.getElementById('details-poster-img');
+        const detailsPosterPlaceholder = document.getElementById('details-poster-placeholder');
+        const detailsTitle = document.getElementById('details-title');
+        const detailsYear = document.getElementById('details-year');
+        const detailsType = document.getElementById('details-type');
+        const detailsRating = document.getElementById('details-rating');
+        const detailsRatingWrapper = document.getElementById('details-rating-wrapper');
+        const detailsSeasonsEpisodes = document.getElementById('details-seasons-episodes');
+        const detailsPlot = document.getElementById('details-plot');
+        const parentalGuideContent = document.getElementById('parental-guide-content');
+
+        // --- State ---
+        let currentView = 'search'; // 'search' | 'details'
+        let searchCache = {};
+        let detailsCache = {};
+        let debounceTimeout;
+
+        // --- Utility Functions ---
+        function debounce(func, delay) {
+            return function(...args) {
+                clearTimeout(debounceTimeout);
+                debounceTimeout = setTimeout(() => func.apply(this, args), delay);
+            };
+        }
+
+        async function fetchViaAllOrigins(url) {
+            const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(url)}`;
+            try {
+                const response = await fetch(proxyUrl);
+                if (!response.ok) {
+                    throw new Error(`Failed to fetch from allorigins: ${response.statusText}`);
+                }
+                const data = await response.json();
+                if (data.status && data.status.http_code >= 400) {
+                     throw new Error(`IMDb server error: ${data.status.http_code} for ${url}`);
+                }
+                return data.contents; // This is the HTML string
+            } catch (error) {
+                console.error("Fetch error:", error);
+                throw error;
+            }
+        }
+        
+        function normalizeUrl(url) {
+            if (!url) return null;
+            if (url.startsWith('//')) return `https:${url}`;
+            if (url.startsWith('/')) return `https://www.imdb.com${url}`;
+            return url;
+        }
+
+        function getHighResPosterUrl(srcset) {
+            if (!srcset) return null;
+            const sources = srcset.split(',').map(s => {
+                const parts = s.trim().split(' ');
+                return { url: parts[0], width: parseInt(parts[1]?.replace('w', ''), 10) };
+            });
+            if (sources.length === 0) return null;
+            // Prefer a URL around 300-500w, or the largest available
+            let bestSource = sources.sort((a,b) => b.width - a.width)[0]; // largest
+            const idealSource = sources.find(s => s.width >= 380 && s.width <= 500);
+            return normalizeUrl((idealSource || bestSource).url);
+        }
+        
+        // --- UI Update Functions ---
+        function showView(viewName) {
+            currentView = viewName;
+            searchView.classList.toggle('hidden', viewName !== 'search');
+            detailsView.classList.toggle('hidden', viewName !== 'details');
+            window.scrollTo(0, 0);
+        }
+
+        function displaySearchMessage(message, isError = false) {
+            searchMessage.textContent = message;
+            searchMessage.classList.toggle('text-destructive', isError);
+            searchMessage.classList.toggle('text-muted-foreground', !isError);
+        }
+        
+        function displayDetailsError(message) {
+            detailsErrorMessage.textContent = message;
+            detailsErrorMessage.classList.remove('hidden');
+            movieContentWrapper.classList.add('hidden');
+            detailsLoader.classList.add('hidden');
+        }
+
+        function getRatingPillClass(ratingText) {
+            const r = (ratingText || 'Unknown').toLowerCase();
+            if (r.includes('none')) return 'rating-pill-None';
+            if (r.includes('mild')) return 'rating-pill-Mild';
+            if (r.includes('moderate')) return 'rating-pill-Moderate';
+            if (r.includes('severe')) return 'rating-pill-Severe';
+            return 'rating-pill-Unknown';
+        }
+
+
+        // --- Core Logic: Search ---
+        async function handleSearch(query) {
+            if (!query || query.length < 2) {
+                searchResultsDropdown.innerHTML = '';
+                searchResultsDropdown.classList.add('hidden');
+                displaySearchMessage('');
+                return;
+            }
+
+            searchLoader.classList.remove('hidden');
+            displaySearchMessage('');
+
+            if (searchCache[query]) {
+                renderSearchResults(searchCache[query]);
+                searchLoader.classList.add('hidden');
+                return;
+            }
+
+            try {
+                const imdbUrl = `https://www.imdb.com/find?q=${encodeURIComponent(query)}&s=tt`;
+                const html = await fetchViaAllOrigins(imdbUrl);
+                const loadedHtml = $.load(html);
+                const results = [];
+
+                loadedHtml('div.findSection').first().find('table.findList tr.findResult').each((i, el) => {
+                    if (results.length >= 5) return false; // Limit to top 5
+
+                    const $el = $(el);
+                    const titleElement = $el.find('td.result_text a');
+                    const title = titleElement.text().trim();
+                    const id = titleElement.attr('href')?.match(/tt\d+/)?.[0];
+                    
+                    let year = $el.find('td.result_text').text().match(/\((\d{4})\)/)?.[1];
+                    if (!year) { // Try to get year from TV series range e.g. (2008-2013)
+                        year = $el.find('td.result_text').text().match(/\((\d{4})–\d{4}\)/)?.[1] || 
+                               $el.find('td.result_text').text().match(/\((\d{4})– \)/)?.[1]; // For ongoing series e.g. (2023- )
+                    }
+
+                    let poster = $el.find('td.primary_photo a img').attr('src');
+                    poster = normalizeUrl(poster);
+
+                    if (id && title) {
+                        results.push({ id, title, year: year || 'N/A', poster });
+                    }
+                });
+                
+                searchCache[query] = results;
+                renderSearchResults(results);
+
+            } catch (error) {
+                console.error("Search error:", error);
+                displaySearchMessage(`Error: ${error.message || 'Failed to fetch search results.'}`, true);
+                searchResultsDropdown.innerHTML = '';
+                searchResultsDropdown.classList.add('hidden');
+            } finally {
+                searchLoader.classList.add('hidden');
+            }
+        }
+        
+        const debouncedSearch = debounce(handleSearch, 300);
+
+        searchInput.addEventListener('input', (e) => {
+            const query = e.target.value.trim();
+            if (query) {
+                searchLoader.classList.remove('hidden'); // Show loader immediately on input
+                debouncedSearch(query);
+            } else {
+                clearTimeout(debounceTimeout);
+                searchLoader.classList.add('hidden');
+                searchResultsDropdown.innerHTML = '';
+                searchResultsDropdown.classList.add('hidden');
+                displaySearchMessage('');
+            }
+        });
+
+        function renderSearchResults(results) {
+            searchResultsDropdown.innerHTML = '';
+            if (results.length === 0) {
+                displaySearchMessage('No results found.');
+                searchResultsDropdown.classList.add('hidden');
+                return;
+            }
+            
+            displaySearchMessage('');
+            results.forEach(movie => {
+                const itemDiv = document.createElement('div');
+                itemDiv.className = "p-3 hover:bg-accent cursor-pointer flex items-center space-x-3 border-b border-border last:border-b-0 transition-colors duration-150";
+                itemDiv.onclick = () => loadMovieDetails(movie.id);
+                
+                const posterEl = movie.poster ? 
+                    `<img src="${movie.poster}" alt="${movie.title} Poster" class="w-10 h-14 object-cover rounded-sm bg-muted">` :
+                    `<div class="w-10 h-14 bg-muted rounded-sm flex items-center justify-center border border-dashed border-border">
+                        <svg class="w-6 h-6 text-muted-foreground" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></svg>
+                    </div>`;
+
+                itemDiv.innerHTML = `
+                    ${posterEl}
+                    <div class="overflow-hidden">
+                        <p class="font-semibold text-sm text-popover-foreground truncate">${movie.title}</p>
+                        <p class="text-xs text-muted-foreground">${movie.year}</p>
+                    </div>
+                `;
+                searchResultsDropdown.appendChild(itemDiv);
+            });
+            searchResultsDropdown.classList.remove('hidden');
+        }
+        
+        // Hide dropdown when clicking outside
+        document.addEventListener('click', (event) => {
+            if (!searchInput.contains(event.target) && !searchResultsDropdown.contains(event.target)) {
+                searchResultsDropdown.classList.add('hidden');
+            }
+        });
+        searchInput.addEventListener('focus', () => {
+            if (searchInput.value.trim() && searchResultsDropdown.children.length > 0) {
+                 searchResultsDropdown.classList.remove('hidden');
+            }
+        });
+
+
+        // --- Core Logic: Movie Details ---
+        async function loadMovieDetails(id) {
+            showView('details');
+            movieContentWrapper.classList.add('hidden');
+            detailsLoader.classList.remove('hidden');
+            detailsErrorMessage.classList.add('hidden');
+            detailsErrorMessage.textContent = '';
+            searchResultsDropdown.classList.add('hidden'); // Hide search results
+
+            if (detailsCache[id]) {
+                renderMovieDetails(detailsCache[id]);
+                detailsLoader.classList.add('hidden');
+                return;
+            }
+
+            try {
+                const mainUrl = `https://www.imdb.com/title/${id}/`;
+                const parentalGuideUrl = `https://www.imdb.com/title/${id}/parentalguide/`;
+
+                const [mainHtml, parentalGuideHtml] = await Promise.all([
+                    fetchViaAllOrigins(mainUrl),
+                    fetchViaAllOrigins(parentalGuideUrl)
+                ]);
+
+                const $main = $.load(mainHtml);
+                const $pg = $.load(parentalGuideHtml);
+
+                const movieInfo = { parentalGuide: {} };
+
+                // Basic info
+                movieInfo.title = $main('h1[data-testid="hero__pageTitle"]').text().replace($main('h1[data-testid="hero__pageTitle"] span').text(), '').trim() || $main('.sc-afe43def-1 h1').text().trim();
+                const yearAndTypeContainer = $main('div[data-testid="hero-title-block__metadata"] ul li').first();
+                movieInfo.year = yearAndTypeContainer.find('a[href*="/releaseinfo"]').text().trim() || yearAndTypeContainer.text().match(/\d{4}/)?.[0];
+                movieInfo.type = yearAndTypeContainer.find('span').text().trim(); // e.g. "TV Series", "Movie"
+                
+                movieInfo.rating = $main('div[data-testid="hero-rating-bar__aggregate-rating__score"] span:first-child').text().trim() || 'N/A';
+                
+                const posterImgTag = $main('div.ipc-poster img.ipc-image');
+                movieInfo.poster = getHighResPosterUrl(posterImgTag.attr('srcset')) || normalizeUrl(posterImgTag.attr('src'));
+                
+                movieInfo.plot = $main('p[data-testid="plot"] span[data-testid="plot-xl"]').text().trim() || $main('span[data-testid^="plot-"]').first().text().trim();
+                if (!movieInfo.plot) { // Fallback for different plot structure
+                    movieInfo.plot = $main('.sc-466bb6c-2 span[role="presentation"]').first().text().trim();
+                }
+
+
+                // TV show specific
+                const seasonsEpisodesSection = $main('div[data-testid="hero-subnav-bar-season-episode-numbers-section"]');
+                if (seasonsEpisodesSection.length > 0) {
+                    movieInfo.seasons = seasonsEpisodesSection.find('div:first-child a span').first().text().trim() || 'N/A';
+                    const episodesText = seasonsEpisodesSection.find('div:nth-child(2) a span').first().text().trim();
+                     // Extract number from "X episodes"
+                    movieInfo.episodes = episodesText.match(/\d+/)?.[0] ? `${episodesText.match(/\d+/)[0]} episodes` : (episodesText || 'N/A');
+                } else { // Fallback for older pages or different structures
+                     const seriesNav = $main('div[data-testid="series-nav"]');
+                     if (seriesNav.length > 0) {
+                         const seasonLabel = seriesNav.find('label[for^="browse-episodes-season"] span').text().trim();
+                         if (seasonLabel) movieInfo.seasons = seasonLabel;
+                         // Episodes are harder to get from here, may need another parse.
+                     }
+                }
+
+
+                // Parental guide
+                const categories = {
+                    violence: { id: 'advisory-violence', name: 'Violence & Gore' },
+                    nudity: { id: 'advisory-nudity', name: 'Sex & Nudity' },
+                    profanity: { id: 'advisory-profanity', name: 'Profanity' },
+                    alcohol: { id: 'advisory-drugs', name: 'Alcohol, Drugs & Smoking' }, // Note: IMDb ID is 'advisory-drugs'
+                    frightening: { id: 'advisory-frightening', name: 'Frightening & Intense Scenes' }
+                };
+
+                for (const key in categories) {
+                    const category = categories[key];
+                    const section = $pg(`section#${category.id}`);
+                    let severity = "Not available";
+                    let details = "No details available.";
+
+                    if (section.length) {
+                        severity = section.find(`div[data-testid$="-severity-vote"] > div:first-child`).text().trim() ||
+                                   section.find('.ipl-status-pill').first().text().trim() || "Unknown";
+
+                        const detailsList = [];
+                        section.find('ul li div.ipc-html-content-inner-div, ul.ipl-zebra-list__item .ipl-zebra-list__label').each((i, el) => {
+                            detailsList.push($(el).text().trim());
+                        });
+                        if (detailsList.length > 0) {
+                            details = detailsList.join(' ');
+                        } else {
+                             // Try to get a summary if no list items
+                            const summary = section.find('.advisory- শুধুমাত্র p, p[class*="empty-message"]').text().trim();
+                            if (summary) details = summary;
+                        }
+                    }
+                    movieInfo.parentalGuide[key] = { name: category.name, severity, details };
+                }
+                
+                detailsCache[id] = movieInfo;
+                renderMovieDetails(movieInfo);
+
+            } catch (error) {
+                console.error("Details fetch error:", error);
+                displayDetailsError(`Error: ${error.message || 'Failed to load movie details.'}`);
+            } finally {
+                detailsLoader.classList.add('hidden');
+            }
+        }
+
+        function renderMovieDetails(data) {
+            if (!data) {
+                displayDetailsError('No data available to display.');
+                return;
+            }
+
+            detailsTitle.textContent = data.title || 'N/A';
+            detailsYear.textContent = data.year || 'N/A';
+            
+            if (data.type) {
+                detailsType.textContent = `• ${data.type}`;
+                detailsType.classList.remove('hidden');
+            } else {
+                detailsType.classList.add('hidden');
+            }
+
+            if (data.rating && data.rating !== 'N/A') {
+                detailsRating.textContent = `${data.rating}/10`;
+                detailsRatingWrapper.classList.remove('hidden');
+            } else {
+                detailsRating.textContent = 'N/A';
+                 detailsRatingWrapper.classList.add('hidden');
+            }
+            
+            if (data.poster) {
+                detailsPosterImg.src = data.poster;
+                detailsPosterImg.alt = `${data.title} Poster`;
+                detailsPosterImg.classList.remove('hidden');
+                detailsPosterPlaceholder.classList.add('hidden');
+            } else {
+                detailsPosterImg.classList.add('hidden');
+                detailsPosterPlaceholder.classList.remove('hidden');
+            }
+
+            detailsPlot.textContent = data.plot || 'Plot summary not available.';
+
+            if (data.seasons || data.episodes) {
+                let seasonsEpisodesText = [];
+                if (data.seasons && data.seasons !== 'N/A') seasonsEpisodesText.push(data.seasons);
+                if (data.episodes && data.episodes !== 'N/A') seasonsEpisodesText.push(data.episodes);
+                detailsSeasonsEpisodes.textContent = seasonsEpisodesText.join(' • ');
+                detailsSeasonsEpisodes.classList.remove('hidden');
+            } else {
+                detailsSeasonsEpisodes.classList.add('hidden');
+            }
+
+            parentalGuideContent.innerHTML = '';
+            let hasParentalGuideInfo = false;
+            for (const key in data.parentalGuide) {
+                const pgItem = data.parentalGuide[key];
+                if (pgItem && pgItem.severity !== "Not available") {
+                    hasParentalGuideInfo = true;
+                    const div = document.createElement('div');
+                    div.className = "border-t border-border pt-4 first:border-t-0 first:pt-0";
+                    
+                    const severityClass = getRatingPillClass(pgItem.severity);
+
+                    div.innerHTML = `
+                        <div class="flex items-center justify-between">
+                            <h4 class="text-base font-semibold text-card-foreground">${pgItem.name}</h4>
+                            <span class="rating-pill ${severityClass}">${pgItem.severity}</span>
+                        </div>
+                        <p class="text-sm text-muted-foreground mt-1.5">${pgItem.details || 'Details not available.'}</p>
+                    `;
+                    parentalGuideContent.appendChild(div);
+                }
+            }
+             if (!hasParentalGuideInfo) {
+                parentalGuideContent.innerHTML = `<p class="text-muted-foreground">Parental guide information not available for this title.</p>`;
+            }
+
+
+            movieContentWrapper.classList.remove('hidden');
+        }
+
+        // --- Event Listeners ---
+        backButton.addEventListener('click', () => {
+            showView('search');
+            searchInput.focus(); // Focus back on search input for convenience
+        });
+
+        // Initialize
+        showView('search');
+        searchInput.focus();
+
+    </script>
+</body>
+</html>

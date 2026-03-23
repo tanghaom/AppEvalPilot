@@ -1,0 +1,9 @@
+{
+  "web_id": "web_41",
+  "task_id": 3,
+  "task_type": "dynamic",
+  "instruction": "Task: On the 'Activities Screen', click to apply a filter for 'Activity Type: Adventure'.\nExpected Result: The list of activities displayed on the screen updates to show only activities categorized as 'Adventure' (filtered client-side).\n\nNote: The task is only considered successful if the expected result is achieved; otherwise, it is deemed infeasible.",
+  "max_steps": 15,
+  "expected": "The list of activities displayed on the screen updates to show only activities categorized as 'Adventure' (filtered client-side).",
+  "label": 0
+}

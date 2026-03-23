@@ -1,0 +1,9 @@
+{
+  "web_id": "web_6",
+  "task_id": 3,
+  "task_type": "dynamic",
+  "instruction": "Task: Type text into the 'Create Post' input field and click the 'Post' button.\nExpected Result: A new post containing the entered text appears in the mock feed section on the page (locally).\n\nNote: The task is only considered successful if the expected result is achieved; otherwise, it is deemed infeasible.",
+  "max_steps": 15,
+  "expected": "A new post containing the entered text appears in the mock feed section on the page (locally).",
+  "label": 0
+}

@@ -1,0 +1,9 @@
+{
+  "web_id": "web_20",
+  "task_id": 4,
+  "task_type": "dynamic",
+  "instruction": "Task: Click an 'Add Crew Member' button after filling in their details.\nExpected Result: The details of the current crew member (name, role, schedule) are added to a visible list on the page, and the input fields are cleared or reset for a new entry.\n\nNote: The task is only considered successful if the expected result is achieved; otherwise, it is deemed infeasible.",
+  "max_steps": 15,
+  "expected": "The details of the current crew member (name, role, schedule) are added to a visible list on the page, and the input fields are cleared or reset for a new entry.",
+  "label": 1
+}

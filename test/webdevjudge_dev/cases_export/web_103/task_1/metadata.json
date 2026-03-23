@@ -1,0 +1,9 @@
+{
+  "web_id": "web_103",
+  "task_id": 1,
+  "task_type": "dynamic",
+  "instruction": "Task: Enter or paste text into the primary input text area.\nExpected Result: Text is visible in the input area, available for encoding or decoding.\n\nNote: The task is only considered successful if the expected result is achieved; otherwise, it is deemed infeasible.",
+  "max_steps": 15,
+  "expected": "Text is visible in the input area, available for encoding or decoding.",
+  "label": 1
+}

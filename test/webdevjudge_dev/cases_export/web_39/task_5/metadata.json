@@ -1,0 +1,9 @@
+{
+  "web_id": "web_39",
+  "task_id": 5,
+  "task_type": "dynamic",
+  "instruction": "Task: Press the designated key to make the falling tetromino descend faster (soft drop)\nExpected Result: The tetromino's downward speed increases significantly while the key is pressed, or it moves down one grid unit per key press.\n\nNote: The task is only considered successful if the expected result is achieved; otherwise, it is deemed infeasible.",
+  "max_steps": 15,
+  "expected": "The tetromino's downward speed increases significantly while the key is pressed, or it moves down one grid unit per key press.",
+  "label": 1
+}

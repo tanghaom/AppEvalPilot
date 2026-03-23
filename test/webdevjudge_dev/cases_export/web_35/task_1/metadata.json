@@ -1,0 +1,9 @@
+{
+  "web_id": "web_35",
+  "task_id": 1,
+  "task_type": "dynamic",
+  "instruction": "Task: Input details for a food item (e.g., name, calories, protein, carbs, fats) and add it to the daily log.\nExpected Result: The item appears in the daily log, and daily progress displays (calorie ring, macro bars) update to reflect the new entry.\n\nNote: The task is only considered successful if the expected result is achieved; otherwise, it is deemed infeasible.",
+  "max_steps": 15,
+  "expected": "The item appears in the daily log, and daily progress displays (calorie ring, macro bars) update to reflect the new entry.",
+  "label": 1
+}

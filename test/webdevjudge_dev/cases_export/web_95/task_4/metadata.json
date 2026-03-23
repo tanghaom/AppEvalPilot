@@ -1,0 +1,9 @@
+{
+  "web_id": "web_95",
+  "task_id": 4,
+  "task_type": "dynamic",
+  "instruction": "Task: Click on a 'Featured Destination' card or its 'Learn More' button to view details\nExpected Result: A modal window or an inline expanded section appears, displaying detailed information about the selected destination.\n\nNote: The task is only considered successful if the expected result is achieved; otherwise, it is deemed infeasible.",
+  "max_steps": 15,
+  "expected": "A modal window or an inline expanded section appears, displaying detailed information about the selected destination.",
+  "label": 1
+}

@@ -1,0 +1,9 @@
+{
+  "web_id": "web_50",
+  "task_id": 4,
+  "task_type": "dynamic",
+  "instruction": "Task: Press a designated key (e.g., 'P' or 'Escape') to toggle game pause.\nExpected Result: All game animations and logic freeze when paused; gameplay continues from the same state when unpaused.\n\nNote: The task is only considered successful if the expected result is achieved; otherwise, it is deemed infeasible.",
+  "max_steps": 15,
+  "expected": "All game animations and logic freeze when paused; gameplay continues from the same state when unpaused.",
+  "label": 0
+}

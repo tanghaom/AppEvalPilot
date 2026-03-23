@@ -1,0 +1,9 @@
+{
+  "web_id": "web_45",
+  "task_id": 1,
+  "task_type": "dynamic",
+  "instruction": "Task: Provide detailed grades, select the better LLM, and submit the evaluation.\nExpected Result: Grading data and choice are recorded locally. LLM identities are revealed. The (simulated) leaderboard updates. A 'New Round' option appears.\n\nNote: The task is only considered successful if the expected result is achieved; otherwise, it is deemed infeasible.",
+  "max_steps": 15,
+  "expected": "Grading data and choice are recorded locally. LLM identities are revealed. The (simulated) leaderboard updates. A 'New Round' option appears.",
+  "label": 0
+}

@@ -1,0 +1,9 @@
+{
+  "web_id": "web_99",
+  "task_id": 4,
+  "task_type": "dynamic",
+  "instruction": "Task: Hover the mouse cursor over an interactive (i.e., not yet correctly grouped) word tile.\nExpected Result: The tile under the cursor displays a subtle glow effect. The glow effect is removed when the mouse cursor moves away from the tile.\n\nNote: The task is only considered successful if the expected result is achieved; otherwise, it is deemed infeasible.",
+  "max_steps": 15,
+  "expected": "The tile under the cursor displays a subtle glow effect. The glow effect is removed when the mouse cursor moves away from the tile.",
+  "label": 1
+}

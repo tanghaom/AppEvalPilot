@@ -1,0 +1,9 @@
+{
+  "web_id": "web_61",
+  "task_id": 1,
+  "task_type": "dynamic",
+  "instruction": "Task: Create a new note and add it to a list of notes\nExpected Result: A new note editor/area is displayed, it becomes the active note, and the new note is added to a visible list of notes.\n\nNote: The task is only considered successful if the expected result is achieved; otherwise, it is deemed infeasible.",
+  "max_steps": 15,
+  "expected": "A new note editor/area is displayed, it becomes the active note, and the new note is added to a visible list of notes.",
+  "label": 0
+}

@@ -1,0 +1,9 @@
+{
+  "web_id": "web_73",
+  "task_id": 4,
+  "task_type": "dynamic",
+  "instruction": "Task: User clicks on a language toggle button (e.g., 'Italiano' / 'English' or flag icons).\nExpected Result: Visible text content on the page (like headers, menu item names, descriptions) changes to the selected language.\n\nNote: The task is only considered successful if the expected result is achieved; otherwise, it is deemed infeasible.",
+  "max_steps": 15,
+  "expected": "Visible text content on the page (like headers, menu item names, descriptions) changes to the selected language.",
+  "label": 1
+}

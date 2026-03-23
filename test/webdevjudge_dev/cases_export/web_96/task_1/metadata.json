@@ -1,0 +1,9 @@
+{
+  "web_id": "web_96",
+  "task_id": 1,
+  "task_type": "dynamic",
+  "instruction": "Task: Click on a specific, identifiable brain region.\nExpected Result: Region highlights; an info panel with (mock) data for that region opens.\n\nNote: The task is only considered successful if the expected result is achieved; otherwise, it is deemed infeasible.",
+  "max_steps": 15,
+  "expected": "Region highlights; an info panel with (mock) data for that region opens.",
+  "label": 1
+}

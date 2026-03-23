@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ChatAI Clone</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Custom scrollbar for WebKit browsers */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #202123; /* Darker track */
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #4A5568; /* Gray-600 */
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #718096; /* Gray-500 */
+        }
+
+        /* Custom scrollbar for Firefox */
+        * {
+            scrollbar-width: thin;
+            scrollbar-color: #4A5568 #202123;
+        }
+
+        /* Basic Markdown-like styling for chat messages */
+        .chat-message-content p { margin-bottom: 0.5rem; }
+        .chat-message-content p:last-child { margin-bottom: 0; }
+        .chat-message-content ul, .chat-message-content ol { margin-left: 1.5rem; margin-bottom: 0.5rem; list-style-position: outside; }
+        .chat-message-content ul { list-style-type: disc; }
+        .chat-message-content ol { list-style-type: decimal; }
+        .chat-message-content strong { font-weight: bold; }
+        .chat-message-content em { font-style: italic; }
+        /* Inline code */
+        .chat-message-content code:not(pre > code) {
+            background-color: rgba(255, 255, 255, 0.1);
+            padding: 0.1em 0.3em;
+            border-radius: 0.25rem;
+            font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, Courier, monospace;
+            font-size: 0.9em;
+        }
+        /* Code block container */
+        .code-block-wrapper {
+            background-color: #1E1E1E; /* Very dark, almost black for code background */
+            border-radius: 0.5rem; /* rounded-lg */
+            margin-bottom: 0.75rem; /* mb-3 */
+            overflow: hidden;
+        }
+        .code-block-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background-color: #333333; /* Dark gray header */
+            color: #D1D5DB; /* gray-300 */
+            padding: 0.5rem 1rem; /* py-2 px-4 */
+            font-size: 0.875rem; /* text-sm */
+        }
+        .code-block-header span {
+            font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, Courier, monospace;
+        }
+        .code-block-header button {
+            background-color: transparent;
+            color: #D1D5DB; /* gray-300 */
+            border: none;
+            padding: 0.25rem 0.5rem; /* py-1 px-2 */
+            border-radius: 0.25rem; /* rounded-md */
+            cursor: pointer;
+            font-size: 0.75rem; /* text-xs */
+            display: flex;
+            align-items: center;
+            gap: 0.25rem; /* gap-1 */
+        }
+        .code-block-header button:hover {
+            background-color: #4B5563; /* gray-600 */
+        }
+        .code-block-content {
+            padding: 1rem; /* p-4 */
+            overflow-x: auto;
+            font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, Courier, monospace;
+            font-size: 0.875rem; /* text-sm */
+            line-height: 1.5;
+            color: #E5E7EB; /* gray-200 */
+        }
+        .code-block-content pre {
+            margin: 0;
+            white-space: pre; /* Keep leading/trailing whitespace and newlines */
+        }
+        .code-block-content code {
+            background-color: transparent;
+            padding: 0;
+            font-family: inherit;
+            color: inherit;
+        }
+
+        .message-actions button {
+            color: #9CA3AF; /* gray-400 */
+        }
+        .message-actions button:hover {
+            color: #F3F4F6; /* gray-100 */
+        }
+        .initial-focus-target:focus {
+            outline: 2px solid transparent; /* Remove default focus outline */
+            outline-offset: 2px;
+            box-shadow: 0 0 0 2px #2563EB; /* Example: blue-600 focus ring */
+        }
+    </style>
+</head>
+<body class="bg-neutral-800 text-gray-100 font-sans antialiased">
+    <div id="app-container" class="flex h-screen overflow-hidden">
+        <!-- Sidebar -->
+        <aside id="sidebar" class="bg-neutral-900 w-64 flex-shrink-0 flex flex-col p-2 space-y-2 transition-all duration-300 ease-in-out">
+            <button id="new-chat-button" class="w-full flex items-center justify-between p-3 rounded-lg text-sm hover:bg-neutral-700/50 focus:outline-none focus:ring-2 focus:ring-neutral-600 transition-colors duration-150">
+                <span class="flex items-center gap-2">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 3a1 1 0 011 1v4h4a1 1 0 110 2h-4v4a1 1 0 11-2 0v-4H5a1 1 0 110-2h4V4a1 1 0 011-1z" clip-rule="evenodd" /></svg>
+                    New Chat
+                </span>
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M17.707 9.293a1 1 0 010 1.414l-7 7a1 1 0 01-1.414 0l-7-7a1 1 0 011.414-1.414L10 14.586l6.293-6.293a1 1 0 011.414 0z" clip-rule="evenodd" /></svg> <!-- Placeholder, usually a pencil for "edit" on hover or a specific "new" icon -->
+            </button>
+            
+            <div id="chat-history" class="flex-grow overflow-y-auto space-y-1 pr-1">
+                <!-- Chat history items will be populated here -->
+            </div>
+
+            <div class="border-t border-neutral-700 pt-2 space-y-1">
+                <button class="w-full flex items-center gap-2 p-3 rounded-lg text-sm hover:bg-neutral-700/50 focus:outline-none focus:ring-2 focus:ring-neutral-600 transition-colors duration-150">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path d="M10.394 2.08a1 1 0 00-.788 0l-7 3.5a1 1 0 000 1.84L5.25 8.051a.998.998 0 011.07-.03L10 6.086l3.68-1.966a1.001 1.001 0 011.07.03l2.646 1.425a1 1 0 000-1.84l-7-3.5z" /><path d="M10 7.394V17.5a.5.5 0 001 0V7.394a.999.999 0 00-.5-.866l-1-.5A.999.999 0 0010 7.394z" /><path fill-rule="evenodd" d="M10.394 2.08a1 1 0 00-.788 0l-7 3.5a1 1 0 000 1.84L5.25 8.051a.998.998 0 011.07-.03L10 6.086l3.68-1.966a1.001 1.001 0 011.07.03l2.646 1.425a1 1 0 000-1.84l-7-3.5zM3 7.855L10 4.355l7 3.5v3.29l-7 3.5-7-3.5V7.855z" clip-rule="evenodd" /></svg>
+                    My Plan
+                </button>
+                 <button class="w-full flex items-center gap-3 p-3 rounded-lg text-sm hover:bg-neutral-700/50 focus:outline-none focus:ring-2 focus:ring-neutral-600 transition-colors duration-150">
+                    <div class="w-6 h-6 rounded-full bg-sky-500 flex items-center justify-center text-xs font-semibold">U</div>
+                    User Name
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 ml-auto text-gray-400" viewBox="0 0 20 20" fill="currentColor">
+                        <path fill-rule="evenodd" d="M10 3a.75.75 0 01.75.75v12.5a.75.75 0 01-1.5 0V3.75A.75.75 0 0110 3zM3.5 8.75a.75.75 0 01.75-.75h11.5a.75.75 0 010 1.5H4.25a.75.75 0 01-.75-.75zM3.5 11.25a.75.75 0 01.75-.75h11.5a.75.75 0 010 1.5H4.25a.75.75 0 01-.75-.75z" clip-rule="evenodd" />
+                        <path d="M5.75 15.75a.75.75 0 01.75-.75h7.5a.75.75 0 010 1.5H6.5a.75.75 0 01-.75-.75zM10 6a.75.75 0 01.75-.75h5.5a.75.75 0 010 1.5H10.75A.75.75 0 0110 6z" transform="rotate(90 10 10)" />
+                    </svg>
+                 </button>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="flex-1 flex flex-col bg-neutral-800 overflow-hidden">
+            <!-- Top bar (optional, for model selector, etc.) -->
+            <div class="text-center p-3 text-xl font-semibold border-b border-neutral-700/70">
+                ChatAI <span class="text-sm text-neutral-400">(GPT-3.5 Simulated)</span>
+            </div>
+
+            <!-- Chat Messages Area -->
+            <div id="chat-messages-container" class="flex-1 overflow-y-auto p-4 md:p-6 space-y-4">
+                <!-- Welcome Screen / Messages will be populated here -->
+            </div>
+
+            <!-- Input Area -->
+            <div class="p-3 md:p-6 border-t border-neutral-700/70 bg-neutral-800">
+                <form id="chat-form" class="flex items-end space-x-2 md:space-x-3">
+                    <textarea id="chat-input" rows="1" placeholder="Send a message..." class="initial-focus-target flex-1 p-3 bg-neutral-700 rounded-lg resize-none focus:ring-2 focus:ring-sky-500 focus:outline-none placeholder-neutral-400 min-h-[52px] max-h-48 leading-tight" style="line-height: 1.5rem;"></textarea>
+                    <button type="submit" id="send-button" class="bg-sky-600 hover:bg-sky-700 text-white p-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-sky-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-150 self-end h-[52px]">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 10l7-7m0 0l7 7m-7-7v18" />
+                        </svg>
+                    </button>
+                </form>
+                <p class="text-xs text-neutral-500 text-center mt-2 px-2">ChatAI can make mistakes. Consider checking important information.</p>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        const USER_AVATAR_SVG = `
+            <div class="w-8 h-8 rounded-full bg-sky-500 flex items-center justify-center text-sm font-semibold text-white flex-shrink-0">
+                YOU
+            </div>`;
+        const BOT_AVATAR_SVG = `
+            <div class="w-8 h-8 rounded-full bg-emerald-500 flex items-center justify-center flex-shrink-0">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-white" viewBox="0 0 20 20" fill="currentColor">
+                    <path d="M10 3.5a1.5 1.5 0 013 0V4a1 1 0 001 1h1a1.5 1.5 0 010 3H14a1 1 0 00-1 1v1.5a1.5 1.5 0 01-3 0V9a1 1 0 00-1-1H8a1.5 1.5 0 010-3h1a1 1 0 001-1v-.5z" />
+                    <path d="M9 11.5a1.5 1.5 0 013 0V12a1 1 0 001 1h1a1.5 1.5 0 010 3H13a1 1 0 00-1 1v1.5a1.5 1.5 0 01-3 0V16a1 1 0 00-1-1H7a1.5 1.5 0 010-3h1a1 1 0 001-1v-.5z" />
+                </svg>
+            </div>`;
+        const COPY_ICON_SVG = `<svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" /></svg>`;
+        const CHECK_ICON_SVG = `<svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" /></svg>`;
+        const THUMBS_UP_SVG = `<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path d="M2 10.5a1.5 1.5 0 113 0v6a1.5 1.5 0 01-3 0v-6zM6 10.333v5.43a2 2 0 001.106 1.79l.05.025A4 4 0 008.943 18h5.416a2 2 0 001.962-1.608l1.2-6A2 2 0 0015.56 8H12V4a2 2 0 00-2-2 1 1 0 00-1 1v.667a4 4 0 01-.8 2.4L6.8 7.933a4 4 0 00-.8 2.4z" /></svg>`;
+        const THUMBS_DOWN_SVG = `<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path d="M18 9.5a1.5 1.5 0 11-3 0v-6a1.5 1.5 0 013 0v6zM14 9.667v-5.43a2 2 0 00-1.106-1.79l-.05-.025A4 4 0 0011.057 2H5.642a2 2 0 00-1.962 1.608l-1.2 6A2 2 0 004.44 12H8v4a2 2 0 002 2 1 1 0 001-1v-.667a4 4 0 01.8-2.4l2.2-2.867a4 4 0 00.8-2.4z" /></svg>`;
+        const EDIT_ICON_SVG = `<svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" /></svg>`;
+        const DELETE_ICON_SVG = `<svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>`;
+
+        const chatHistoryEl = document.getElementById('chat-history');
+        const chatMessagesContainerEl = document.getElementById('chat-messages-container');
+        const chatFormEl = document.getElementById('chat-form');
+        const chatInputEl = document.getElementById('chat-input');
+        const newChatButtonEl = document.getElementById('new-chat-button');
+        const sendButtonEl = document.getElementById('send-button');
+
+        let state = {
+            chats: [],
+            activeChatId: null,
+            isLoading: false,
+            botTyping: false,
+        };
+
+        // Load state from localStorage
+        function loadState() {
+            const savedState = localStorage.getItem('chatAIState');
+            if (savedState) {
+                state = JSON.parse(savedState);
+            }
+        }
+
+        // Save state to localStorage
+        function saveState() {
+            localStorage.setItem('chatAIState', JSON.stringify(state));
+        }
+        
+        function generateId() {
+            return `chat-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
+        }
+
+        function formatMessageContent(text) {
+            let html = text;
+            // Escape HTML to prevent XSS, but allow specific tags later
+            html = html.replace(/</g, "&lt;").replace(/>/g, "&gt;");
+
+            // Bold: **text**
+            html = html.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+            // Italics: *text* or _text_
+            html = html.replace(/\*(.*?)\*/g, '<em>$1</em>');
+            html = html.replace(/_(.*?)_/g, '<em>$1</em>');
+            // Inline code: `code`
+            html = html.replace(/`([^`]+?)`/g, '<code>$1</code>');
+
+            // Newlines to <br> (but not inside <pre>)
+            // This is tricky to do perfectly with regex. A more robust Markdown parser would be better.
+            // For simplicity, we'll wrap lines in <p> later or ensure CSS handles whitespace.
+            // For now, this is simple line break conversion.
+            html = html.split('\n').map(line => line.trim() === '' ? '<br>' : `<p>${line}</p>`).join('');
+            html = html.replace(/<p><br><\/p>/g, '<br>'); // remove p tags around br
+            html = html.replace(/<p>\s*<\/p>/gi, ''); // Remove empty p tags
+
+            // Basic lists (very simplified)
+            // Unordered lists: * item or - item
+            html = html.replace(/<p>\s*[\*\-]\s+(.*?)<\/p>/g, '<li>$1</li>');
+            html = html.replace(/(<li>.*?<\/li>)+/g, '<ul>$1</ul>');
+            // Ordered lists: 1. item
+            html = html.replace(/<p>\s*\d+\.\s+(.*?)<\/p>/g, '<li>$1</li>'); // This is naive for ordered list numbering
+            html = html.replace(/(<li>.*?<\/li>)+/g, (match) => { // Check if previous was <ul> to avoid double wrapping
+                if (!match.includes('<ul>')) return `<ol>${match}</ol>`;
+                return match;
+            });
+
+            return html;
+        }
+        
+        function renderCodeBlock(codeContent, language = '') {
+            const id = `code-${Math.random().toString(36).substring(2,9)}`;
+            return `
+                <div class="code-block-wrapper">
+                    <div class="code-block-header">
+                        <span>${language || 'code'}</span>
+                        <button onclick="copyCodeToClipboard(this, '${id}')">
+                            ${COPY_ICON_SVG}
+                            <span>Copy code</span>
+                        </button>
+                    </div>
+                    <div class="code-block-content">
+                        <pre id="${id}"><code class="language-${language}">${codeContent.replace(/</g, "&lt;").replace(/>/g, "&gt;")}</code></pre>
+                    </div>
+                </div>`;
+        }
+
+        function renderMessage(message) {
+            const isUser = message.sender === 'user';
+            let formattedText = '';
+
+            if (message.isCodeBlock) {
+                formattedText = renderCodeBlock(message.text, message.language);
+            } else if (message.text.includes('

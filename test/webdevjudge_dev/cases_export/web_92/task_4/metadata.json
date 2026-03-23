@@ -1,0 +1,9 @@
+{
+  "web_id": "web_92",
+  "task_id": 4,
+  "task_type": "dynamic",
+  "instruction": "Task: Input necessary details (e.g., name, email, address) into an 'Add New Client' form and submit it.\nExpected Result: The newly entered client appears in a (simulated) list of clients visible on the page, and the input fields in the form are cleared.\n\nNote: The task is only considered successful if the expected result is achieved; otherwise, it is deemed infeasible.",
+  "max_steps": 15,
+  "expected": "The newly entered client appears in a (simulated) list of clients visible on the page, and the input fields in the form are cleared.",
+  "label": 1
+}

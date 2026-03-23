@@ -1,0 +1,9 @@
+{
+  "web_id": "web_100",
+  "task_id": 1,
+  "task_type": "dynamic",
+  "instruction": "Task: Drag the slider handle horizontally.\nExpected Result: The handle moves, the colored progress bar (`slider__color`) updates its width, and the tooltip (`slider__tooltip`) shows the percentage. The tooltip becomes visible during drag and also appears on subsequent hovers over the handle after an initial drag.\n\nNote: The task is only considered successful if the expected result is achieved; otherwise, it is deemed infeasible.",
+  "max_steps": 15,
+  "expected": "The handle moves, the colored progress bar (`slider__color`) updates its width, and the tooltip (`slider__tooltip`) shows the percentage. The tooltip becomes visible during drag and also appears on subsequent hovers over the handle after an initial drag.",
+  "label": 1
+}

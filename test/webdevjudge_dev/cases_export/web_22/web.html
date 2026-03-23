@@ -1,0 +1,996 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Product Roadmap Builder</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.2/dist/chart.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3.0.0/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
+    <style>
+        /* Custom scrollbar for modal content if needed */
+        .modal-body-scrollable::-webkit-scrollbar {
+            width: 8px;
+        }
+        .modal-body-scrollable::-webkit-scrollbar-track {
+            background: #f1f1f1;
+        }
+        .modal-body-scrollable::-webkit-scrollbar-thumb {
+            background: #888;
+            border-radius: 4px;
+        }
+        .modal-body-scrollable::-webkit-scrollbar-thumb:hover {
+            background: #555;
+        }
+        /* Chart.js canvas needs a defined size or responsive wrapper */
+        .chart-container {
+            position: relative;
+            height: 70vh; /* Adjust as needed */
+            width: 100%;
+        }
+        /* Fix for date input icon color in dark mode (though we are not using dark mode here) */
+        input[type="date"]::-webkit-calendar-picker-indicator {
+            filter: invert(0.5); /* Adjust if needed for better visibility */
+        }
+    </style>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: { DEFAULT: '#4f46e5', hover: '#4338ca' }, // indigo-600, indigo-700
+                        secondary: '#64748b', // slate-500
+                        accent: '#ec4899', // pink-500
+                        nav: {
+                            bg: '#1e293b', // slate-800
+                            text: '#cbd5e1', // slate-300
+                            hovertext: '#ffffff',
+                            hoverbg: '#334155', // slate-700
+                            activebg: '#4f46e5', // indigo-600
+                        },
+                        appbg: '#f1f5f9', // slate-100
+                        cardbg: '#ffffff',
+                        textdark: '#1e293b', // slate-800
+                        textlight: '#475569', // slate-600
+                        borderlight: '#cbd5e1', // slate-300
+                        status: {
+                            ideation: '#a855f7', // purple-500
+                            planning: '#3b82f6', // blue-500
+                            building: '#eab308', // yellow-500
+                            shipped: '#22c55e', // green-500
+                            completed: '#14b8a6', // teal-500
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+<body class="bg-appbg font-sans">
+
+    <!-- Login Screen -->
+    <div id="loginScreen" class="flex items-center justify-center h-screen bg-slate-200">
+        <div class="bg-white p-8 md:p-12 rounded-xl shadow-2xl w-full max-w-md">
+            <div class="flex flex-col items-center mb-8">
+                <!-- Rocket Launch Icon SVG -->
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-16 h-16 text-primary mb-3">
+                    <path d="M13.5 3.99998C13.5 3.4477 13.0523 2.99998 12.5 2.99998L6 2.99998C5.44772 2.99998 5 3.4477 5 3.99998C5 4.55227 5.44772 4.99998 6 4.99998L11.5 4.99998V10.5L9.20711 8.20709C8.81658 7.81657 8.18342 7.81657 7.79289 8.20709L6.70711 9.29288C6.31658 9.6834 6.31658 10.3166 6.70711 10.7071L11.2929 15.2929C11.4804 15.4804 11.7348 15.5858 12 15.5858C12.2652 15.5858 12.5196 15.4804 12.7071 15.2929L17.2929 10.7071C17.6834 10.3166 17.6834 9.6834 17.2929 9.29288L16.2071 8.20709C15.8166 7.81657 15.1834 7.81657 14.7929 8.20709L12.5 10.5V4.99998L13.5 4.99998V3.99998ZM5.5 21C6.05228 21 6.5 20.5523 6.5 20V13.5H17.5V20C17.5 20.5523 17.9477 21 18.5 21C19.0523 21 19.5 20.5523 19.5 20V12.5C19.5 11.9477 19.0523 11.5 18.5 11.5H5.5C4.94772 11.5 4.5 11.9477 4.5 12.5V20C4.5 20.5523 4.94772 21 5.5 21Z" />
+                </svg>
+                <h1 class="text-3xl font-bold text-textdark">Product Roadmap Builder</h1>
+            </div>
+            <form id="loginForm">
+                <div class="mb-6">
+                    <label for="username" class="block text-sm font-medium text-textlight mb-1">Username</label>
+                    <input type="text" id="username" value="admin" class="w-full px-4 py-2.5 border border-borderlight rounded-lg focus:ring-2 focus:ring-primary focus:border-primary transition duration-150" required>
+                </div>
+                <div class="mb-8">
+                    <label for="password" class="block text-sm font-medium text-textlight mb-1">Password</label>
+                    <input type="password" id="password" value="password" class="w-full px-4 py-2.5 border border-borderlight rounded-lg focus:ring-2 focus:ring-primary focus:border-primary transition duration-150" required>
+                </div>
+                <p id="loginError" class="text-red-500 text-sm mb-4 hidden"></p>
+                <button type="submit" class="w-full bg-primary hover:bg-primary-hover text-white font-semibold py-3 rounded-lg transition duration-150 ease-in-out transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary">Login</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Main Application -->
+    <div id="app" class="hidden flex h-screen">
+        <!-- Navigation -->
+        <nav id="navigation" class="bg-nav-bg text-nav-text w-64 space-y-2 p-4 flex flex-col">
+            <div class="flex items-center space-x-2 p-2 mb-6">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-10 h-10 text-primary">
+                     <path d="M13.5 3.99998C13.5 3.4477 13.0523 2.99998 12.5 2.99998L6 2.99998C5.44772 2.99998 5 3.4477 5 3.99998C5 4.55227 5.44772 4.99998 6 4.99998L11.5 4.99998V10.5L9.20711 8.20709C8.81658 7.81657 8.18342 7.81657 7.79289 8.20709L6.70711 9.29288C6.31658 9.6834 6.31658 10.3166 6.70711 10.7071L11.2929 15.2929C11.4804 15.4804 11.7348 15.5858 12 15.5858C12.2652 15.5858 12.5196 15.4804 12.7071 15.2929L17.2929 10.7071C17.6834 10.3166 17.6834 9.6834 17.2929 9.29288L16.2071 8.20709C15.8166 7.81657 15.1834 7.81657 14.7929 8.20709L12.5 10.5V4.99998L13.5 4.99998V3.99998ZM5.5 21C6.05228 21 6.5 20.5523 6.5 20V13.5H17.5V20C17.5 20.5523 17.9477 21 18.5 21C19.0523 21 19.5 20.5523 19.5 20V12.5C19.5 11.9477 19.0523 11.5 18.5 11.5H5.5C4.94772 11.5 4.5 11.9477 4.5 12.5V20C4.5 20.5523 4.94772 21 5.5 21Z" />
+                </svg>
+                <span class="text-xl font-bold text-white">Roadmap Builder</span>
+            </div>
+            <a href="#" data-view="dashboard" class="nav-link group flex items-center space-x-3 px-3 py-2.5 rounded-lg hover:bg-nav-hoverbg hover:text-nav-hovertext transition-colors duration-150">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5"><path stroke-linecap="round" stroke-linejoin="round" d="M3.75 3v11.25A2.25 2.25 0 006 16.5h12A2.25 2.25 0 0020.25 14.25V3M3.75 21h16.5M12 3.75h.008v.008H12V3.75z" /></svg>
+                <span>Dashboard</span>
+            </a>
+            <a href="#" id="addFeatureNavLink" class="nav-link group flex items-center space-x-3 px-3 py-2.5 rounded-lg hover:bg-nav-hoverbg hover:text-nav-hovertext transition-colors duration-150">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v6m3-3H9m12 0a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                <span>Add New Feature</span>
+            </a>
+            <a href="#" data-view="timeline" class="nav-link group flex items-center space-x-3 px-3 py-2.5 rounded-lg hover:bg-nav-hoverbg hover:text-nav-hovertext transition-colors duration-150">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5"><path stroke-linecap="round" stroke-linejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5A2.25 2.25 0 0121 11.25v7.5m-9-6h.008v.008H12v-.008zM12 15h.008v.008H12V15zm0 2.25h.008v.008H12v-.008zM9.75 15h.008v.008H9.75V15zm0 2.25h.008v.008H9.75v-.008zM7.5 15h.008v.008H7.5V15zm0 2.25h.008v.008H7.5v-.008zm6.75-4.5h.008v.008h-.008v-.008zm0 2.25h.008v.008h-.008V15zm0 2.25h.008v.008h-.008v-.008zm2.25-4.5h.008v.008H16.5v-.008zm0 2.25h.008v.008H16.5V15z" /></svg>
+                <span>Release Timeline</span>
+            </a>
+            <div class="flex-grow"></div> <!-- Spacer -->
+            <a href="#" id="logoutButton" class="group flex items-center space-x-3 px-3 py-2.5 rounded-lg hover:bg-red-500 hover:text-white transition-colors duration-150">
+                 <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0013.5 3h-6a2.25 2.25 0 00-2.25 2.25v13.5A2.25 2.25 0 007.5 21h6a2.25 2.25 0 002.25-2.25V15M12 9l-3 3m0 0l3 3m-3-3h12.75" /></svg>
+                <span>Logout</span>
+            </a>
+        </nav>
+
+        <!-- Main Content Area -->
+        <main id="mainContent" class="flex-1 p-6 md:p-8 overflow-y-auto">
+            <!-- Content will be rendered here -->
+        </main>
+    </div>
+
+    <!-- Modal Container -->
+    <div id="featureModalContainer" class="hidden fixed inset-0 bg-gray-900 bg-opacity-75 flex items-center justify-center p-4 z-50 transition-opacity duration-300 ease-in-out">
+        <div id="modalDialog" class="bg-cardbg rounded-xl shadow-2xl w-full max-w-3xl transform transition-all duration-300 ease-in-out scale-95 opacity-0">
+            <!-- Modal Header -->
+            <div class="flex items-center justify-between p-5 border-b border-borderlight">
+                <h3 id="modalTitle" class="text-xl font-semibold text-textdark">Modal Title</h3>
+                <button id="closeModalButton" class="text-textlight hover:text-textdark">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-6 h-6"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+                </button>
+            </div>
+            <!-- Modal Body -->
+            <div id="modalBody" class="p-5 modal-body-scrollable max-h-[75vh] overflow-y-auto">
+                <!-- Form or details content will be injected here -->
+            </div>
+            <!-- Modal Footer -->
+            <div id="modalFooter" class="px-5 py-4 border-t border-borderlight flex justify-end space-x-3">
+                <!-- Buttons like Save, Cancel, Delete will be injected here -->
+            </div>
+        </div>
+    </div>
+    
+    <!-- Hidden file input for attachments -->
+    <input type="file" id="fileUploadInput" class="hidden" multiple>
+
+
+<script>
+const App = (() => {
+    // STATE
+    let currentUser = null;
+    let currentView = 'dashboard'; // 'dashboard', 'timeline'
+    let features = [];
+    let editingFeature = null; // Stores the feature object being edited, or null for new
+    let timelineChart = null;
+
+    // DOM Elements
+    const loginScreen = document.getElementById('loginScreen');
+    const appScreen = document.getElementById('app');
+    const loginForm = document.getElementById('loginForm');
+    const loginError = document.getElementById('loginError');
+    const navigation = document.getElementById('navigation');
+    const mainContent = document.getElementById('mainContent');
+    const logoutButton = document.getElementById('logoutButton');
+    const addFeatureNavLink = document.getElementById('addFeatureNavLink');
+    
+    const modalContainer = document.getElementById('featureModalContainer');
+    const modalDialog = document.getElementById('modalDialog');
+    const modalTitle = document.getElementById('modalTitle');
+    const modalBody = document.getElementById('modalBody');
+    const modalFooter = document.getElementById('modalFooter');
+    const closeModalButton = document.getElementById('closeModalButton');
+    const fileUploadInput = document.getElementById('fileUploadInput');
+
+    // Constants
+    const DOMAINS = ["Product Finding", "Product Recommendation", "Digital Design", "Registry", "SEO", "Innovation", "Conversational AI"];
+    const STATUSES = ["Ideation", "Planning", "Building", "Shipped", "Completed"];
+
+    // Utility Functions
+    const uuidv4 = () => ([1e7]+-1e3+-4e3+-8e3+-1e11).replace(/[018]/g, c => (c ^ crypto.getRandomValues(new Uint8Array(1))[0] & 15 >> c / 4).toString(16));
+    const formatDateForInput = (dateStr) => dateStr ? dateStr.split('T')[0] : '';
+    const getStatusColorClass = (status) => {
+        switch (status) {
+            case 'Ideation': return 'bg-status-ideation';
+            case 'Planning': return 'bg-status-planning';
+            case 'Building': return 'bg-status-building text-yellow-800';
+            case 'Shipped': return 'bg-status-shipped';
+            case 'Completed': return 'bg-status-completed';
+            default: return 'bg-gray-400';
+        }
+    };
+
+    // Dummy Data
+    const generateDummyData = () => {
+        const today = new Date();
+        const dummyFeatures = [];
+        for (let i = 1; i <= 12; i++) {
+            const statusIndex = Math.floor(Math.random() * STATUSES.length);
+            const domainIndex = Math.floor(Math.random() * DOMAINS.length);
+            const kickoffPlanned = new Date(today);
+            kickoffPlanned.setDate(today.getDate() + i * 10);
+            const completionPlanned = new Date(kickoffPlanned);
+            completionPlanned.setDate(kickoffPlanned.getDate() + Math.floor(Math.random() * 30) + 20);
+
+            const feature = {
+                id: uuidv4(),
+                name: `Feature ${i}: ${['Alpha', 'Bravo', 'Charlie', 'Delta'][i%4]} Initiative`,
+                description: `This is a detailed description for Feature ${i}. It aims to solve [problem statement] and deliver [value proposition]. Key metrics include [metric 1] and [metric 2].`,
+                domain: DOMAINS[domainIndex],
+                status: STATUSES[statusIndex],
+                kickoffDatePlanned: formatDateForInput(kickoffPlanned.toISOString()),
+                kickoffDateActual: statusIndex > 1 ? formatDateForInput(new Date(kickoffPlanned.setDate(kickoffPlanned.getDate() + Math.floor(Math.random()*5-2))).toISOString()) : '', // Actual if beyond ideation
+                completionDatePlanned: formatDateForInput(completionPlanned.toISOString()),
+                completionDateActual: statusIndex >= 3 ? formatDateForInput(new Date(completionPlanned.setDate(completionPlanned.getDate() + Math.floor(Math.random()*5-2))).toISOString()) : '', // Actual if shipped/completed
+                productLead: ['Alice Smith', 'Bob Johnson', 'Carol Williams', 'David Brown'][i%4],
+                notes: `Some important notes for Feature ${i}. Consider dependencies on Team X. User research phase completed.`,
+                links: [{id: uuidv4(), url: `https://example.com/feature${i}/spec`}, {id: uuidv4(), url: `https://example.com/feature${i}/design`}],
+                attachments: [{id: uuidv4(), name: `brief_feature_${i}.pdf`}, {id: uuidv4(), name: `mockups_v1_feature_${i}.zip`}],
+                releaseCandidates: []
+            };
+
+            const numRCs = Math.floor(Math.random() * 2) + 2; // 2-3 RCs
+            let rcReleaseDate = new Date(feature.kickoffDatePlanned);
+            for (let j = 1; j <= numRCs; j++) {
+                rcReleaseDate.setDate(rcReleaseDate.getDate() + Math.floor(Math.random() * 10) + 5);
+                if (rcReleaseDate > new Date(feature.completionDatePlanned)) rcReleaseDate = new Date(feature.completionDatePlanned);
+                
+                feature.releaseCandidates.push({
+                    id: uuidv4(),
+                    description: `RC ${j} - ${['Core Functionality', 'UI Polish', 'Performance Tweaks', 'Final Review Candidate'][j%4]}`,
+                    releaseId: `F${i}-RC${j}`,
+                    releaseDate: formatDateForInput(rcReleaseDate.toISOString()),
+                    status: feature.status === 'Ideation' || feature.status === 'Planning' ? 'Planning' : (j < numRCs ? 'Building' : feature.status)
+                });
+            }
+            dummyFeatures.push(feature);
+        }
+        features = dummyFeatures;
+    };
+
+    // AUTHENTICATION
+    const handleLogin = (e) => {
+        e.preventDefault();
+        const username = loginForm.username.value;
+        const password = loginForm.password.value;
+        // Simple mock authentication
+        if (username === 'admin' && password === 'password') {
+            currentUser = { username: 'admin', name: 'Admin User' };
+            loginScreen.classList.add('hidden');
+            appScreen.classList.remove('hidden');
+            appScreen.classList.add('flex');
+            loginError.classList.add('hidden');
+            loginForm.reset();
+            currentView = 'dashboard'; // Default to dashboard
+            render();
+        } else {
+            loginError.textContent = 'Invalid username or password.';
+            loginError.classList.remove('hidden');
+        }
+    };
+
+    const handleLogout = () => {
+        currentUser = null;
+        features = []; // Clear data on logout, or persist if needed
+        loginScreen.classList.remove('hidden');
+        appScreen.classList.add('hidden');
+        appScreen.classList.remove('flex');
+        if (timelineChart) {
+            timelineChart.destroy();
+            timelineChart = null;
+        }
+    };
+    
+    // NAVIGATION
+    const handleNavigation = (e) => {
+        e.preventDefault();
+        if (e.target.closest('.nav-link')) {
+            const view = e.target.closest('.nav-link').dataset.view;
+            if (view && view !== currentView) {
+                currentView = view;
+                render();
+            }
+        }
+    };
+
+    const updateActiveNav = () => {
+        document.querySelectorAll('.nav-link').forEach(link => {
+            if (link.dataset.view === currentView) {
+                link.classList.add('bg-nav-activebg', 'text-white', 'font-semibold');
+                link.classList.remove('text-nav-text', 'hover:bg-nav-hoverbg', 'hover:text-nav-hovertext');
+            } else {
+                link.classList.remove('bg-nav-activebg', 'text-white', 'font-semibold');
+                link.classList.add('text-nav-text', 'hover:bg-nav-hoverbg', 'hover:text-nav-hovertext');
+            }
+        });
+    };
+
+    // MODAL
+    const openModal = (title, bodyHtml, footerHtml) => {
+        modalTitle.textContent = title;
+        modalBody.innerHTML = bodyHtml;
+        modalFooter.innerHTML = footerHtml;
+        
+        modalContainer.classList.remove('hidden');
+        modalContainer.classList.add('opacity-100');
+        modalDialog.classList.remove('scale-95', 'opacity-0');
+        modalDialog.classList.add('scale-100', 'opacity-100');
+
+        // Add event listeners for dynamically added elements within the modal
+        if (document.getElementById('featureForm')) {
+            document.getElementById('featureForm').addEventListener('submit', handleSaveFeature);
+        }
+        document.querySelectorAll('.add-link-button').forEach(btn => btn.addEventListener('click', handleAddLinkInput));
+        document.querySelectorAll('.remove-link-button').forEach(btn => btn.addEventListener('click', handleRemoveLinkInput));
+        document.querySelectorAll('.add-attachment-button').forEach(btn => btn.addEventListener('click', () => fileUploadInput.click()));
+        document.querySelectorAll('.remove-attachment-button').forEach(btn => btn.addEventListener('click', handleRemoveAttachment));
+        document.querySelectorAll('.add-rc-button').forEach(btn => btn.addEventListener('click', handleAddRCForm));
+        document.querySelectorAll('.remove-rc-button').forEach(btn => btn.addEventListener('click', handleRemoveRCForm));
+        
+        if (document.getElementById('deleteFeatureButton')) {
+            document.getElementById('deleteFeatureButton').addEventListener('click', handleDeleteFeature);
+        }
+    };
+
+    const closeModal = () => {
+        editingFeature = null; // Clear editing state
+        modalDialog.classList.remove('scale-100', 'opacity-100');
+        modalDialog.classList.add('scale-95', 'opacity-0');
+        setTimeout(() => { // Wait for animation
+            modalContainer.classList.add('hidden');
+            modalContainer.classList.remove('opacity-100');
+            modalBody.innerHTML = ''; // Clear content
+            modalFooter.innerHTML = '';
+        }, 300);
+    };
+
+    // FEATURE MANAGEMENT
+    const handleOpenAddFeatureModal = () => {
+        editingFeature = { // Initialize a new feature structure
+            id: null, // Will be generated on save
+            name: '', description: '', domain: DOMAINS[0], status: STATUSES[0],
+            kickoffDatePlanned: '', kickoffDateActual: '',
+            completionDatePlanned: '', completionDateActual: '',
+            productLead: '', notes: '',
+            links: [], attachments: [], releaseCandidates: []
+        };
+        renderFeatureFormModal();
+    };
+    
+    const handleOpenEditFeatureModal = (featureId) => {
+        const featureToEdit = features.find(f => f.id === featureId);
+        if (featureToEdit) {
+            editingFeature = JSON.parse(JSON.stringify(featureToEdit)); // Deep copy for editing
+            renderFeatureFormModal();
+        }
+    };
+
+    const handleOpenViewDetailsModal = (featureId) => {
+        const feature = features.find(f => f.id === featureId);
+        if (!feature) return;
+
+        const renderListItem = (label, value) => value ? `<div class="mb-2"><strong class="text-textlight">${label}:</strong> ${value}</div>` : '';
+        const renderDateItem = (label, date) => date ? `<div class="mb-2"><strong class="text-textlight">${label}:</strong> ${new Date(date + 'T00:00:00').toLocaleDateString()}</div>` : ''; // Add T00:00:00 to ensure date is interpreted as local
+
+        let detailsHtml = `
+            <h4 class="text-lg font-semibold text-textdark mb-3">${feature.name}</h4>
+            <p class="text-textlight mb-4">${feature.description || 'No description.'}</p>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4 text-sm">
+                <div>${renderListItem('Domain/Pillar', feature.domain)}</div>
+                <div>${renderListItem('Status', `<span class="px-2 py-1 text-xs font-semibold text-white ${getStatusColorClass(feature.status)} rounded-full">${feature.status}</span>`)}</div>
+                <div>${renderDateItem('Planned Kickoff', feature.kickoffDatePlanned)}</div>
+                <div>${renderDateItem('Actual Kickoff', feature.kickoffDateActual)}</div>
+                <div>${renderDateItem('Planned Completion', feature.completionDatePlanned)}</div>
+                <div>${renderDateItem('Actual Completion', feature.completionDateActual)}</div>
+                <div>${renderListItem('Product Lead', feature.productLead)}</div>
+            </div>
+            ${feature.notes ? `<div class="mb-4"><strong class="text-textlight">Notes:</strong><p class="text-sm text-textlight bg-slate-50 p-2 rounded">${feature.notes.replace(/\n/g, '<br>')}</p></div>` : ''}
+            ${feature.links && feature.links.length > 0 ? `
+                <div class="mb-4">
+                    <strong class="text-textlight">Links:</strong>
+                    <ul class="list-disc list-inside ml-1 text-sm">
+                        ${feature.links.map(link => `<li><a href="${link.url}" target="_blank" class="text-primary hover:underline">${link.url}</a></li>`).join('')}
+                    </ul>
+                </div>` : ''}
+            ${feature.attachments && feature.attachments.length > 0 ? `
+                <div class="mb-4">
+                    <strong class="text-textlight">Attachments:</strong>
+                    <ul class="list-disc list-inside ml-1 text-sm">
+                        ${feature.attachments.map(att => `<li>${att.name}</li>`).join('')}
+                    </ul>
+                </div>` : ''}
+        `;
+
+        if (feature.releaseCandidates && feature.releaseCandidates.length > 0) {
+            detailsHtml += `<h5 class="text-md font-semibold text-textdark mt-6 mb-2">Release Candidates</h5>`;
+            feature.releaseCandidates.forEach(rc => {
+                detailsHtml += `
+                    <div class="mb-3 p-3 border border-borderlight rounded-lg text-sm">
+                        <p class="font-medium">${rc.description || 'No description'} (${rc.releaseId || 'N/A'})</p>
+                        ${renderDateItem('Release Date', rc.releaseDate)}
+                        ${renderListItem('Status', `<span class="px-2 py-1 text-xs font-semibold text-white ${getStatusColorClass(rc.status)} rounded-full">${rc.status}</span>`)}
+                    </div>
+                `;
+            });
+        } else {
+            detailsHtml += `<p class="text-textlight text-sm mt-4">No release candidates for this feature.</p>`;
+        }
+
+        const footerHtml = `<button type="button" class="px-4 py-2 bg-gray-200 text-textdark rounded-lg hover:bg-gray-300 transition modal-cancel-button">Close</button>`;
+        openModal(`Feature Details: ${feature.name}`, detailsHtml, footerHtml);
+        document.querySelector('.modal-cancel-button').addEventListener('click', closeModal);
+    };
+
+    const renderFeatureFormModal = () => {
+        if (!editingFeature) return; // Should not happen if called correctly
+
+        const isEditing = !!editingFeature.id;
+        const title = isEditing ? `Edit Feature: ${editingFeature.name}` : 'Add New Feature';
+
+        // Helper to generate input fields
+        const createInput = (id, label, type = 'text', value = '', required = false, extraAttrs = '') => `
+            <div class="mb-4">
+                <label for="${id}" class="block text-sm font-medium text-textlight mb-1">${label}${required ? '<span class="text-red-500">*</span>' : ''}</label>
+                <input type="${type}" id="${id}" name="${id}" value="${value}" ${required ? 'required' : ''} ${extraAttrs}
+                       class="w-full px-3 py-2 border border-borderlight rounded-md shadow-sm focus:ring-primary focus:border-primary text-sm">
+            </div>`;
+        const createTextarea = (id, label, value = '', rows = 3) => `
+            <div class="mb-4">
+                <label for="${id}" class="block text-sm font-medium text-textlight mb-1">${label}</label>
+                <textarea id="${id}" name="${id}" rows="${rows}"
+                          class="w-full px-3 py-2 border border-borderlight rounded-md shadow-sm focus:ring-primary focus:border-primary text-sm">${value}</textarea>
+            </div>`;
+        const createSelect = (id, label, options, selectedValue = '', required = false) => `
+            <div class="mb-4">
+                <label for="${id}" class="block text-sm font-medium text-textlight mb-1">${label}${required ? '<span class="text-red-500">*</span>' : ''}</label>
+                <select id="${id}" name="${id}" ${required ? 'required' : ''}
+                        class="w-full px-3 py-2 border border-borderlight rounded-md shadow-sm focus:ring-primary focus:border-primary text-sm bg-white">
+                    ${options.map(opt => `<option value="${opt}" ${opt === selectedValue ? 'selected' : ''}>${opt}</option>`).join('')}
+                </select>
+            </div>`;
+        
+        // Links section
+        let linksHtml = `<div id="linksContainer" class="mb-4 space-y-2">
+            <label class="block text-sm font-medium text-textlight mb-1">Links</label>`;
+        editingFeature.links.forEach((link, index) => {
+            linksHtml += `
+                <div class="flex items-center space-x-2 link-entry">
+                    <input type="url" name="linkUrl_${index}" value="${link.url}" placeholder="https://example.com" class="flex-grow px-3 py-2 border border-borderlight rounded-md shadow-sm focus:ring-primary focus:border-primary text-sm">
+                    <button type="button" class="remove-link-button text-red-500 hover:text-red-700 p-1" data-index="${index}">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-5 h-5"><path stroke-linecap="round" stroke-linejoin="round" d="M15 12H9m12 0a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                    </button>
+                </div>`;
+        });
+        linksHtml += `</div>
+            <button type="button" class="add-link-button text-sm text-primary hover:text-primary-hover font-medium">+ Add Link</button>`;
+
+        // Attachments section
+        let attachmentsHtml = `<div id="attachmentsContainer" class="mb-4 space-y-2">
+            <label class="block text-sm font-medium text-textlight mb-1">Attachments</label>`;
+        editingFeature.attachments.forEach((att, index) => {
+            attachmentsHtml += `
+                <div class="flex items-center justify-between p-2 border border-borderlight rounded-md bg-slate-50 attachment-entry">
+                    <span class="text-sm text-textdark">${att.name}</span>
+                    <button type="button" class="remove-attachment-button text-red-500 hover:text-red-700 p-1" data-id="${att.id}" data-name="${att.name}">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-5 h-5"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+                    </button>
+                </div>`;
+        });
+        attachmentsHtml += `</div>
+            <button type="button" class="add-attachment-button text-sm text-primary hover:text-primary-hover font-medium">+ Add Attachment</button>`;
+
+        // Release Candidates section
+        let rcHtml = `<div id="rcContainer" class="mt-6 pt-4 border-t border-borderlight">
+            <h4 class="text-md font-semibold text-textdark mb-3">Release Candidates</h4>`;
+        if (editingFeature.releaseCandidates.length === 0) {
+            rcHtml += `<p class="text-sm text-textlight italic mb-2">No release candidates yet.</p>`;
+        }
+        editingFeature.releaseCandidates.forEach((rc, index) => {
+            rcHtml += `
+                <div class="p-3 border border-borderlight rounded-lg mb-3 bg-slate-50 rc-form-entry" data-rc-id="${rc.id || ''}" data-index="${index}">
+                    <div class="flex justify-end">
+                         <button type="button" class="remove-rc-button text-red-500 hover:text-red-700 p-1 -mt-2 -mr-2" data-index="${index}">
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-5 h-5"><path stroke-linecap="round" stroke-linejoin="round" d="M15 12H9m12 0a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                        </button>
+                    </div>
+                    ${createInput(`rcDescription_${index}`, 'Description', 'text', rc.description, true)}
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-x-4">
+                        ${createInput(`rcReleaseId_${index}`, 'Release ID', 'text', rc.releaseId)}
+                        ${createInput(`rcReleaseDate_${index}`, 'Release Date', 'date', formatDateForInput(rc.releaseDate), true)}
+                    </div>
+                    ${createSelect(`rcStatus_${index}`, 'Status', STATUSES, rc.status, true)}
+                </div>`;
+        });
+        rcHtml += `</div>
+            <button type="button" class="add-rc-button text-sm text-primary hover:text-primary-hover font-medium mt-2">+ Add Release Candidate</button>`;
+
+        const formHtml = `
+            <form id="featureForm" class="space-y-4">
+                ${createInput('featureName', 'Feature Name', 'text', editingFeature.name, true)}
+                ${createTextarea('featureDescription', 'Feature Description', editingFeature.description)}
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-x-4">
+                    ${createSelect('featureDomain', 'Domain/Pillar', DOMAINS, editingFeature.domain, true)}
+                    ${createSelect('featureStatus', 'Status', STATUSES, editingFeature.status, true)}
+                </div>
+                <fieldset class="border border-borderlight p-3 rounded-md">
+                    <legend class="text-sm font-medium text-textlight px-1">Kickoff Date</legend>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-x-4">
+                        ${createInput('kickoffDatePlanned', 'Planned', 'date', formatDateForInput(editingFeature.kickoffDatePlanned))}
+                        ${createInput('kickoffDateActual', 'Actual', 'date', formatDateForInput(editingFeature.kickoffDateActual))}
+                    </div>
+                </fieldset>
+                <fieldset class="border border-borderlight p-3 rounded-md">
+                    <legend class="text-sm font-medium text-textlight px-1">Completion Date</legend>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-x-4">
+                        ${createInput('completionDatePlanned', 'Planned', 'date', formatDateForInput(editingFeature.completionDatePlanned))}
+                        ${createInput('completionDateActual', 'Actual', 'date', formatDateForInput(editingFeature.completionDateActual))}
+                    </div>
+                </fieldset>
+                ${createInput('productLead', 'Product Lead', 'text', editingFeature.productLead)}
+                ${createTextarea('notes', 'Notes', editingFeature.notes)}
+                
+                <div class="pt-4 border-t border-borderlight">${linksHtml}</div>
+                <div class="pt-4 border-t border-borderlight">${attachmentsHtml}</div>
+                ${rcHtml}
+            </form>
+        `;
+        
+        let footerButtons = `
+            <button type="button" class="px-4 py-2 bg-gray-200 text-textdark rounded-lg hover:bg-gray-300 transition modal-cancel-button">Cancel</button>
+            <button type="submit" form="featureForm" class="px-4 py-2 bg-primary hover:bg-primary-hover text-white rounded-lg transition">Save Feature</button>
+        `;
+        if (isEditing) {
+            footerButtons = `
+                <button type="button" id="deleteFeatureButton" class="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg transition mr-auto">Delete Feature</button>
+                ${footerButtons}`;
+        }
+
+        openModal(title, formHtml, footerButtons);
+        document.querySelector('.modal-cancel-button').addEventListener('click', closeModal);
+    };
+
+    const handleAddLinkInput = () => {
+        if (!editingFeature) return;
+        editingFeature.links.push({ id: uuidv4(), url: '' });
+        renderFeatureFormModal(); // Re-render form to show new empty link field
+    };
+    
+    const handleRemoveLinkInput = (e) => {
+        if (!editingFeature) return;
+        const index = parseInt(e.target.closest('button').dataset.index, 10);
+        // Temporarily save current form values before re-render
+        const form = document.getElementById('featureForm');
+        const formData = new FormData(form);
+        
+        // Update links array from form before removing
+        editingFeature.links = [];
+        formData.forEach((value, key) => {
+            if (key.startsWith('linkUrl_')) {
+                editingFeature.links.push({ id: uuidv4(), url: value }); // Re-gen ID or keep existing if possible
+            }
+        });
+
+        editingFeature.links.splice(index, 1);
+        renderFeatureFormModal(); // Re-render
+    };
+    
+    const handleFileSelected = (e) => {
+        if (!editingFeature) return;
+        const files = e.target.files;
+        for (let file of files) {
+            // Check for duplicates by name before adding
+            if (!editingFeature.attachments.find(att => att.name === file.name)) {
+                 editingFeature.attachments.push({ id: uuidv4(), name: file.name });
+            }
+        }
+        fileUploadInput.value = ''; // Reset file input
+        renderFeatureFormModal(); // Re-render to show new attachments
+    };
+
+    const handleRemoveAttachment = (e) => {
+        if (!editingFeature) return;
+        const attachmentId = e.target.closest('button').dataset.id;
+        editingFeature.attachments = editingFeature.attachments.filter(att => att.id !== attachmentId);
+        renderFeatureFormModal(); // Re-render
+    };
+
+    const handleAddRCForm = () => {
+        if (!editingFeature) return;
+        // Capture current form values before adding new RC section
+        const currentFormData = getFormDataFromModal();
+        editingFeature = {...editingFeature, ...currentFormData.featureData}; // Update main feature data
+        editingFeature.releaseCandidates = currentFormData.rcData; // Update existing RCs
+
+        editingFeature.releaseCandidates.push({
+            id: uuidv4(), description: '', releaseId: '', releaseDate: '', status: STATUSES[0]
+        });
+        renderFeatureFormModal();
+    };
+
+    const handleRemoveRCForm = (e) => {
+        if (!editingFeature) return;
+        const index = parseInt(e.target.closest('button').dataset.index, 10);
+        
+        // Capture current form values before removing RC section
+        const currentFormData = getFormDataFromModal();
+        editingFeature = {...editingFeature, ...currentFormData.featureData};
+        editingFeature.releaseCandidates = currentFormData.rcData;
+        
+        editingFeature.releaseCandidates.splice(index, 1);
+        renderFeatureFormModal();
+    };
+
+    const getFormDataFromModal = () => {
+        const form = document.getElementById('featureForm');
+        if (!form) return { featureData: {}, rcData: [], linksData: [], attachmentsData: [] };
+        
+        const formData = new FormData(form);
+        const featureData = {};
+        const rcData = [];
+        const linksData = [];
+        
+        // Extract main feature fields
+        ['featureName', 'featureDescription', 'featureDomain', 'featureStatus', 
+         'kickoffDatePlanned', 'kickoffDateActual', 'completionDatePlanned', 'completionDateActual',
+         'productLead', 'notes'].forEach(fieldName => {
+            featureData[fieldName.replace('feature','').toLowerCase()] = formData.get(fieldName) || '';
+        });
+        
+        // Extract links
+        document.querySelectorAll('#linksContainer .link-entry input[type="url"]').forEach(input => {
+            if (input.value) linksData.push({ id: input.dataset.id || uuidv4(), url: input.value });
+        });
+        featureData.links = linksData;
+
+        // Attachments are managed directly in `editingFeature.attachments`
+        // so we just use that directly.
+        featureData.attachments = editingFeature.attachments || [];
+
+        // Extract release candidates
+        const rcElements = form.querySelectorAll('.rc-form-entry');
+        rcElements.forEach((rcEl, index) => {
+            const rc = { id: rcEl.dataset.rcId || uuidv4() };
+            rc.description = formData.get(`rcDescription_${index}`);
+            rc.releaseId = formData.get(`rcReleaseId_${index}`);
+            rc.releaseDate = formData.get(`rcReleaseDate_${index}`);
+            rc.status = formData.get(`rcStatus_${index}`);
+            if (rc.description && rc.releaseDate && rc.status) { // Basic validation
+                rcData.push(rc);
+            }
+        });
+        featureData.releaseCandidates = rcData;
+        
+        return { featureData }; // Return combined object
+    };
+
+    const handleSaveFeature = (e) => {
+        e.preventDefault();
+        const { featureData } = getFormDataFromModal();
+        
+        // Basic validation (name is required)
+        if (!featureData.name || featureData.name.trim() === '') {
+            alert('Feature Name is required.');
+            document.getElementById('featureName').focus();
+            return;
+        }
+
+        if (editingFeature && editingFeature.id) { // Update existing
+            const index = features.findIndex(f => f.id === editingFeature.id);
+            if (index !== -1) {
+                features[index] = { ...features[index], ...featureData };
+            }
+        } else { // Add new
+            const newFeature = { ...featureData, id: uuidv4() };
+            features.push(newFeature);
+        }
+        
+        closeModal();
+        render(); // Re-render dashboard or current view
+    };
+    
+    const handleDeleteFeature = () => {
+        if (!editingFeature || !editingFeature.id) return;
+        if (confirm(`Are you sure you want to delete the feature "${editingFeature.name}"? This action cannot be undone.`)) {
+            features = features.filter(f => f.id !== editingFeature.id);
+            closeModal();
+            render();
+        }
+    };
+
+    // RENDERING
+    const renderDashboard = () => {
+        let content = `
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="text-3xl font-semibold text-textdark">Dashboard</h2>
+                <button id="dashboardAddFeatureBtn" class="bg-primary hover:bg-primary-hover text-white font-medium py-2.5 px-5 rounded-lg shadow hover:shadow-md transition flex items-center space-x-2">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-5 h-5"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" /></svg>
+                    <span>Add New Feature</span>
+                </button>
+            </div>
+        `;
+
+        if (features.length === 0) {
+            content += `<div class="bg-cardbg p-8 rounded-xl shadow text-center text-textlight">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-16 h-16 mx-auto mb-4 text-slate-400">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 17.25v3.375c0 .621-.504 1.125-1.125 1.125h-9.75a1.125 1.125 0 01-1.125-1.125V7.875c0-.621.504-1.125 1.125-1.125H6.75a9.06 9.06 0 011.5.124m7.5 10.376h3.375c.621 0 1.125-.504 1.125-1.125V11.25c0-4.46-3.243-8.161-7.5-8.876a9.06 9.06 0 00-1.5-.124H9.375c-.621 0-1.125.504-1.125 1.125v3.5m7.5 10.375H9.375m7.5 0c.621 0 1.125.504 1.125 1.125v3.375c0 .621-.504 1.125-1.125 1.125h-9.75a1.125 1.125 0 01-1.125-1.125V7.875c0-.621.504-1.125 1.125-1.125H6.75a9.06 9.06 0 011.5.124m7.5 10.376h3.375c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9H9.375c-.621 0-1.125.504-1.125 1.125v3.5M7.5 12h9M7.5 15h3M7.5 18h1.5m0 0H5.25m9.75 0h1.5m0 0H18.75m0 0H17.25m3-7.5V5.25A2.25 2.25 0 0018 3H6a2.25 2.25 0 00-2.25 2.25v13.5A2.25 2.25 0 006 21h3.75" />
+                </svg>
+                <h3 class="text-xl font-semibold text-textdark mb-2">No Features Yet</h3>
+                <p class="mb-4">Get started by adding your first product feature.</p>
+                <button class="bg-primary hover:bg-primary-hover text-white font-medium py-2 px-4 rounded-lg shadow hover:shadow-md transition dashboard-add-feature-empty">Add Feature</button>
+            </div>`;
+        } else {
+            content += `
+                <div class="bg-cardbg shadow-xl rounded-xl overflow-hidden">
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-sm text-left text-textlight">
+                            <thead class="text-xs text-textdark uppercase bg-slate-50">
+                                <tr>
+                                    <th scope="col" class="px-6 py-3">Feature Name</th>
+                                    <th scope="col" class="px-6 py-3">Domain</th>
+                                    <th scope="col" class="px-6 py-3">Status</th>
+                                    <th scope="col" class="px-6 py-3">Kickoff (Planned)</th>
+                                    <th scope="col" class="px-6 py-3">Completion (Planned)</th>
+                                    <th scope="col" class="px-6 py-3">Product Lead</th>
+                                    <th scope="col" class="px-6 py-3 text-center">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>`;
+            features.forEach(f => {
+                content += `
+                    <tr class="bg-white border-b hover:bg-slate-50 transition">
+                        <td class="px-6 py-4 font-medium text-textdark whitespace-nowrap">${f.name}</td>
+                        <td class="px-6 py-4">${f.domain}</td>
+                        <td class="px-6 py-4">
+                            <span class="px-2.5 py-1 text-xs font-semibold text-white ${getStatusColorClass(f.status)} rounded-full">${f.status}</span>
+                        </td>
+                        <td class="px-6 py-4">${f.kickoffDatePlanned ? new Date(f.kickoffDatePlanned + 'T00:00:00').toLocaleDateString() : 'N/A'}</td>
+                        <td class="px-6 py-4">${f.completionDatePlanned ? new Date(f.completionDatePlanned + 'T00:00:00').toLocaleDateString() : 'N/A'}</td>
+                        <td class="px-6 py-4">${f.productLead || 'N/A'}</td>
+                        <td class="px-6 py-4 text-center space-x-2">
+                            <button data-id="${f.id}" class="view-details-btn font-medium text-primary hover:underline">View</button>
+                            <button data-id="${f.id}" class="edit-feature-btn font-medium text-indigo-600 hover:underline">Edit</button>
+                        </td>
+                    </tr>
+                `;
+            });
+            content += `</tbody></table></div></div>`;
+        }
+        mainContent.innerHTML = content;
+        document.getElementById('dashboardAddFeatureBtn')?.addEventListener('click', handleOpenAddFeatureModal);
+        document.querySelector('.dashboard-add-feature-empty')?.addEventListener('click', handleOpenAddFeatureModal);
+        
+        document.querySelectorAll('.view-details-btn').forEach(btn => btn.addEventListener('click', (e) => handleOpenViewDetailsModal(e.target.dataset.id)));
+        document.querySelectorAll('.edit-feature-btn').forEach(btn => btn.addEventListener('click', (e) => handleOpenEditFeatureModal(e.target.dataset.id)));
+    };
+
+    const renderTimeline = () => {
+        mainContent.innerHTML = `
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="text-3xl font-semibold text-textdark">Release Timeline</h2>
+            </div>
+            <div class="bg-cardbg p-4 sm:p-6 rounded-xl shadow-xl">
+                <div class="chart-container">
+                    <canvas id="timelineChartCanvas"></canvas>
+                </div>
+                 <div id="timelineLegend" class="mt-4 flex flex-wrap justify-center gap-x-4 gap-y-2 text-sm"></div>
+            </div>`;
+        
+        if (timelineChart) {
+            timelineChart.destroy();
+        }
+
+        const chartStatusColors = {
+            Ideation: 'rgba(168, 85, 247, 0.7)', // purple-500
+            Planning: 'rgba(59, 130, 246, 0.7)', // blue-500
+            Building: 'rgba(234, 179, 8, 0.7)', // yellow-500
+            Shipped: 'rgba(34, 197, 94, 0.7)',  // green-500
+            Completed: 'rgba(20, 184, 166, 0.7)', // teal-500
+            Default: 'rgba(156, 163, 175, 0.7)', // gray-400
+        };
+         const chartStatusBorders = { // Slightly darker for borders
+            Ideation: 'rgba(168, 85, 247, 1)',
+            Planning: 'rgba(59, 130, 246, 1)',
+            Building: 'rgba(234, 179, 8, 1)',
+            Shipped: 'rgba(34, 197, 94, 1)',
+            Completed: 'rgba(20, 184, 166, 1)',
+            Default: 'rgba(156, 163, 175, 1)',
+        };
+
+        const getTaskDisplayColor = (status, type = 'Feature') => {
+            const baseColor = chartStatusColors[status] || chartStatusColors.Default;
+            if (type === 'Release Candidate') {
+                // Make RC slightly different, e.g. more transparent or a variant
+                return baseColor.replace('0.7', '0.9'); 
+            }
+            return baseColor;
+        };
+        const getTaskBorderColor = (status) => chartStatusBorders[status] || chartStatusBorders.Default;
+
+
+        const tasks = [];
+        let minDate = new Date();
+        let maxDate = new Date();
+        minDate.setFullYear(minDate.getFullYear() + 10); // Start with a far future/past date
+        maxDate.setFullYear(maxDate.getFullYear() - 10);
+
+        features.forEach(feature => {
+            let featureHasDates = false;
+            if (feature.kickoffDatePlanned && feature.completionDatePlanned) {
+                const startDate = new Date(feature.kickoffDatePlanned);
+                const endDate = new Date(feature.completionDatePlanned);
+                if (startDate < minDate) minDate = startDate;
+                if (endDate > maxDate) maxDate = endDate;
+                featureHasDates = true;
+
+                tasks.push({
+                    x: [startDate.valueOf(), endDate.valueOf()],
+                    y: feature.name,
+                    name: feature.name,
+                    status: feature.status,
+                    type: 'Feature',
+                    backgroundColor: getTaskDisplayColor(feature.status, 'Feature'),
+                    borderColor: getTaskBorderColor(feature.status),
+                    borderWidth: 1,
+                    borderRadius: 4,
+                    borderSkipped: false,
+                });
+            }
+
+            feature.releaseCandidates.forEach(rc => {
+                if (rc.releaseDate) {
+                    const rcStartDate = new Date(rc.releaseDate);
+                    const rcEndDate = new Date(rcStartDate);
+                    rcEndDate.setDate(rcStartDate.getDate() + 3); // RC shown as a 3-day bar
+
+                    if (rcStartDate < minDate) minDate = rcStartDate;
+                    if (rcEndDate > maxDate) maxDate = rcEndDate;
+                    if (!featureHasDates && feature.name) { // If feature itself had no dates, ensure its name is in yLabels
+                         // and potentially use RC dates for feature min/max if feature has no dates
+                    }
+
+                    tasks.push({
+                        x: [rcStartDate.valueOf(), rcEndDate.valueOf()],
+                        y: feature.name, // Group under the same feature name
+                        name: `RC: ${rc.description} (${rc.releaseId})`,
+                        status: rc.status,
+                        type: 'Release Candidate',
+                        backgroundColor: getTaskDisplayColor(rc.status, 'Release Candidate'),
+                        borderColor: getTaskBorderColor(rc.status),
+                        borderWidth: 1,
+                        barPercentage: 0.4,
+                        categoryPercentage: 0.8,
+                        borderRadius: 2,
+                        borderSkipped: false,
+                    });
+                }
+            });
+        });
+        
+        if (tasks.length === 0) {
+             minDate = new Date(); maxDate = new Date();
+             maxDate.setMonth(minDate.getMonth() + 6); // Default 6 month span if no tasks
+        } else { // Add padding to min/max dates
+            minDate.setDate(minDate.getDate() - 15);
+            maxDate.setDate(maxDate.getDate() + 15);
+        }
+
+
+        const yLabels = [...new Set(tasks.map(task => task.y))].sort(); // Unique feature names, sorted
+
+        const ctx = document.getElementById('timelineChartCanvas').getContext('2d');
+        timelineChart = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: yLabels,
+                datasets: [{
+                    label: 'Roadmap Items',
+                    data: tasks,
+                    // backgroundColor, borderColor, etc. are per-data-point
+                }]
+            },
+            options: {
+                indexAxis: 'y',
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    x: {
+                        type: 'time',
+                        time: {
+                            unit: 'month',
+                            tooltipFormat: 'MMM dd, yyyy', 
+                            displayFormats: {
+                                month: 'MMM yyyy'
+                            }
+                        },
+                        min: minDate.valueOf(),
+                        max: maxDate.valueOf(),
+                        title: { display: true, text: 'Date', font: {size: 14} },
+                        grid: { display: true, color: 'rgba(200,200,200,0.2)' },
+                        ticks: { font: {size: 10} }
+                    },
+                    y: {
+                        title: { display: true, text: 'Features', font: {size: 14} },
+                        grid: { display: false },
+                        ticks: { font: {size: 10}, autoSkip: false }
+                    }
+                },
+                plugins: {
+                    legend: {
+                        display: false, // Custom legend below
+                    },
+                    tooltip: {
+                        backgroundColor: 'rgba(0,0,0,0.8)',
+                        titleFont: { size: 14, weight: 'bold' },
+                        bodyFont: { size: 12 },
+                        callbacks: {
+                            title: function(tooltipItems) {
+                                return tooltipItems[0].raw.name;
+                            },
+                            label: function(context) {
+                                const task = context.raw;
+                                const startDate = new Date(task.x[0]).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
+                                const endDate = new Date(task.x[1]).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
+                                return [
+                                    `Duration: ${startDate} - ${endDate}`,
+                                    `Status: ${task.status}`,
+                                    `Type: ${task.type}`
+                                ];
+                            }
+                        }
+                    }
+                }
+            }
+        });
+        
+        // Render custom legend
+        const legendContainer = document.getElementById('timelineLegend');
+        legendContainer.innerHTML = '';
+        Object.entries(chartStatusColors).forEach(([status, color]) => {
+            if (status === 'Default') return;
+            const legendItem = document.createElement('div');
+            legendItem.className = 'flex items-center';
+            legendItem.innerHTML = `
+                <span class="w-3 h-3 rounded-sm mr-1.5" style="background-color: ${color.replace('0.7', '1')}"></span>
+                <span>${status}</span>
+            `;
+            legendContainer.appendChild(legendItem);
+        });
+
+    };
+
+    const render = () => {
+        updateActiveNav();
+        if (currentView === 'dashboard') {
+            renderDashboard();
+        } else if (currentView === 'timeline') {
+            renderTimeline();
+        }
+    };
+
+    // INITIALIZATION
+    const init = () => {
+        loginForm.addEventListener('submit', handleLogin);
+        logoutButton.addEventListener('click', handleLogout);
+        navigation.addEventListener('click', handleNavigation);
+        addFeatureNavLink.addEventListener('click', handleOpenAddFeatureModal);
+        closeModalButton.addEventListener('click', closeModal);
+        modalContainer.addEventListener('click', (e) => { // Close on backdrop click
+            if (e.target === modalContainer) closeModal();
+        });
+        fileUploadInput.addEventListener('change', handleFileSelected);
+        
+        generateDummyData(); // Load dummy data for preview
+        // For dev, auto-login:
+        // currentUser = { username: 'admin' };
+        // loginScreen.classList.add('hidden');
+        // appScreen.classList.remove('hidden');
+        // appScreen.classList.add('flex');
+        // render();
+    };
+
+    return { init };
+})();
+
+document.addEventListener('DOMContentLoaded', App.init);
+
+</script>
+</body>
+</html>

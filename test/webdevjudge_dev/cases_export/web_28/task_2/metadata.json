@@ -1,0 +1,9 @@
+{
+  "web_id": "web_28",
+  "task_id": 2,
+  "task_type": "dynamic",
+  "instruction": "Task: Click an item/option within the displayed 'Additional functions menu window'\nExpected Result: The selected menu item is visually highlighted, or a status message updates to confirm the selection, and the menu may close.\n\nNote: The task is only considered successful if the expected result is achieved; otherwise, it is deemed infeasible.",
+  "max_steps": 15,
+  "expected": "The selected menu item is visually highlighted, or a status message updates to confirm the selection, and the menu may close.",
+  "label": 1
+}

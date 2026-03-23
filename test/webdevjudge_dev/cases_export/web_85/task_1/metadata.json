@@ -1,0 +1,9 @@
+{
+  "web_id": "web_85",
+  "task_id": 1,
+  "task_type": "dynamic",
+  "instruction": "Task: Allow users to move pieces (e.g., by clicking a piece then a square, or drag-and-drop).\nExpected Result: When a user selects one of their pieces, its legal moves are visually highlighted. If the user then chooses a highlighted legal destination, the piece moves there (capturing an opponent's piece if present), the board updates, move highlights are cleared, and the turn switches to the other player. Attempting to move to an illegal square is prevented with feedback.\n\nNote: The task is only considered successful if the expected result is achieved; otherwise, it is deemed infeasible.",
+  "max_steps": 15,
+  "expected": "When a user selects one of their pieces, its legal moves are visually highlighted. If the user then chooses a highlighted legal destination, the piece moves there (capturing an opponent's piece if present), the board updates, move highlights are cleared, and the turn switches to the other player. Attempting to move to an illegal square is prevented with feedback.",
+  "label": 1
+}

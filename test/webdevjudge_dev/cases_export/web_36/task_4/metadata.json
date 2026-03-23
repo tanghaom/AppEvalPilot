@@ -1,0 +1,9 @@
+{
+  "web_id": "web_36",
+  "task_id": 4,
+  "task_type": "dynamic",
+  "instruction": "Task: Hover over a data point or segment in a Chart.js KPI widget on the dashboard.\nExpected Result: A tooltip containing mock data relevant to the hovered chart element is displayed.\n\nNote: The task is only considered successful if the expected result is achieved; otherwise, it is deemed infeasible.",
+  "max_steps": 15,
+  "expected": "A tooltip containing mock data relevant to the hovered chart element is displayed.",
+  "label": 0
+}

@@ -1,0 +1,804 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Windows XP Clone</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Using a generic sans-serif font as Tahoma might not be available */
+        body {
+            font-family: "Tahoma", "Geneva", sans-serif;
+            user-select: none;
+            overflow: hidden;
+            cursor: default; /* XP default cursor */
+        }
+
+        /* Windows XP "Bliss" like wallpaper gradient */
+        #desktop {
+            background: linear-gradient(to bottom, #2498ED 0%, #74CBF2 50%, #6ABE4C 50%, #3B8F22 100%);
+        }
+
+        /* Custom scrollbar style for window content (optional, can be simple) */
+        .xp-scrollable::-webkit-scrollbar {
+            width: 16px;
+            height: 16px;
+        }
+        .xp-scrollable::-webkit-scrollbar-track {
+            background: #ECE9D8; /* XP window background */
+        }
+        .xp-scrollable::-webkit-scrollbar-thumb {
+            background: #C0C0C0; /* XP scrollbar thumb */
+            border: 1px solid #808080;
+        }
+        .xp-scrollable::-webkit-scrollbar-button {
+            background-color: #D4D0C8; /* XP button face */
+            border: 1px outset #FFFFFF;
+            height: 16px;
+            width: 16px;
+        }
+        .xp-scrollable::-webkit-scrollbar-button:horizontal:decrement {
+            background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='%23000000'><polygon points='11,4 6,8 11,12'/></svg>");
+        }
+        .xp-scrollable::-webkit-scrollbar-button:horizontal:increment {
+            background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='%23000000'><polygon points='5,4 10,8 5,12'/></svg>");
+        }
+        .xp-scrollable::-webkit-scrollbar-button:vertical:decrement {
+            background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='%23000000'><polygon points='4,11 8,6 12,11'/></svg>");
+        }
+        .xp-scrollable::-webkit-scrollbar-button:vertical:increment {
+            background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='%23000000'><polygon points='4,5 8,10 12,5'/></svg>");
+        }
+
+        /* Specific XP button style */
+        .xp-button {
+            border: 1px solid #000;
+            border-top-color: #fff;
+            border-left-color: #fff;
+            border-right-color: #808080;
+            border-bottom-color: #808080;
+            background-color: #DFDFDF;
+            padding: 2px 8px;
+        }
+        .xp-button:active {
+            border-top-color: #808080;
+            border-left-color: #808080;
+            border-right-color: #fff;
+            border-bottom-color: #fff;
+        }
+        
+        /* Taskbar button style */
+        .taskbar-button {
+            border: 1px solid transparent;
+            border-top-color: #ACA899; /* Slightly darker than window bg for pushed effect */
+            border-left-color: #ACA899;
+            background-color: #3A81CE; /* Active taskbar button blue */
+            box-shadow: inset 1px 1px 1px #2C5EA0, inset -1px -1px 1px #2C5EA0;
+        }
+        .taskbar-button.inactive {
+            background-color: #2A5FAA; /* Inactive taskbar button blue */
+            box-shadow: none;
+            border: 1px solid #1A3C7A;
+            border-top-color: #5C8ED8;
+            border-left-color: #5C8ED8;
+        }
+        .taskbar-button:hover:not(.active) {
+            background-color: #3D7FD5; /* Lighter blue on hover for inactive */
+        }
+
+        /* Resize handles */
+        .resize-handle {
+            position: absolute;
+            background: transparent; /* For debugging: rgba(255,0,0,0.2); */
+        }
+        .resize-handle-n { top: -3px; left: 3px; right: 3px; height: 6px; cursor: ns-resize; }
+        .resize-handle-s { bottom: -3px; left: 3px; right: 3px; height: 6px; cursor: ns-resize; }
+        .resize-handle-e { top: 3px; bottom: 3px; right: -3px; width: 6px; cursor: ew-resize; }
+        .resize-handle-w { top: 3px; bottom: 3px; left: -3px; width: 6px; cursor: ew-resize; }
+        .resize-handle-nw { top: -3px; left: -3px; width: 6px; height: 6px; cursor: nwse-resize; }
+        .resize-handle-ne { top: -3px; right: -3px; width: 6px; height: 6px; cursor: nesw-resize; }
+        .resize-handle-sw { bottom: -3px; left: -3px; width: 6px; height: 6px; cursor: nesw-resize; }
+        .resize-handle-se { bottom: -3px; right: -3px; width: 6px; height: 6px; cursor: nwse-resize; }
+
+    </style>
+</head>
+<body class="select-none overflow-hidden text-black">
+
+    <!-- Desktop Area -->
+    <div id="desktop" class="fixed inset-0 w-full h-full">
+        <!-- Desktop icons will be appended here by JavaScript -->
+    </div>
+
+    <!-- Windows Area: Windows will be appended here by JavaScript -->
+    <div id="windows-container" class="fixed inset-0 w-full h-full pointer-events-none">
+        <!-- Windows are pointer-events-auto -->
+    </div>
+    
+    <!-- Start Menu -->
+    <div id="startMenu" class="hidden fixed bottom-[30px] left-0 w-[380px] h-[480px] bg-gradient-to-b from-[#2E66D2] to-[#4A8CF7] border-t-2 border-l-2 border-r-2 border-white shadow-2xl text-white text-sm z-[10000]">
+        <!-- User Header -->
+        <div class="h-[60px] bg-gradient-to-b from-[#619AEB] to-[#3F77D4] flex items-center p-2 border-b border-gray-500">
+            <div class="w-10 h-10 bg-gray-200 border-2 border-dashed rounded-sm mr-2"></div>
+            <span class="font-bold text-lg">User</span>
+        </div>
+        
+        <!-- Menu Body -->
+        <div class="flex h-[378px]">
+            <!-- Left Pane (Pinned/Frequent) -->
+            <div class="w-1/2 bg-white text-black p-1 space-y-1 border-r border-gray-400">
+                <div class="flex items-center p-2 hover:bg-[#316AC5] hover:text-white cursor-pointer start-menu-item" data-action="openInternet">
+                    <div class="bg-gray-200 border-2 border-dashed rounded-sm w-8 h-8 mr-2"></div> Internet Explorer
+                </div>
+                <div class="flex items-center p-2 hover:bg-[#316AC5] hover:text-white cursor-pointer start-menu-item" data-action="openEmail">
+                    <div class="bg-gray-200 border-2 border-dashed rounded-sm w-8 h-8 mr-2"></div> Outlook Express
+                </div>
+                <hr class="my-1 border-gray-300">
+                <div class="flex items-center p-2 hover:bg-[#316AC5] hover:text-white cursor-pointer start-menu-item" data-action="openNotepad">
+                    <div class="bg-gray-200 border-2 border-dashed rounded-sm w-8 h-8 mr-2"></div> Notepad
+                </div>
+                <div class="flex items-center p-2 hover:bg-[#316AC5] hover:text-white cursor-pointer start-menu-item" data-action="openPaint">
+                    <div class="bg-gray-200 border-2 border-dashed rounded-sm w-8 h-8 mr-2"></div> Paint
+                </div>
+                 <div class="flex items-center p-2 hover:bg-[#316AC5] hover:text-white cursor-pointer start-menu-item" data-action="openMyComputer">
+                    <div class="bg-gray-200 border-2 border-dashed rounded-sm w-8 h-8 mr-2"></div> My Computer
+                </div>
+            </div>
+            <!-- Right Pane (System Folders) -->
+            <div class="w-1/2 p-1 space-y-1">
+                <div class="flex items-center p-2 hover:bg-[#548AEC] cursor-pointer start-menu-item" data-action="openMyDocuments">
+                    <div class="bg-gray-200 border-2 border-dashed rounded-sm w-8 h-8 mr-2"></div> My Documents
+                </div>
+                <div class="flex items-center p-2 hover:bg-[#548AEC] cursor-pointer start-menu-item" data-action="openMyPictures">
+                    <div class="bg-gray-200 border-2 border-dashed rounded-sm w-8 h-8 mr-2"></div> My Pictures
+                </div>
+                <div class="flex items-center p-2 hover:bg-[#548AEC] cursor-pointer start-menu-item" data-action="openMyMusic">
+                    <div class="bg-gray-200 border-2 border-dashed rounded-sm w-8 h-8 mr-2"></div> My Music
+                </div>
+                <hr class="my-1 border-gray-500">
+                <div class="flex items-center p-2 hover:bg-[#548AEC] cursor-pointer start-menu-item" data-action="openControlPanel">
+                    <div class="bg-gray-200 border-2 border-dashed rounded-sm w-8 h-8 mr-2"></div> Control Panel
+                </div>
+                <hr class="my-1 border-gray-500">
+                <div class="flex items-center p-2 hover:bg-[#548AEC] cursor-pointer start-menu-item" data-action="openHelp">
+                    <div class="bg-gray-200 border-2 border-dashed rounded-sm w-8 h-8 mr-2"></div> Help and Support
+                </div>
+                <div class="flex items-center p-2 hover:bg-[#548AEC] cursor-pointer start-menu-item" data-action="openSearch">
+                    <div class="bg-gray-200 border-2 border-dashed rounded-sm w-8 h-8 mr-2"></div> Search
+                </div>
+                <div class="flex items-center p-2 hover:bg-[#548AEC] cursor-pointer start-menu-item" data-action="openRun">
+                    <div class="bg-gray-200 border-2 border-dashed rounded-sm w-8 h-8 mr-2"></div> Run...
+                </div>
+            </div>
+        </div>
+
+        <!-- Footer Buttons -->
+        <div class="h-[40px] bg-gradient-to-b from-[#265CB1] to-[#3874D3] flex justify-end items-center p-1 space-x-2 border-t border-gray-500">
+            <button class="flex items-center text-white px-2 py-1 hover:bg-[#548AEC]">
+                <svg class="w-5 h-5 mr-1" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm-1-13h2v6h-2zm0 8h2v2h-2z"/></svg> <!-- Placeholder icon -->
+                Log Off
+            </button>
+            <button class="flex items-center text-white px-2 py-1 hover:bg-[#548AEC]">
+                <svg class="w-5 h-5 mr-1 text-red-500" viewBox="0 0 24 24" fill="currentColor"><path d="M13.414 12l5.293-5.293a1 1 0 00-1.414-1.414L12 10.586 6.707 5.293a1 1 0 00-1.414 1.414L10.586 12l-5.293 5.293a1 1 0 101.414 1.414L12 13.414l5.293 5.293a1 1 0 001.414-1.414L13.414 12z"/></svg> <!-- Placeholder power icon -->
+                Turn Off Computer
+            </button>
+        </div>
+    </div>
+
+    <!-- Taskbar -->
+    <div id="taskbar" class="fixed bottom-0 left-0 right-0 h-[30px] bg-gradient-to-b from-[#245EDC] via-[#3F8CF1] to-[#3B77D4] flex items-center px-1 z-[9999] border-t border-[#4A8CF7]">
+        <!-- Start Button -->
+        <button id="startButton" class="h-[26px] bg-gradient-to-r from-[#7BCB60] via-[#59B53F] to-[#3E862C] text-white font-bold italic px-3 rounded-r-lg rounded-l-sm shadow-md hover:from-[#8BD570] hover:to-[#4E963C] active:from-[#3E862C] active:to-[#59B53F] flex items-center">
+            <svg class="w-5 h-5 mr-1" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M3 5H7V9H3V5Z" fill="#F1514C"/>
+                <path d="M9 5H13V9H9V5Z" fill="#80CC28"/>
+                <path d="M3 11H7V15H3V11Z" fill="#00ADEF"/>
+                <path d="M9 11H13V15H9V11Z" fill="#F9B400"/>
+            </svg>
+            start
+        </button>
+
+        <!-- Quick Launch (Simplified) -->
+        <div id="quickLaunch" class="flex items-center h-full ml-2 border-l border-r border-[#3B77D4] border-opacity-50 px-1">
+            <!-- Placeholder icon -->
+             <div class="bg-gray-200 border-2 border-dashed rounded-sm w-5 h-5 mx-1 cursor-pointer hover:bg-blue-400"></div>
+             <div class="bg-gray-200 border-2 border-dashed rounded-sm w-5 h-5 mx-1 cursor-pointer hover:bg-blue-400"></div>
+        </div>
+
+        <!-- Window Tabs Area -->
+        <div id="taskbarWindows" class="flex-grow h-full flex items-center overflow-x-auto px-1">
+            <!-- Taskbar buttons for open windows will be appended here -->
+        </div>
+
+        <!-- System Tray -->
+        <div id="systemTray" class="h-full flex items-center bg-[#3B77D4] bg-opacity-70 border-l border-[#3B77D4] border-opacity-50 px-2">
+            <!-- Placeholder tray icons -->
+            <div class="bg-gray-200 border-2 border-dashed rounded-sm w-4 h-4 mx-px"></div>
+            <div class="bg-gray-200 border-2 border-dashed rounded-sm w-4 h-4 mx-px"></div>
+            <div id="clock" class="text-white text-xs ml-2">12:00 PM</div>
+        </div>
+    </div>
+
+<script>
+const state = {
+    windows: [],
+    nextZIndex: 10,
+    activeWindowId: null,
+    isStartMenuOpen: false,
+    desktopIcons: [
+        { id: 'my-computer', name: 'My Computer', iconClass: 'bg-blue-100', x: 30, y: 30, action: () => openDefaultWindow('My Computer', 'Contents of My Computer...') },
+        { id: 'recycle-bin', name: 'Recycle Bin', iconClass: 'bg-gray-400', x: 30, y: 110, action: () => openDefaultWindow('Recycle Bin', 'Recycle Bin is empty.') },
+        { id: 'notepad', name: 'Notepad', iconClass: 'bg-white', x:30, y: 190, action: () => openNotepad() }
+    ],
+    draggingElement: null, // { type: 'window'/'icon', id: '...', el: HTMLElement, offsetX, offsetY }
+    resizingWindow: null, // { id: '...', el: HTMLElement, direction: 'se', startX, startY, startWidth, startHeight }
+    nextWindowId: 1,
+};
+
+// DOM Elements
+const desktopEl = document.getElementById('desktop');
+const windowsContainerEl = document.getElementById('windows-container');
+const startButtonEl = document.getElementById('startButton');
+const startMenuEl = document.getElementById('startMenu');
+const taskbarWindowsEl = document.getElementById('taskbarWindows');
+const clockEl = document.getElementById('clock');
+
+// --- UTILITY FUNCTIONS ---
+function getWindowById(id) {
+    return state.windows.find(w => w.id === id);
+}
+
+function getIconById(id) {
+    return state.desktopIcons.find(icon => icon.id === id);
+}
+
+// --- RENDER FUNCTIONS ---
+function renderDesktopIcons() {
+    desktopEl.innerHTML = ''; // Clear existing icons (except windows)
+    state.desktopIcons.forEach(icon => {
+        const iconEl = document.createElement('div');
+        iconEl.id = `icon-${icon.id}`;
+        iconEl.className = 'absolute w-20 h-24 flex flex-col items-center p-1 cursor-pointer hover:bg-blue-500 hover:bg-opacity-30';
+        iconEl.style.left = `${icon.x}px`;
+        iconEl.style.top = `${icon.y}px`;
+        iconEl.innerHTML = `
+            <div class="bg-gray-200 border-2 border-dashed rounded-xl w-12 h-12 ${icon.iconClass}"></div>
+            <span class="text-white text-xs text-center mt-1 shadow-black" style="text-shadow: 1px 1px 1px black;">${icon.name}</span>
+        `;
+        iconEl.addEventListener('dblclick', () => {
+            if (icon.action) icon.action();
+            toggleStartMenu(false); // Close start menu if open
+        });
+        iconEl.addEventListener('mousedown', (e) => startDragIcon(e, icon.id));
+        desktopEl.appendChild(iconEl);
+    });
+}
+
+function renderWindows() {
+    // This function re-renders all windows. More efficient would be to update existing ones.
+    // For simplicity here, we re-create, but actual manipulation of existing DOMs is better.
+    // The current approach focuses on creating/removing window DOMs based on state.
+    // Actual window elements are managed individually for updates (pos, size, zIndex).
+}
+
+function renderTaskbar() {
+    taskbarWindowsEl.innerHTML = '';
+    state.windows.forEach(win => {
+        const btn = document.createElement('button');
+        btn.className = `taskbar-button h-[24px] min-w-[100px] max-w-[160px] text-white text-xs px-2 mx-px flex items-center truncate ${win.id === state.activeWindowId && !win.isMinimized ? 'active' : 'inactive'}`;
+        btn.style.backgroundColor = (win.id === state.activeWindowId && !win.isMinimized) ? '#3A81CE' : '#2A5FAA'; // Simplified colors
+        if (win.id === state.activeWindowId && !win.isMinimized) {
+             btn.classList.add('font-bold'); // Make active taskbar button text bold
+        }
+
+        // Placeholder icon for taskbar button
+        const iconPlaceholder = `<div class="bg-gray-200 border-2 border-dashed rounded-sm w-4 h-4 mr-1 flex-shrink-0"></div>`;
+        btn.innerHTML = `${iconPlaceholder}<span class="truncate">${win.title}</span>`;
+        
+        btn.onclick = () => {
+            const windowData = getWindowById(win.id);
+            if (windowData.isMinimized) {
+                restoreWindow(win.id);
+            } else {
+                if (win.id === state.activeWindowId) {
+                    minimizeWindow(win.id);
+                } else {
+                    focusWindow(win.id);
+                }
+            }
+        };
+        taskbarWindowsEl.appendChild(btn);
+    });
+}
+
+function updateClock() {
+    const now = new Date();
+    clockEl.textContent = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+}
+
+// --- WINDOW MANAGEMENT ---
+function createWindowElement(winData) {
+    const winEl = document.createElement('div');
+    winEl.id = winData.id;
+    winEl.className = `window absolute flex flex-col bg-[#ECE9D8] border border-[#0058E6] shadow-lg pointer-events-auto`;
+    winEl.style.left = `${winData.x}px`;
+    winEl.style.top = `${winData.y}px`;
+    winEl.style.width = `${winData.width}px`;
+    winEl.style.height = `${winData.height}px`;
+    winEl.style.zIndex = winData.zIndex;
+    winEl.style.display = winData.isMinimized ? 'none' : 'flex';
+
+    const titleBarClass = winData.isFocused 
+        ? 'bg-gradient-to-r from-[#0058E6] via-[#127BEE] to-[#0058E6]' 
+        : 'bg-gradient-to-r from-[#7FA9E8] via-[#9BC3F4] to-[#7FA9E8]';
+    const titleTextColor = winData.isFocused ? 'text-white' : 'text-gray-700';
+
+    winEl.innerHTML = `
+        <div class="title-bar h-[28px] flex items-center justify-between px-1 ${titleBarClass} cursor-move">
+            <div class="flex items-center">
+                <div class="bg-gray-200 border-2 border-dashed rounded-sm w-4 h-4 mr-1"></div> <!-- Placeholder icon -->
+                <span class="font-bold text-xs ${titleTextColor} truncate">${winData.title}</span>
+            </div>
+            <div class="flex space-x-px">
+                <button class="minimize-btn bg-[#DFDFDF] hover:bg-[#C0C0C0] w-5 h-5 flex items-center justify-center border-t-[#fff] border-l-[#fff] border-r-[#808080] border-b-[#808080] border">
+                    <svg width="8" height="2" viewBox="0 0 8 2" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M0 0H8V2H0V0Z" fill="black"/></svg>
+                </button>
+                <button class="maximize-restore-btn bg-[#DFDFDF] hover:bg-[#C0C0C0] w-5 h-5 flex items-center justify-center border-t-[#fff] border-l-[#fff] border-r-[#808080] border-b-[#808080] border">
+                    ${winData.isMaximized 
+                        ? `<svg width="9" height="9" viewBox="0 0 9 9" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M2 0H7V1H8V2H9V7H8V8H7V9H2V8H1V7H0V2H1V1H2V0ZM1 2V7H2V8H7V7H8V2H7V1H2V2H1Z" fill="black"/><path d="M2 2H7V7H2V2Z" fill="white"/><path d="M3 3H6V6H3V3Z" fill="#DFDFDF"/></svg>` // Restore (simplified)
+                        : `<svg width="9" height="9" viewBox="0 0 9 9" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M0 0H9V9H0V0ZM1 1V8H8V1H1Z" fill="black"/></svg>` // Maximize
+                    }
+                </button>
+                <button class="close-btn bg-[#E81123] hover:bg-[#F1707A] w-5 h-5 flex items-center justify-center border-t-[#fff] border-l-[#fff] border-r-[#808080] border-b-[#808080] border">
+                    <svg width="8" height="7" viewBox="0 0 8 7" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M0.687284 0L0 0.730023L2.62543 3.5L0 6.26998L0.687284 7L3.31272 4.23002L5.93815 7L6.62543 6.26998L4 3.5L6.62543 0.730023L5.93815 0L3.31272 2.76998L0.687284 0Z" fill="white"/></svg>
+                </button>
+            </div>
+        </div>
+        <div class="content flex-grow p-1 overflow-auto xp-scrollable">
+            ${winData.contentHTML}
+        </div>
+        <div class="status-bar h-[20px] bg-gray-200 border-t border-gray-300 text-xs px-2 flex items-center">
+            Status: Ready
+        </div>
+        <div class="resize-handle resize-handle-n" data-direction="n"></div>
+        <div class="resize-handle resize-handle-s" data-direction="s"></div>
+        <div class="resize-handle resize-handle-e" data-direction="e"></div>
+        <div class="resize-handle resize-handle-w" data-direction="w"></div>
+        <div class="resize-handle resize-handle-nw" data-direction="nw"></div>
+        <div class="resize-handle resize-handle-ne" data-direction="ne"></div>
+        <div class="resize-handle resize-handle-sw" data-direction="sw"></div>
+        <div class="resize-handle resize-handle-se" data-direction="se"></div>
+    `;
+
+    // Event Listeners for the window
+    winEl.addEventListener('mousedown', () => focusWindow(winData.id));
+    winEl.querySelector('.title-bar').addEventListener('mousedown', (e) => startDragWindow(e, winData.id));
+    winEl.querySelector('.close-btn').addEventListener('click', (e) => { e.stopPropagation(); closeWindow(winData.id); });
+    winEl.querySelector('.minimize-btn').addEventListener('click', (e) => { e.stopPropagation(); minimizeWindow(winData.id); });
+    winEl.querySelector('.maximize-restore-btn').addEventListener('click', (e) => {
+        e.stopPropagation();
+        if (winData.isMaximized) restoreWindow(winData.id, true); // Restore from maximized
+        else maximizeWindow(winData.id);
+    });
+
+    winEl.querySelectorAll('.resize-handle').forEach(handle => {
+        handle.addEventListener('mousedown', (e) => startResizeWindow(e, winData.id, handle.dataset.direction));
+    });
+
+    windowsContainerEl.appendChild(winEl);
+    return winEl;
+}
+
+function updateWindowElement(winData) {
+    const winEl = document.getElementById(winData.id);
+    if (!winEl) return;
+
+    winEl.style.left = `${winData.x}px`;
+    winEl.style.top = `${winData.y}px`;
+    winEl.style.width = `${winData.width}px`;
+    winEl.style.height = `${winData.height}px`;
+    winEl.style.zIndex = winData.zIndex;
+    winEl.style.display = winData.isMinimized ? 'none' : 'flex';
+    
+    const titleBar = winEl.querySelector('.title-bar');
+    const titleText = titleBar.querySelector('span');
+    if (winData.isFocused) {
+        titleBar.className = 'title-bar h-[28px] flex items-center justify-between px-1 bg-gradient-to-r from-[#0058E6] via-[#127BEE] to-[#0058E6] cursor-move';
+        titleText.className = 'font-bold text-xs text-white truncate';
+        winEl.classList.remove('border-[#7FA9E8]'); // inactive border
+        winEl.classList.add('border-[#0058E6]'); // active border
+    } else {
+        titleBar.className = 'title-bar h-[28px] flex items-center justify-between px-1 bg-gradient-to-r from-[#7FA9E8] via-[#9BC3F4] to-[#7FA9E8] cursor-move';
+        titleText.className = 'font-bold text-xs text-gray-700 truncate';
+        winEl.classList.remove('border-[#0058E6]'); // active border
+        winEl.classList.add('border-[#7FA9E8]'); // inactive border
+    }
+
+    // Update maximize/restore button icon
+    const maxRestoreBtn = winEl.querySelector('.maximize-restore-btn');
+    maxRestoreBtn.innerHTML = winData.isMaximized 
+        ? `<svg width="9" height="9" viewBox="0 0 9 9" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M2 0H7V1H8V2H9V7H8V8H7V9H2V8H1V7H0V2H1V1H2V0ZM1 2V7H2V8H7V7H8V2H7V1H2V2H1Z" fill="black"/><path d="M2 2H7V7H2V2Z" fill="white"/><path d="M3 3H6V6H3V3Z" fill="#DFDFDF"/></svg>`
+        : `<svg width="9" height="9" viewBox="0 0 9 9" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M0 0H9V9H0V0ZM1 1V8H8V1H1Z" fill="black"/></svg>`;
+}
+
+
+function openWindow(options) {
+    const defaultOptions = {
+        title: 'Untitled',
+        contentHTML: '<div>Empty Window</div>',
+        x: Math.random() * (desktopEl.offsetWidth - 400),
+        y: Math.random() * (desktopEl.offsetHeight - 300 - 30), // -30 for taskbar
+        width: 400,
+        height: 300,
+        minWidth: 200,
+        minHeight: 150,
+    };
+    const winData = {
+        ...defaultOptions,
+        ...options,
+        id: `window-${state.nextWindowId++}`,
+        zIndex: state.nextZIndex++,
+        isMinimized: false,
+        isMaximized: false,
+        isFocused: false,
+        // Store original dimensions for restoring from maximized
+        prevX: options.x || defaultOptions.x,
+        prevY: options.y || defaultOptions.y,
+        prevWidth: options.width || defaultOptions.width,
+        prevHeight: options.height || defaultOptions.height,
+    };
+    
+    state.windows.push(winData);
+    createWindowElement(winData);
+    focusWindow(winData.id); // New windows get focus
+    renderTaskbar();
+    toggleStartMenu(false);
+}
+
+function openDefaultWindow(title, content) {
+    openWindow({ title, contentHTML: `<p class="p-2">${content}</p>` });
+}
+
+function openNotepad() {
+    openWindow({
+        title: 'Notepad',
+        contentHTML: `<textarea class="w-full h-full border-0 focus:ring-0 resize-none p-1 font-mono text-sm bg-white" spellcheck="false"></textarea>`,
+        width: 500,
+        height: 400
+    });
+}
+
+function focusWindow(id) {
+    if (state.activeWindowId === id) return; // Already focused
+
+    state.windows.forEach(w => {
+        w.isFocused = (w.id === id);
+        if (w.isFocused) {
+            w.zIndex = state.nextZIndex++;
+            state.activeWindowId = id;
+        }
+        updateWindowElement(w); // Update style based on focus
+    });
+    renderTaskbar(); // Update taskbar button style
+}
+
+function closeWindow(id) {
+    state.windows = state.windows.filter(w => w.id !== id);
+    const winEl = document.getElementById(id);
+    if (winEl) winEl.remove();
+    
+    if (state.activeWindowId === id) {
+        state.activeWindowId = null;
+        // Focus the top-most remaining window if any
+        if (state.windows.length > 0) {
+            const topWindow = state.windows.reduce((a, b) => a.zIndex > b.zIndex ? a : b);
+            focusWindow(topWindow.id);
+        }
+    }
+    renderTaskbar();
+}
+
+function minimizeWindow(id) {
+    const win = getWindowById(id);
+    if (!win) return;
+    win.isMinimized = true;
+    win.isFocused = false; // Minimized windows are not focused
+    updateWindowElement(win);
+
+    if (state.activeWindowId === id) {
+        state.activeWindowId = null;
+         // Focus the next available top-most window
+        const availableWindows = state.windows.filter(w => !w.isMinimized);
+        if (availableWindows.length > 0) {
+            const topWindow = availableWindows.reduce((a,b) => a.zIndex > b.zIndex ? a : b);
+            focusWindow(topWindow.id);
+        }
+    }
+    renderTaskbar();
+}
+
+function maximizeWindow(id) {
+    const win = getWindowById(id);
+    if (!win || win.isMaximized) return;
+
+    win.prevX = win.x;
+    win.prevY = win.y;
+    win.prevWidth = win.width;
+    win.prevHeight = win.height;
+
+    const taskbarHeight = taskbar.offsetHeight;
+    win.x = 0;
+    win.y = 0;
+    win.width = desktopEl.offsetWidth;
+    win.height = desktopEl.offsetHeight - taskbarHeight;
+    
+    win.isMaximized = true;
+    win.isMinimized = false; // Ensure not minimized
+    updateWindowElement(win);
+    focusWindow(id); // Maximizing should focus
+}
+
+function restoreWindow(id, fromMaximized = false) {
+    const win = getWindowById(id);
+    if (!win) return;
+
+    if (win.isMaximized || fromMaximized) {
+        win.x = win.prevX;
+        win.y = win.prevY;
+        win.width = win.prevWidth;
+        win.height = win.prevHeight;
+        win.isMaximized = false;
+    }
+    
+    win.isMinimized = false;
+    updateWindowElement(win);
+    focusWindow(id); // Restoring should focus
+}
+
+// --- START MENU ---
+function toggleStartMenu(forceState) {
+    state.isStartMenuOpen = forceState !== undefined ? forceState : !state.isStartMenuOpen;
+    startMenuEl.classList.toggle('hidden', !state.isStartMenuOpen);
+    if (state.isStartMenuOpen) {
+        startButtonEl.classList.add('bg-opacity-80'); // Indicate active start button
+    } else {
+        startButtonEl.classList.remove('bg-opacity-80');
+    }
+}
+
+
+// --- DRAGGING AND RESIZING ---
+function startDragWindow(event, id) {
+    event.preventDefault();
+    event.stopPropagation();
+    const win = getWindowById(id);
+    if (!win || win.isMaximized) return; // Cannot drag maximized windows
+
+    focusWindow(id); // Bring to front and set active style
+
+    state.draggingElement = {
+        type: 'window',
+        id: id,
+        el: document.getElementById(id),
+        offsetX: event.clientX - win.x,
+        offsetY: event.clientY - win.y,
+    };
+    document.body.style.cursor = 'move';
+}
+
+function startDragIcon(event, id) {
+    event.preventDefault();
+    event.stopPropagation();
+    const icon = getIconById(id);
+    const iconEl = document.getElementById(`icon-${id}`);
+    if (!icon || !iconEl) return;
+
+    state.draggingElement = {
+        type: 'icon',
+        id: id,
+        el: iconEl,
+        offsetX: event.clientX - icon.x,
+        offsetY: event.clientY - icon.y,
+    };
+    document.body.style.cursor = 'grabbing'; // Or appropriate cursor
+}
+
+function startResizeWindow(event, id, direction) {
+    event.preventDefault();
+    event.stopPropagation();
+    const win = getWindowById(id);
+    const winEl = document.getElementById(id);
+    if (!win || win.isMaximized) return; // Cannot resize maximized windows
+
+    focusWindow(id);
+
+    state.resizingWindow = {
+        id: id,
+        el: winEl,
+        direction: direction,
+        startX: event.clientX,
+        startY: event.clientY,
+        startWidth: win.width,
+        startHeight: win.height,
+        startLeft: win.x,
+        startTop: win.y,
+    };
+    // Set appropriate cursor based on direction
+    const handle = event.target;
+    document.body.style.cursor = getComputedStyle(handle).cursor;
+}
+
+function handleMouseMove(event) {
+    if (state.draggingElement) {
+        const dragInfo = state.draggingElement;
+        const el = dragInfo.el;
+        let newX = event.clientX - dragInfo.offsetX;
+        let newY = event.clientY - dragInfo.offsetY;
+
+        if (dragInfo.type === 'window') {
+            const win = getWindowById(dragInfo.id);
+            // Constrain window dragging to be somewhat visible (e.g., title bar always on screen)
+            const taskbarHeight = taskbar.offsetHeight;
+            newX = Math.max(-win.width + 40, Math.min(newX, desktopEl.offsetWidth - 40));
+            newY = Math.max(0, Math.min(newY, desktopEl.offsetHeight - taskbarHeight - 28)); // 28 for title bar height
+            
+            win.x = newX;
+            win.y = newY;
+            el.style.left = `${newX}px`;
+            el.style.top = `${newY}px`;
+        } else if (dragInfo.type === 'icon') {
+            const icon = getIconById(dragInfo.id);
+            newX = Math.max(0, Math.min(newX, desktopEl.offsetWidth - el.offsetWidth));
+            newY = Math.max(0, Math.min(newY, desktopEl.offsetHeight - taskbar.offsetHeight - el.offsetHeight));
+            icon.x = newX;
+            icon.y = newY;
+            el.style.left = `${newX}px`;
+            el.style.top = `${newY}px`;
+        }
+    } else if (state.resizingWindow) {
+        const resizeInfo = state.resizingWindow;
+        const win = getWindowById(resizeInfo.id);
+        const el = resizeInfo.el;
+
+        const dx = event.clientX - resizeInfo.startX;
+        const dy = event.clientY - resizeInfo.startY;
+
+        let newWidth = resizeInfo.startWidth;
+        let newHeight = resizeInfo.startHeight;
+        let newLeft = resizeInfo.startLeft;
+        let newTop = resizeInfo.startTop;
+
+        if (resizeInfo.direction.includes('e')) {
+            newWidth = Math.max(win.minWidth, resizeInfo.startWidth + dx);
+        }
+        if (resizeInfo.direction.includes('s')) {
+            newHeight = Math.max(win.minHeight, resizeInfo.startHeight + dy);
+        }
+        if (resizeInfo.direction.includes('w')) {
+            newWidth = Math.max(win.minWidth, resizeInfo.startWidth - dx);
+            if (newWidth > win.minWidth || (resizeInfo.startWidth - dx) > win.minWidth ) { // only change left if width actually changes
+                 newLeft = resizeInfo.startLeft + dx;
+            } else { // if minWidth is hit, newLeft should be startLeft + (startWidth - minWidth)
+                 newLeft = resizeInfo.startLeft + (resizeInfo.startWidth - win.minWidth);
+            }
+        }
+        if (resizeInfo.direction.includes('n')) {
+            newHeight = Math.max(win.minHeight, resizeInfo.startHeight - dy);
+            if (newHeight > win.minHeight || (resizeInfo.startHeight - dy) > win.minHeight) {
+                newTop = resizeInfo.startTop + dy;
+            } else {
+                 newTop = resizeInfo.startTop + (resizeInfo.startHeight - win.minHeight);
+            }
+        }
+        
+        // Update window state
+        win.width = newWidth;
+        win.height = newHeight;
+        win.x = newLeft;
+        win.y = newTop;
+
+        // Update element style
+        el.style.width = `${newWidth}px`;
+        el.style.height = `${newHeight}px`;
+        el.style.left = `${newLeft}px`;
+        el.style.top = `${newTop}px`;
+    }
+}
+
+function handleMouseUp() {
+    if (state.draggingElement) {
+        if (state.draggingElement.type === 'window') {
+            const win = getWindowById(state.draggingElement.id);
+            if (win) { // Update prevX/Y for potential maximization later
+                 win.prevX = win.x; win.prevY = win.y;
+            }
+        }
+    }
+    state.draggingElement = null;
+    state.resizingWindow = null;
+    document.body.style.cursor = 'default';
+}
+
+
+// --- EVENT LISTENERS ---
+startButtonEl.addEventListener('click', (e) => {
+    e.stopPropagation();
+    toggleStartMenu();
+});
+
+document.addEventListener('click', (e) => {
+    // Close Start Menu if clicking outside of it and not on the Start Button
+    if (state.isStartMenuOpen && !startMenuEl.contains(e.target) && e.target !== startButtonEl && !startButtonEl.contains(e.target)) {
+        toggleStartMenu(false);
+    }
+});
+
+document.addEventListener('mousemove', handleMouseMove);
+document.addEventListener('mouseup', handleMouseUp);
+
+// Start Menu Item Clicks
+document.querySelectorAll('.start-menu-item').forEach(item => {
+    item.addEventListener('click', () => {
+        const action = item.dataset.action;
+        switch(action) {
+            case 'openInternet': openDefaultWindow('Internet Explorer', 'Welcome to Internet Explorer!'); break;
+            case 'openEmail': openDefaultWindow('Outlook Express', 'Your inbox is empty.'); break;
+            case 'openNotepad': openNotepad(); break;
+            case 'openPaint': openDefaultWindow('Paint', 'Paint canvas placeholder.'); break;
+            case 'openMyComputer': openDefaultWindow('My Computer', '<div class="p-2"> C: (Local Disk) <br/> D: (CD Drive) </div>'); break;
+            case 'openMyDocuments': openDefaultWindow('My Documents', 'Folder is empty.'); break;
+            // Add more cases for other Start Menu items
+            default: console.log('Action:', action);
+        }
+        toggleStartMenu(false);
+    });
+});
+
+window.addEventListener('resize', () => {
+    // Handle maximized windows on browser resize
+    state.windows.forEach(win => {
+        if (win.isMaximized) {
+            const taskbarHeight = taskbar.offsetHeight;
+            win.width = desktopEl.offsetWidth;
+            win.height = desktopEl.offsetHeight - taskbarHeight;
+            updateWindowElement(win);
+        }
+    });
+    // Re-render desktop icons if their positions depend on screen size (not currently, but good practice)
+    // renderDesktopIcons(); 
+});
+
+
+// --- INITIALIZATION ---
+function init() {
+    renderDesktopIcons();
+    updateClock();
+    setInterval(updateClock, 1000); // Update clock every second
+
+    // Example: Open a welcome window
+    openWindow({
+        title: 'Welcome to Windows XP Clone',
+        contentHTML: `
+            <div class="p-4">
+                <h2 class="text-lg font-bold mb-2">Welcome!</h2>
+                <p>This is a simplified clone of Windows XP's UI, created with HTML, Tailwind CSS, and JavaScript.</p>
+                <p class="mt-2">Try:</p>
+                <ul class="list-disc list-inside ml-4">
+                    <li>Clicking the Start button.</li>
+                    <li>Dragging desktop icons or windows.</li>
+                    <li>Opening applications from the Start Menu or desktop icons.</li>
+                    <li>Minimizing, maximizing, and closing windows.</li>
+                    <li>Resizing windows from their edges/corners.</li>
+                </ul>
+                <p class="mt-4 text-xs">Note: This is a visual clone with basic interactivity, not a full OS.</p>
+            </div>
+        `,
+        x: 50, y: 50, width: 500, height: 350
+    });
+}
+
+// Start the "OS"
+init();
+
+</script>
+</body>
+</html>

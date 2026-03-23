@@ -1,0 +1,9 @@
+{
+  "web_id": "web_51",
+  "task_id": 1,
+  "task_type": "dynamic",
+  "instruction": "Task: Enter a text prompt into the designated input field and click the 'Generate' button.\nExpected Result: A pre-defined visual component or a placeholder representing the generated UI appears in the live preview pane.\n\nNote: The task is only considered successful if the expected result is achieved; otherwise, it is deemed infeasible.",
+  "max_steps": 15,
+  "expected": "A pre-defined visual component or a placeholder representing the generated UI appears in the live preview pane.",
+  "label": 0
+}

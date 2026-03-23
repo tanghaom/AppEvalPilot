@@ -1,0 +1,9 @@
+{
+  "web_id": "web_53",
+  "task_id": 5,
+  "task_type": "dynamic",
+  "instruction": "Task: Hover over a data point on a portfolio performance chart.\nExpected Result: A tooltip with specific performance data (e.g., value, date) for that data point is displayed on the chart.\n\nNote: The task is only considered successful if the expected result is achieved; otherwise, it is deemed infeasible.",
+  "max_steps": 15,
+  "expected": "A tooltip with specific performance data (e.g., value, date) for that data point is displayed on the chart.",
+  "label": 0
+}

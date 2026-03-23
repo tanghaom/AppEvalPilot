@@ -1,0 +1,9 @@
+{
+  "web_id": "web_16",
+  "task_id": 2,
+  "task_type": "dynamic",
+  "instruction": "Task: Click a movie/TV show from the search suggestions dropdown.\nExpected Result: The application displays a (simulated) details page for the selected item, showing its title, year, poster, plot, etc.\n\nNote: The task is only considered successful if the expected result is achieved; otherwise, it is deemed infeasible.",
+  "max_steps": 15,
+  "expected": "The application displays a (simulated) details page for the selected item, showing its title, year, poster, plot, etc.",
+  "label": 0
+}

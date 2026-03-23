@@ -1,0 +1,396 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Immersive Sphere Experience</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <style>
+        body { margin: 0; overflow: hidden; font-family: 'Inter', sans-serif; }
+        canvas { display: block; }
+        /* Custom Tailwind JIT class for backdrop blur (if needed, though Tailwind supports it) */
+        .backdrop-blur-sm { backdrop-filter: blur(4px); }
+    </style>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: {
+                            DEFAULT: '#111827', // gray-900
+                            light: '#1F2937' // gray-800
+                        },
+                        accent: {
+                            DEFAULT: '#4F46E5', // indigo-600
+                            hover: '#6366F1' // indigo-500
+                        },
+                        textlight: '#F3F4F6' // gray-100
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    },
+                }
+            }
+        }
+    </script>
+</head>
+<body class="bg-primary-DEFAULT text-textlight">
+
+    <div id="canvas-container" class="w-screen h-screen"></div>
+
+    <div id="controls" class="fixed bottom-6 sm:bottom-8 left-1/2 -translate-x-1/2 flex space-x-2 sm:space-x-3 z-50 p-3 sm:p-4 bg-primary-light/80 backdrop-blur-sm rounded-xl shadow-2xl">
+        <button data-choice="whisper" class="control-button px-4 py-2 sm:px-5 sm:py-2.5 bg-accent-DEFAULT text-white font-semibold rounded-lg shadow-md hover:bg-accent-hover focus:outline-none focus:ring-2 focus:ring-indigo-400 focus:ring-opacity-75 transition-all duration-150 text-xs sm:text-sm">Whisper</button>
+        <button data-choice="observe" class="control-button px-4 py-2 sm:px-5 sm:py-2.5 bg-accent-DEFAULT text-white font-semibold rounded-lg shadow-md hover:bg-accent-hover focus:outline-none focus:ring-2 focus:ring-indigo-400 focus:ring-opacity-75 transition-all duration-150 text-xs sm:text-sm">Observe</button>
+        <button data-choice="resist" class="control-button px-4 py-2 sm:px-5 sm:py-2.5 bg-accent-DEFAULT text-white font-semibold rounded-lg shadow-md hover:bg-accent-hover focus:outline-none focus:ring-2 focus:ring-indigo-400 focus:ring-opacity-75 transition-all duration-150 text-xs sm:text-sm">Resist</button>
+        <button data-choice="ponder" class="control-button px-4 py-2 sm:px-5 sm:py-2.5 bg-accent-DEFAULT text-white font-semibold rounded-lg shadow-md hover:bg-accent-hover focus:outline-none focus:ring-2 focus:ring-indigo-400 focus:ring-opacity-75 transition-all duration-150 text-xs sm:text-sm">Ponder</button>
+    </div>
+
+    <script>
+        // --- Constants and State ---
+        const TEXTURE_SIZE = 64;
+        const CHOICE_INFLUENCE_FACTOR = 0.1;
+
+        let scene, camera, renderer, clock;
+        let mainSphereMesh, vignetteMesh;
+        let distortedSphereMaterial, vignetteMaterial;
+
+        // Gameplay State
+        let choiceInfluence = new THREE.Vector4(0, 0, 0, 0);
+        let environmentState = { distortion: 0 };
+        let dataTexture;
+        let vignetteIntensity = 0;
+        
+        const shaderColors = [
+            new THREE.Color('#FF0000'), new THREE.Color('#FF7F00'), new THREE.Color('#FFFF00'),
+            new THREE.Color('#00FF00'), new THREE.Color('#0000FF'), new THREE.Color('#4B0082'),
+            new THREE.Color('#9400D3'), new THREE.Color('#FF00FF'), new THREE.Color('#00FFFF'),
+            new THREE.Color('#000000'), new THREE.Color('#FFFFFF'), new THREE.Color('#808000'),
+            new THREE.Color('#800000'), new THREE.Color('#008080'), new THREE.Color('#A0A0A0') // 15th color
+        ];
+
+        // --- Shader Definitions ---
+        const DistortedSphereMaterialShader = {
+            uniforms: {
+                uTime: { value: 0 },
+                uResolution: { value: new THREE.Vector2() },
+                uDataTexture: { value: null },
+                uTextureSize: { value: TEXTURE_SIZE },
+                uDistortion: { value: 0.0 },
+                uChoiceInfluence: { value: new THREE.Vector4(0, 0, 0, 0) },
+                uColors: { value: shaderColors },
+            },
+            vertexShader: `
+                varying vec3 vNormal;
+                void main() {
+                    vNormal = normal;
+                    gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+                }
+            `,
+            fragmentShader: `
+                precision highp float;
+                uniform float uTime;
+                uniform vec2 uResolution;
+                uniform float uTextureSize;
+                uniform sampler2D uDataTexture;
+                uniform float uDistortion;
+                uniform vec4 uChoiceInfluence;
+                uniform vec3 uColors[15];
+                varying vec3 vNormal;
+
+                #define MAX_ITER 50
+                #define BAILOUT 4.0
+
+                // Smoother texture lookup (bilinear interpolation)
+                vec4 textureLookup(sampler2D tex, vec2 uv, float size) {
+                    float pixel = 1.0 / size;
+                    vec2 p = uv * size - vec2(0.5); // Center texel
+                    vec2 f = fract(p);
+                    p = (floor(p) + vec2(0.5)) * pixel; // Center of texel for lookup
+
+                    vec2 p00 = p;
+                    vec2 p10 = p + vec2(pixel, 0.0);
+                    vec2 p01 = p + vec2(0.0, pixel);
+                    vec2 p11 = p + vec2(pixel, pixel);
+
+                    return mix(
+                        mix(texture2D(tex, p00), texture2D(tex, p10), f.x),
+                        mix(texture2D(tex, p01), texture2D(tex, p11), f.x),
+                        f.y
+                    );
+                }
+
+                void main() {
+                    vec2 uv_screen = (gl_FragCoord.xy - 0.5 * uResolution.xy) / min(uResolution.x, uResolution.y);
+                    vec3 color = vec3(0.0);
+
+                    vec3 direction = normalize(vNormal);
+
+                    float angle = atan(direction.y, direction.x); // atan(y,x) for full circle
+                    float radius = length(vec2(direction.x, direction.y)); // sin(polar_angle) essentially
+                    vec2 texUV = vec2(angle / (2.0 * 3.14159265359) + 0.5, radius);
+                    
+                    vec4 data = textureLookup(uDataTexture, texUV, uTextureSize);
+                    float complexity = data.r; // Range [0,1]
+                    float health = data.g;     // Range [0,1]
+
+                    vec2 c_offset = vec2(direction.x * (2.0 + complexity), direction.y * (2.0 + complexity));
+                    c_offset += vec2(uChoiceInfluence.x - uChoiceInfluence.y, uChoiceInfluence.z - uChoiceInfluence.w) * 0.1;
+                    
+                    vec2 z = vec2(0.0);
+                    float escapeIter = 0.0;
+
+                    for (int i = 0; i < MAX_ITER; i++) {
+                        z = vec2(z.x * z.x - z.y * z.y, 2.0 * z.x * z.y) + c_offset;
+                        if (length(z) > BAILOUT) {
+                            escapeIter = float(i) / float(MAX_ITER);
+                            break;
+                        }
+                    }
+                    
+                    vec2 distorted_uv = uv_screen + uDistortion * vec2(sin(uTime + uv_screen.y * 10.0), cos(uTime + uv_screen.x * 10.0));
+                    // Use distorted_uv for something or remove if not intended for final color base like this
+                    
+                    if (escapeIter > 0.0) {
+                        // Using time and escapeIter to select color index
+                        int colorIndex = int(mod(uTime * 0.5 + escapeIter * 20.0, 15.0)); // Increased multiplier for more change
+                        color = uColors[colorIndex];
+                        color *= (1.0 - health * 0.8); // Health makes color darker/muted
+                    } else {
+                        // Base color for non-escaping points, influenced by complexity
+                        color = vec3(0.05 + complexity * 0.2, 0.05 + complexity * 0.15, 0.05 + complexity * 0.1);
+                        color = mix(color, vec3(0.01, 0.01, 0.02), health); // Health slightly tints the "core"
+                    }
+
+                    // Apply subtle distortion effect to the final color lookup (optional, could be based on distorted_uv)
+                    // For now, the distortion uniform mainly affects the uv_screen used in other calcs or could be used more directly.
+                    // The example used uv for distortion, let's assume it implies uv_screen
+                    float distortionEffect = length(distorted_uv - uv_screen) * 5.0; // Example how distortion value could be used
+                    // color = mix(color, vec3(1.0,1.0,1.0), distortionEffect); // Example use
+
+                    gl_FragColor = vec4(color, 1.0);
+                }
+            `
+        };
+
+        const VignetteMaterialShader = {
+            uniforms: {
+                uIntensity: { value: 0.0 },
+            },
+            vertexShader: `
+                varying vec2 vUv;
+                void main() {
+                    vUv = uv;
+                    gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+                }
+            `,
+            fragmentShader: `
+                precision highp float;
+                uniform float uIntensity;
+                varying vec2 vUv;
+
+                void main() {
+                    vec2 uv_centered = vUv - 0.5;
+                    float vignette = 1.0 - (length(uv_centered) * 1.5); // Adjust multiplier for vignette size
+                    vignette = smoothstep(0.0, 0.8, vignette); // Softer falloff
+                    gl_FragColor = vec4(vec3(0.0), (1.0 - vignette) * uIntensity);
+                }
+            `,
+            transparent: true,
+            depthWrite: false // Important for transparency
+        };
+
+        // --- Helper Functions ---
+        function generateDataTexture() {
+            const data = new Uint8Array(TEXTURE_SIZE * TEXTURE_SIZE * 4);
+            for (let i = 0; i < TEXTURE_SIZE * TEXTURE_SIZE; i++) {
+                const stride = i * 4;
+                data[stride] = Math.random(); // Complexity, will be normalized to 0-1 by shader
+                data[stride + 1] = Math.random() * 0.5; // Health, will be normalized to 0-1
+                data[stride + 2] = 0; // Blue channel (unused)
+                data[stride + 3] = 255; // Alpha
+            }
+            // Convert to float for shader if data is [0,1] for complexity/health
+            // Or ensure shader divides by 255.0 if data is Uint8 [0,255]
+            // For simplicity, let's assume shader expects [0,1] for r and g, so normalize here or in shader.
+            // The original shader used data.r (implying it's already normalized or it expects [0,255] and uses it as such)
+            // Correcting: texture2D returns normalized [0,1] values if source is Uint8.
+            // So, data[stride] = Math.random() * 255; is correct.
+            for (let i = 0; i < TEXTURE_SIZE * TEXTURE_SIZE; i++) {
+                const stride = i * 4;
+                data[stride] = Math.random() * 255; // Complexity
+                data[stride + 1] = Math.random() * 128; // Health (0-128, so health is 0-0.5 after normalization)
+                data[stride + 2] = 0; 
+                data[stride + 3] = 255;
+            }
+
+            const texture = new THREE.DataTexture(data, TEXTURE_SIZE, TEXTURE_SIZE, THREE.RGBAFormat, THREE.UnsignedByteType);
+            texture.needsUpdate = true;
+            return texture;
+        }
+
+        function interact(choice) {
+            // Update choice influence
+            switch (choice) {
+                case 'whisper': choiceInfluence.x += CHOICE_INFLUENCE_FACTOR; break;
+                case 'observe': choiceInfluence.y += CHOICE_INFLUENCE_FACTOR; break;
+                case 'resist': choiceInfluence.z += CHOICE_INFLUENCE_FACTOR; break;
+                case 'ponder': choiceInfluence.w += CHOICE_INFLUENCE_FACTOR; break;
+            }
+
+            // Update data texture
+            const textureData = dataTexture.image.data;
+            for (let i = 0; i < TEXTURE_SIZE * TEXTURE_SIZE; i++) {
+                const stride = i * 4;
+                if (Math.random() > 0.75) { // Affect ~25% of pixels
+                    switch (choice) {
+                        case 'whisper': // Increase complexity
+                            textureData[stride] = Math.min(255, textureData[stride] + Math.floor(Math.random() * 60));
+                            break;
+                        case 'observe': // Increase health
+                            textureData[stride + 1] = Math.min(255, textureData[stride + 1] + Math.floor(Math.random() * 60));
+                            break;
+                        case 'resist': // Decrease complexity
+                            textureData[stride] = Math.max(0, textureData[stride] - Math.floor(Math.random() * 60));
+                            break;
+                        case 'ponder': // Decrease health
+                            textureData[stride + 1] = Math.max(0, textureData[stride + 1] - Math.floor(Math.random() * 60));
+                            break;
+                    }
+                }
+            }
+            dataTexture.needsUpdate = true;
+
+            // Update environment state
+            environmentState.distortion = Math.min(0.8, Math.max(0, environmentState.distortion + (choice === 'whisper' ? 0.05 : choice === 'observe' ? -0.03 : 0)));
+            vignetteIntensity = Math.min(1, Math.max(0, vignetteIntensity + (choice === 'resist' ? 0.08 : choice === 'ponder' ? -0.05 : (choice === 'whisper' || choice === 'observe' ? -0.01 : 0 ))));
+        }
+
+        // --- Three.js Setup ---
+        function initThreeJS() {
+            const container = document.getElementById('canvas-container');
+            clock = new THREE.Clock();
+
+            // Scene
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x000000); // Black background
+
+            // Camera
+            const aspect = window.innerWidth / window.innerHeight;
+            const zoom = 50; // Matches R3F example's zoom
+            camera = new THREE.OrthographicCamera(
+                -aspect * window.innerWidth / (2 * zoom), // left
+                 aspect * window.innerWidth / (2 * zoom), // right
+                 window.innerHeight / (2 * zoom),        // top
+                -window.innerHeight / (2 * zoom),       // bottom
+                0.1,                                      // near
+                100                                       // far
+            );
+            camera.position.set(0, 0, 5);
+            updateCameraProjection();
+
+
+            // Renderer
+            renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            container.appendChild(renderer.domElement);
+
+            // Initial data texture
+            dataTexture = generateDataTexture();
+
+            // Materials
+            distortedSphereMaterial = new THREE.ShaderMaterial({
+                ...DistortedSphereMaterialShader,
+                uniforms: THREE.UniformsUtils.clone(DistortedSphereMaterialShader.uniforms) // Important for multiple uses or updates
+            });
+            distortedSphereMaterial.uniforms.uDataTexture.value = dataTexture;
+            distortedSphereMaterial.uniforms.uTextureSize.value = TEXTURE_SIZE;
+            distortedSphereMaterial.uniforms.uColors.value = shaderColors;
+
+
+            vignetteMaterial = new THREE.ShaderMaterial({
+                ...VignetteMaterialShader,
+                uniforms: THREE.UniformsUtils.clone(VignetteMaterialShader.uniforms)
+            });
+
+            // Main Sphere
+            const sphereGeometry = new THREE.SphereGeometry(1, 64, 64);
+            mainSphereMesh = new THREE.Mesh(sphereGeometry, distortedSphereMaterial);
+            scene.add(mainSphereMesh);
+
+            // Vignette Plane
+            const planeGeometry = new THREE.PlaneGeometry(camera.right*2, camera.top*2); // Make plane fill camera view
+            vignetteMesh = new THREE.Mesh(planeGeometry, vignetteMaterial);
+            vignetteMesh.position.set(0, 0, 0.1); // Slightly in front of sphere but behind other content if any (or adjust camera near/far)
+                                                 // The original R3F code put it at -0.1, which would be behind the sphere.
+                                                 // For vignette effect, it should typically be the last thing rendered or in front.
+                                                 // Let's place it closer to camera than sphere.
+            scene.add(vignetteMesh);
+            
+            // Event Listeners
+            window.addEventListener('resize', onWindowResize, false);
+            document.querySelectorAll('.control-button').forEach(button => {
+                button.addEventListener('click', () => interact(button.dataset.choice));
+            });
+
+            animate();
+        }
+        
+        function updateCameraProjection() {
+            const aspect = window.innerWidth / window.innerHeight;
+            const zoomFactor = 50; // This should match the intended R3F zoom scaling.
+                                   // R3F interpretation: camera view is window_pixel_dimension / zoomFactor world units
+            camera.left = -window.innerWidth / (2 * zoomFactor);
+            camera.right = window.innerWidth / (2 * zoomFactor);
+            camera.top = window.innerHeight / (2 * zoomFactor);
+            camera.bottom = -window.innerHeight / (2 * zoomFactor);
+            camera.updateProjectionMatrix();
+
+            // Update vignette plane to match camera view
+            if (vignetteMesh) {
+                 const planeSizeScaleFactor = 1.0; // Ensure it covers the screen
+                 vignetteMesh.geometry.dispose(); // Dispose old geometry
+                 vignetteMesh.geometry = new THREE.PlaneGeometry(
+                    (camera.right - camera.left) * planeSizeScaleFactor,
+                    (camera.top - camera.bottom) * planeSizeScaleFactor
+                );
+            }
+        }
+
+
+        function onWindowResize() {
+            updateCameraProjection();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            distortedSphereMaterial.uniforms.uResolution.value.set(window.innerWidth, window.innerHeight);
+        }
+
+        // --- Animation Loop ---
+        function animate() {
+            requestAnimationFrame(animate);
+
+            const elapsedTime = clock.getElapsedTime();
+
+            // Update MainSphere uniforms
+            distortedSphereMaterial.uniforms.uTime.value = elapsedTime;
+            distortedSphereMaterial.uniforms.uResolution.value.set(renderer.domElement.width, renderer.domElement.height);
+            distortedSphereMaterial.uniforms.uDataTexture.value = dataTexture; // dataTexture itself is updated, so this is fine
+            distortedSphereMaterial.uniforms.uDistortion.value = environmentState.distortion;
+            distortedSphereMaterial.uniforms.uChoiceInfluence.value.copy(choiceInfluence);
+
+            // Update Vignette uniforms
+            vignetteMaterial.uniforms.uIntensity.value = vignetteIntensity;
+
+            renderer.render(scene, camera);
+        }
+
+        // --- Initialization ---
+        document.addEventListener('DOMContentLoaded', () => {
+            initThreeJS();
+        });
+
+    </script>
+</body>
+</html>

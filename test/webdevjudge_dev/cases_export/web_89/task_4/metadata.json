@@ -1,0 +1,9 @@
+{
+  "web_id": "web_89",
+  "task_id": 4,
+  "task_type": "dynamic",
+  "instruction": "Task: Navigate between the main application screens (Dashboard, Topic Selection, Problem View) using navigation links or buttons.\nExpected Result: The main content area updates to display the content of the selected screen.\n\nNote: The task is only considered successful if the expected result is achieved; otherwise, it is deemed infeasible.",
+  "max_steps": 15,
+  "expected": "The main content area updates to display the content of the selected screen.",
+  "label": 1
+}

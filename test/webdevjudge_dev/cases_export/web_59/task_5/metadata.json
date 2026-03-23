@@ -1,0 +1,9 @@
+{
+  "web_id": "web_59",
+  "task_id": 5,
+  "task_type": "dynamic",
+  "instruction": "Task: Press the space bar to hard drop the falling tetromino\nExpected Result: The active tetromino instantly moves to the lowest possible valid position in its current column(s), locks into place, line clears are processed if applicable, and the next tetromino begins to fall.\n\nNote: The task is only considered successful if the expected result is achieved; otherwise, it is deemed infeasible.",
+  "max_steps": 15,
+  "expected": "The active tetromino instantly moves to the lowest possible valid position in its current column(s), locks into place, line clears are processed if applicable, and the next tetromino begins to fall.",
+  "label": 1
+}

@@ -1,0 +1,9 @@
+{
+  "web_id": "web_14",
+  "task_id": 5,
+  "task_type": "dynamic",
+  "instruction": "Task: Click a 'Toggle Theme' button or switch (e.g., for light/dark mode)\nExpected Result: The application's color scheme switches between available themes (e.g., light to dark).\n\nNote: The task is only considered successful if the expected result is achieved; otherwise, it is deemed infeasible.",
+  "max_steps": 15,
+  "expected": "The application's color scheme switches between available themes (e.g., light to dark).",
+  "label": 0
+}

@@ -1,0 +1,9 @@
+{
+  "web_id": "web_21",
+  "task_id": 3,
+  "task_type": "dynamic",
+  "instruction": "Task: Type text into an active editor pane.\nExpected Result: Text appears in the editor pane.\n\nNote: The task is only considered successful if the expected result is achieved; otherwise, it is deemed infeasible.",
+  "max_steps": 15,
+  "expected": "Text appears in the editor pane.",
+  "label": 0
+}

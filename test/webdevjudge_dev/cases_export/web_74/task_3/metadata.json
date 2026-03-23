@@ -1,0 +1,9 @@
+{
+  "web_id": "web_74",
+  "task_id": 3,
+  "task_type": "dynamic",
+  "instruction": "Task: Click the 'New Game' button.\nExpected Result: Game grid resets with initial tiles, score resets to 0. 'Game Over' message (if any) clears. Game becomes playable.\n\nNote: The task is only considered successful if the expected result is achieved; otherwise, it is deemed infeasible.",
+  "max_steps": 15,
+  "expected": "Game grid resets with initial tiles, score resets to 0. 'Game Over' message (if any) clears. Game becomes playable.",
+  "label": 1
+}

@@ -1,0 +1,9 @@
+{
+  "web_id": "web_70",
+  "task_id": 2,
+  "task_type": "dynamic",
+  "instruction": "Task: Use filter controls (e.g., dropdowns for breed, checkboxes for size) to refine the list of dogs.\nExpected Result: The list of displayed dogs updates dynamically to show only those matching all selected filter criteria.\n\nNote: The task is only considered successful if the expected result is achieved; otherwise, it is deemed infeasible.",
+  "max_steps": 15,
+  "expected": "The list of displayed dogs updates dynamically to show only those matching all selected filter criteria.",
+  "label": 1
+}

@@ -1,0 +1,9 @@
+{
+  "web_id": "web_76",
+  "task_id": 4,
+  "task_type": "dynamic",
+  "instruction": "Task: User clicks a 'Finalize Selections' or 'Proceed to Pickup Options' button after adding items to the cart.\nExpected Result: A new section for selecting pickup options (e.g., time slots) becomes visible, possibly hiding or summarizing the product selection/cart view.\n\nNote: The task is only considered successful if the expected result is achieved; otherwise, it is deemed infeasible.",
+  "max_steps": 15,
+  "expected": "A new section for selecting pickup options (e.g., time slots) becomes visible, possibly hiding or summarizing the product selection/cart view.",
+  "label": 0
+}

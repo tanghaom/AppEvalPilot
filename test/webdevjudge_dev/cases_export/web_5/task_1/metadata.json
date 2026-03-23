@@ -1,0 +1,9 @@
+{
+  "web_id": "web_5",
+  "task_id": 1,
+  "task_type": "dynamic",
+  "instruction": "Task: Click an 'app icon' to open/launch a simulated application window.\nExpected Result: A new draggable and closable window element representing an application appears on the page.\n\nNote: The task is only considered successful if the expected result is achieved; otherwise, it is deemed infeasible.",
+  "max_steps": 15,
+  "expected": "A new draggable and closable window element representing an application appears on the page.",
+  "label": 1
+}

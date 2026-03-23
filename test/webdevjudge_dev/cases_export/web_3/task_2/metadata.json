@@ -1,0 +1,9 @@
+{
+  "web_id": "web_3",
+  "task_id": 2,
+  "task_type": "dynamic",
+  "instruction": "Task: Click on a financial asset or index from the list below the main graph.\nExpected Result: The main graph and the side panel information update to reflect the details of the clicked asset/index.\n\nNote: The task is only considered successful if the expected result is achieved; otherwise, it is deemed infeasible.",
+  "max_steps": 15,
+  "expected": "The main graph and the side panel information update to reflect the details of the clicked asset/index.",
+  "label": 0
+}

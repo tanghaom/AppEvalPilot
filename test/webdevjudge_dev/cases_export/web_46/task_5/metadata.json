@@ -1,0 +1,9 @@
+{
+  "web_id": "web_46",
+  "task_id": 5,
+  "task_type": "dynamic",
+  "instruction": "Task: Click on a 'Dashboard' or 'Event Overview' navigation link/button.\nExpected Result: The main content area updates to display a dashboard view with summary cards or charts for active games, total players, and total tables in use (using locally simulated data).\n\nNote: The task is only considered successful if the expected result is achieved; otherwise, it is deemed infeasible.",
+  "max_steps": 15,
+  "expected": "The main content area updates to display a dashboard view with summary cards or charts for active games, total players, and total tables in use (using locally simulated data).",
+  "label": 1
+}

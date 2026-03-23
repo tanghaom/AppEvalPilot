@@ -1,0 +1,9 @@
+{
+  "web_id": "web_67",
+  "task_id": 4,
+  "task_type": "dynamic",
+  "instruction": "Task: Click a 'Regenerate Response' button or icon, typically found near the last AI message.\nExpected Result: The most recent simulated AI response is replaced by a new, different simulated AI response to the same user prompt.\n\nNote: The task is only considered successful if the expected result is achieved; otherwise, it is deemed infeasible.",
+  "max_steps": 15,
+  "expected": "The most recent simulated AI response is replaced by a new, different simulated AI response to the same user prompt.",
+  "label": 0
+}

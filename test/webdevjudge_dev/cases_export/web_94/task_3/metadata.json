@@ -1,0 +1,9 @@
+{
+  "web_id": "web_94",
+  "task_id": 3,
+  "task_type": "dynamic",
+  "instruction": "Task: Enter a keyword (e.g., 'Macht') into a search input field and click the 'Search' button or press Enter.\nExpected Result: The application highlights occurrences of the keyword within the law texts, or navigates to the first match with options to find subsequent matches.\n\nNote: The task is only considered successful if the expected result is achieved; otherwise, it is deemed infeasible.",
+  "max_steps": 15,
+  "expected": "The application highlights occurrences of the keyword within the law texts, or navigates to the first match with options to find subsequent matches.",
+  "label": 0
+}

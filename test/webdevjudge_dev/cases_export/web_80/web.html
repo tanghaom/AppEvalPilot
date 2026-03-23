@@ -1,0 +1,1401 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ultimate AI Model GUI</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        /* Custom scrollbar for webkit browsers */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #1e293b; /* slate-800 */
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #334155; /* slate-700 */
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #475569; /* slate-600 */
+        }
+        /* Basic tooltip style */
+        [data-tooltip]:hover::after {
+            content: attr(data-tooltip);
+            position: absolute;
+            bottom: 100%;
+            left: 50%;
+            transform: translateX(-50%) translateY(-4px);
+            background-color: #0f172a; /* slate-900 */
+            color: #e2e8f0; /* slate-200 */
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 0.75rem;
+            white-space: nowrap;
+            z-index: 50;
+        }
+        [data-tooltip] {
+            position: relative;
+        }
+        .chart-container {
+            position: relative;
+            height: 60px; /* Adjusted for footer */
+            width: 150px;
+        }
+    </style>
+    <script>
+        tailwind.config = {
+            darkMode: 'class', // or 'media' or 'class'
+            theme: {
+                extend: {
+                    colors: {
+                        primary: { DEFAULT: '#0ea5e9', hover: '#0284c7', text: '#e0f2fe' }, // sky-500, sky-600, sky-100
+                        secondary: { DEFAULT: '#10b981', hover: '#059669' }, // emerald-500, emerald-600
+                        background: '#0f172a', // slate-900
+                        surface: '#1e293b',    // slate-800
+                        card: '#334155',       // slate-700
+                        borderDim: '#475569',   // slate-600
+                        textLight: '#e2e8f0',  // slate-200
+                        textMedium: '#94a3b8', // slate-400
+                        textDark: '#64748b',   // slate-500
+                    },
+                    animation: {
+                        'stream-pulse': 'pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+<body class="bg-background text-textLight font-sans flex flex-col h-screen antialiased">
+
+    <!-- Header -->
+    <header class="bg-surface shadow-md flex items-center justify-between p-3 h-16 shrink-0">
+        <div class="flex items-center space-x-3">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-8 h-8 text-primary-DEFAULT">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M8.25 3v1.5M4.5 8.25H3m18 0h-1.5M4.5 12H3m18 0h-1.5m-15 3.75H3m18 0h-1.5M8.25 19.5V21M12 3v1.5m0 15V21m3.75-18v1.5m0 15V21m-9-7.5h12c.621 0 1.125-.504 1.125-1.125V9.75c0-.621-.504-1.125-1.125-1.125h-12c-.621 0-1.125.504-1.125 1.125v3.75c0 .621.504 1.125 1.125 1.125Z" />
+            </svg>
+            <h1 class="text-xl font-semibold text-textLight">AI Model GUI</h1>
+            <span id="currentProjectName" class="text-sm text-textMedium ml-4 bg-card px-2 py-1 rounded">Project: Untitled</span>
+        </div>
+        <div class="flex items-center space-x-4">
+            <button id="themeToggleBtn" class="p-2 rounded-md hover:bg-card" data-tooltip="Toggle Theme">
+                <svg id="themeIconLight" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5"><path stroke-linecap="round" stroke-linejoin="round" d="M12 3v2.25m6.364.386l-1.591 1.591M21 12h-2.25m-.386 6.364l-1.591-1.591M12 18.75V21m-6.364-.386l1.591-1.591M3 12h2.25m.386-6.364l1.591 1.591" /></svg>
+                <svg id="themeIconDark" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5 hidden"><path stroke-linecap="round" stroke-linejoin="round" d="M21.752 15.002A9.718 9.718 0 0118 15.75c-5.385 0-9.75-4.365-9.75-9.75 0-1.33.266-2.597.748-3.752A9.753 9.753 0 003 11.25C3 16.635 7.365 21 12.75 21a9.753 9.753 0 009.002-5.998z" /></svg>
+            </button>
+            <div class="w-8 h-8 bg-primary-DEFAULT rounded-full flex items-center justify-center text-primary-text font-semibold" data-tooltip="User (Placeholder)">U</div>
+        </div>
+    </header>
+
+    <!-- Main Area -->
+    <div class="flex flex-1 overflow-hidden">
+        <!-- Sidebar -->
+        <nav class="w-64 bg-surface p-4 space-y-2 shrink-0 overflow-y-auto">
+            <button data-view="dashboard" class="nav-item w-full flex items-center space-x-3 px-3 py-2 rounded-md hover:bg-card hover:text-primary-DEFAULT ui-active">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5"><path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6A2.25 2.25 0 016 3.75h2.25A2.25 2.25 0 0110.5 6v2.25a2.25 2.25 0 01-2.25 2.25H6a2.25 2.25 0 01-2.25-2.25V6zM3.75 15.75A2.25 2.25 0 016 13.5h2.25a2.25 2.25 0 012.25 2.25V18a2.25 2.25 0 01-2.25 2.25H6A2.25 2.25 0 013.75 18v-2.25zM13.5 6a2.25 2.25 0 012.25-2.25H18A2.25 2.25 0 0120.25 6v2.25A2.25 2.25 0 0118 10.5h-2.25A2.25 2.25 0 0113.5 8.25V6zM13.5 15.75a2.25 2.25 0 012.25-2.25H18a2.25 2.25 0 012.25 2.25V18A2.25 2.25 0 0118 20.25h-2.25A2.25 2.25 0 0113.5 18v-2.25z" /></svg>
+                <span>Dashboard</span>
+            </button>
+            <button data-view="modelHub" class="nav-item w-full flex items-center space-x-3 px-3 py-2 rounded-md hover:bg-card hover:text-primary-DEFAULT">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5"><path stroke-linecap="round" stroke-linejoin="round" d="M3.75 12h16.5m-16.5 3.75h16.5M3.75 19.5h16.5M5.625 4.5h12.75a1.875 1.875 0 010 3.75H5.625a1.875 1.875 0 010-3.75z" /></svg>
+                <span>Model Hub</span>
+            </button>
+            <div id="workspaceNavSection" class="hidden">
+                <h3 class="text-xs font-semibold text-textDark uppercase tracking-wider px-3 mt-4 mb-1">Workspace</h3>
+                <button data-view="dataInput" class="nav-item w-full flex items-center space-x-3 px-3 py-2 rounded-md hover:bg-card hover:text-primary-DEFAULT">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5"><path stroke-linecap="round" stroke-linejoin="round" d="M9 8.25H7.5a2.25 2.25 0 00-2.25 2.25v9a2.25 2.25 0 002.25 2.25h9a2.25 2.25 0 002.25-2.25v-9a2.25 2.25 0 00-2.25-2.25H15M9 12l3 3m0 0l3-3m-3 3V2.25" /></svg>
+                    <span>Data Input</span>
+                </button>
+                <button data-view="parameters" class="nav-item w-full flex items-center space-x-3 px-3 py-2 rounded-md hover:bg-card hover:text-primary-DEFAULT">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5"><path stroke-linecap="round" stroke-linejoin="round" d="M10.5 6h9.75M10.5 6a1.5 1.5 0 11-3 0m3 0a1.5 1.5 0 10-3 0M3.75 6H7.5m3 12h9.75m-9.75 0a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m-3.75 0H7.5m9-6h3.75m-3.75 0a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m-9.75 0h9.75" /></svg>
+                    <span>Parameters</span>
+                </button>
+                <button data-view="generateOutput" class="nav-item w-full flex items-center space-x-3 px-3 py-2 rounded-md hover:bg-card hover:text-primary-DEFAULT">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5"><path stroke-linecap="round" stroke-linejoin="round" d="M5.25 5.653c0-.856.935-1.357 1.707-.94L19.5 12 6.957 19.287c-.772.417-1.707-.084-1.707-.94V5.653z" /></svg>
+                    <span>Generate & Output</span>
+                </button>
+                 <button data-view="testing" class="nav-item w-full flex items-center space-x-3 px-3 py-2 rounded-md hover:bg-card hover:text-primary-DEFAULT">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5"><path stroke-linecap="round" stroke-linejoin="round" d="M6.75 7.5l3 2.25-3 2.25m4.5 0h3m-9 8.25h13.5A2.25 2.25 0 0021 18V6a2.25 2.25 0 00-2.25-2.25H5.25A2.25 2.25 0 003 6v12a2.25 2.25 0 002.25 2.25z" /></svg>
+                    <span>Testing & Feedback</span>
+                </button>
+            </div>
+            <div class="pt-4 border-t border-borderDim mt-4">
+                 <button data-view="settings" class="nav-item w-full flex items-center space-x-3 px-3 py-2 rounded-md hover:bg-card hover:text-primary-DEFAULT">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5"><path stroke-linecap="round" stroke-linejoin="round" d="M9.594 3.94c.09-.542.56-1.007 1.11-.1.09.542-.273 1.007-.706 1.007-.09-.542-.56-1.007-1.11-.1zM12.832 3.94c.09-.542.56-1.007 1.11-.1.09.542-.273 1.007-.706 1.007-.09-.542-.56-1.007-1.11-.1zM5.032 3.94c.09-.542.56-1.007 1.11-.1.09.542-.273 1.007-.706 1.007-.09-.542-.56-1.007-1.11-.1zM16.573 3.94c.09-.542.56-1.007 1.11-.1.09.542-.273 1.007-.706 1.007-.09-.542-.56-1.007-1.11-.1zM21 12a9 9 0 11-18 0 9 9 0 0118 0zM7.849 6.679C6.563 9.062 6 11.858 6 14.645c0 1.74.314 3.402.877 4.918m11.246-8.239c1.286 2.383 1.877 5.179 1.877 7.965 0 1.74-.314 3.402-.877 4.918m0 0A9.01 9.01 0 0112 21.006V21M7.849 6.679A9.007 9.007 0 0112 3v.006" /></svg>
+                    <span>Settings</span>
+                </button>
+                 <button data-view="help" class="nav-item w-full flex items-center space-x-3 px-3 py-2 rounded-md hover:bg-card hover:text-primary-DEFAULT">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5"><path stroke-linecap="round" stroke-linejoin="round" d="M9.879 7.519c1.171-1.025 3.071-1.025 4.242 0 1.172 1.025 1.172 2.687 0 3.712-.203.179-.43.326-.67.442-.745.361-1.45.999-1.45 1.827v.75M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-9 5.25h.008v.008H12v-.008z" /></svg>
+                    <span>Help & Docs</span>
+                </button>
+            </div>
+        </nav>
+
+        <!-- Content Area -->
+        <main id="contentArea" class="flex-1 p-6 overflow-y-auto bg-background">
+            <!-- Content will be rendered here by JavaScript -->
+        </main>
+    </div>
+
+    <!-- Footer / Status Bar -->
+    <footer class="bg-surface h-12 shrink-0 px-4 py-2 flex items-center justify-between text-sm text-textMedium border-t border-borderDim">
+        <div class="flex items-center space-x-2">
+            <span>Status: <span id="statusText" class="text-textLight">Idle</span></span>
+            <div id="progressBarContainer" class="w-32 h-2 bg-card rounded-full overflow-hidden hidden">
+                <div id="progressBar" class="h-full bg-primary-DEFAULT transition-all duration-300" style="width: 0%;"></div>
+            </div>
+        </div>
+        <div class="flex items-center space-x-4">
+            <span>Hardware: <span id="hardwareStatus" class="text-textLight">CPU</span></span>
+            <div class="flex items-center space-x-1">
+                <span>CPU:</span>
+                <div class="chart-container"><canvas id="cpuChart"></canvas></div>
+            </div>
+             <div class="flex items-center space-x-1">
+                <span>RAM:</span>
+                <div class="chart-container"><canvas id="ramChart"></canvas></div>
+            </div>
+            <div id="gpuUsageDisplay" class="flex items-center space-x-1">
+                <span>GPU:</span>
+                <div class="chart-container"><canvas id="gpuChart"></canvas></div>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Modals Container -->
+    <div id="modalContainer"></div>
+
+<script>
+const appState = {
+    currentView: 'dashboard',
+    selectedModel: null,
+    models: [
+        { id: 'm1', name: 'GPT-NeoXT-Chat-Base-20B', taskType: 'Text', size: '20B Params', source: 'Hugging Face', description: 'Advanced conversational model.', versions: ['1.0', '1.1-alpha'], currentVersion: '1.1-alpha' },
+        { id: 'm2', name: 'Stable Diffusion XL', taskType: 'Image', size: '2.6B Params', source: 'Local', description: 'High-quality image generation.', versions: ['1.0-fp16'], currentVersion: '1.0-fp16' },
+        { id: 'm3', name: 'Whisper Large v2', taskType: 'Audio', size: '1.55B Params', source: 'Hugging Face', description: 'Robust speech recognition.', versions: ['v2.0', 'v2.1-optimized'], currentVersion: 'v2.1-optimized' },
+        { id: 'm4', name: 'BERT Base Uncased', taskType: 'Text', size: '110M Params', source: 'Hugging Face', description: 'Transformer model for various NLP tasks.', versions: ['1.0'], currentVersion: '1.0'},
+    ],
+    customModels: [],
+    currentProject: { name: 'Untitled Project', taskType: null },
+    inputData: { type: 'text', text: '', file: null, fileName: null, imageUrl: null },
+    parameters: {
+        temperature: 0.7,
+        maxTokens: 512,
+        topP: 0.9,
+        seed: '',
+        imageResolution: '1024x1024',
+        steps: 25,
+        cfgScale: 7.5,
+        samplingMethod: 'k_euler_ancestral'
+    },
+    presets: [
+        { name: 'Default Text', params: { temperature: 0.7, maxTokens: 512, topP: 0.9 } },
+        { name: 'Creative Text', params: { temperature: 0.9, maxTokens: 1024, topP: 0.95 } },
+        { name: 'Default Image', params: { imageResolution: '1024x1024', steps: 25, cfgScale: 7.5 } },
+    ],
+    currentPreset: 'Default Text',
+    output: { type: null, content: '', isStreaming: false },
+    isGenerating: false,
+    progress: 0,
+    hardware: 'cpu',
+    theme: 'dark',
+    terminalHistory: [],
+    debugLogs: [],
+    resourceUsage: { cpu: [], ram: [], gpu: [] } // Store last N points
+};
+
+// DOM Elements
+const contentArea = document.getElementById('contentArea');
+const navItems = document.querySelectorAll('.nav-item');
+const statusText = document.getElementById('statusText');
+const progressBar = document.getElementById('progressBar');
+const progressBarContainer = document.getElementById('progressBarContainer');
+const hardwareStatus = document.getElementById('hardwareStatus');
+const currentProjectNameEl = document.getElementById('currentProjectName');
+const themeToggleBtn = document.getElementById('themeToggleBtn');
+const themeIconLight = document.getElementById('themeIconLight');
+const themeIconDark = document.getElementById('themeIconDark');
+const workspaceNavSection = document.getElementById('workspaceNavSection');
+const modalContainer = document.getElementById('modalContainer');
+
+// --- Chart.js Setup ---
+let cpuChartInstance, ramChartInstance, gpuChartInstance;
+const MAX_DATA_POINTS = 20;
+
+function createChart(canvasId, label) {
+    const ctx = document.getElementById(canvasId).getContext('2d');
+    return new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: Array(MAX_DATA_POINTS).fill(''),
+            datasets: [{
+                label: label,
+                data: Array(MAX_DATA_POINTS).fill(0),
+                borderColor: tailwind.theme.extend.colors.primary.DEFAULT,
+                borderWidth: 1,
+                pointRadius: 0,
+                tension: 0.4,
+                fill: false
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+                y: { display: false, min: 0, max: 100 },
+                x: { display: false }
+            },
+            plugins: { legend: { display: false }, tooltip: { enabled: false } },
+            animation: { duration: 200 }
+        }
+    });
+}
+
+function updateChartData(chart, newDataArray) {
+    chart.data.datasets[0].data = newDataArray.slice(-MAX_DATA_POINTS).concat(Array(Math.max(0, MAX_DATA_POINTS - newDataArray.length)).fill(0));
+    chart.update('quiet');
+}
+
+// --- UI Rendering Functions ---
+
+function renderDashboard() {
+    contentArea.innerHTML = `
+        <div class="space-y-6">
+            <h2 class="text-3xl font-semibold text-textLight">Dashboard</h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <div class="bg-card p-6 rounded-lg shadow-lg hover:shadow-primary-DEFAULT/30 transition-shadow">
+                    <h3 class="text-xl font-semibold text-primary-DEFAULT mb-2">Create New Project</h3>
+                    <p class="text-textMedium mb-4">Start fresh with a new AI modeling project.</p>
+                    <button onclick="createNewProject()" class="bg-primary-DEFAULT text-primary-text px-4 py-2 rounded-md hover:bg-primary-hover">Create Project</button>
+                </div>
+                <div class="bg-card p-6 rounded-lg shadow-lg">
+                    <h3 class="text-xl font-semibold text-textLight mb-2">Load Project (Placeholder)</h3>
+                    <p class="text-textMedium mb-4">Open an existing project file.</p>
+                    <button class="bg-slate-500 text-slate-100 px-4 py-2 rounded-md cursor-not-allowed opacity-50">Load Project</button>
+                </div>
+                <div class="bg-card p-6 rounded-lg shadow-lg">
+                    <h3 class="text-xl font-semibold text-textLight mb-2">Quick Links</h3>
+                    <ul class="space-y-2">
+                        <li><a href="#" onclick="navigateTo('modelHub')" class="text-primary-DEFAULT hover:underline">Browse Model Hub</a></li>
+                        <li><a href="#" onclick="navigateTo('help')" class="text-primary-DEFAULT hover:underline">View Documentation</a></li>
+                    </ul>
+                </div>
+            </div>
+            <div class="bg-card p-6 rounded-lg shadow-lg">
+                <h3 class="text-xl font-semibold text-textLight mb-2">Selected Model</h3>
+                ${appState.selectedModel ? `
+                    <p class="text-textMedium">Current: <span class="font-semibold text-textLight">${appState.selectedModel.name} (${appState.selectedModel.taskType})</span></p>
+                    <button onclick="navigateTo('dataInput')" class="mt-2 bg-secondary-DEFAULT text-white px-3 py-1 rounded-md text-sm hover:bg-secondary-hover">Go to Workspace</button>
+                ` : `
+                    <p class="text-textMedium">No model selected. Visit the <a href="#" onclick="navigateTo('modelHub')" class="text-primary-DEFAULT hover:underline">Model Hub</a> to choose one.</p>
+                `}
+            </div>
+        </div>
+    `;
+}
+
+function renderModelHub() {
+    contentArea.innerHTML = `
+        <div class="space-y-6">
+            <div class="flex justify-between items-center">
+                <h2 class="text-3xl font-semibold text-textLight">Model Hub</h2>
+                <button onclick="openAddCustomModelModal()" class="bg-secondary-DEFAULT text-white px-4 py-2 rounded-md hover:bg-secondary-hover flex items-center space-x-2">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" /></svg>
+                    <span>Add Custom Model</span>
+                </button>
+            </div>
+            <div class="flex space-x-4 mb-4">
+                <input type="text" id="modelSearch" placeholder="Search models..." class="flex-grow bg-card border border-borderDim px-3 py-2 rounded-md focus:ring-primary-DEFAULT focus:border-primary-DEFAULT outline-none" oninput="filterModels()">
+                <select id="modelTypeFilter" class="bg-card border border-borderDim px-3 py-2 rounded-md focus:ring-primary-DEFAULT focus:border-primary-DEFAULT outline-none" onchange="filterModels()">
+                    <option value="">All Task Types</option>
+                    <option value="Text">Text</option>
+                    <option value="Image">Image</option>
+                    <option value="Audio">Audio</option>
+                </select>
+                <select id="modelSourceFilter" class="bg-card border border-borderDim px-3 py-2 rounded-md focus:ring-primary-DEFAULT focus:border-primary-DEFAULT outline-none" onchange="filterModels()">
+                    <option value="">All Sources</option>
+                    <option value="Hugging Face">Hugging Face</option>
+                    <option value="Local">Local</option>
+                </select>
+            </div>
+            <div id="modelList" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                ${renderModelCards(appState.models)}
+            </div>
+             <h3 class="text-2xl font-semibold text-textLight mt-8 mb-4">Custom Models</h3>
+            <div id="customModelList" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                ${renderModelCards(appState.customModels, true)}
+            </div>
+        </div>
+    `;
+    filterModels(); // Apply initial filter if any
+}
+
+function renderModelCards(modelsToRender, isCustom = false) {
+    if (modelsToRender.length === 0 && isCustom) return '<p class="text-textMedium col-span-full">No custom models added yet.</p>';
+    if (modelsToRender.length === 0) return '<p class="text-textMedium col-span-full">No models match your criteria.</p>';
+
+    return modelsToRender.map(model => `
+        <div class="bg-card p-5 rounded-lg shadow-lg hover:shadow-primary-DEFAULT/30 transition-shadow flex flex-col justify-between">
+            <div>
+                <div class="flex justify-between items-start">
+                    <h3 class="text-xl font-semibold text-primary-DEFAULT mb-1">${model.name}</h3>
+                    <div class="bg-gray-200 border-2 border-dashed rounded-xl w-12 h-12 ml-2 shrink-0"></div>
+                </div>
+                <p class="text-sm text-textMedium mb-1">Type: ${model.taskType}</p>
+                <p class="text-sm text-textMedium mb-1">Size: ${model.size}</p>
+                <p class="text-sm text-textMedium mb-3">Source: ${model.source}</p>
+                <p class="text-xs text-textDark mb-3 h-10 overflow-y-auto">${model.description}</p>
+                <div class="mb-3">
+                    <label for="version-${model.id}" class="text-xs text-textMedium block mb-1">Version:</label>
+                    <select id="version-${model.id}" class="w-full bg-surface border border-borderDim text-xs px-2 py-1 rounded-md focus:ring-primary-DEFAULT focus:border-primary-DEFAULT outline-none" onchange="updateModelVersion('${model.id}', this.value, ${isCustom})">
+                        ${model.versions.map(v => `<option value="${v}" ${v === model.currentVersion ? 'selected' : ''}>${v}</option>`).join('')}
+                    </select>
+                </div>
+            </div>
+            <button onclick="selectModel('${model.id}', ${isCustom})" class="w-full bg-primary-DEFAULT text-primary-text px-4 py-2 rounded-md hover:bg-primary-hover mt-2 text-sm">
+                Select Model
+            </button>
+        </div>
+    `).join('');
+}
+
+function renderDataInput() {
+    if (!appState.selectedModel) {
+        contentArea.innerHTML = `<p class="text-textMedium">Please select a model from the <a href="#" onclick="navigateTo('modelHub')" class="text-primary-DEFAULT hover:underline">Model Hub</a> first.</p>`;
+        return;
+    }
+    contentArea.innerHTML = `
+        <div class="space-y-6 max-w-3xl mx-auto">
+            <h2 class="text-3xl font-semibold text-textLight">Data Input for ${appState.selectedModel.name}</h2>
+            
+            <div class="bg-card p-6 rounded-lg shadow-lg">
+                <h3 class="text-xl font-semibold mb-3">Input Type</h3>
+                <div class="flex space-x-2 mb-4 border-b border-borderDim">
+                    ${['text', 'image', 'audio', 'structured'].map(type => `
+                        <button 
+                            onclick="setInputType('${type}')" 
+                            class="px-4 py-2 capitalize text-sm font-medium border-b-2
+                                ${appState.inputData.type === type ? 'border-primary-DEFAULT text-primary-DEFAULT' : 'border-transparent hover:border-gray-500 hover:text-gray-300'}">
+                            ${type}
+                        </button>
+                    `).join('')}
+                </div>
+
+                <div id="inputTypeContent">
+                    ${renderInputTypeContent()}
+                </div>
+            </div>
+
+            <div class="bg-card p-6 rounded-lg shadow-lg">
+                <h3 class="text-xl font-semibold mb-3">Preprocessing Tools (Conceptual)</h3>
+                <div class="space-y-2 text-sm">
+                    ${appState.inputData.type === 'image' ? `
+                        <label class="flex items-center space-x-2"><input type="checkbox" class="form-checkbox rounded bg-surface border-borderDim text-primary-DEFAULT focus:ring-primary-DEFAULT"><span>Resize to 512x512</span></label>
+                        <label class="flex items-center space-x-2"><input type="checkbox" class="form-checkbox rounded bg-surface border-borderDim text-primary-DEFAULT focus:ring-primary-DEFAULT"><span>Normalize Pixel Values</span></label>
+                    ` : appState.inputData.type === 'text' ? `
+                        <label class="flex items-center space-x-2"><input type="checkbox" class="form-checkbox rounded bg-surface border-borderDim text-primary-DEFAULT focus:ring-primary-DEFAULT"><span>Clean Punctuation</span></label>
+                        <label class="flex items-center space-x-2"><input type="checkbox" class="form-checkbox rounded bg-surface border-borderDim text-primary-DEFAULT focus:ring-primary-DEFAULT"><span>Convert to Lowercase</span></label>
+                    ` : appState.inputData.type === 'audio' ? `
+                         <label class="flex items-center space-x-2"><input type="checkbox" class="form-checkbox rounded bg-surface border-borderDim text-primary-DEFAULT focus:ring-primary-DEFAULT"><span>Reduce Background Noise</span></label>
+                         <label class="flex items-center space-x-2"><input type="checkbox" class="form-checkbox rounded bg-surface border-borderDim text-primary-DEFAULT focus:ring-primary-DEFAULT"><span>Normalize Volume</span></label>
+                    ` : `<p class="text-textMedium">No specific preprocessing tools for structured data shown.</p>`
+                    }
+                    <button class="mt-2 text-xs bg-slate-500 text-slate-100 px-3 py-1 rounded-md cursor-not-allowed opacity-50">Apply Preprocessing</button>
+                </div>
+            </div>
+             <div class="bg-card p-6 rounded-lg shadow-lg">
+                <h3 class="text-xl font-semibold mb-3">Data Annotation (Conceptual)</h3>
+                <p class="text-textMedium text-sm">Integrated annotation tools would appear here for relevant tasks (e.g., text tagging, image bounding boxes).</p>
+                <button class="mt-2 text-xs bg-slate-500 text-slate-100 px-3 py-1 rounded-md cursor-not-allowed opacity-50">Open Annotator</button>
+            </div>
+        </div>
+    `;
+}
+
+function renderInputTypeContent() {
+    switch (appState.inputData.type) {
+        case 'text':
+            return `
+                <label for="textInput" class="block text-sm font-medium text-textMedium mb-1">Enter Text:</label>
+                <textarea id="textInput" rows="8" class="w-full bg-surface border border-borderDim p-2 rounded-md focus:ring-primary-DEFAULT focus:border-primary-DEFAULT outline-none" placeholder="Type or paste your text here...">${appState.inputData.text}</textarea>
+                <button onclick="updateTextInput()" class="mt-2 bg-primary-DEFAULT text-primary-text px-3 py-1 rounded-md text-sm hover:bg-primary-hover">Use this Text</button>
+            `;
+        case 'image':
+            return `
+                <label for="imageUpload" class="block text-sm font-medium text-textMedium mb-1">Upload Image:</label>
+                <input type="file" id="imageUpload" accept="image/*" onchange="handleImageUpload(event)" class="w-full text-sm text-textMedium file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-primary-DEFAULT file:text-primary-text hover:file:bg-primary-hover cursor-pointer">
+                ${appState.inputData.imageUrl ? `<img src="${appState.inputData.imageUrl}" alt="Uploaded preview" class="mt-4 max-h-60 rounded-md border border-borderDim">` : 
+                    appState.inputData.fileName ? `<div class="mt-4 text-sm text-textMedium">Selected: ${appState.inputData.fileName} <div class="bg-gray-200 border-2 border-dashed rounded-xl w-24 h-24 mt-2"></div></div>` : 
+                    '<p class="mt-2 text-xs text-textDark">No image selected. Preview will appear here.</p>'
+                }
+            `;
+        case 'audio':
+             return `
+                <label for="audioUpload" class="block text-sm font-medium text-textMedium mb-1">Upload Audio:</label>
+                <input type="file" id="audioUpload" accept="audio/*" onchange="handleFileUpload(event, 'audio')" class="w-full text-sm text-textMedium file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-primary-DEFAULT file:text-primary-text hover:file:bg-primary-hover cursor-pointer">
+                ${appState.inputData.fileName && appState.inputData.type === 'audio' ? `<p class="mt-2 text-sm text-textMedium">Selected: ${appState.inputData.fileName}</p>` : '<p class="mt-2 text-xs text-textDark">No audio file selected.</p>'}
+            `;
+        case 'structured':
+            return `
+                <label for="structuredDataUpload" class="block text-sm font-medium text-textMedium mb-1">Upload CSV/JSON or Paste Data:</label>
+                <input type="file" id="structuredDataUpload" accept=".csv,.json" onchange="handleFileUpload(event, 'structured')" class="w-full text-sm text-textMedium file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-primary-DEFAULT file:text-primary-text hover:file:bg-primary-hover cursor-pointer">
+                ${appState.inputData.fileName && appState.inputData.type === 'structured' ? `<p class="mt-2 text-sm text-textMedium">Selected: ${appState.inputData.fileName}</p>` : ''}
+                <textarea id="structuredTextInput" rows="6" class="mt-2 w-full bg-surface border border-borderDim p-2 rounded-md focus:ring-primary-DEFAULT focus:border-primary-DEFAULT outline-none" placeholder="Or paste structured data (e.g., JSON array, CSV rows)..."></textarea>
+                <button onclick="updateStructuredDataText()" class="mt-2 bg-primary-DEFAULT text-primary-text px-3 py-1 rounded-md text-sm hover:bg-primary-hover">Use Pasted Data</button>
+            `;
+        default: return '<p class="text-textMedium">Select an input type.</p>';
+    }
+}
+
+function renderParameters() {
+    if (!appState.selectedModel) {
+        contentArea.innerHTML = `<p class="text-textMedium">Please select a model from the <a href="#" onclick="navigateTo('modelHub')" class="text-primary-DEFAULT hover:underline">Model Hub</a> first.</p>`;
+        return;
+    }
+
+    const modelType = appState.selectedModel.taskType;
+    let paramsHtml = '';
+
+    if (modelType === 'Text') {
+        paramsHtml = `
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4">
+                ${renderSlider('temperature', 'Temperature', 0, 2, 0.01, 'Controls randomness. Lower is more deterministic.')}
+                ${renderSlider('maxTokens', 'Max Tokens', 1, 4096, 1, 'Maximum number of tokens to generate.')}
+                ${renderSlider('topP', 'Top-P (Nucleus Sampling)', 0, 1, 0.01, 'Considers tokens with cumulative probability >= P.')}
+                ${renderTextInput('seed', 'Seed', 'number', 'Random seed for reproducibility (optional).')}
+            </div>
+        `;
+    } else if (modelType === 'Image') {
+        paramsHtml = `
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4">
+                ${renderSelect('imageResolution', 'Resolution', ['512x512', '1024x1024', '768x1024', '1024x768'], 'Output image dimensions.')}
+                ${renderSlider('steps', 'Sampling Steps', 1, 150, 1, 'Number of denoising steps.')}
+                ${renderSlider('cfgScale', 'CFG Scale', 0, 30, 0.5, 'Classifier-Free Guidance scale. Higher means prompt adherence.')}
+                ${renderSelect('samplingMethod', 'Sampler', ['k_euler', 'k_euler_ancestral', 'ddim', 'lms'], 'Algorithm for image generation.')}
+                ${renderTextInput('seed', 'Seed', 'number', 'Random seed for reproducibility (optional).')}
+            </div>
+        `;
+    } else if (modelType === 'Audio') {
+        paramsHtml = `
+            <p class="text-textMedium">Parameters for audio models like Whisper are often fixed or task-dependent (e.g., language detection on/off).</p>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4">
+                ${renderCheckbox('beamSearch', 'Use Beam Search', 'Improves accuracy but slower.')}
+                ${renderSelect('language', 'Language (Optional)', ['auto', 'en', 'es', 'fr', 'de'], 'Target language for transcription. "auto" for detection.')}
+            </div>
+        `;
+    } else {
+        paramsHtml = `<p class="text-textMedium">No specific parameters configurable for this model type in this demo.</p>`;
+    }
+
+    contentArea.innerHTML = `
+        <div class="space-y-6 max-w-3xl mx-auto">
+            <h2 class="text-3xl font-semibold text-textLight">Parameters for ${appState.selectedModel.name}</h2>
+            
+            <div class="bg-card p-6 rounded-lg shadow-lg">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="text-xl font-semibold">Configuration</h3>
+                    <div class="flex space-x-2">
+                        <select id="presetSelector" class="bg-surface border border-borderDim px-3 py-1.5 rounded-md text-sm focus:ring-primary-DEFAULT focus:border-primary-DEFAULT outline-none" onchange="loadPreset(this.value)">
+                            ${appState.presets.filter(p => p.name.toLowerCase().includes(modelType.toLowerCase()) || p.name.toLowerCase().includes('default'))
+                                .map(p => `<option value="${p.name}" ${appState.currentPreset === p.name ? 'selected' : ''}>${p.name}</option>`).join('')}
+                        </select>
+                        <button onclick="openSavePresetModal()" class="bg-secondary-DEFAULT text-white px-3 py-1.5 rounded-md text-sm hover:bg-secondary-hover">Save Preset</button>
+                    </div>
+                </div>
+                ${paramsHtml}
+            </div>
+
+            <div class="bg-card p-6 rounded-lg shadow-lg">
+                <h3 class="text-xl font-semibold mb-2">Real-time Preview (Conceptual)</h3>
+                <p class="text-sm text-textMedium">A preview of how settings might affect output would appear here (e.g., a small, quickly generated sample or visual representation).</p>
+                <div class="mt-2 p-3 bg-surface rounded text-xs text-textDark h-20">Preview area... based on current parameters, output might be more [creative/factual/detailed etc.]</div>
+            </div>
+        </div>
+    `;
+    // Initialize parameter values
+    Object.keys(appState.parameters).forEach(key => {
+        const input = document.getElementById(key);
+        if (input) {
+            if(input.type === 'range') {
+                document.getElementById(`${key}-value`).textContent = appState.parameters[key];
+            }
+            input.value = appState.parameters[key];
+        }
+    });
+}
+
+function renderSlider(id, label, min, max, step, tooltip) {
+    return `
+        <div data-tooltip="${tooltip}">
+            <label for="${id}" class="block text-sm font-medium text-textMedium">${label}: <span id="${id}-value" class="font-semibold text-textLight">${appState.parameters[id] !== undefined ? appState.parameters[id] : (min + (max-min)/2)}</span></label>
+            <input type="range" id="${id}" name="${id}" min="${min}" max="${max}" step="${step}" value="${appState.parameters[id] !== undefined ? appState.parameters[id] : (min + (max-min)/2)}"
+                   oninput="updateParameter('${id}', this.value, true)"
+                   class="w-full h-2 bg-surface rounded-lg appearance-none cursor-pointer accent-primary-DEFAULT mt-1">
+        </div>
+    `;
+}
+
+function renderTextInput(id, label, type = 'text', tooltip) {
+    return `
+        <div data-tooltip="${tooltip}">
+            <label for="${id}" class="block text-sm font-medium text-textMedium">${label}:</label>
+            <input type="${type}" id="${id}" name="${id}" value="${appState.parameters[id] || ''}"
+                   oninput="updateParameter('${id}', this.value)"
+                   class="w-full bg-surface border border-borderDim px-3 py-1.5 rounded-md text-sm focus:ring-primary-DEFAULT focus:border-primary-DEFAULT outline-none mt-1"
+                   ${type === 'number' ? `min="0"` : ''}>
+        </div>
+    `;
+}
+
+function renderSelect(id, label, options, tooltip) {
+    return `
+        <div data-tooltip="${tooltip}">
+            <label for="${id}" class="block text-sm font-medium text-textMedium">${label}:</label>
+            <select id="${id}" name="${id}" onchange="updateParameter('${id}', this.value)"
+                    class="w-full bg-surface border border-borderDim px-3 py-1.5 rounded-md text-sm focus:ring-primary-DEFAULT focus:border-primary-DEFAULT outline-none mt-1">
+                ${options.map(opt => `<option value="${opt}" ${appState.parameters[id] === opt ? 'selected' : ''}>${opt.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}</option>`).join('')}
+            </select>
+        </div>
+    `;
+}
+
+function renderCheckbox(id, label, tooltip) {
+    return `
+        <div class="flex items-center space-x-2" data-tooltip="${tooltip}">
+            <input type="checkbox" id="${id}" name="${id}" ${appState.parameters[id] ? 'checked' : ''}
+                   onchange="updateParameter('${id}', this.checked)"
+                   class="form-checkbox h-4 w-4 rounded bg-surface border-borderDim text-primary-DEFAULT focus:ring-primary-DEFAULT">
+            <label for="${id}" class="text-sm font-medium text-textMedium">${label}</label>
+        </div>
+    `;
+}
+
+
+function renderGenerateOutput() {
+    if (!appState.selectedModel) {
+        contentArea.innerHTML = `<p class="text-textMedium">Please select a model from the <a href="#" onclick="navigateTo('modelHub')" class="text-primary-DEFAULT hover:underline">Model Hub</a> first.</p>`;
+        return;
+    }
+
+    let outputDisplay = '';
+    if (appState.output.type === 'text') {
+        outputDisplay = `
+            <div class="relative">
+                <pre id="textOutputArea" class="w-full h-96 bg-surface p-4 rounded-md overflow-y-auto text-sm whitespace-pre-wrap">${appState.output.content || 'Generated text will appear here...'}${appState.output.isStreaming ? '<span class="animate-stream-pulse">▋</span>' : ''}</pre>
+                <button onclick="copyOutput()" class="absolute top-2 right-2 bg-card hover:bg-borderDim text-textLight px-2 py-1 text-xs rounded" data-tooltip="Copy Text">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 17.25v3.375c0 .621-.504 1.125-1.125 1.125h-9.75a1.125 1.125 0 01-1.125-1.125V7.875c0-.621.504-1.125 1.125-1.125H6.75a9.06 9.06 0 011.5.124m7.5 10.376h3.375c.621 0 1.125-.504 1.125-1.125V11.25c0-4.46-3.243-8.161-7.5-8.876a9.06 9.06 0 00-1.5-.124H9.375c-.621 0-1.125.504-1.125 1.125v3.5m7.5 10.375H9.375a1.125 1.125 0 01-1.125-1.125v-9.25m12 6.625v-1.875a3.375 3.375 0 00-3.375-3.375h-1.5a1.125 1.125 0 01-1.125-1.125v-1.5a3.375 3.375 0 00-3.375-3.375H9.75" /></svg>
+                </button>
+            </div>
+        `;
+    } else if (appState.output.type === 'image') {
+        outputDisplay = appState.output.content ? 
+            `<img src="${appState.output.content}" alt="Generated Image" class="max-w-full max-h-[30rem] mx-auto rounded-md border border-borderDim shadow-lg">` :
+            `<div class="w-full h-96 bg-surface rounded-md flex items-center justify-center text-textMedium border border-dashed border-borderDim">Generated image will appear here. <div class="bg-gray-200 border-2 border-dashed rounded-xl w-32 h-32 ml-4"></div></div>`;
+    } else if (appState.output.type === 'audio') {
+         outputDisplay = appState.output.content ? 
+            `<audio controls src="${appState.output.content}" class="w-full">Your browser does not support the audio element.</audio>` :
+            `<div class="w-full h-20 bg-surface rounded-md flex items-center justify-center text-textMedium border border-dashed border-borderDim">Generated audio player will appear here.</div>`;
+    } else {
+        outputDisplay = `<div class="w-full h-96 bg-surface p-4 rounded-md overflow-y-auto text-textMedium flex items-center justify-center border border-dashed border-borderDim">Output will be displayed here after generation.</div>`;
+    }
+
+    contentArea.innerHTML = `
+        <div class="space-y-6">
+            <div class="flex justify-between items-center">
+                <h2 class="text-3xl font-semibold text-textLight">Generate & Output</h2>
+                <button id="generateBtn" onclick="handleGeneration()" 
+                        class="bg-primary-DEFAULT text-primary-text px-6 py-3 rounded-md hover:bg-primary-hover text-lg font-semibold flex items-center space-x-2
+                               ${appState.isGenerating ? 'opacity-50 cursor-not-allowed' : ''}"
+                        ${appState.isGenerating ? 'disabled' : ''}>
+                    ${appState.isGenerating ? 
+                        `<svg class="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg> Generating...` 
+                        : `
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6"><path stroke-linecap="round" stroke-linejoin="round" d="M5.25 5.653c0-.856.935-1.357 1.707-.94L19.5 12 6.957 19.287c-.772.417-1.707-.084-1.707-.94V5.653z" /></svg>
+                        <span>Generate</span>`
+                    }
+                </button>
+            </div>
+
+            <div class="bg-card p-6 rounded-lg shadow-lg">
+                <h3 class="text-xl font-semibold mb-3">Output Preview</h3>
+                ${outputDisplay}
+            </div>
+
+            <div class="bg-card p-6 rounded-lg shadow-lg">
+                <h3 class="text-xl font-semibold mb-3">Output Options</h3>
+                <div class="flex space-x-3">
+                    <button onclick="saveOutput()" class="bg-secondary-DEFAULT text-white px-4 py-2 rounded-md text-sm hover:bg-secondary-hover flex items-center space-x-2 ${!appState.output.content ? 'opacity-50 cursor-not-allowed' : ''}" ${!appState.output.content ? 'disabled' : ''}>
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4"><path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" /></svg>
+                        <span>Save Output</span>
+                    </button>
+                    <button class="bg-slate-500 text-slate-100 px-4 py-2 rounded-md text-sm cursor-not-allowed opacity-50">Post-Process (Conceptual)</button>
+                </div>
+            </div>
+             <div class="bg-card p-6 rounded-lg shadow-lg">
+                <h3 class="text-xl font-semibold mb-3">Output Highlighting (Conceptual)</h3>
+                <p class="text-sm text-textMedium">If applicable, highlighted information (e.g., key phrases in text, detected objects in images) would be shown or overlaid here.</p>
+                <div class="mt-2 p-3 bg-surface rounded text-xs text-textDark h-20">Highlighting display area...</div>
+            </div>
+        </div>
+    `;
+}
+
+function renderTesting() {
+    contentArea.innerHTML = `
+        <div class="space-y-6">
+            <h2 class="text-3xl font-semibold text-textLight">Application Testing & Feedback</h2>
+            
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <!-- Integrated Terminal -->
+                <div class="bg-card p-6 rounded-lg shadow-lg">
+                    <h3 class="text-xl font-semibold mb-3">Integrated Terminal</h3>
+                    <div id="terminalOutput" class="h-64 bg-slate-900 p-3 rounded-md overflow-y-auto text-xs font-mono mb-2">
+                        ${appState.terminalHistory.map(line => `<div>${line}</div>`).join('')}
+                        <span class="text-green-400">gui@ai-model:~$ </span><span class="animate-stream-pulse">▋</span>
+                    </div>
+                    <div class="flex">
+                        <input type="text" id="terminalInput" class="flex-grow bg-surface border border-borderDim px-3 py-1.5 rounded-l-md text-sm focus:ring-primary-DEFAULT focus:border-primary-DEFAULT outline-none font-mono" placeholder="Enter command...">
+                        <button onclick="runTerminalCommand()" class="bg-primary-DEFAULT text-primary-text px-4 py-1.5 rounded-r-md hover:bg-primary-hover text-sm">Run</button>
+                    </div>
+                </div>
+
+                <!-- Debugging Tools -->
+                <div class="bg-card p-6 rounded-lg shadow-lg">
+                    <h3 class="text-xl font-semibold mb-3">Debugging Logs</h3>
+                    <div id="debugLogOutput" class="h-72 bg-slate-900 p-3 rounded-md overflow-y-auto text-xs font-mono">
+                        ${appState.debugLogs.length > 0 ? appState.debugLogs.map(log => `<div class="text-gray-400"><span class="text-blue-400">[${log.timestamp}]</span> <span class="${log.type === 'error' ? 'text-red-400' : 'text-yellow-400'}">[${log.type.toUpperCase()}]</span> ${log.message}</div>`).join('') : '<p class="text-textDark">No debug messages yet.</p>'}
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+    const terminalOutputEl = document.getElementById('terminalOutput');
+    if(terminalOutputEl) terminalOutputEl.scrollTop = terminalOutputEl.scrollHeight;
+    const debugLogOutputEl = document.getElementById('debugLogOutput');
+    if(debugLogOutputEl) debugLogOutputEl.scrollTop = debugLogOutputEl.scrollHeight;
+}
+
+function renderSettings() {
+    contentArea.innerHTML = `
+        <div class="space-y-6 max-w-2xl mx-auto">
+            <h2 class="text-3xl font-semibold text-textLight">Settings</h2>
+
+            <div class="bg-card p-6 rounded-lg shadow-lg">
+                <h3 class="text-xl font-semibold mb-3">Performance & Resource Management</h3>
+                <div class="space-y-3">
+                    <div>
+                        <label class="block text-sm font-medium text-textMedium mb-1">Hardware Selection:</label>
+                        <div class="flex space-x-4">
+                            <label class="flex items-center space-x-2">
+                                <input type="radio" name="hardware" value="cpu" ${appState.hardware === 'cpu' ? 'checked' : ''} onchange="updateHardwareSetting(this.value)" class="form-radio text-primary-DEFAULT bg-surface border-borderDim">
+                                <span>CPU</span>
+                            </label>
+                            <label class="flex items-center space-x-2">
+                                <input type="radio" name="hardware" value="gpu" ${appState.hardware === 'gpu' ? 'checked' : ''} onchange="updateHardwareSetting(this.value)" class="form-radio text-primary-DEFAULT bg-surface border-borderDim">
+                                <span>GPU (if available)</span>
+                            </label>
+                        </div>
+                    </div>
+                    <div>
+                        <label class="flex items-center space-x-2">
+                            <input type="checkbox" id="batchProcessing" class="form-checkbox rounded bg-surface border-borderDim text-primary-DEFAULT focus:ring-primary-DEFAULT">
+                            <span class="text-sm font-medium text-textMedium">Enable Batch Processing (Conceptual)</span>
+                        </label>
+                        <input type="number" placeholder="Batch Size" class="ml-6 mt-1 w-24 bg-surface border border-borderDim px-2 py-1 rounded-md text-xs focus:ring-primary-DEFAULT focus:border-primary-DEFAULT outline-none">
+                    </div>
+                </div>
+            </div>
+            
+            <div class="bg-card p-6 rounded-lg shadow-lg">
+                <h3 class="text-xl font-semibold mb-3">Extensibility & Customization</h3>
+                <div class="space-y-3">
+                     <div>
+                        <label for="apiKey" class="block text-sm font-medium text-textMedium">API Key (Placeholder):</label>
+                        <input type="text" id="apiKey" value="********-****-****-****-************" readonly class="mt-1 w-full bg-surface border border-borderDim px-3 py-1.5 rounded-md text-sm text-textDark cursor-not-allowed">
+                        <a href="#" class="text-xs text-primary-DEFAULT hover:underline">API Documentation (Conceptual)</a>
+                    </div>
+                    <div>
+                        <p class="text-sm font-medium text-textMedium">Plugin System (Conceptual):</p>
+                        <ul class="list-disc list-inside text-xs text-textDark ml-4">
+                            <li>Plugin A v1.2</li>
+                            <li>Plugin B v0.9</li>
+                        </ul>
+                        <button class="mt-1 text-xs bg-slate-500 text-slate-100 px-3 py-1 rounded-md cursor-not-allowed opacity-50">Manage Plugins</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+}
+
+function renderHelp() {
+    openModal('Help & Documentation', `
+        <div class="space-y-4 text-sm text-textMedium">
+            <p>Welcome to the Ultimate AI Model GUI documentation. This guide provides an overview of the application's features and workflow.</p>
+            
+            <h4 class="font-semibold text-textLight text-md">Core Workflow:</h4>
+            <ol class="list-decimal list-inside space-y-1">
+                <li><strong>Project Setup:</strong> Start by creating or loading a project from the Dashboard.</li>
+                <li><strong>Model Selection:</strong> Navigate to the Model Hub to browse, search, and select an AI model. You can also import custom models.</li>
+                <li><strong>Data Input:</strong> In the Workspace, go to the Data Input tab to load or enter data for your selected model.</li>
+                <li><strong>Parameter Configuration:</strong> Adjust model parameters in the Parameters tab. Save and load presets for convenience.</li>
+                <li><strong>Generate Output:</strong> Use the Generate & Output tab to run the model and view the results.</li>
+                <li><strong>Test Output:</strong> Utilize the integrated terminal or debugging tools in the Testing & Feedback tab.</li>
+            </ol>
+
+            <h4 class="font-semibold text-textLight text-md mt-3">Key Features:</h4>
+            <ul class="list-disc list-inside space-y-1">
+                <li><strong>Model Management:</strong> Extensive library, custom model integration, versioning.</li>
+                <li><strong>Data Handling:</strong> Support for text, image, audio, structured data with basic preprocessing.</li>
+                <li><strong>Parameter Control:</strong> Intuitive controls, presets, and (conceptual) real-time previews.</li>
+                <li><strong>Resource Monitoring:</strong> Live CPU, RAM, and GPU usage display in the footer.</li>
+            </ul>
+            <p>This GUI is designed for both power and simplicity. Explore the different sections to discover all functionalities. For specific parameter descriptions, hover over the input fields for tooltips.</p>
+            <h4 class="font-semibold text-textLight text-md mt-3">Documentation Tools (Conceptual):</h4>
+            <p>Future versions may include tools to allow users to write their own documentation to describe their code and outputs.</p>
+        </div>
+    `);
+    // Prevent re-rendering contentArea for modals
+    return true; 
+}
+
+// --- UI Update & Navigation ---
+function updateUI() {
+    // Update active nav item
+    navItems.forEach(item => {
+        item.classList.remove('ui-active', 'text-primary-DEFAULT', 'bg-card');
+        item.classList.add('text-textMedium');
+        if (item.dataset.view === appState.currentView) {
+            item.classList.add('ui-active', 'text-primary-DEFAULT', 'bg-card');
+            item.classList.remove('text-textMedium');
+        }
+    });
+
+    // Show/hide workspace navigation
+    if (appState.selectedModel) {
+        workspaceNavSection.classList.remove('hidden');
+        // If current view is a workspace view but no model selected, go to dashboard
+        const workspaceViews = ['dataInput', 'parameters', 'generateOutput', 'testing'];
+        if (!workspaceViews.includes(appState.currentView)) {
+            // If we are not in a workspace view, maybe default to dataInput if a model gets selected.
+            // Or better, stay on current view unless it's specifically one that needs a model and we just deselected.
+        }
+    } else {
+        workspaceNavSection.classList.add('hidden');
+        // If current view is a workspace view but no model selected, go to dashboard
+        const workspaceViews = ['dataInput', 'parameters', 'generateOutput', 'testing'];
+        if (workspaceViews.includes(appState.currentView)) {
+            appState.currentView = 'dashboard'; // redirect
+        }
+    }
+    
+    currentProjectNameEl.textContent = `Project: ${appState.currentProject.name}`;
+
+    // Render content based on current view
+    let preventContentRender = false;
+    switch (appState.currentView) {
+        case 'dashboard': renderDashboard(); break;
+        case 'modelHub': renderModelHub(); break;
+        case 'dataInput': renderDataInput(); break;
+        case 'parameters': renderParameters(); break;
+        case 'generateOutput': renderGenerateOutput(); break;
+        case 'testing': renderTesting(); break;
+        case 'settings': renderSettings(); break;
+        case 'help': preventContentRender = renderHelp(); break; // renderHelp might return true to prevent re-render
+        default: contentArea.innerHTML = `<p>View not found: ${appState.currentView}</p>`;
+    }
+
+    // Update status bar
+    statusText.textContent = appState.isGenerating ? `Generating (${appState.progress}%)` : 'Idle';
+    if (appState.isGenerating) {
+        progressBarContainer.classList.remove('hidden');
+        progressBar.style.width = `${appState.progress}%`;
+    } else {
+        progressBarContainer.classList.add('hidden');
+        progressBar.style.width = `0%`;
+    }
+    hardwareStatus.textContent = appState.hardware.toUpperCase();
+    document.getElementById('gpuUsageDisplay').style.display = appState.hardware === 'gpu' ? 'flex' : 'none';
+}
+
+function navigateTo(view) {
+    appState.currentView = view;
+    updateUI();
+}
+
+// --- Event Handlers & Logic ---
+
+navItems.forEach(item => {
+    item.addEventListener('click', () => {
+        navigateTo(item.dataset.view);
+    });
+});
+
+function createNewProject() {
+    const projectName = prompt("Enter new project name:", "New AI Project");
+    if (projectName) {
+        appState.currentProject.name = projectName;
+        appState.selectedModel = null; // Reset selected model for new project
+        appState.output = { type: null, content: '', isStreaming: false }; // Reset output
+        // Potentially reset other project-specific states here
+        addLog('info', `New project created: ${projectName}`);
+        navigateTo('dashboard'); // Or 'modelHub' to select a model
+    }
+}
+
+function filterModels() {
+    const searchTerm = document.getElementById('modelSearch')?.value.toLowerCase() || '';
+    const typeFilter = document.getElementById('modelTypeFilter')?.value || '';
+    const sourceFilter = document.getElementById('modelSourceFilter')?.value || '';
+
+    const filteredModels = appState.models.filter(model => 
+        model.name.toLowerCase().includes(searchTerm) &&
+        (typeFilter === '' || model.taskType === typeFilter) &&
+        (sourceFilter === '' || model.source === sourceFilter)
+    );
+    const modelListEl = document.getElementById('modelList');
+    if (modelListEl) modelListEl.innerHTML = renderModelCards(filteredModels);
+
+    const filteredCustomModels = appState.customModels.filter(model => 
+        model.name.toLowerCase().includes(searchTerm) &&
+        (typeFilter === '' || model.taskType === typeFilter)
+        // Custom models are always 'Local' for source in this simplified version
+    );
+    const customModelListEl = document.getElementById('customModelList');
+    if (customModelListEl) customModelListEl.innerHTML = renderModelCards(filteredCustomModels, true);
+}
+
+function selectModel(modelId, isCustom = false) {
+    const modelSource = isCustom ? appState.customModels : appState.models;
+    appState.selectedModel = modelSource.find(m => m.id === modelId);
+    if (appState.selectedModel) {
+        appState.currentProject.taskType = appState.selectedModel.taskType;
+        // Reset relevant states for the new model
+        appState.output = { type: null, content: '', isStreaming: false };
+        // Set default preset based on model type
+        if (appState.selectedModel.taskType === 'Text') appState.currentPreset = 'Default Text';
+        else if (appState.selectedModel.taskType === 'Image') appState.currentPreset = 'Default Image';
+        loadPreset(appState.currentPreset); // This will also update parameters
+        addLog('info', `Model selected: ${appState.selectedModel.name}`);
+        navigateTo('dataInput');
+    }
+}
+
+function updateModelVersion(modelId, newVersion, isCustom) {
+    const modelSource = isCustom ? appState.customModels : appState.models;
+    const model = modelSource.find(m => m.id === modelId);
+    if (model) {
+        model.currentVersion = newVersion;
+        // If this model is currently selected, update appState.selectedModel
+        if (appState.selectedModel && appState.selectedModel.id === modelId) {
+            appState.selectedModel.currentVersion = newVersion;
+        }
+        addLog('info', `Model ${model.name} version changed to ${newVersion}. Notes for this version could be loaded here.`);
+        // No need to re-render entire model hub, just update selectedModel if it matches
+        if (appState.currentView === 'modelHub' && appState.selectedModel && appState.selectedModel.id === modelId) {
+             updateUI(); // If selected model's version changes, parts of UI might need update.
+        } else if (appState.currentView !== 'modelHub' && appState.selectedModel && appState.selectedModel.id === modelId) {
+            updateUI(); // If current model's version changed, update relevant views like parameters/output.
+        }
+    }
+}
+
+
+function openAddCustomModelModal() {
+    openModal('Add Custom Model', `
+        <div class="space-y-4">
+            <div>
+                <label for="customModelName" class="block text-sm font-medium text-textMedium">Model Name:</label>
+                <input type="text" id="customModelName" class="mt-1 w-full bg-surface border border-borderDim px-3 py-1.5 rounded-md text-sm focus:ring-primary-DEFAULT focus:border-primary-DEFAULT outline-none">
+            </div>
+            <div>
+                <label for="customModelType" class="block text-sm font-medium text-textMedium">Task Type:</label>
+                <select id="customModelType" class="mt-1 w-full bg-surface border border-borderDim px-3 py-1.5 rounded-md text-sm focus:ring-primary-DEFAULT focus:border-primary-DEFAULT outline-none">
+                    <option value="Text">Text</option>
+                    <option value="Image">Image</option>
+                    <option value="Audio">Audio</option>
+                    <option value="Other">Other</option>
+                </select>
+            </div>
+            <div>
+                <label for="customModelPath" class="block text-sm font-medium text-textMedium">Model Path/File (Conceptual):</label>
+                <input type="text" id="customModelPath" placeholder="e.g., /path/to/your/model.safetensors or HuggingFaceID" class="mt-1 w-full bg-surface border border-borderDim px-3 py-1.5 rounded-md text-sm focus:ring-primary-DEFAULT focus:border-primary-DEFAULT outline-none">
+                <p class="text-xs text-textDark mt-1">Specify local path or repository ID. Ensure model is compatible.</p>
+            </div>
+             <div>
+                <label for="customModelDescription" class="block text-sm font-medium text-textMedium">Description:</label>
+                <textarea id="customModelDescription" rows="3" class="mt-1 w-full bg-surface border border-borderDim px-3 py-1.5 rounded-md text-sm focus:ring-primary-DEFAULT focus:border-primary-DEFAULT outline-none"></textarea>
+            </div>
+            <button onclick="addCustomModel()" class="bg-primary-DEFAULT text-primary-text px-4 py-2 rounded-md hover:bg-primary-hover">Add Model</button>
+        </div>
+    `);
+}
+
+function addCustomModel() {
+    const name = document.getElementById('customModelName').value;
+    const type = document.getElementById('customModelType').value;
+    const path = document.getElementById('customModelPath').value;
+    const description = document.getElementById('customModelDescription').value;
+
+    if (name && type && path) {
+        const newModel = {
+            id: 'cm' + (appState.customModels.length + 1) + Date.now(),
+            name: name,
+            taskType: type,
+            size: 'Custom', // Could be parsed or input by user
+            source: 'Local/Custom',
+            description: description || 'User-added custom model.',
+            path: path, // Store path for conceptual use
+            versions: ['1.0'], // Default version
+            currentVersion: '1.0'
+        };
+        appState.customModels.push(newModel);
+        addLog('info', `Custom model "${name}" added.`);
+        closeModal();
+        if (appState.currentView === 'modelHub') {
+            renderModelHub(); // Re-render model hub to show new model
+        }
+    } else {
+        alert('Please fill in Model Name, Task Type, and Path.');
+    }
+}
+
+
+function setInputType(type) {
+    appState.inputData.type = type;
+    appState.inputData.file = null; // Reset file on type change
+    appState.inputData.fileName = null;
+    appState.inputData.imageUrl = null;
+    document.getElementById('inputTypeContent').innerHTML = renderInputTypeContent();
+}
+
+function updateTextInput() {
+    appState.inputData.text = document.getElementById('textInput').value;
+    addLog('info', `Text input updated.`);
+    alert('Text input captured.'); // Simple feedback
+}
+
+function handleImageUpload(event) {
+    const file = event.target.files[0];
+    if (file) {
+        appState.inputData.file = file;
+        appState.inputData.fileName = file.name;
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            appState.inputData.imageUrl = e.target.result;
+            document.getElementById('inputTypeContent').innerHTML = renderInputTypeContent(); // Re-render to show preview
+            addLog('info', `Image "${file.name}" uploaded.`);
+        }
+        reader.readAsDataURL(file);
+    }
+}
+
+function handleFileUpload(event, type) {
+    const file = event.target.files[0];
+    if (file) {
+        appState.inputData.file = file;
+        appState.inputData.fileName = file.name;
+        document.getElementById('inputTypeContent').innerHTML = renderInputTypeContent(); // Re-render to show file name
+        addLog('info', `${type} file "${file.name}" uploaded.`);
+    }
+}
+
+function updateStructuredDataText() {
+    const text = document.getElementById('structuredTextInput').value;
+    if (text) {
+        appState.inputData.text = text; // Store pasted data as text
+        appState.inputData.file = null; // Clear any uploaded file
+        appState.inputData.fileName = 'Pasted Data';
+        addLog('info', 'Pasted structured data used.');
+        alert('Pasted structured data captured.');
+    }
+}
+
+function updateParameter(param, value, isSlider = false) {
+    if (isSlider) {
+        value = parseFloat(value);
+        document.getElementById(`${param}-value`).textContent = value;
+    } else if (document.getElementById(param)?.type === 'checkbox') {
+        value = document.getElementById(param).checked;
+    }
+    appState.parameters[param] = value;
+    // Could add conceptual real-time preview update here
+}
+
+function loadPreset(presetName) {
+    const preset = appState.presets.find(p => p.name === presetName);
+    if (preset) {
+        appState.parameters = { ...appState.parameters, ...preset.params }; // Merge to keep all possible params
+        appState.currentPreset = presetName;
+        addLog('info', `Preset "${presetName}" loaded.`);
+        if (appState.currentView === 'parameters') {
+             renderParameters(); // Re-render to reflect new values
+        }
+    }
+}
+
+function openSavePresetModal() {
+    openModal('Save Preset', `
+        <div class="space-y-3">
+            <label for="presetName" class="block text-sm font-medium text-textMedium">Preset Name:</label>
+            <input type="text" id="presetNameInput" class="w-full bg-surface border border-borderDim px-3 py-1.5 rounded-md text-sm focus:ring-primary-DEFAULT focus:border-primary-DEFAULT outline-none">
+            <button onclick="savePreset()" class="bg-primary-DEFAULT text-primary-text px-4 py-2 rounded-md hover:bg-primary-hover">Save</button>
+        </div>
+    `);
+}
+
+function savePreset() {
+    const name = document.getElementById('presetNameInput').value;
+    if (name) {
+        // Filter parameters relevant to current model type for cleaner presets
+        let relevantParams = {};
+        if (appState.selectedModel) {
+            if (appState.selectedModel.taskType === 'Text') {
+                ['temperature', 'maxTokens', 'topP', 'seed'].forEach(k => { if (appState.parameters[k] !== undefined) relevantParams[k] = appState.parameters[k]; });
+            } else if (appState.selectedModel.taskType === 'Image') {
+                ['imageResolution', 'steps', 'cfgScale', 'samplingMethod', 'seed'].forEach(k => { if (appState.parameters[k] !== undefined) relevantParams[k] = appState.parameters[k]; });
+            } else { // For other types, save all current params (or define specific ones)
+                relevantParams = { ...appState.parameters };
+            }
+        } else { // No model, save all.
+             relevantParams = { ...appState.parameters };
+        }
+
+        appState.presets.push({ name, params: relevantParams });
+        appState.currentPreset = name;
+        addLog('info', `Preset "${name}" saved.`);
+        closeModal();
+        if (appState.currentView === 'parameters') {
+             renderParameters(); // Re-render to show new preset in dropdown
+        }
+    }
+}
+
+function handleGeneration() {
+    if (appState.isGenerating) return;
+    if (!appState.selectedModel) {
+        alert("Please select a model first!");
+        return;
+    }
+    // Basic check for input data based on model type
+    if (appState.selectedModel.taskType === 'Text' && !appState.inputData.text) {
+        alert("Please provide text input for this model."); return;
+    }
+    if (appState.selectedModel.taskType === 'Image' && !appState.inputData.text) { // Image models usually take text prompt
+        alert("Please provide a text prompt for image generation."); return;
+    }
+    if ((appState.selectedModel.taskType === 'Audio' || appState.selectedModel.taskType === 'Image' && appState.inputData.type === 'image') && !appState.inputData.file) {
+         if (appState.selectedModel.taskType === 'Audio') { alert("Please upload an audio file."); return; }
+         // For Image to Image, this check might be relevant
+    }
+
+
+    appState.isGenerating = true;
+    appState.progress = 0;
+    appState.output = { type: appState.selectedModel.taskType.toLowerCase(), content: '', isStreaming: true };
+    addLog('info', `Generation started for model: ${appState.selectedModel.name}`);
+    updateUI(); // Reflect generating state
+
+    let progressInterval = setInterval(() => {
+        appState.progress += 10;
+        if (appState.progress > 100) {
+            appState.progress = 100;
+        }
+        updateUI(); // Update progress bar
+    }, 200);
+
+    // Simulate model generation
+    setTimeout(() => {
+        clearInterval(progressInterval);
+        appState.progress = 100;
+        appState.isGenerating = false;
+        appState.output.isStreaming = false;
+
+        // Simulate output based on model type
+        if (appState.selectedModel.taskType === 'Text') {
+            const inputText = appState.inputData.text || "The user provided no specific input, but asked for a story.";
+            const streamText = `Simulated text output for prompt: "${inputText.substring(0,50)}...".\n\nOnce upon a time, in a GUI far, far away, an AI model began to weave a tale. It spoke of parameters and presets, of clarity and usability. The temperature was ${appState.parameters.temperature}, and the maximum tokens were ${appState.parameters.maxTokens}. The little seed of an idea (${appState.parameters.seed || 'random'}) grew into a mighty oak of text. This is a demonstration of streaming output, gradually revealing the model's thoughts. The end.`;
+            
+            let currentText = '';
+            let i = 0;
+            const textOutputArea = document.getElementById('textOutputArea');
+            if(textOutputArea) textOutputArea.innerHTML = ''; // Clear previous
+
+            function typeCharacter() {
+                if (i < streamText.length) {
+                    currentText += streamText.charAt(i);
+                    if(textOutputArea) textOutputArea.innerHTML = currentText + '<span class="animate-stream-pulse">▋</span>';
+                    textOutputArea.scrollTop = textOutputArea.scrollHeight;
+                    i++;
+                    setTimeout(typeCharacter, 20); // Adjust speed of streaming
+                } else {
+                    if(textOutputArea) textOutputArea.innerHTML = currentText; // Remove cursor
+                    appState.output.content = currentText;
+                    addLog('info', `Text generation complete.`);
+                    updateUI();
+                }
+            }
+            typeCharacter();
+
+        } else if (appState.selectedModel.taskType === 'Image') {
+            // Use a placeholder service like picsum or a static data URI
+            appState.output.content = `https://picsum.photos/seed/${Date.now()}/${appState.parameters.imageResolution ? appState.parameters.imageResolution.split('x')[0] : 512}/${appState.parameters.imageResolution ? appState.parameters.imageResolution.split('x')[1] : 512}`;
+            addLog('info', `Image generation complete (simulated).`);
+        } else if (appState.selectedModel.taskType === 'Audio') {
+            // Placeholder for audio file, e.g. a short silent WAV data URI or a public domain sound
+            appState.output.content = 'data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAVAAAAHgAAAEACAAgZGF0YQAAAAA='; // Short silent WAV
+            addLog('info', `Audio generation complete (simulated).`);
+        } else {
+            appState.output.content = 'Simulated output for an unhandled model type.';
+        }
+        updateUI(); // Final update to show result
+    }, 2500); // Simulate 2.5 seconds generation time
+}
+
+function copyOutput() {
+    if (appState.output.type === 'text' && appState.output.content) {
+        navigator.clipboard.writeText(appState.output.content)
+            .then(() => { 
+                addLog('info', 'Text output copied to clipboard.');
+                alert('Text copied to clipboard!'); 
+            })
+            .catch(err => { 
+                addLog('error', 'Failed to copy text: ' + err);
+                alert('Failed to copy text.'); 
+            });
+    }
+}
+
+function saveOutput() {
+    if (!appState.output.content) return;
+
+    const type = appState.output.type;
+    const content = appState.output.content;
+    let fileName = `ai_output_${Date.now()}`;
+    let mimeType;
+    let dataToSave = content;
+
+    if (type === 'text') {
+        fileName += '.txt';
+        mimeType = 'text/plain';
+    } else if (type === 'image') {
+        fileName += '.png'; // Assuming PNG for simplicity, could be JPG from URL
+        mimeType = 'image/png';
+        // If content is a URL, we can't directly save it like this. This part is conceptual for data URI.
+        // For actual URL, user would right-click save. For demo, we'll simulate a text file download.
+        if (content.startsWith('http')) {
+            alert(`Simulating download. In a real app, you'd fetch and then save, or let user right-click image.\nImage URL: ${content}`);
+            dataToSave = `Image URL: ${content}`; // Save URL as text for demo
+            fileName = `ai_image_url_${Date.now()}.txt`;
+            mimeType = 'text/plain';
+        }
+    } else if (type === 'audio') {
+        fileName += '.wav';
+        mimeType = 'audio/wav';
+    } else {
+        alert('Unsupported output type for saving.');
+        return;
+    }
+    
+    const blob = new Blob([dataToSave], { type: mimeType });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = fileName;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    addLog('info', `Output saved as ${fileName}.`);
+}
+
+function runTerminalCommand() {
+    const inputEl = document.getElementById('terminalInput');
+    const command = inputEl.value.trim();
+    if (!command) return;
+
+    appState.terminalHistory.push(`<span class="text-green-400">gui@ai-model:~$</span> ${command}`);
+    
+    // Simulate command execution
+    let output = `Executing: ${command}\n`;
+    if (command.toLowerCase() === 'help') {
+        output += 'Available commands: help, date, clear, echo [text], selected_model';
+    } else if (command.toLowerCase() === 'date') {
+        output += new Date().toString();
+    } else if (command.toLowerCase().startsWith('echo ')) {
+        output += command.substring(5);
+    } else if (command.toLowerCase() === 'clear') {
+        appState.terminalHistory = [];
+        output = 'Terminal cleared.';
+    } else if (command.toLowerCase() === 'selected_model') {
+        output += appState.selectedModel ? `Current Model: ${appState.selectedModel.name} (ID: ${appState.selectedModel.id}, Type: ${appState.selectedModel.taskType})` : 'No model selected.';
+    } else {
+        output += `Command not found: ${command}`;
+    }
+    appState.terminalHistory.push(output.replace(/\n/g, '<br>'));
+
+    inputEl.value = '';
+    renderTesting(); // Re-render to update terminal
+    addLog('info', `Terminal command run: ${command}`);
+}
+
+function addLog(type, message) {
+    const timestamp = new Date().toLocaleTimeString();
+    appState.debugLogs.push({ timestamp, type, message });
+    if (appState.debugLogs.length > 100) appState.debugLogs.shift(); // Keep logs manageable
+    if (appState.currentView === 'testing') { // Only re-render if on testing view for performance
+        const debugLogOutputEl = document.getElementById('debugLogOutput');
+        if (debugLogOutputEl) {
+             debugLogOutputEl.innerHTML = appState.debugLogs.map(log => `<div class="text-gray-400"><span class="text-blue-400">[${log.timestamp}]</span> <span class="${log.type === 'error' ? 'text-red-400' : 'text-yellow-400'}">[${log.type.toUpperCase()}]</span> ${log.message}</div>`).join('');
+             debugLogOutputEl.scrollTop = debugLogOutputEl.scrollHeight;
+        }
+    }
+}
+
+
+function updateHardwareSetting(value) {
+    appState.hardware = value;
+    hardwareStatus.textContent = value.toUpperCase();
+    document.getElementById('gpuUsageDisplay').style.display = value === 'gpu' ? 'flex' : 'none';
+    addLog('info', `Hardware setting changed to ${value.toUpperCase()}.`);
+    // In a real app, this would trigger backend changes.
+}
+
+// --- Theme Toggle ---
+function toggleTheme() {
+    if (document.documentElement.classList.contains('dark')) {
+        document.documentElement.classList.remove('dark');
+        appState.theme = 'light';
+        themeIconLight.classList.remove('hidden');
+        themeIconDark.classList.add('hidden');
+        // Update chart colors for light theme
+        const lightBorderColor = tailwind.config.theme.extend.colors.primary.DEFAULT; // Use same primary for light
+        [cpuChartInstance, ramChartInstance, gpuChartInstance].forEach(chart => {
+            if (chart) {
+                chart.data.datasets[0].borderColor = lightBorderColor;
+                chart.update('quiet');
+            }
+        });
+    } else {
+        document.documentElement.classList.add('dark');
+        appState.theme = 'dark';
+        themeIconLight.classList.add('hidden');
+        themeIconDark.classList.remove('hidden');
+         // Update chart colors for dark theme
+        const darkBorderColor = tailwind.theme.extend.colors.primary.DEFAULT; // Re-assert dark theme color
+        [cpuChartInstance, ramChartInstance, gpuChartInstance].forEach(chart => {
+            if (chart) {
+                chart.data.datasets[0].borderColor = darkBorderColor;
+                chart.update('quiet');
+            }
+        });
+    }
+    // This simple toggle assumes Tailwind is set up for class-based dark mode.
+    // For full themeing, you might need to adjust specific colors or use CSS variables.
+    addLog('info', `Theme changed to ${appState.theme}.`);
+}
+themeToggleBtn.addEventListener('click', toggleTheme);
+
+
+// --- Modal System ---
+function openModal(title, contentHtml) {
+    const modalId = 'modal-' + Date.now();
+    const modalHtml = `
+        <div id="${modalId}" class="fixed inset-0 bg-slate-900 bg-opacity-75 flex items-center justify-center z-50 p-4">
+            <div class="bg-card p-6 rounded-lg shadow-xl max-w-lg w-full max-h-[80vh] flex flex-col">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="text-xl font-semibold text-textLight">${title}</h3>
+                    <button onclick="closeModal('${modalId}')" class="text-textDark hover:text-textLight">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+                    </button>
+                </div>
+                <div class="overflow-y-auto">
+                    ${contentHtml}
+                </div>
+            </div>
+        </div>
+    `;
+    modalContainer.insertAdjacentHTML('beforeend', modalHtml);
+}
+
+function closeModal(modalId = null) {
+    if (modalId) {
+        const modalElement = document.getElementById(modalId);
+        if (modalElement) modalElement.remove();
+    } else {
+        // Close the last opened modal if no ID provided
+        if (modalContainer.lastChild) {
+            modalContainer.lastChild.remove();
+        }
+    }
+}
+
+// --- Resource Monitoring Simulation ---
+function simulateResourceUsage() {
+    // CPU Usage
+    const newCpuUsage = Math.floor(Math.random() * (appState.isGenerating ? 70 : 30)) + (appState.isGenerating ? 20 : 5);
+    appState.resourceUsage.cpu.push(newCpuUsage);
+    if (appState.resourceUsage.cpu.length > MAX_DATA_POINTS) appState.resourceUsage.cpu.shift();
+    updateChartData(cpuChartInstance, appState.resourceUsage.cpu);
+
+    // RAM Usage
+    const newRamUsage = Math.floor(Math.random() * (appState.isGenerating ? 60 : 40)) + (appState.isGenerating ? 30 : 20); // As percentage
+    appState.resourceUsage.ram.push(newRamUsage);
+    if (appState.resourceUsage.ram.length > MAX_DATA_POINTS) appState.resourceUsage.ram.shift();
+    updateChartData(ramChartInstance, appState.resourceUsage.ram);
+
+    // GPU Usage (only if GPU is selected)
+    if (appState.hardware === 'gpu') {
+        const newGpuUsage = Math.floor(Math.random() * (appState.isGenerating ? 80 : 20)) + (appState.isGenerating ? 15 : 5);
+        appState.resourceUsage.gpu.push(newGpuUsage);
+        if (appState.resourceUsage.gpu.length > MAX_DATA_POINTS) appState.resourceUsage.gpu.shift();
+        updateChartData(gpuChartInstance, appState.resourceUsage.gpu);
+    } else {
+         // If CPU is selected, GPU usage should be 0 or N/A
+        appState.resourceUsage.gpu.push(0);
+        if (appState.resourceUsage.gpu.length > MAX_DATA_POINTS) appState.resourceUsage.gpu.shift();
+        updateChartData(gpuChartInstance, appState.resourceUsage.gpu);
+    }
+}
+
+
+// --- Initial Setup ---
+document.addEventListener('DOMContentLoaded', () => {
+    if (appState.theme === 'dark') {
+        document.documentElement.classList.add('dark');
+        themeIconLight.classList.add('hidden');
+        themeIconDark.classList.remove('hidden');
+    } else {
+        themeIconLight.classList.remove('hidden');
+        themeIconDark.classList.add('hidden');
+    }
+    
+    cpuChartInstance = createChart('cpuChart', 'CPU Usage');
+    ramChartInstance = createChart('ramChart', 'RAM Usage');
+    gpuChartInstance = createChart('gpuChart', 'GPU Usage');
+
+    setInterval(simulateResourceUsage, 1000); // Update resource charts every second
+
+    addLog('info', 'Application initialized.');
+    updateUI(); // Initial render
+});
+
+// Keyboard shortcuts (conceptual)
+document.addEventListener('keydown', (e) => {
+    if (e.ctrlKey && e.key === 'g') { // Ctrl+G for Generate
+        e.preventDefault();
+        if (appState.currentView === 'generateOutput' && !appState.isGenerating) {
+            handleGeneration();
+        }
+    }
+     if (e.key === 'Escape') { // Escape to close modal
+        closeModal();
+    }
+});
+
+</script>
+</body>
+</html>

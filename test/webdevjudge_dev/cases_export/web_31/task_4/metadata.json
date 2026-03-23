@@ -1,0 +1,9 @@
+{
+  "web_id": "web_31",
+  "task_id": 4,
+  "task_type": "dynamic",
+  "instruction": "Task: Click a 'Create Channel' button, input a channel name, and submit.\nExpected Result: New channel appears in the sidebar list and is selectable.\n\nNote: The task is only considered successful if the expected result is achieved; otherwise, it is deemed infeasible.",
+  "max_steps": 15,
+  "expected": "New channel appears in the sidebar list and is selectable.",
+  "label": 0
+}

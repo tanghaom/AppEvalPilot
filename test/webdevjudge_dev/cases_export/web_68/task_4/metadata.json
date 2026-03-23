@@ -1,0 +1,9 @@
+{
+  "web_id": "web_68",
+  "task_id": 4,
+  "task_type": "dynamic",
+  "instruction": "Task: Select a specific access key duration (e.g., 'Weekly Access') on the Product Detail Page section.\nExpected Result: The selected key duration option is visually confirmed (e.g., highlighted, checkmark animation), and any other duration options are deselected.\n\nNote: The task is only considered successful if the expected result is achieved; otherwise, it is deemed infeasible.",
+  "max_steps": 15,
+  "expected": "The selected key duration option is visually confirmed (e.g., highlighted, checkmark animation), and any other duration options are deselected.",
+  "label": 1
+}

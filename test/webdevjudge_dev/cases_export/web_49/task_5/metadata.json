@@ -1,0 +1,9 @@
+{
+  "web_id": "web_49",
+  "task_id": 5,
+  "task_type": "dynamic",
+  "instruction": "Task: Hover the mouse cursor over a text input field.\nExpected Result: The placeholder text, or any text already entered within that input field, subtly and smoothly curves outward.\n\nNote: The task is only considered successful if the expected result is achieved; otherwise, it is deemed infeasible.",
+  "max_steps": 15,
+  "expected": "The placeholder text, or any text already entered within that input field, subtly and smoothly curves outward.",
+  "label": 1
+}

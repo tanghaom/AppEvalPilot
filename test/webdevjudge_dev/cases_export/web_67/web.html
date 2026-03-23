@@ -1,0 +1,618 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ChatClone AI</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/marked/4.2.12/marked.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.7.0/highlight.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.7.0/styles/atom-one-dark.min.css">
+    <style type="text/tailwindcss">
+        @layer utilities {
+            .scrollbar-thin {
+                scrollbar-width: thin;
+                scrollbar-color: #4B5563 #1F2937; /* thumb track */
+            }
+            .scrollbar-thin::-webkit-scrollbar {
+                width: 8px;
+                height: 8px;
+            }
+            .scrollbar-thin::-webkit-scrollbar-track {
+                background: #1F2937; /* dark-gray-800 */
+            }
+            .scrollbar-thin::-webkit-scrollbar-thumb {
+                background-color: #4B5563; /* dark-gray-600 */
+                border-radius: 4px;
+                border: 2px solid #1F2937; /* dark-gray-800 */
+            }
+            .prose-dark {
+                @apply prose prose-invert max-w-none 
+                       prose-headings:text-slate-200 
+                       prose-p:text-slate-300 
+                       prose-a:text-sky-400 prose-a:no-underline hover:prose-a:underline
+                       prose-strong:text-slate-200 
+                       prose-em:text-slate-300
+                       prose-code:text-rose-300 prose-code:bg-slate-800 prose-code:p-1 prose-code:rounded-md prose-code:text-sm
+                       prose-pre:bg-slate-800 prose-pre:text-slate-300 prose-pre:p-0 prose-pre:rounded-lg prose-pre:overflow-x-auto
+                       prose-blockquote:border-sky-500 prose-blockquote:text-slate-400
+                       prose-ul:text-slate-300 prose-ol:text-slate-300
+                       prose-li:marker:text-sky-500;
+            }
+            .prose-dark pre code.hljs {
+                @apply !bg-slate-800 !text-slate-300 p-4 rounded-lg;
+            }
+        }
+        .code-block-header {
+            @apply bg-slate-700 text-slate-300 px-4 py-2 text-xs flex justify-between items-center rounded-t-lg;
+        }
+        .code-block-copy-btn {
+            @apply bg-slate-600 hover:bg-sky-600 text-xs text-white py-1 px-2 rounded transition-colors;
+        }
+    </style>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        'brand-primary': '#0284c7', // sky-600
+                        'brand-secondary': '#0369a1', // sky-700
+                        'bg-dark': '#111827', // gray-900
+                        'bg-medium': '#1F2937', // gray-800
+                        'bg-light': '#374151', // gray-700
+                        'text-primary': '#F3F4F6', // gray-100
+                        'text-secondary': '#D1D5DB', // gray-300
+                        'border-medium': '#374151', // gray-700
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+<body class="bg-bg-dark text-text-primary flex h-screen antialiased">
+
+    <!-- Sidebar -->
+    <div id="sidebar" class="bg-bg-medium w-64 flex-shrink-0 flex flex-col p-4 space-y-4 transition-all duration-300 md:w-72">
+        <button id="newChatBtn" class="w-full flex items-center justify-center bg-brand-primary hover:bg-brand-secondary text-white font-semibold py-2 px-4 rounded-lg transition-colors">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5 mr-2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+            </svg>
+            New Chat
+        </button>
+        <div class="flex-grow overflow-y-auto scrollbar-thin pr-1 space-y-2" id="conversationList">
+            <!-- Conversation items will be populated here -->
+        </div>
+        <div class="border-t border-border-medium pt-4 text-xs text-text-secondary">
+            ChatClone AI. Free API usage.
+        </div>
+    </div>
+
+    <!-- Main Chat Area -->
+    <div class="flex-1 flex flex-col bg-bg-dark overflow-hidden">
+        <!-- Chat Header (Optional, can show model name or settings) -->
+        <div class="bg-bg-medium p-3 border-b border-border-medium flex justify-between items-center">
+            <h2 id="chatTitle" class="text-lg font-semibold text-text-primary">New Chat</h2>
+            <div class="flex items-center space-x-2">
+                <button id="regenerateResponseBtn" title="Regenerate Response" class="text-text-secondary hover:text-text-primary p-1.5 rounded-md hover:bg-bg-light hidden">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99" />
+                    </svg>
+                </button>
+                 <button id="stopGeneratingBtn" class="bg-rose-600 hover:bg-rose-700 text-white font-semibold py-1.5 px-3 rounded-lg text-sm hidden items-center">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-4 h-4 mr-1.5">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M5.25 7.5A2.25 2.25 0 0 1 7.5 5.25h9a2.25 2.25 0 0 1 2.25 2.25v9a2.25 2.25 0 0 1-2.25 2.25h-9a2.25 2.25 0 0 1-2.25-2.25v-9Z" />
+                    </svg>
+                    Stop
+                </button>
+            </div>
+        </div>
+
+        <!-- Messages Container -->
+        <div id="chatMessages" class="flex-1 overflow-y-auto p-6 space-y-6 scrollbar-thin">
+            <!-- Messages will be populated here -->
+             <div class="flex justify-center items-center h-full">
+                <div class="text-center">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-16 h-16 mx-auto text-brand-primary mb-4">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M8.625 12a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm0 0H8.25m4.125 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm0 0H12m4.125 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm0 0h-.375M21 12c0 4.556-3.86 8.25-8.625 8.25S3.75 16.556 3.75 12 .964 3.75 6.375 3.75 15.187 2.25 21 12Z" />
+                    </svg>
+                    <h3 class="text-2xl font-semibold text-text-primary">ChatClone AI</h3>
+                    <p class="text-text-secondary mt-1">Start a conversation by typing below.</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Message Input Area -->
+        <div class="bg-bg-dark border-t border-border-medium p-4">
+            <div class="bg-bg-light rounded-xl p-1 flex items-end">
+                <textarea id="messageInput" rows="1" 
+                    class="flex-grow bg-transparent p-3 text-text-primary focus:outline-none resize-none scrollbar-thin placeholder-text-secondary" 
+                    placeholder="Send a message..."></textarea>
+                <button id="sendMessageBtn" class="bg-brand-primary hover:bg-brand-secondary text-white p-3 rounded-lg ml-2 transition-colors flex-shrink-0 disabled:opacity-50 disabled:cursor-not-allowed">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M6 12 3.269 3.125A59.769 59.769 0 0 1 21.485 12 59.768 59.768 0 0 1 3.27 20.875L5.999 12Zm0 0h7.5" />
+                    </svg>
+                </button>
+            </div>
+        </div>
+    </div>
+
+<script>
+const app = {
+    // API configuration
+    // IMPORTANT: This is a free, public API. It might be rate-limited, unstable, or taken down.
+    // For production, you'd use a paid API with your own key.
+    API_URL: 'https://api.g4f.ai/v1/chat/completions',
+    API_MODEL: 'gpt-3.5-turbo', // Or try 'gpt-4', 'llama', etc. if supported by the provider
+
+    // DOM Elements
+    messageInput: null,
+    sendMessageBtn: null,
+    chatMessages: null,
+    conversationList: null,
+    newChatBtn: null,
+    chatTitle: null,
+    stopGeneratingBtn: null,
+    regenerateResponseBtn: null,
+
+    // State
+    conversations: [],
+    currentConversationId: null,
+    isLoading: false,
+    abortController: null, // For stopping generation
+
+    init() {
+        this.cacheDOMElements();
+        this.registerEventListeners();
+        this.loadConversationsFromStorage();
+        this.renderSidebar();
+        if (this.conversations.length === 0) {
+            this.createNewChat();
+        } else {
+            // Load the most recent conversation by default or the last active one
+            const lastActiveId = localStorage.getItem('lastActiveConversationId');
+            const conversationToLoad = this.conversations.find(c => c.id === lastActiveId) || this.conversations[0];
+            this.loadConversation(conversationToLoad.id);
+        }
+        this.updateSendButtonState();
+    },
+
+    cacheDOMElements() {
+        this.messageInput = document.getElementById('messageInput');
+        this.sendMessageBtn = document.getElementById('sendMessageBtn');
+        this.chatMessages = document.getElementById('chatMessages');
+        this.conversationList = document.getElementById('conversationList');
+        this.newChatBtn = document.getElementById('newChatBtn');
+        this.chatTitle = document.getElementById('chatTitle');
+        this.stopGeneratingBtn = document.getElementById('stopGeneratingBtn');
+        this.regenerateResponseBtn = document.getElementById('regenerateResponseBtn');
+    },
+
+    registerEventListeners() {
+        this.sendMessageBtn.addEventListener('click', () => this.handleSendMessage());
+        this.messageInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                this.handleSendMessage();
+            }
+        });
+        this.messageInput.addEventListener('input', () => {
+            this.messageInput.style.height = 'auto';
+            this.messageInput.style.height = `${this.messageInput.scrollHeight}px`;
+            this.updateSendButtonState();
+        });
+        this.newChatBtn.addEventListener('click', () => this.createNewChat());
+        this.stopGeneratingBtn.addEventListener('click', () => this.handleStopGenerating());
+        this.regenerateResponseBtn.addEventListener('click', () => this.handleRegenerateResponse());
+    },
+
+    updateSendButtonState() {
+        this.sendMessageBtn.disabled = this.isLoading || this.messageInput.value.trim() === '';
+    },
+    
+    generateId() {
+        return `id-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+    },
+
+    getCurrentConversation() {
+        return this.conversations.find(c => c.id === this.currentConversationId);
+    },
+
+    handleSendMessage() {
+        const content = this.messageInput.value.trim();
+        if (!content || this.isLoading) return;
+
+        const userMessage = {
+            id: this.generateId(),
+            role: 'user',
+            content: content,
+            timestamp: new Date().toISOString()
+        };
+
+        const currentConversation = this.getCurrentConversation();
+        if (!currentConversation) {
+            console.error("No current conversation found!");
+            // Potentially create a new one if desired, or show an error
+            this.createNewChat(); // Create one if none exists
+             const newCurrentConversation = this.getCurrentConversation();
+             newCurrentConversation.messages.push(userMessage);
+        } else {
+             currentConversation.messages.push(userMessage);
+        }
+
+
+        // Auto-title conversation if it's the first user message and title is "New Chat"
+        if (currentConversation.messages.filter(m => m.role === 'user').length === 1 && currentConversation.title === "New Chat") {
+            currentConversation.title = content.substring(0, 30) + (content.length > 30 ? '...' : '');
+            this.renderSidebar(); // Update sidebar with new title
+        }
+        
+        this.renderChatMessages();
+        this.messageInput.value = '';
+        this.messageInput.style.height = 'auto'; // Reset height
+        this.updateSendButtonState(); // Disable send button
+
+        this.fetchAIResponse();
+        this.saveConversations();
+    },
+
+    async fetchAIResponse(isRegenerating = false) {
+        const currentConversation = this.getCurrentConversation();
+        if (!currentConversation) return;
+
+        this.isLoading = true;
+        this.stopGeneratingBtn.classList.remove('hidden');
+        this.regenerateResponseBtn.classList.add('hidden');
+        this.updateSendButtonState(); // Disable send button
+
+        const assistantMessageId = this.generateId();
+        let assistantMessage = {
+            id: assistantMessageId,
+            role: 'assistant',
+            content: '', // Start with empty content for streaming
+            timestamp: new Date().toISOString()
+        };
+
+        if (!isRegenerating) {
+            currentConversation.messages.push(assistantMessage);
+        } else {
+            // If regenerating, replace the last AI message
+            const lastMessageIndex = currentConversation.messages.length - 1;
+            if (currentConversation.messages[lastMessageIndex]?.role === 'assistant') {
+                currentConversation.messages[lastMessageIndex] = assistantMessage;
+            } else {
+                 currentConversation.messages.push(assistantMessage); // Should not happen if used correctly
+            }
+        }
+        
+        // Create an empty message bubble for the AI that will be filled
+        this.renderChatMessages(); 
+        const aiMessageElement = document.getElementById(`message-${assistantMessageId}`);
+        const aiMessageContentElement = aiMessageElement.querySelector('.message-content');
+
+
+        this.abortController = new AbortController();
+        const signal = this.abortController.signal;
+
+        // Prepare messages for API (only content and role)
+        const apiMessages = currentConversation.messages
+            .slice(0, -1) // Exclude the empty assistant message we just added
+            .map(msg => ({ role: msg.role, content: msg.content }));
+        
+        if (isRegenerating && apiMessages.length > 0 && apiMessages[apiMessages.length -1].role === 'assistant') {
+            apiMessages.pop(); // Remove the previous assistant message we are regenerating for
+        }
+        
+        // Ensure the last message sent to API is user's if regenerating, or it's the latest user message
+        let messagesForApi = currentConversation.messages.map(m => ({ role: m.role, content: m.content }));
+        if (isRegenerating) {
+            // Remove the last assistant message to regenerate it
+            if (messagesForApi.length > 0 && messagesForApi[messagesForApi.length - 1].role === 'assistant') {
+                messagesForApi.pop();
+            }
+        }
+
+
+        try {
+            const response = await fetch(this.API_URL, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    model: this.API_MODEL,
+                    messages: messagesForApi.filter(m => m.id !== assistantMessageId), // Send all messages except the placeholder AI one
+                    stream: true
+                }),
+                signal: signal
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json().catch(() => ({ message: response.statusText }));
+                throw new Error(`API Error: ${response.status} - ${errorData.error?.message || errorData.message || 'Unknown error'}`);
+            }
+
+            const reader = response.body.getReader();
+            const decoder = new TextDecoder();
+            let buffer = '';
+
+            while (true) {
+                const { done, value } = await reader.read();
+                if (done) break;
+
+                buffer += decoder.decode(value, { stream: true });
+                const lines = buffer.split('\n\n');
+                buffer = lines.pop(); // Keep incomplete line for next chunk
+
+                for (const line of lines) {
+                    if (line.startsWith('data: ')) {
+                        const jsonData = line.substring(6).trim();
+                        if (jsonData === '[DONE]') {
+                            break; // Stream finished for this message
+                        }
+                        try {
+                            const parsed = JSON.parse(jsonData);
+                            const delta = parsed.choices[0].delta?.content;
+                            if (delta) {
+                                assistantMessage.content += delta;
+                                // Update only the content of the specific message element
+                                aiMessageContentElement.innerHTML = marked.parse(assistantMessage.content);
+                                this.chatMessages.scrollTop = this.chatMessages.scrollHeight;
+                                this.addCopyButtonsToCodeBlocks(aiMessageContentElement);
+                            }
+                        } catch (error) {
+                            console.error('Error parsing stream data:', error, jsonData);
+                        }
+                    }
+                }
+                if (jsonData === '[DONE]') break;
+            }
+        } catch (error) {
+            if (error.name === 'AbortError') {
+                assistantMessage.content += "\n\n*Generation stopped.*";
+                console.log('Stream aborted');
+            } else {
+                console.error('Error fetching AI response:', error);
+                assistantMessage.content += `\n\n*Error: ${error.message}*`;
+            }
+            aiMessageContentElement.innerHTML = marked.parse(assistantMessage.content);
+        } finally {
+            this.isLoading = false;
+            this.stopGeneratingBtn.classList.add('hidden');
+            this.regenerateResponseBtn.classList.remove('hidden'); // Show regenerate after response
+            this.updateSendButtonState();
+            this.saveConversations();
+            this.highlightCodeInChat(); // Final highlight after streaming is complete
+            this.chatMessages.scrollTop = this.chatMessages.scrollHeight;
+        }
+    },
+
+    handleStopGenerating() {
+        if (this.abortController) {
+            this.abortController.abort();
+            this.abortController = null;
+            this.isLoading = false; // Manually set as fetch might not catch AbortError immediately for UI
+            this.stopGeneratingBtn.classList.add('hidden');
+            this.regenerateResponseBtn.classList.remove('hidden');
+            this.updateSendButtonState();
+            console.log("Generation stopped by user.");
+        }
+    },
+
+    handleRegenerateResponse() {
+        const currentConversation = this.getCurrentConversation();
+        if (!currentConversation || currentConversation.messages.length === 0) return;
+
+        // Ensure there's an assistant message to regenerate.
+        // And there's a user message before it.
+        const lastMessage = currentConversation.messages[currentConversation.messages.length - 1];
+        if (lastMessage.role === 'assistant' && currentConversation.messages.length > 1) {
+             // The fetchAIResponse function with isRegenerating=true will handle replacing this
+            this.fetchAIResponse(true);
+        } else {
+            // If last message is user (e.g. error), just resend
+            this.fetchAIResponse(false);
+        }
+    },
+
+    renderChatMessages() {
+        const currentConversation = this.getCurrentConversation();
+        if (!currentConversation) {
+            this.chatMessages.innerHTML = `
+                <div class="flex justify-center items-center h-full">
+                    <div class="text-center">
+                         <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-16 h-16 mx-auto text-brand-primary mb-4">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M8.625 12a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm0 0H8.25m4.125 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm0 0H12m4.125 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm0 0h-.375M21 12c0 4.556-3.86 8.25-8.625 8.25S3.75 16.556 3.75 12 .964 3.75 6.375 3.75 15.187 2.25 21 12Z" />
+                        </svg>
+                        <h3 class="text-2xl font-semibold text-text-primary">ChatClone AI</h3>
+                        <p class="text-text-secondary mt-1">Select a conversation or start a new one.</p>
+                    </div>
+                </div>`;
+            this.chatTitle.textContent = "ChatClone AI";
+            this.regenerateResponseBtn.classList.add('hidden');
+            return;
+        }
+
+        this.chatMessages.innerHTML = currentConversation.messages.map(msg => this.createMessageHTML(msg)).join('');
+        this.chatTitle.textContent = currentConversation.title;
+        
+        this.highlightCodeInChat();
+        this.chatMessages.scrollTop = this.chatMessages.scrollHeight;
+
+        // Show/hide regenerate button
+        const lastMessage = currentConversation.messages[currentConversation.messages.length -1];
+        if (lastMessage && (lastMessage.role === 'assistant' || (lastMessage.role === 'user' && !this.isLoading))) {
+             this.regenerateResponseBtn.classList.remove('hidden');
+        } else {
+            this.regenerateResponseBtn.classList.add('hidden');
+        }
+        if (this.isLoading) { // Hide regenerate if loading
+            this.regenerateResponseBtn.classList.add('hidden');
+        }
+    },
+
+    createMessageHTML(message) {
+        const isUser = message.role === 'user';
+        const avatar = isUser ? 
+            `<div class="w-8 h-8 rounded-full bg-sky-500 flex items-center justify-center text-white text-sm font-bold flex-shrink-0">ME</div>` :
+            `<div class="w-8 h-8 rounded-full bg-emerald-500 flex items-center justify-center text-white text-sm font-bold flex-shrink-0">AI</div>`;
+        
+        const bgColor = isUser ? 'bg-sky-600' : 'bg-bg-light';
+        const textColor = isUser ? 'text-white' : 'text-text-primary';
+        const textAlign = isUser ? 'justify-end' : 'justify-start';
+        const proseClass = !isUser ? 'prose-dark' : ''; // Apply prose styles only to AI messages
+
+        // Sanitize content before passing to marked.parse to prevent XSS if content wasn't fully trusted
+        // For this app, content is either user input (rendered as text) or AI output (trusted for markdown)
+        // For user messages, we display raw text (or could sanitize and display simple markdown too)
+        const renderedContent = isUser ? 
+            `<p class="whitespace-pre-wrap">${this.escapeHTML(message.content)}</p>` : 
+            marked.parse(message.content || "Thinking..."); // Ensure content exists
+            
+        return `
+            <div id="message-${message.id}" class="flex ${textAlign} group">
+                <div class="flex items-start space-x-3 max-w-xl lg:max-w-2xl xl:max-w-3xl">
+                    ${!isUser ? avatar : ''}
+                    <div class="p-3 rounded-xl ${bgColor} ${textColor} shadow-md message-content-wrapper">
+                        <div class="message-content ${proseClass}">${renderedContent}</div>
+                    </div>
+                    ${isUser ? avatar : ''}
+                </div>
+            </div>
+        `;
+    },
+    
+    escapeHTML(str) {
+        const p = document.createElement('p');
+        p.textContent = str;
+        return p.innerHTML;
+    },
+
+    highlightCodeInChat() {
+        this.chatMessages.querySelectorAll('pre code').forEach((block) => {
+            // Only highlight if not already highlighted
+            if (!block.dataset.highlighted) {
+                hljs.highlightElement(block);
+                block.dataset.highlighted = "true"; // Mark as highlighted
+                this.addCopyButtonsToCodeBlocks(block.closest('.message-content-wrapper'));
+            }
+        });
+    },
+
+    addCopyButtonsToCodeBlocks(parentElement) {
+        const codeBlocks = (parentElement || document).querySelectorAll('pre');
+        codeBlocks.forEach(preElement => {
+            if (preElement.querySelector('.code-block-copy-btn')) return; // Skip if button exists
+
+            const codeElement = preElement.querySelector('code');
+            const language = (codeElement.className.match(/language-(\S+)/) || [])[1] || 'text';
+
+            const header = document.createElement('div');
+            header.className = 'code-block-header';
+            
+            const langSpan = document.createElement('span');
+            langSpan.textContent = language;
+            header.appendChild(langSpan);
+
+            const copyButton = document.createElement('button');
+            copyButton.className = 'code-block-copy-btn';
+            copyButton.textContent = 'Copy';
+            copyButton.onclick = () => {
+                navigator.clipboard.writeText(codeElement.innerText)
+                    .then(() => {
+                        copyButton.textContent = 'Copied!';
+                        setTimeout(() => copyButton.textContent = 'Copy', 2000);
+                    })
+                    .catch(err => console.error('Failed to copy: ', err));
+            };
+            header.appendChild(copyButton);
+            preElement.insertBefore(header, preElement.firstChild);
+        });
+    },
+
+    renderSidebar() {
+        this.conversationList.innerHTML = this.conversations
+            .sort((a, b) => new Date(b.lastActivity || b.createdAt).getTime() - new Date(a.lastActivity || a.createdAt).getTime()) // Sort by last activity
+            .map(conv => `
+                <button data-id="${conv.id}" 
+                        class="conversation-item w-full text-left px-3 py-2.5 rounded-lg text-sm truncate transition-colors
+                               ${conv.id === this.currentConversationId ? 'bg-brand-primary text-white' : 'text-text-secondary hover:bg-bg-light hover:text-text-primary'}">
+                    ${this.escapeHTML(conv.title)}
+                </button>
+            `).join('');
+
+        this.conversationList.querySelectorAll('.conversation-item').forEach(item => {
+            item.addEventListener('click', (e) => {
+                const id = e.currentTarget.dataset.id;
+                this.loadConversation(id);
+            });
+        });
+    },
+
+    createNewChat() {
+        const newConversation = {
+            id: this.generateId(),
+            title: 'New Chat',
+            messages: [],
+            createdAt: new Date().toISOString(),
+            lastActivity: new Date().toISOString()
+        };
+        this.conversations.unshift(newConversation); // Add to beginning for default sort
+        this.currentConversationId = newConversation.id;
+        this.saveConversations();
+        this.renderSidebar();
+        this.renderChatMessages(); // Will show empty state
+        this.messageInput.focus();
+        this.regenerateResponseBtn.classList.add('hidden'); // No history to regenerate
+        localStorage.setItem('lastActiveConversationId', this.currentConversationId);
+    },
+
+    loadConversation(id) {
+        const conversation = this.conversations.find(c => c.id === id);
+        if (conversation) {
+            this.currentConversationId = id;
+            this.renderChatMessages();
+            this.renderSidebar(); // To update active state
+            this.messageInput.focus();
+            localStorage.setItem('lastActiveConversationId', this.currentConversationId);
+        }
+    },
+
+    saveConversations() {
+        // Update lastActivity for current conversation before saving
+        const currentConv = this.getCurrentConversation();
+        if (currentConv) {
+            currentConv.lastActivity = new Date().toISOString();
+        }
+        localStorage.setItem('chatConversations', JSON.stringify(this.conversations));
+    },
+
+    loadConversationsFromStorage() {
+        const storedConversations = localStorage.getItem('chatConversations');
+        if (storedConversations) {
+            this.conversations = JSON.parse(storedConversations);
+        }
+        // Ensure `lastActivity` exists for older conversations for sorting
+        this.conversations.forEach(conv => {
+            if (!conv.lastActivity) {
+                conv.lastActivity = conv.createdAt;
+            }
+        });
+    }
+};
+
+document.addEventListener('DOMContentLoaded', () => {
+    app.init();
+    // Initialize marked with options
+    marked.setOptions({
+        pedantic: false,
+        gfm: true,
+        breaks: false,
+        sanitize: false, // Be careful with this. Assuming AI output is safe.
+        smartypants: false,
+        xhtml: false
+    });
+});
+
+</script>
+</body>
+</html>

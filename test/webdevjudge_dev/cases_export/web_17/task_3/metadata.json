@@ -1,0 +1,9 @@
+{
+  "web_id": "web_17",
+  "task_id": 3,
+  "task_type": "dynamic",
+  "instruction": "Task: Initiate a 'shoot' action using a mouse click.\nExpected Result: A visual effect for shooting (e.g., projectile, muzzle flash) is triggered from the player's perspective.\n\nNote: The task is only considered successful if the expected result is achieved; otherwise, it is deemed infeasible.",
+  "max_steps": 15,
+  "expected": "A visual effect for shooting (e.g., projectile, muzzle flash) is triggered from the player's perspective.",
+  "label": 0
+}

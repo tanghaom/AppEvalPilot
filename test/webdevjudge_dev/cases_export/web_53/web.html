@@ -1,0 +1,939 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>InvestPlatform - Regional Leaderboards</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <style>
+        /* Custom scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #1e293b; /* slate-800 */
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #0ea5e9; /* sky-500 */
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #0284c7; /* sky-600 */
+        }
+
+        .chart-container {
+            position: relative;
+            height: 250px; /* Default chart height */
+            width: 100%;
+        }
+        
+        /* Custom Tailwind component classes (applied via JS or can be utility classes) */
+        .btn {
+            @apply px-4 py-2 rounded-lg font-semibold transition-colors duration-150 shadow-md focus:outline-none focus:ring-2 focus:ring-opacity-75;
+        }
+        .btn-primary {
+            @apply bg-sky-500 text-white hover:bg-sky-600 focus:ring-sky-400;
+        }
+        .btn-secondary {
+            @apply bg-slate-600 text-slate-100 hover:bg-slate-500 focus:ring-slate-400;
+        }
+        .btn-danger {
+            @apply bg-red-500 text-white hover:bg-red-600 focus:ring-red-400;
+        }
+        .card {
+            @apply bg-slate-800 p-4 sm:p-6 rounded-xl shadow-2xl;
+        }
+        .tab {
+            @apply px-3 py-2 sm:px-4 font-medium text-slate-400 hover:text-sky-400 cursor-pointer border-b-2 border-transparent whitespace-nowrap;
+        }
+        .tab-active {
+            @apply text-sky-400 border-sky-400;
+        }
+        .input-field {
+            @apply bg-slate-700 border border-slate-600 text-slate-200 placeholder-slate-400 text-sm rounded-lg focus:ring-sky-500 focus:border-sky-500 block w-full p-2.5;
+        }
+        .dropdown-menu {
+            @apply absolute right-0 mt-2 w-48 bg-slate-700 rounded-md shadow-xl py-1 z-50 ring-1 ring-black ring-opacity-5;
+        }
+        .dropdown-item {
+            @apply block px-4 py-2 text-sm text-slate-200 hover:bg-slate-600 hover:text-sky-300;
+        }
+
+        /* Toast Notification Styling */
+        #toast-container {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            z-index: 1000;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        .toast {
+            @apply bg-slate-700 text-slate-100 p-4 rounded-lg shadow-lg flex items-center gap-3 transition-all duration-300 ease-in-out;
+            opacity: 0;
+            transform: translateX(100%);
+        }
+        .toast.show {
+            opacity: 1;
+            transform: translateX(0);
+        }
+        .toast.success { @apply bg-emerald-600 border border-emerald-700; }
+        .toast.info { @apply bg-sky-600 border border-sky-700; }
+        .toast.warning { @apply bg-amber-600 border border-amber-700; }
+
+        /* Modal Styling */
+        .modal-backdrop {
+            @apply fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center p-4 z-50;
+            transition: opacity 0.3s ease-out;
+        }
+        .modal-content {
+            @apply bg-slate-800 rounded-xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto p-6;
+            transform: scale(0.95);
+            transition: transform 0.3s ease-out;
+        }
+        .modal-backdrop.open .modal-content {
+            transform: scale(1);
+        }
+        .modal-backdrop:not(.open) {
+            opacity: 0;
+            pointer-events: none;
+        }
+         .modal-backdrop:not(.open) .modal-content {
+            transform: scale(0.9);
+        }
+
+        /* Avatar placeholder */
+        .avatar-placeholder {
+            @apply flex items-center justify-center rounded-full font-bold text-slate-800 border-2 border-dashed;
+        }
+    </style>
+</head>
+<body class="bg-slate-900 text-slate-100 font-sans antialiased">
+    <div id="app" class="min-h-screen flex flex-col">
+        <!-- Header/Navbar -->
+        <header class="bg-slate-800 shadow-lg sticky top-0 z-40">
+            <nav class="container mx-auto px-4 sm:px-6 lg:px-8">
+                <div class="flex items-center justify-between h-16">
+                    <div class="flex items-center">
+                        <a href="#" class="flex-shrink-0 text-sky-400 text-2xl font-bold flex items-center">
+                            <i class="fas fa-chart-pie mr-2"></i> InvestPlatform
+                        </a>
+                    </div>
+                    <div class="hidden md:block">
+                        <div id="nav-links" class="ml-10 flex items-baseline space-x-4">
+                            <!-- Nav links will be rendered here -->
+                        </div>
+                    </div>
+                    <div class="hidden md:block">
+                        <div class="relative">
+                            <button id="user-menu-button" type="button" class="max-w-xs bg-slate-700 rounded-full flex items-center text-sm focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-slate-800 focus:ring-sky-500 p-1">
+                                <span class="sr-only">Open user menu</span>
+                                <div id="nav-user-avatar" class="avatar-placeholder bg-sky-200 border-sky-400 w-8 h-8 text-sm"></div>
+                            </button>
+                            <div id="user-menu" class="dropdown-menu hidden origin-top-right">
+                                <a href="#" class="dropdown-item">Your Profile (soon)</a>
+                                <a href="#" class="dropdown-item">Settings (soon)</a>
+                                <a href="#" class="dropdown-item">Sign out (soon)</a>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="-mr-2 flex md:hidden">
+                        <button id="mobile-menu-button" type="button" class="bg-slate-700 inline-flex items-center justify-center p-2 rounded-md text-slate-400 hover:text-white hover:bg-slate-600 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-sky-500" aria-controls="mobile-menu" aria-expanded="false">
+                            <span class="sr-only">Open main menu</span>
+                            <i class="fas fa-bars block h-6 w-6"></i>
+                            <i class="fas fa-times hidden h-6 w-6"></i>
+                        </button>
+                    </div>
+                </div>
+            </nav>
+            <div class="md:hidden hidden" id="mobile-menu">
+                <div id="mobile-nav-links" class="px-2 pt-2 pb-3 space-y-1 sm:px-3">
+                    <!-- Mobile nav links -->
+                </div>
+                <div class="pt-4 pb-3 border-t border-slate-700">
+                    <div class="flex items-center px-5">
+                        <div id="mobile-user-avatar" class="avatar-placeholder bg-sky-200 border-sky-400 w-10 h-10 text-base"></div>
+                        <div class="ml-3">
+                            <div id="mobile-user-name" class="text-base font-medium leading-none text-white"></div>
+                            <div id="mobile-user-email" class="text-sm font-medium leading-none text-slate-400"></div>
+                        </div>
+                    </div>
+                    <div class="mt-3 px-2 space-y-1">
+                        <a href="#" class="block rounded-md px-3 py-2 text-base font-medium text-slate-300 hover:bg-slate-700 hover:text-white">Your Profile (soon)</a>
+                        <a href="#" class="block rounded-md px-3 py-2 text-base font-medium text-slate-300 hover:bg-slate-700 hover:text-white">Settings (soon)</a>
+                        <a href="#" class="block rounded-md px-3 py-2 text-base font-medium text-slate-300 hover:bg-slate-700 hover:text-white">Sign out (soon)</a>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <!-- Main Content Area -->
+        <main id="main-content" class="flex-grow container mx-auto px-4 sm:px-6 lg:px-8 py-8">
+            <!-- Content will be rendered here by JavaScript -->
+        </main>
+
+        <!-- Portfolio Detail Modal -->
+        <div id="portfolio-modal" class="modal-backdrop hidden">
+            <div class="modal-content">
+                <div id="modal-content-area">
+                    <!-- Modal content will be rendered here -->
+                </div>
+                 <button id="close-modal-button" class="btn btn-secondary mt-6 float-right">Close</button>
+            </div>
+        </div>
+
+        <!-- Toast Notification Container -->
+        <div id="toast-container"></div>
+
+        <!-- Footer -->
+        <footer class="bg-slate-800 shadow-top mt-auto">
+            <div class="container mx-auto px-4 sm:px-6 lg:px-8 py-4 text-center text-slate-400 text-sm">
+                &copy; 2024 InvestPlatform. All rights reserved. Simulated data for demonstration purposes.
+            </div>
+        </footer>
+    </div>
+
+    <script>
+        const appState = {
+            currentUser: null,
+            currentView: 'dashboard', // 'dashboard', 'leaderboards', 'forum'
+            selectedRegion: 'Jerusalem',
+            regions: ['Jerusalem', 'Tel Aviv', 'New York', 'Rome', 'London'],
+            users: [],
+            portfolioDetails: {}, // { userId: { assets: [], performanceHistory: [] } }
+            leaderboards: {}, // { regionName: [rankedUserObjects] }
+            isPortfolioModalOpen: false,
+            viewingPortfolioOfUser: null,
+            charts: {}, // To store chart instances: { chartId: chartInstance }
+            notifications: [],
+            nextNotificationId: 0,
+        };
+
+        // --- UTILITY FUNCTIONS ---
+        const $ = (selector) => document.querySelector(selector);
+        const $$ = (selector) => document.querySelectorAll(selector);
+        const formatCurrency = (amount) => `$${amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+        const formatPercentage = (value) => `${(value * 100).toFixed(2)}%`;
+        const getRandom = (min, max) => Math.random() * (max - min) + min;
+        const getRandomInt = (min, max) => Math.floor(Math.random() * (max - min + 1)) + min;
+
+        function generateAvatar(name, sizeClasses = 'w-10 h-10 text-sm', extraClasses = '') {
+            const initials = name.split(' ').map(n => n[0]).join('').substring(0,2).toUpperCase();
+            // Simple hash for color variation
+            let hash = 0;
+            for (let i = 0; i < name.length; i++) {
+                hash = name.charCodeAt(i) + ((hash << 5) - hash);
+            }
+            const hue = hash % 360;
+            // Use Tailwind JIT friendly class names if possible, or inline style for broader color range
+            // For simplicity, few fixed colors based on hash ranges
+            let bgColor = 'bg-sky-200 border-sky-400'; // Default
+            if (hue < 72) bgColor = 'bg-emerald-200 border-emerald-400';
+            else if (hue < 144) bgColor = 'bg-amber-200 border-amber-400';
+            else if (hue < 216) bgColor = 'bg-indigo-200 border-indigo-400';
+            else if (hue < 288) bgColor = 'bg-pink-200 border-pink-400';
+
+            return `<div class="avatar-placeholder ${bgColor} ${sizeClasses} ${extraClasses}">${initials}</div>`;
+        }
+        
+        // --- MOCK DATA GENERATION ---
+        function generateMockData() {
+            const firstNames = ['Alice', 'Bob', 'Charlie', 'Diana', 'Edward', 'Fiona', 'George', 'Hannah', 'Ian', 'Julia', 'Kyle', 'Laura', 'Mike', 'Nora', 'Oscar'];
+            const lastNames = ['Smith', 'Johnson', 'Williams', 'Brown', 'Jones', 'Garcia', 'Miller', 'Davis', 'Rodriguez', 'Martinez', 'Hernandez', 'Lopez', 'Gonzalez'];
+            const assetTickers = ['AAPL', 'MSFT', 'GOOGL', 'AMZN', 'TSLA', 'NVDA', 'BRK.A', 'JPM', 'V', 'JNJ', 'SPY', 'QQQ', 'GLD', 'BTC-USD', 'ETH-USD'];
+            const assetNames = ['Apple Inc.', 'Microsoft Corp.', 'Alphabet Inc.', 'Amazon.com, Inc.', 'Tesla, Inc.', 'NVIDIA Corporation', 'Berkshire Hathaway', 'JPMorgan Chase & Co.', 'Visa Inc.', 'Johnson & Johnson', 'SPDR S&P 500 ETF', 'Invesco QQQ Trust', 'SPDR Gold Shares', 'Bitcoin', 'Ethereum'];
+
+            let userIdCounter = 1;
+            appState.regions.forEach(region => {
+                appState.leaderboards[region] = [];
+                for (let i = 0; i < getRandomInt(15, 20); i++) { // Generate 15-20 users per region
+                    const id = `user-${userIdCounter++}`;
+                    const name = `${firstNames[getRandomInt(0, firstNames.length - 1)]} ${lastNames[getRandomInt(0, lastNames.length - 1)]}`;
+                    const user = {
+                        id,
+                        name,
+                        email: `${name.toLowerCase().replace(' ', '.')}@example.com`,
+                        region,
+                        tradesMade: getRandomInt(5, 150),
+                        portfolioValue: getRandom(50000, 1000000),
+                        overallReturn: getRandom(-0.1, 0.5), // -10% to +50%
+                    };
+                    appState.users.push(user);
+
+                    // Generate portfolio details
+                    const assets = [];
+                    const numAssets = getRandomInt(3, 8);
+                    let remainingAllocation = 1;
+                    const usedTickers = new Set();
+                    for (let j = 0; j < numAssets; j++) {
+                        let tickerIndex;
+                        do {
+                           tickerIndex = getRandomInt(0, assetTickers.length - 1);
+                        } while (usedTickers.has(assetTickers[tickerIndex]));
+                        usedTickers.add(assetTickers[tickerIndex]);
+                        
+                        const allocation = (j === numAssets - 1) ? remainingAllocation : Math.min(remainingAllocation, getRandom(0.1, 0.4));
+                        remainingAllocation -= allocation;
+                        assets.push({
+                            name: assetNames[tickerIndex],
+                            ticker: assetTickers[tickerIndex],
+                            allocationPercentage: allocation,
+                            value: user.portfolioValue * allocation,
+                            dayChange: getRandom(-0.05, 0.05)
+                        });
+                    }
+
+                    const performanceHistory = [];
+                    let currentValue = user.portfolioValue / (1 + user.overallReturn); // Estimate starting value
+                    for (let k = 30; k >= 0; k--) { // Last 30 days
+                        const date = new Date();
+                        date.setDate(date.getDate() - k);
+                        currentValue *= (1 + getRandom(-0.02, 0.025)); // Daily fluctuation
+                        performanceHistory.push({ date: date.toISOString().split('T')[0], value: currentValue });
+                    }
+                    // Ensure final value matches portfolioValue
+                    performanceHistory[performanceHistory.length-1].value = user.portfolioValue;
+
+
+                    appState.portfolioDetails[id] = { assets, performanceHistory };
+                }
+            });
+
+            // Select a current user
+            appState.currentUser = appState.users[getRandomInt(0, appState.users.length - 1)];
+            appState.selectedRegion = appState.currentUser.region; // Start with current user's region
+        }
+        
+        // --- UI RENDERING FUNCTIONS ---
+
+        function renderNavbar() {
+            const navLinksContainer = $('#nav-links');
+            const mobileNavLinksContainer = $('#mobile-nav-links');
+            const navUserAvatar = $('#nav-user-avatar');
+            const mobileUserAvatar = $('#mobile-user-avatar');
+            const mobileUserName = $('#mobile-user-name');
+            const mobileUserEmail = $('#mobile-user-email');
+
+            const links = [
+                { name: 'Dashboard', view: 'dashboard', icon: 'fa-tachometer-alt' },
+                { name: 'Leaderboards', view: 'leaderboards', icon: 'fa-trophy' },
+                { name: 'Forum', view: 'forum', icon: 'fa-users' },
+            ];
+
+            let navLinksHTML = '';
+            let mobileNavLinksHTML = '';
+
+            links.forEach(link => {
+                const isActive = appState.currentView === link.view;
+                navLinksHTML += `
+                    <a href="#" data-view="${link.view}" class="nav-link ${isActive ? 'tab-active text-sky-400' : 'text-slate-300 hover:bg-slate-700 hover:text-white'} px-3 py-2 rounded-md text-sm font-medium">
+                        <i class="fas ${link.icon} mr-1"></i>${link.name}
+                    </a>`;
+                mobileNavLinksHTML += `
+                     <a href="#" data-view="${link.view}" class="mobile-nav-link ${isActive ? 'bg-slate-900 text-white' : 'text-slate-300 hover:bg-slate-700 hover:text-white'} block px-3 py-2 rounded-md text-base font-medium">
+                        <i class="fas ${link.icon} mr-2"></i>${link.name}
+                    </a>`;
+            });
+            navLinksContainer.innerHTML = navLinksHTML;
+            mobileNavLinksContainer.innerHTML = mobileNavLinksHTML;
+            
+            if (appState.currentUser) {
+                navUserAvatar.innerHTML = generateAvatar(appState.currentUser.name, 'w-8 h-8 text-xs');
+                mobileUserAvatar.innerHTML = generateAvatar(appState.currentUser.name, 'w-10 h-10 text-sm');
+                mobileUserName.textContent = appState.currentUser.name;
+                mobileUserEmail.textContent = appState.currentUser.email;
+            }
+
+            // Attach event listeners for nav links
+            $$('.nav-link, .mobile-nav-link').forEach(link => {
+                link.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    appState.currentView = link.dataset.view;
+                    renderApp();
+                    if ($('#mobile-menu').classList.contains('hidden') === false) { // Close mobile menu on click
+                        $('#mobile-menu-button').click();
+                    }
+                });
+            });
+        }
+
+        function renderDashboard() {
+            const mainContent = $('#main-content');
+            if (!appState.currentUser) {
+                mainContent.innerHTML = `<p class="text-center text-xl">Loading user data...</p>`;
+                return;
+            }
+
+            const user = appState.currentUser;
+            const userRegion = user.region;
+            const regionLeaderboard = getRankedLeaderboard(userRegion);
+            const userRankObj = regionLeaderboard.find(u => u.id === user.id);
+            const userRank = userRankObj ? userRankObj.rank : 'N/A';
+
+            const topPlayersInRegion = regionLeaderboard.slice(0, 3);
+
+            mainContent.innerHTML = `
+                <div class="space-y-8">
+                    <section>
+                        <h1 class="text-3xl font-bold text-sky-400 mb-2">Welcome back, ${user.name.split(' ')[0]}!</h1>
+                        <p class="text-slate-400">Here's your current performance overview.</p>
+                    </section>
+
+                    <section class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                        <div class="card col-span-1 md:col-span-1">
+                            <h2 class="text-xl font-semibold text-slate-200 mb-1">Your Rank (${userRegion})</h2>
+                            <p class="text-5xl font-bold text-sky-400 mb-2">${userRank !== 'N/A' ? `#${userRank}` : 'Unranked'}</p>
+                            <p class="text-sm text-slate-400">${regionLeaderboard.length} participants in ${userRegion}</p>
+                        </div>
+                        <div class="card col-span-1 md:col-span-1">
+                            <h2 class="text-xl font-semibold text-slate-200 mb-1">Portfolio Value</h2>
+                            <p class="text-3xl font-bold text-emerald-400 mb-2">${formatCurrency(user.portfolioValue)}</p>
+                            <p class="text-sm text-slate-400">Updated moments ago</p>
+                        </div>
+                        <div class="card col-span-1 md:col-span-1">
+                            <h2 class="text-xl font-semibold text-slate-200 mb-1">Overall Return</h2>
+                            <p class="text-3xl font-bold ${user.overallReturn >= 0 ? 'text-emerald-400' : 'text-red-400'}">
+                                ${user.overallReturn >= 0 ? '+' : ''}${formatPercentage(user.overallReturn)}
+                            </p>
+                             <p class="text-sm text-slate-400">All time performance</p>
+                        </div>
+                    </section>
+
+                    <section class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                        <div class="card lg:col-span-2">
+                            <h2 class="text-xl font-semibold text-slate-200 mb-4">Your Portfolio Performance (30 Days)</h2>
+                            <div class="chart-container h-[300px]">
+                                <canvas id="dashboard-performance-chart"></canvas>
+                            </div>
+                        </div>
+                        <div class="card lg:col-span-1">
+                            <h2 class="text-xl font-semibold text-slate-200 mb-4">Top Players in ${userRegion}</h2>
+                            <ul class="space-y-4">
+                                ${topPlayersInRegion.map(player => `
+                                    <li class="flex items-center justify-between p-3 bg-slate-700 rounded-lg hover:bg-slate-600 transition-colors">
+                                        <div class="flex items-center space-x-3">
+                                            ${generateAvatar(player.name, 'w-10 h-10 text-sm')}
+                                            <div>
+                                                <p class="font-medium text-slate-100">${player.name}</p>
+                                                <p class="text-xs text-sky-400">Rank: #${player.rank}</p>
+                                            </div>
+                                        </div>
+                                        <span class="font-semibold ${player.overallReturn >= 0 ? 'text-emerald-400' : 'text-red-400'}">
+                                            ${formatPercentage(player.overallReturn)}
+                                        </span>
+                                    </li>
+                                `).join('')}
+                                ${topPlayersInRegion.length === 0 ? '<p class="text-slate-400">No other players in your region yet.</p>' : ''}
+                            </ul>
+                             <button data-view="leaderboards" data-region="${userRegion}" class="nav-link btn btn-primary w-full mt-6">
+                                View Full ${userRegion} Leaderboard
+                            </button>
+                        </div>
+                    </section>
+                </div>
+            `;
+            renderDashboardChart(user.id);
+            // Attach event listener for the "View Full Leaderboard" button
+            $('#main-content .nav-link[data-view="leaderboards"]').addEventListener('click', (e) => {
+                e.preventDefault();
+                appState.currentView = e.currentTarget.dataset.view;
+                appState.selectedRegion = e.currentTarget.dataset.region;
+                renderApp();
+            });
+        }
+        
+        function renderDashboardChart(userId) {
+            const userPortfolio = appState.portfolioDetails[userId];
+            if (!userPortfolio || !userPortfolio.performanceHistory) return;
+
+            const history = userPortfolio.performanceHistory;
+            const labels = history.map(p => p.date);
+            const data = history.map(p => p.value);
+
+            if (appState.charts['dashboard-performance-chart']) {
+                appState.charts['dashboard-performance-chart'].destroy();
+            }
+
+            const ctx = $('#dashboard-performance-chart').getContext('2d');
+            appState.charts['dashboard-performance-chart'] = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Portfolio Value',
+                        data: data,
+                        borderColor: '#0ea5e9', // sky-500
+                        tension: 0.1,
+                        fill: false,
+                        pointRadius: 0, // Hide points for cleaner look
+                        pointHoverRadius: 5,
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: false,
+                            ticks: { 
+                                color: '#94a3b8', // slate-400
+                                callback: function(value) { return '$' + value.toLocaleString(); } 
+                            },
+                            grid: { color: '#334155' /* slate-700 */ }
+                        },
+                        x: {
+                            ticks: { color: '#94a3b8' /* slate-400 */ },
+                            grid: { display: false }
+                        }
+                    },
+                    plugins: {
+                        legend: { display: false }
+                    }
+                }
+            });
+        }
+
+        function getRankedLeaderboard(region) {
+            if (appState.leaderboards[region] && appState.leaderboards[region].length > 0 && appState.leaderboards[region][0].rank) {
+                 // Already ranked
+            } else {
+                const regionUsers = appState.users.filter(u => u.region === region);
+                appState.leaderboards[region] = regionUsers
+                    .sort((a, b) => b.overallReturn - a.overallReturn) // Sort by overallReturn descending
+                    .map((user, index) => ({ ...user, rank: index + 1 }));
+            }
+            return appState.leaderboards[region];
+        }
+
+        function renderLeaderboards() {
+            const mainContent = $('#main-content');
+            const leaderboard = getRankedLeaderboard(appState.selectedRegion);
+
+            mainContent.innerHTML = `
+                <div class="space-y-6">
+                    <section class="flex flex-col sm:flex-row justify-between items-center gap-4">
+                        <h1 class="text-3xl font-bold text-sky-400">Regional Leaderboards</h1>
+                        <div class="relative">
+                            <label for="region-select" class="sr-only">Select Region</label>
+                            <select id="region-select" class="input-field appearance-none pr-8">
+                                ${appState.regions.map(r => `<option value="${r}" ${appState.selectedRegion === r ? 'selected' : ''}>${r}</option>`).join('')}
+                            </select>
+                            <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-slate-400">
+                               <i class="fas fa-chevron-down text-xs"></i>
+                            </div>
+                        </div>
+                    </section>
+
+                    <section class="card">
+                        <h2 class="text-xl font-semibold text-slate-200 mb-4">Top Performers in ${appState.selectedRegion}</h2>
+                        <div class="overflow-x-auto">
+                            <table class="min-w-full divide-y divide-slate-700">
+                                <thead class="bg-slate-700/50">
+                                    <tr>
+                                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-slate-300 uppercase tracking-wider">Rank</th>
+                                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-slate-300 uppercase tracking-wider">User</th>
+                                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-slate-300 uppercase tracking-wider">Portfolio Value</th>
+                                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-slate-300 uppercase tracking-wider">Overall Return</th>
+                                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-slate-300 uppercase tracking-wider">Trades</th>
+                                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-slate-300 uppercase tracking-wider">Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="leaderboard-table-body" class="divide-y divide-slate-700">
+                                    ${leaderboard.length > 0 ? leaderboard.map(user => `
+                                        <tr class="hover:bg-slate-700/70 transition-colors">
+                                            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-sky-400">#${user.rank}</td>
+                                            <td class="px-6 py-4 whitespace-nowrap">
+                                                <div class="flex items-center">
+                                                    ${generateAvatar(user.name, 'w-10 h-10 text-sm mr-3')}
+                                                    <div class="text-sm font-medium text-slate-100">${user.name}</div>
+                                                </div>
+                                            </td>
+                                            <td class="px-6 py-4 whitespace-nowrap text-sm text-slate-300">${formatCurrency(user.portfolioValue)}</td>
+                                            <td class="px-6 py-4 whitespace-nowrap text-sm ${user.overallReturn >= 0 ? 'text-emerald-400' : 'text-red-400'}">
+                                                ${user.overallReturn >= 0 ? '<i class="fas fa-arrow-up mr-1"></i>' : '<i class="fas fa-arrow-down mr-1"></i>'}
+                                                ${formatPercentage(Math.abs(user.overallReturn))}
+                                            </td>
+                                            <td class="px-6 py-4 whitespace-nowrap text-sm text-slate-300">${user.tradesMade}</td>
+                                            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                                                <button class="btn btn-secondary btn-sm view-portfolio-button" data-userid="${user.id}">
+                                                    <i class="fas fa-eye mr-1"></i> View Portfolio
+                                                </button>
+                                            </td>
+                                        </tr>
+                                    `).join('') : `<tr><td colspan="6" class="text-center py-8 text-slate-400">No users in this region yet, or data is loading.</td></tr>`}
+                                </tbody>
+                            </table>
+                        </div>
+                        ${leaderboard.length > 100 ? '<p class="mt-4 text-sm text-slate-400">Showing top 100 performers. More data might be available.</p>' : ''}
+                    </section>
+                </div>
+            `;
+
+            $('#region-select').addEventListener('change', (e) => {
+                appState.selectedRegion = e.target.value;
+                renderLeaderboards(); // Re-render this view with new region
+            });
+
+            $$('.view-portfolio-button').forEach(button => {
+                button.addEventListener('click', () => {
+                    openPortfolioModal(button.dataset.userid);
+                });
+            });
+        }
+
+        function renderForumPlaceholder() {
+             $('#main-content').innerHTML = `
+                <div class="text-center py-12">
+                    <i class="fas fa-comments fa-4x text-sky-500 mb-4"></i>
+                    <h1 class="text-3xl font-bold text-sky-400 mb-2">Discussion Forums</h1>
+                    <p class="text-slate-400 text-lg max-w-md mx-auto">
+                        Coming Soon! A place to share insights, ask for advice, and discuss market trends with fellow investors.
+                    </p>
+                </div>
+            `;
+        }
+
+        // --- MODAL LOGIC ---
+        function openPortfolioModal(userId) {
+            const user = appState.users.find(u => u.id === userId);
+            const portfolio = appState.portfolioDetails[userId];
+            if (!user || !portfolio) {
+                showToast('Error: Could not load portfolio details.', 'warning');
+                return;
+            }
+
+            appState.viewingPortfolioOfUser = user;
+            appState.isPortfolioModalOpen = true;
+
+            const modalContentArea = $('#modal-content-area');
+            modalContentArea.innerHTML = `
+                <div class="flex justify-between items-start mb-6">
+                    <div class="flex items-center space-x-4">
+                        ${generateAvatar(user.name, 'w-16 h-16 text-xl')}
+                        <div>
+                            <h2 class="text-2xl font-bold text-sky-400">${user.name}</h2>
+                            <p class="text-slate-400">Region: ${user.region} | Total Trades: ${user.tradesMade}</p>
+                        </div>
+                    </div>
+                    <button class="text-slate-400 hover:text-white text-2xl" id="modal-close-x-button">&times;</button>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                    <div class="card bg-slate-700 p-4">
+                        <h3 class="text-lg font-semibold text-slate-200 mb-1">Total Portfolio Value</h3>
+                        <p class="text-2xl font-bold text-emerald-400">${formatCurrency(user.portfolioValue)}</p>
+                    </div>
+                    <div class="card bg-slate-700 p-4">
+                        <h3 class="text-lg font-semibold text-slate-200 mb-1">Overall Return</h3>
+                        <p class="text-2xl font-bold ${user.overallReturn >= 0 ? 'text-emerald-400' : 'text-red-400'}">
+                            ${user.overallReturn >= 0 ? '+' : ''}${formatPercentage(user.overallReturn)}
+                        </p>
+                    </div>
+                </div>
+                
+                <div class="grid grid-cols-1 lg:grid-cols-5 gap-6 mb-6">
+                    <div class="card lg:col-span-2">
+                        <h3 class="text-lg font-semibold text-slate-100 mb-3">Asset Allocation</h3>
+                        <div class="chart-container h-[200px] sm:h-[250px]">
+                            <canvas id="portfolio-allocation-chart"></canvas>
+                        </div>
+                    </div>
+                    <div class="card lg:col-span-3">
+                         <h3 class="text-lg font-semibold text-slate-100 mb-3">Asset Breakdown</h3>
+                         <div class="max-h-[250px] overflow-y-auto">
+                            <table class="min-w-full text-sm">
+                                <thead class="sticky top-0 bg-slate-800">
+                                    <tr>
+                                        <th class="py-2 text-left text-slate-300">Asset (Ticker)</th>
+                                        <th class="py-2 text-right text-slate-300">Allocation</th>
+                                        <th class="py-2 text-right text-slate-300">Value</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="divide-y divide-slate-700">
+                                    ${portfolio.assets.map(asset => `
+                                        <tr>
+                                            <td class="py-2 whitespace-nowrap">${asset.name} (${asset.ticker})</td>
+                                            <td class="py-2 whitespace-nowrap text-right">${formatPercentage(asset.allocationPercentage)}</td>
+                                            <td class="py-2 whitespace-nowrap text-right">${formatCurrency(asset.value)}</td>
+                                        </tr>
+                                    `).join('')}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <h3 class="text-lg font-semibold text-slate-100 mb-3">Performance History (30 Days)</h3>
+                    <div class="chart-container h-[250px]">
+                        <canvas id="portfolio-performance-chart"></canvas>
+                    </div>
+                </div>
+                
+                <div class="mt-6 text-center">
+                    <button class="btn btn-primary share-portfolio-btn"><i class="fas fa-share-alt mr-2"></i>Share Portfolio (Demo)</button>
+                </div>
+            `;
+
+            $('#portfolio-modal').classList.remove('hidden');
+            $('#portfolio-modal').classList.add('open'); // For transition
+            document.body.style.overflow = 'hidden'; // Prevent background scrolling
+
+            renderPortfolioCharts(user, portfolio);
+            
+            $('#close-modal-button').onclick = closeModal;
+            $('#modal-close-x-button').onclick = closeModal;
+            $('.share-portfolio-btn').onclick = () => {
+                showToast(`Sharing ${user.name}'s portfolio... (Demo feature)`, 'info');
+            };
+        }
+
+        function closeModal() {
+            appState.isPortfolioModalOpen = false;
+            appState.viewingPortfolioOfUser = null;
+            const modal = $('#portfolio-modal');
+            modal.classList.remove('open');
+            // Wait for animation before hiding completely
+            setTimeout(() => {
+                 modal.classList.add('hidden');
+                 document.body.style.overflow = 'auto';
+            }, 300); // Matches transition duration
+
+            // Destroy charts in modal to prevent issues
+            if (appState.charts['portfolio-allocation-chart']) appState.charts['portfolio-allocation-chart'].destroy();
+            if (appState.charts['portfolio-performance-chart']) appState.charts['portfolio-performance-chart'].destroy();
+        }
+
+        function renderPortfolioCharts(user, portfolio) {
+            // Allocation Pie Chart
+            const allocationCtx = $('#portfolio-allocation-chart').getContext('2d');
+            const assetLabels = portfolio.assets.map(a => a.ticker);
+            const assetData = portfolio.assets.map(a => a.allocationPercentage);
+            const backgroundColors = ['#0ea5e9', '#10b981', '#f59e0b', '#8b5cf6', '#ec4899', '#6366f1', '#d946ef', '#06b6d4']; // sky, emerald, amber, violet, pink, indigo, fuchsia, cyan
+
+            if (appState.charts['portfolio-allocation-chart']) {
+                appState.charts['portfolio-allocation-chart'].destroy();
+            }
+            appState.charts['portfolio-allocation-chart'] = new Chart(allocationCtx, {
+                type: 'doughnut',
+                data: {
+                    labels: assetLabels,
+                    datasets: [{
+                        label: 'Asset Allocation',
+                        data: assetData,
+                        backgroundColor: portfolio.assets.map((_, i) => backgroundColors[i % backgroundColors.length]),
+                        borderColor: '#374151', // slate-700 for borders between slices
+                        hoverOffset: 4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'right',
+                            labels: { color: '#cbd5e1' /* slate-300 */, boxWidth: 12, padding:10 }
+                        }
+                    }
+                }
+            });
+
+            // Performance Line Chart
+            const performanceCtx = $('#portfolio-performance-chart').getContext('2d');
+            const history = portfolio.performanceHistory;
+            const performanceLabels = history.map(p => p.date);
+            const performanceData = history.map(p => p.value);
+            
+            if (appState.charts['portfolio-performance-chart']) {
+                appState.charts['portfolio-performance-chart'].destroy();
+            }
+            appState.charts['portfolio-performance-chart'] = new Chart(performanceCtx, {
+                type: 'line',
+                data: {
+                    labels: performanceLabels,
+                    datasets: [{
+                        label: 'Portfolio Value',
+                        data: performanceData,
+                        borderColor: '#10b981', // emerald-500
+                        tension: 0.1,
+                        fill: false,
+                        pointRadius: 0,
+                        pointHoverRadius: 5,
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: { 
+                            beginAtZero: false,
+                            ticks: { color: '#94a3b8', callback: function(value) { return '$' + value.toLocaleString(); } },
+                            grid: { color: '#334155' }
+                        },
+                        x: { 
+                            ticks: { color: '#94a3b8' },
+                            grid: { display: false }
+                        }
+                    },
+                    plugins: { legend: { display: false } }
+                }
+            });
+        }
+
+        // --- NOTIFICATIONS ---
+        function showToast(message, type = 'info', duration = 3000) { // types: info, success, warning
+            const toastContainer = $('#toast-container');
+            const toastId = `toast-${appState.nextNotificationId++}`;
+            
+            const toast = document.createElement('div');
+            toast.id = toastId;
+            toast.className = `toast ${type}`;
+            
+            let iconClass = 'fa-info-circle';
+            if (type === 'success') iconClass = 'fa-check-circle';
+            if (type === 'warning') iconClass = 'fa-exclamation-triangle';
+
+            toast.innerHTML = `<i class="fas ${iconClass} text-xl"></i><span>${message}</span>`;
+            
+            toastContainer.appendChild(toast);
+
+            // Animate in
+            setTimeout(() => toast.classList.add('show'), 10);
+
+            // Animate out and remove
+            setTimeout(() => {
+                toast.classList.remove('show');
+                setTimeout(() => toast.remove(), 500); // Wait for animation to finish
+            }, duration);
+        }
+
+        // --- REAL-TIME SIMULATION ---
+        function simulateDataChanges() {
+            if (appState.users.length === 0) return;
+
+            const userToUpdate = appState.users[getRandomInt(0, appState.users.length - 1)];
+            const oldPortfolioValue = userToUpdate.portfolioValue;
+            const oldValueForNotification = userToUpdate.portfolioValue; // Store for notification
+            const oldReturnForNotification = userToUpdate.overallReturn; // Store for notification
+            
+            // Simulate portfolio value change
+            const changePercentage = getRandom(-0.01, 0.01); // +/- 1% change
+            userToUpdate.portfolioValue *= (1 + changePercentage);
+            
+            // Simulate overall return change (less volatile)
+            userToUpdate.overallReturn += getRandom(-0.001, 0.001); // +/- 0.1% change
+            userToUpdate.overallReturn = Math.max(-0.99, Math.min(0.99, userToUpdate.overallReturn)); // Cap return
+
+            // Update portfolio history for this user
+            const portfolio = appState.portfolioDetails[userToUpdate.id];
+            if (portfolio && portfolio.performanceHistory.length > 0) {
+                portfolio.performanceHistory.shift(); // Remove oldest
+                const newDate = new Date().toISOString().split('T')[0];
+                portfolio.performanceHistory.push({ date: newDate, value: userToUpdate.portfolioValue });
+                
+                // Update asset values proportionally
+                portfolio.assets.forEach(asset => {
+                    asset.value = userToUpdate.portfolioValue * asset.allocationPercentage;
+                });
+            }
+
+            // Invalidate ranked leaderboards so they re-calculate on next render
+            Object.keys(appState.leaderboards).forEach(region => {
+                appState.leaderboards[region] = []; // Clear existing ranked list
+            });
+
+
+            // Potential notification logic (simplified)
+            if (userToUpdate.id === appState.currentUser.id && Math.abs(userToUpdate.portfolioValue - oldValueForNotification) > 1000) {
+                const diff = userToUpdate.portfolioValue - oldValueForNotification;
+                showToast(`Your portfolio value changed by ${formatCurrency(diff)}!`, diff > 0 ? 'success' : 'warning', 4000);
+            } else if (Math.random() < 0.1) { // 10% chance for general notification
+                const randomUserForNotif = appState.users[getRandomInt(0, appState.users.length - 1)];
+                const randomUserOldRank = getRankedLeaderboard(randomUserForNotif.region).find(u=>u.id === randomUserForNotif.id)?.rank;
+                // Recalculate this specific region for accurate rank change
+                getRankedLeaderboard(randomUserForNotif.region); // force re-rank
+                const randomUserNewRank = getRankedLeaderboard(randomUserForNotif.region).find(u=>u.id === randomUserForNotif.id)?.rank;
+
+                if (randomUserNewRank && randomUserOldRank && randomUserNewRank < randomUserOldRank) {
+                     showToast(`${randomUserForNotif.name} moved up to rank #${randomUserNewRank} in ${randomUserForNotif.region}!`, 'info');
+                }
+            }
+            
+            // Re-render current view if it's dashboard or leaderboards
+            if (appState.currentView === 'dashboard' || appState.currentView === 'leaderboards') {
+                renderCurrentView();
+            }
+        }
+
+        // --- APP INITIALIZATION AND ROUTING ---
+        function renderCurrentView() {
+            switch (appState.currentView) {
+                case 'dashboard':
+                    renderDashboard();
+                    break;
+                case 'leaderboards':
+                    renderLeaderboards();
+                    break;
+                case 'forum':
+                    renderForumPlaceholder();
+                    break;
+                default:
+                    renderDashboard(); // Fallback
+            }
+        }
+
+        function renderApp() {
+            renderNavbar();
+            renderCurrentView();
+        }
+
+        function initApp() {
+            generateMockData();
+            renderApp();
+
+            // Event listeners for navbar toggles
+            const userMenuButton = $('#user-menu-button');
+            const userMenu = $('#user-menu');
+            userMenuButton.addEventListener('click', () => {
+                userMenu.classList.toggle('hidden');
+            });
+            document.addEventListener('click', (event) => { // Close dropdown if clicked outside
+                if (!userMenuButton.contains(event.target) && !userMenu.contains(event.target)) {
+                    userMenu.classList.add('hidden');
+                }
+            });
+
+            const mobileMenuButton = $('#mobile-menu-button');
+            const mobileMenu = $('#mobile-menu');
+            const openIcon = mobileMenuButton.querySelector('.fa-bars');
+            const closeIcon = mobileMenuButton.querySelector('.fa-times');
+
+            mobileMenuButton.addEventListener('click', () => {
+                mobileMenu.classList.toggle('hidden');
+                openIcon.classList.toggle('hidden');
+                closeIcon.classList.toggle('hidden');
+                const isExpanded = mobileMenu.classList.contains('hidden') ? 'false' : 'true';
+                mobileMenuButton.setAttribute('aria-expanded', isExpanded);
+            });
+            
+            // Close modal on escape key
+            document.addEventListener('keydown', (event) => {
+                if (event.key === 'Escape' && appState.isPortfolioModalOpen) {
+                    closeModal();
+                }
+            });
+            
+            // Start simulation
+            setInterval(simulateDataChanges, 7000); // Update data every 7 seconds
+            showToast('Welcome to InvestPlatform! Data is simulated.', 'info', 5000);
+        }
+
+        document.addEventListener('DOMContentLoaded', initApp);
+
+    </script>
+</body>
+</html>

@@ -1,0 +1,9 @@
+{
+  "web_id": "web_32",
+  "task_id": 1,
+  "task_type": "dynamic",
+  "instruction": "Task: Click a subreddit link from the home page list.\nExpected Result: The view changes to display the posts of the selected subreddit.\n\nNote: The task is only considered successful if the expected result is achieved; otherwise, it is deemed infeasible.",
+  "max_steps": 15,
+  "expected": "The view changes to display the posts of the selected subreddit.",
+  "label": 1
+}

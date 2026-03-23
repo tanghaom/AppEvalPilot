@@ -1,0 +1,9 @@
+{
+  "web_id": "web_1",
+  "task_id": 2,
+  "task_type": "dynamic",
+  "instruction": "Task: Click navigation controls (e.g., arrows, dots) on a featured game banner/carousel\nExpected Result: The active banner in the carousel changes to the next or previous item.\n\nNote: The task is only considered successful if the expected result is achieved; otherwise, it is deemed infeasible.",
+  "max_steps": 15,
+  "expected": "The active banner in the carousel changes to the next or previous item.",
+  "label": 1
+}

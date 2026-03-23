@@ -1,0 +1,9 @@
+{
+  "web_id": "web_102",
+  "task_id": 5,
+  "task_type": "dynamic",
+  "instruction": "Task: Switch the application view between the 'live report' 3D game and the 'alien general briefing' display.\nExpected Result: The main content area of the application changes, displaying either the interactive 3D game scene or the scene featuring the alien general on a monitor with FBI agents.\n\nNote: The task is only considered successful if the expected result is achieved; otherwise, it is deemed infeasible.",
+  "max_steps": 15,
+  "expected": "The main content area of the application changes, displaying either the interactive 3D game scene or the scene featuring the alien general on a monitor with FBI agents.",
+  "label": 0
+}

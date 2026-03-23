@@ -1,0 +1,9 @@
+{
+  "web_id": "web_78",
+  "task_id": 2,
+  "task_type": "dynamic",
+  "instruction": "Task: Check a data type checkbox (e.g., 'IDs') in the 'Data Matrix' card.\nExpected Result: The checkbox becomes checked, and its selection state is recorded for data extraction.\n\nNote: The task is only considered successful if the expected result is achieved; otherwise, it is deemed infeasible.",
+  "max_steps": 15,
+  "expected": "The checkbox becomes checked, and its selection state is recorded for data extraction.",
+  "label": 0
+}

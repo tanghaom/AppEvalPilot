@@ -1,0 +1,9 @@
+{
+  "web_id": "web_53",
+  "task_id": 3,
+  "task_type": "dynamic",
+  "instruction": "Task: Click a navigation item to view the user's personal dashboard.\nExpected Result: The user's personal dashboard is displayed, showing their (simulated) current ranking, portfolio performance, and a quick overview of top players in their region.\n\nNote: The task is only considered successful if the expected result is achieved; otherwise, it is deemed infeasible.",
+  "max_steps": 15,
+  "expected": "The user's personal dashboard is displayed, showing their (simulated) current ranking, portfolio performance, and a quick overview of top players in their region.",
+  "label": 1
+}

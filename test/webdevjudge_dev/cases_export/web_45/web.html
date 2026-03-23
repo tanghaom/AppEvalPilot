@@ -1,0 +1,508 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LLM Role-Play Arena</title>
+    <script src="https://unpkg.com/react@17/umd/react.development.js"></script>
+    <script src="https://unpkg.com/react-dom@17/umd/react-dom.development.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        /* Custom scrollbar for better aesthetics in dark mode */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #1E293B; /* slate-800 */
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #0EA5E9; /* sky-500 */
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #0284C7; /* sky-600 */
+        }
+        /* Basic body styling */
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+    </style>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        slate: {
+                            900: '#0F172A', // Main BG
+                            800: '#1E293B', // Card BG
+                            700: '#334155', // Borders, placeholder BG
+                            600: '#475569',
+                            500: '#64748B', // Placeholder border/icon
+                            400: '#94A3B8',
+                            300: '#CBD5E1',
+                            200: '#E2E8F0', // Main Text
+                            100: '#F1F5F9',
+                        },
+                        sky: {
+                            400: '#38BDF8', // Lighter sky for titles & tie highlight text
+                            500: '#0EA5E9', // Primary Accent & tie ring
+                            600: '#0284C7', // Primary Hover
+                        },
+                        emerald: {
+                            400: '#34D399', // Lighter emerald for win highlight text
+                            500: '#10B981', // Secondary Accent & win ring
+                            600: '#059669', // Secondary Hover
+                        },
+                        rose: {
+                            400: '#FB7185', // Lighter rose for loss highlight text
+                            500: '#F43F5E', // For "Loser" ring highlight 
+                        }
+                    },
+                    height: { // Adding specific heights used from Tailwind scale
+                        '64': '16rem', // For LLM response box
+                        '96': '24rem', // For chart container
+                    },
+                    minHeight: {
+                        '64': '16rem',
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+<body class="bg-slate-900 text-slate-200">
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect, useRef, useCallback } = React;
+
+        // --- Mock Data ---
+        const ALL_LLMS_DATA = [
+            { id: 'gpt-4-turbo', name: 'GPT-4 Turbo', iconColorClass: 'bg-blue-500', chartColor: '#3B82F6' }, // Tailwind blue-500
+            { id: 'claude-3-opus', name: 'Claude 3 Opus', iconColorClass: 'bg-amber-500', chartColor: '#F59E0B' }, // Tailwind amber-500
+            { id: 'gemini-1.5-pro', name: 'Gemini 1.5 Pro', iconColorClass: 'bg-purple-500', chartColor: '#A855F7' }, // Tailwind purple-500
+            { id: 'llama-3-70b', name: 'Llama 3 70B', iconColorClass: 'bg-green-500', chartColor: '#22C55E' }, // Tailwind green-500
+            { id: 'mistral-large', name: 'Mistral Large', iconColorClass: 'bg-red-500', chartColor: '#EF4444' }, // Tailwind red-500
+        ];
+
+        const ROLE_PLAYING_SCENARIOS_DATA = [
+            {
+                id: 'scenario1',
+                prompt: "You are a cautious medieval scholar asked to describe a mythical creature you've only read about in ancient, unreliable texts. Express your skepticism while still providing details.",
+                responses: { /* Responses for all LLMs defined in ALL_LLMS_DATA */ }
+            },
+            {
+                id: 'scenario2',
+                prompt: "You are a cheerful robot assistant from the future, trying to explain a simple 21st-century concept (like making toast) to someone who has never encountered it, using overly complex futuristic analogies.",
+                responses: { /* Responses for all LLMs */ }
+            },
+            {
+                id: 'scenario3',
+                prompt: "You are a grumpy gnome who runs a potion shop. A customer asks for a love potion. Explain why you don't stock them, with maximum grumpiness.",
+                responses: { /* Responses for all LLMs */ }
+            }
+        ];
+
+        // Populate responses for scenarios
+        ROLE_PLAYING_SCENARIOS_DATA[0].responses = {
+            'gpt-4-turbo': "Hmph. These old scrolls speak of the 'Glimmerwing', a creature of pure moonlight with feathers of spun starlight. They claim it sings prophecies, but I suspect it's more likely a barn owl misidentified by an overly imaginative scribe. Still, the texts insist its tears cure melancholy... a fanciful notion, if you ask me.",
+            'claude-3-opus': "Indeed, the 'Chronicles of Eldoria' mention a 'Whispering Wyrm,' said to possess scales like river stones and a voice that echoes forgotten truths. While the veracity of such accounts is, shall we say, debatable, the manuscript details its lair within the Crystal Caves. One must approach such tales with a healthy dose of academic scrutiny, of course.",
+            'gemini-1.5-pro': "Ah, the 'Nocturne Shade'. Legend paints it as a being woven from shadows, its eyes like dying embers. The 'Forbidden Grimoire' alleges it guards secrets of the old world. Frankly, it sounds like a rather elaborate metaphor for ignorance, but the descriptions are... poetically persistent.",
+            'llama-3-70b': "They speak of the 'Silent Sentinel', a golem of ancient wood animated by forest spirits. The 'Druid's Diary' claims it protects the elder groves. I find it more probable that it's a cleverly constructed automaton, or perhaps an unusually large, moss-covered tree that creaks in the wind. Yet, the tales are quite specific about its mossy runes.",
+            'mistral-large': "The 'Azure Serpent,' they call it. Texts like 'Myths of the Azure Deep' describe it as a colossal sea serpent with scales of sapphire and a roar like thunder. Supposedly, it commands storms. While I find the notion of weather-controlling reptiles rather far-fetched, the consistency across multiple, albeit dubious, mariners' logs is... curious."
+        };
+        ROLE_PLAYING_SCENARIOS_DATA[1].responses = {
+            'gpt-4-turbo': "Greetings! To initiate the 'thermal bread enhancement' protocol, one inserts a solidified grain-paste slice into the chroniton-coil aperture. Engaging the lepton-field emitters then induces a Maillard reaction cascade, resulting in optimized edibility and delightful textural recalibration. It's quite like calibrating a miniature solar sail for optimal photon absorption!",
+            'claude-3-opus': "Salutations, carbon-based unit! The process of 'ancient carbohydrate browning' involves placing a processed wheat-nutrient wafer into the designated thermionic emission chamber. Activating the temporal energy matrix causes a controlled molecular agitation, leading to a delightful surface crystallization. Think of it as a very, very tiny star undergoing controlled fusion for gustatory pleasure!",
+            'gemini-1.5-pro': "Hello there! For 'proto-nutrient slab thermofusion,' you'll need a planar starch composite. This is introduced to the radiant energy converter. Upon activation, focused energy waves bombard the composite, creating a delightful exothermic reaction. It's akin to meticulously terraforming a small asteroid for peak atmospheric crispness!",
+            'llama-3-70b': "Greetings, friend! To prepare a 'toasted bread-like unit,' one must utilize the electro-thermal browning device. The carbohydrate slice is positioned between two filament arrays. When energized, these arrays emit controlled radiation, creating a palatable crust. It's not unlike using a localized energy field to gently reshape a planetary surface for improved tactile sensation!",
+            'mistral-large': "Good day! The 'archaic grain rejuvenation procedure' is quite straightforward. A desiccated cereal amalgam is inserted into the thermal transfiguration unit. Activating the particle wave harmonizer initiates a rapid surface restructuring. Imagine it as re-aligning the quantum lattice of a small, flat object to achieve peak crispiness!"
+        };
+        ROLE_PLAYING_SCENARIOS_DATA[2].responses = {
+            'gpt-4-turbo': "Love potions? Hah! As if I'd meddle in such fickle, fleeting nonsense. Causes more trouble than a goblin in a crystal shop. Stick to wart removers and potions for indigestion, that's proper magic. Love? Bah! Find it yourself, don't come pestering me for shortcuts!",
+            'claude-3-opus': "Love potions, you say? Preposterous! Such concoctions are unreliable, unethical, and frankly, an insult to true alchemical artistry. My brews are for tangible ailments – curses, boils, perhaps a stubborn case of invisibility. Matters of the heart are best left to... well, not to gnomes with serious work to do. Now, buy something useful or be gone!",
+            'gemini-1.5-pro': "Ugh, another one. Look, 'love' isn't something you bottle. It's messy, unpredictable, and frankly, bad for business. I sell potions for things that *can* be fixed: bad luck, squeaky armor, an unfortunate case of the hiccups. You want a love potion? Try a bakery, maybe they sell heart-shaped cookies. Now, out!",
+            'llama-3-70b': "Love potions? Are you daft? I make potions for *real* problems. Curing curses, un-hexing gardens, making trolls slightly less smelly. This 'love' business is for bards and fools. It's not profitable, and it's certainly not something a gnome of my standing would brew. Now, are you buying a slug repellent or just wasting my time?",
+            'mistral-large': "Absolutely not! Love potions are a chaotic mess. They backfire, they wear off at the worst times, and the paperwork for accidental enchantments is a nightmare. I deal in practical magic: potions to find lost socks, potions to make your beard grow faster, potions to forget embarrassing moments. Go pester a pixie for your romantic whimsy."
+        };
+
+
+        // --- Helper Functions ---
+        function shuffleArray(array) {
+            const newArray = [...array];
+            for (let i = newArray.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [newArray[i], newArray[j]] = [newArray[j], newArray[i]];
+            }
+            return newArray;
+        }
+
+        // --- Components ---
+
+        const LLMPlaceholderIcon = () => (
+            // Adhering to placeholder spec: bg-gray-200 (themed: bg-slate-700), border-2 border-dashed, rounded-xl. Size w-12 h-12 for consistency.
+            <div className="bg-slate-700 border-2 border-dashed border-slate-500 rounded-xl w-12 h-12 flex items-center justify-center flex-shrink-0">
+                 <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M9.663 17h4.673M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+            </div>
+        );
+        
+        const LLMIcon = ({ llmData }) => {
+            const initials = llmData.actualName.split(' ').map(n => n[0]).join('').substring(0,2).toUpperCase();
+            return (
+                <div className={`flex items-center justify-center w-12 h-12 rounded-lg ${llmData.iconColorClass || 'bg-slate-700'} text-white font-bold text-lg flex-shrink-0`}>
+                    {initials}
+                </div>
+            );
+        };
+
+        const LLMCard = ({ llmData, anonymousName, isRevealed, voteOutcome }) => {
+            let ringClass = 'ring-1 ring-slate-700'; // Default ring
+            if (isRevealed) {
+                if (voteOutcome === 'win') ringClass = 'ring-2 ring-emerald-500 shadow-lg shadow-emerald-500/20';
+                else if (voteOutcome === 'loss') ringClass = 'ring-2 ring-rose-500 shadow-lg shadow-rose-500/20';
+                else if (voteOutcome === 'tie') ringClass = 'ring-2 ring-sky-500 shadow-lg shadow-sky-500/20';
+            }
+
+            return (
+                <div className={`bg-slate-800 p-4 sm:p-6 rounded-xl w-full ${ringClass} transition-all duration-300 flex flex-col`}>
+                    <div className="flex items-center mb-4">
+                        {isRevealed ? <LLMIcon llmData={llmData} /> : <LLMPlaceholderIcon />}
+                        <div className="ml-4">
+                            <h3 className="text-lg sm:text-xl font-semibold text-slate-100">
+                                {isRevealed ? llmData.actualName : anonymousName}
+                            </h3>
+                            {isRevealed && <p className="text-xs sm:text-sm text-slate-400">({anonymousName})</p>}
+                        </div>
+                    </div>
+                    <div className="text-slate-300 leading-relaxed whitespace-pre-wrap h-64 overflow-y-auto text-sm sm:text-base flex-grow custom-scrollbar">
+                        {llmData.response}
+                    </div>
+                </div>
+            );
+        };
+
+        const LeaderboardChart = ({ leaderboardData }) => {
+            const chartRef = useRef(null);
+            const chartInstanceRef = useRef(null);
+
+            useEffect(() => {
+                if (!chartRef.current || leaderboardData.length === 0) {
+                     if (chartInstanceRef.current) { // Clear chart if no data
+                        chartInstanceRef.current.destroy();
+                        chartInstanceRef.current = null;
+                    }
+                    return;
+                }
+
+                const sortedData = [...leaderboardData].sort((a, b) => b.points - a.points).slice(0, 10); // Display top 10
+                const labels = sortedData.map(llm => llm.name);
+                const pointsData = sortedData.map(llm => llm.points);
+                
+                const backgroundColors = sortedData.map(llm => {
+                    const llmDetails = ALL_LLMS_DATA.find(l => l.id === llm.id);
+                    return llmDetails ? `${llmDetails.chartColor}B3` : 'rgba(14, 165, 233, 0.7)'; // Add alpha for background
+                });
+                const borderColors = sortedData.map(llm => {
+                    const llmDetails = ALL_LLMS_DATA.find(l => l.id === llm.id);
+                    return llmDetails ? llmDetails.chartColor : 'rgba(14, 165, 233, 1)';
+                });
+
+
+                const data = {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Points',
+                        data: pointsData,
+                        backgroundColor: backgroundColors,
+                        borderColor: borderColors,
+                        borderWidth: 1.5,
+                        borderRadius: 4,
+                    }]
+                };
+
+                const config = {
+                    type: 'bar',
+                    data: data,
+                    options: {
+                        indexAxis: 'y',
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        scales: {
+                            x: {
+                                beginAtZero: true,
+                                ticks: { color: '#94A3B8', font: { size: 10 } }, // slate-400
+                                grid: { color: '#334155',drawBorder: false, }  // slate-700
+                            },
+                            y: {
+                                ticks: { color: '#E2E8F0', font: { size: 11 } }, // slate-200
+                                grid: { display: false }
+                            }
+                        },
+                        plugins: {
+                            legend: { display: false },
+                            title: {
+                                display: true,
+                                text: 'Top LLM Scores',
+                                color: '#F1F5F9', // slate-100
+                                font: { size: 18, weight: '600' },
+                                padding: { top: 4, bottom: 16 }
+                            }
+                        }
+                    }
+                };
+                
+                if (chartInstanceRef.current) {
+                    chartInstanceRef.current.destroy();
+                }
+                chartInstanceRef.current = new Chart(chartRef.current, config);
+                
+                return () => { // Cleanup
+                    if (chartInstanceRef.current) {
+                        chartInstanceRef.current.destroy();
+                        chartInstanceRef.current = null;
+                    }
+                };
+
+            }, [leaderboardData]);
+
+            if (leaderboardData.length === 0) {
+                return <div className="bg-slate-800 p-4 rounded-lg shadow-md h-96 flex items-center justify-center"><p className="text-slate-400">No data for chart yet.</p></div>;
+            }
+
+            return (
+                <div className="bg-slate-800 p-4 rounded-lg shadow-md h-96">
+                    <canvas ref={chartRef}></canvas>
+                </div>
+            );
+        };
+        
+        const LeaderboardTable = ({ leaderboardData }) => {
+            const sortedData = [...leaderboardData].sort((a, b) => b.points - a.points);
+
+            if (leaderboardData.length === 0) {
+                 return <div className="bg-slate-800 p-6 rounded-lg shadow-md"><p className="text-slate-400">Leaderboard is currently empty.</p></div>;
+            }
+
+            return (
+                <div className="bg-slate-800 p-4 sm:p-6 rounded-lg shadow-md overflow-x-auto custom-scrollbar">
+                    <h2 className="text-xl sm:text-2xl font-semibold text-slate-100 mb-4">Leaderboard</h2>
+                    <table className="w-full min-w-[580px] text-left text-sm sm:text-base">
+                        <thead>
+                            <tr className="border-b-2 border-slate-700">
+                                <th className="p-2 sm:p-3 text-slate-400 font-semibold text-xs uppercase tracking-wider">#</th>
+                                <th className="p-2 sm:p-3 text-slate-400 font-semibold text-xs uppercase tracking-wider">Name</th>
+                                <th className="p-2 sm:p-3 text-slate-400 font-semibold text-xs uppercase tracking-wider text-right">Pts</th>
+                                <th className="p-2 sm:p-3 text-slate-400 font-semibold text-xs uppercase tracking-wider text-right">W</th>
+                                <th className="p-2 sm:p-3 text-slate-400 font-semibold text-xs uppercase tracking-wider text-right">L</th>
+                                <th className="p-2 sm:p-3 text-slate-400 font-semibold text-xs uppercase tracking-wider text-right">T</th>
+                                <th className="p-2 sm:p-3 text-slate-400 font-semibold text-xs uppercase tracking-wider text-right">MP</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {sortedData.map((llm, index) => (
+                                <tr key={llm.id} className="border-b border-slate-700 last:border-b-0 hover:bg-slate-700/50 transition-colors duration-150">
+                                    <td className="p-2 sm:p-3 text-slate-300 font-medium">{index + 1}</td>
+                                    <td className="p-2 sm:p-3 text-slate-100 font-medium flex items-center whitespace-nowrap">
+                                        <div className={`w-3 h-3 rounded-full mr-2.5 flex-shrink-0 ${ALL_LLMS_DATA.find(l => l.id === llm.id)?.iconColorClass || 'bg-slate-500'}`}></div>
+                                        {llm.name}
+                                    </td>
+                                    <td className="p-2 sm:p-3 text-slate-100 font-bold text-right">{llm.points}</td>
+                                    <td className="p-2 sm:p-3 text-emerald-400 text-right">{llm.wins}</td>
+                                    <td className="p-2 sm:p-3 text-rose-400 text-right">{llm.losses}</td>
+                                    <td className="p-2 sm:p-3 text-sky-400 text-right">{llm.ties}</td>
+                                    <td className="p-2 sm:p-3 text-slate-400 text-right">{llm.matchesPlayed}</td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                </div>
+            );
+        };
+
+
+        // --- Main App Component ---
+        function App() {
+            const [currentRound, setCurrentRound] = useState(null);
+            const [vote, setVote] = useState(null);
+            const [revealed, setRevealed] = useState(false);
+            const [leaderboardData, setLeaderboardData] = useState(() => {
+                return ALL_LLMS_DATA.map(llm => ({
+                    id: llm.id, name: llm.name,
+                    points: 0, wins: 0, losses: 0, ties: 0, matchesPlayed: 0
+                }));
+            });
+            const [isLoading, setIsLoading] = useState(true);
+            const [showLeaderboard, setShowLeaderboard] = useState(true);
+            const [feedbackMessage, setFeedbackMessage] = useState("");
+
+            const fetchNewRound = useCallback(() => {
+                setIsLoading(true); setVote(null); setRevealed(false); setFeedbackMessage("");
+                setTimeout(() => {
+                    const shuffledLLMs = shuffleArray(ALL_LLMS_DATA);
+                    if (shuffledLLMs.length < 2) {
+                        console.error("Not enough LLMs to start a new round.");
+                        setCurrentRound({ scenario: "Error: Not enough LLMs available.", llmA: {}, llmB: {} });
+                        setIsLoading(false); return;
+                    }
+                    const llmAData = shuffledLLMs[0];
+                    const llmBData = shuffledLLMs[1];
+
+                    const availableScenarios = ROLE_PLAYING_SCENARIOS_DATA.filter(scenario => 
+                        scenario.responses[llmAData.id] && scenario.responses[llmBData.id]
+                    );
+                    
+                    if (availableScenarios.length === 0) {
+                        console.error("No suitable scenarios found for the selected LLMs!");
+                        setCurrentRound({ 
+                            scenario: "Critical Error: No scenarios available. Please check data.",
+                            llmA: { actualId: llmAData.id, ...llmAData, response: "N/A" },
+                            llmB: { actualId: llmBData.id, ...llmBData, response: "N/A" }
+                        });
+                        setIsLoading(false); return;
+                    }
+                    const scenario = availableScenarios[Math.floor(Math.random() * availableScenarios.length)];
+
+                    setCurrentRound({
+                        scenario: scenario.prompt,
+                        llmA: { actualId: llmAData.id, ...llmAData, response: scenario.responses[llmAData.id] },
+                        llmB: { actualId: llmBData.id, ...llmBData, response: scenario.responses[llmBData.id] }
+                    });
+                    setIsLoading(false);
+                }, 300); // Shorter delay
+            }, []);
+
+            useEffect(() => { fetchNewRound(); }, [fetchNewRound]);
+
+            const handleVote = (winnerChoice) => {
+                if (revealed || !currentRound) return;
+                setVote(winnerChoice); setRevealed(true);
+
+                const { llmA, llmB } = currentRound;
+                let msg = `You voted for ${winnerChoice === 'A' ? 'LLM Alpha' : (winnerChoice === 'B' ? 'LLM Beta' : 'a Tie')}. `;
+                msg += `LLM Alpha was ${llmA.actualName}, LLM Beta was ${llmB.actualName}.`;
+                setFeedbackMessage(msg);
+
+                setLeaderboardData(prevData => {
+                    const newData = JSON.parse(JSON.stringify(prevData)); // Simple deep copy for this structure
+                    const updateStats = (id, result) => {
+                        const idx = newData.findIndex(l => l.id === id);
+                        if (idx === -1) return; // Should not happen
+                        newData[idx].matchesPlayed++;
+                        if (result === 'win') { newData[idx].wins++; newData[idx].points += 3; }
+                        else if (result === 'loss') { newData[idx].losses++; } // No points for loss
+                        else if (result === 'tie') { newData[idx].ties++; newData[idx].points += 1; }
+                    };
+
+                    if (winnerChoice === 'A') { updateStats(llmA.actualId, 'win'); updateStats(llmB.actualId, 'loss'); }
+                    else if (winnerChoice === 'B') { updateStats(llmB.actualId, 'win'); updateStats(llmA.actualId, 'loss'); }
+                    else { /* Tie */ updateStats(llmA.actualId, 'tie'); updateStats(llmB.actualId, 'tie'); }
+                    return newData;
+                });
+            };
+            
+            const getVoteOutcome = (llmIdentifier) => { // 'A' or 'B'
+                if (!revealed || !vote) return null;
+                if (vote === 'Tie') return 'tie';
+                return vote === llmIdentifier ? 'win' : 'loss';
+            };
+
+            if (isLoading && !currentRound) { // Initial loading state
+                return (
+                    <div className="min-h-screen flex items-center justify-center bg-slate-900 p-4">
+                        <div className="flex flex-col items-center text-center">
+                            <svg className="animate-spin h-10 w-10 text-sky-500 mb-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                            </svg>
+                            <p className="text-xl sm:text-2xl text-slate-300">Loading LLM Arena...</p>
+                            <p className="text-sm text-slate-500">Please wait a moment.</p>
+                        </div>
+                    </div>
+                );
+            }
+            
+            if (!currentRound || !currentRound.llmA || !currentRound.llmB) { // Error state
+                 return ( <div className="min-h-screen flex items-center justify-center bg-slate-900 p-4"><p className="text-xl sm:text-2xl text-red-400 text-center">Error: Could not load round data. Please refresh the page.</p></div> );
+            }
+
+            return (
+                <div className="min-h-screen bg-slate-900 text-slate-200 p-4 md:p-6 lg:p-8">
+                    <header className="text-center mb-6 md:mb-8">
+                        <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold text-sky-400">LLM Role-Play Arena</h1>
+                        <p className="text-slate-400 mt-2 text-sm sm:text-base">Which LLM excels at role-playing? Cast your vote!</p>
+                    </header>
+
+                    <main className="max-w-7xl mx-auto">
+                        <section className="mb-6 md:mb-8 p-4 sm:p-6 bg-slate-800 rounded-xl shadow-lg">
+                            <h2 className="text-xl sm:text-2xl font-semibold text-slate-100 mb-3">Current Scenario:</h2>
+                            {isLoading && !revealed ? <div className="h-12 bg-slate-700 rounded animate-pulse"></div> : <p className="text-slate-300 leading-relaxed text-sm sm:text-base">{currentRound.scenario}</p>}
+                        </section>
+
+                        <section className="mb-6 md:mb-8 grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
+                           {isLoading && !revealed ? ( // Show skeleton loaders only when fetching new, unrevealed round
+                               Array(2).fill(0).map((_, i) => <div key={i} className="bg-slate-800 p-6 rounded-xl shadow-xl min-h-64 animate-pulse"></div>)
+                           ) : ( // Otherwise, show cards (even if isLoading is true for "Next Round" after reveal)
+                               <>
+                                <LLMCard llmData={currentRound.llmA} anonymousName="LLM Alpha" isRevealed={revealed} voteOutcome={getVoteOutcome('A')} />
+                                <LLMCard llmData={currentRound.llmB} anonymousName="LLM Beta" isRevealed={revealed} voteOutcome={getVoteOutcome('B')} />
+                               </>
+                           )}
+                        </section>
+
+                        <section className="mb-6 md:mb-8 text-center p-4 sm:p-6 bg-slate-800 rounded-xl shadow-lg">
+                            {isLoading && !revealed && <div className="animate-pulse text-lg text-sky-400 mb-4">Finding a new battle...</div>}
+                            {!revealed && !isLoading && (
+                                <>
+                                    <h3 className="text-lg sm:text-xl font-semibold mb-4 text-slate-100">Which response is superior?</h3>
+                                    <div className="flex flex-col sm:flex-row justify-center items-center gap-3 sm:gap-4">
+                                        <button onClick={() => handleVote('A')} className="w-full sm:w-auto bg-sky-500 hover:bg-sky-600 text-white font-semibold py-2.5 px-5 rounded-lg shadow-md transition duration-150 transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-sky-400 focus:ring-opacity-75 text-sm sm:text-base">Alpha Wins</button>
+                                        <button onClick={() => handleVote('Tie')} className="w-full sm:w-auto bg-slate-600 hover:bg-slate-700 text-slate-100 font-semibold py-2.5 px-5 rounded-lg shadow-md transition duration-150 transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-slate-500 focus:ring-opacity-75 text-sm sm:text-base">It's a Tie</button>
+                                        <button onClick={() => handleVote('B')} className="w-full sm:w-auto bg-sky-500 hover:bg-sky-600 text-white font-semibold py-2.5 px-5 rounded-lg shadow-md transition duration-150 transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-sky-400 focus:ring-opacity-75 text-sm sm:text-base">Beta Wins</button>
+                                    </div>
+                                </>
+                            )}
+                            {revealed && (
+                                <div className="mt-2">
+                                    <p className="text-md sm:text-lg text-emerald-400 mb-4 px-2">{feedbackMessage}</p>
+                                    <button onClick={fetchNewRound} disabled={isLoading} className="bg-emerald-500 hover:bg-emerald-600 text-white font-bold py-3 px-8 rounded-lg shadow-lg transition duration-150 transform hover:scale-105 disabled:opacity-60 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-emerald-400 focus:ring-opacity-75">
+                                        {isLoading ? 'Loading...' : 'Next Round'}
+                                    </button>
+                                </div>
+                            )}
+                        </section>
+                        
+                        <section className="my-8 md:my-10">
+                            <div className="text-center mb-4 sm:mb-6">
+                                <button onClick={() => setShowLeaderboard(prev => !prev)} className="bg-slate-700 hover:bg-slate-600 text-slate-200 font-semibold py-2 px-4 rounded-lg transition duration-150 text-sm sm:text-base focus:outline-none focus:ring-2 focus:ring-slate-500 focus:ring-opacity-75">
+                                    {showLeaderboard ? 'Hide' : 'Show'} Leaderboard & Stats
+                                </button>
+                            </div>
+                            {showLeaderboard && (
+                                <div className="grid grid-cols-1 xl:grid-cols-5 gap-4 md:gap-6 items-start">
+                                    <div className="xl:col-span-3">
+                                        <LeaderboardTable leaderboardData={leaderboardData} />
+                                    </div>
+                                    <div className="xl:col-span-2">
+                                         <LeaderboardChart leaderboardData={leaderboardData} />
+                                    </div>
+                                </div>
+                            )}
+                        </section>
+                    </main>
+                    <footer className="text-center mt-10 md:mt-12 py-6 border-t border-slate-700">
+                        <p className="text-slate-500 text-xs sm:text-sm">&copy; {(new Date()).getFullYear()} LLM Arena. For demonstration purposes.</p>
+                    </footer>
+                </div>
+            );
+        }
+
+        ReactDOM.render(<App />, document.getElementById('root'));
+    </script>
+</body>
+</html>

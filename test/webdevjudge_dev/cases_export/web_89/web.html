@@ -1,0 +1,802 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Interactive Learning Platform</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: {
+                            DEFAULT: '#3B82F6', // blue-500 (Tailwind)
+                            light: '#DBEAFE',  // blue-100
+                            dark: '#2563EB',   // blue-600
+                            darker: '#1D4ED8', // blue-700
+                        },
+                        secondary: {
+                            DEFAULT: '#64748B', // slate-500
+                            light: '#F1F5F9',  // slate-100
+                            lighter: '#F8FAFC',// slate-50
+                            dark: '#475569',   // slate-600
+                        },
+                        accent: {
+                            green: '#10B981', // green-500
+                            red: '#EF4444',   // red-500
+                            orange: '#F97316', // orange-500
+                        },
+                        lightBg: '#F8FAFC', // slate-50
+                        darkText: '#1E293B', // slate-800
+                        mediumText: '#475569', // slate-600
+                        lightText: '#94A3B8', // slate-400
+                        borderLight: '#E2E8F0', // slate-200
+                        borderDefault: '#CBD5E1', // slate-300
+                    },
+                    animation: {
+                        fadeIn: 'fadeIn 0.3s ease-out forwards',
+                        spinnerGrow: 'spinnerGrow 0.75s linear infinite'
+                    },
+                    keyframes: {
+                        fadeIn: {
+                            '0%': { opacity: 0, transform: 'translateY(10px)' },
+                            '100%': { opacity: 1, transform: 'translateY(0)' },
+                        },
+                        spinnerGrow: {
+                            '0%': { transform: 'scale(0)' },
+                            '100%': { transform: 'scale(1)', opacity: 0 }
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <style>
+        /* Custom scrollbar for better aesthetics */
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: #F1F5F9; border-radius: 10px; } /* secondary-light */
+        ::-webkit-scrollbar-thumb { background: #94A3B8; border-radius: 10px; } /* lightText */
+        ::-webkit-scrollbar-thumb:hover { background: #64748B; } /* secondary-DEFAULT */
+
+        /* Basic spinner */
+        .spinner-legacy {
+            border: 4px solid rgba(0, 0, 0, 0.1);
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            border-left-color: #3B82F6; /* primary-DEFAULT */
+            animation: spin 1s ease infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        /* Tooltip styling */
+        .tooltip .tooltip-text {
+            visibility: hidden; opacity: 0; transition: opacity 0.2s ease-in-out, visibility 0.2s ease-in-out;
+            transform: translateY(4px);
+        }
+        .tooltip:hover .tooltip-text, .tooltip:focus-within .tooltip-text-focus {
+            visibility: visible; opacity: 1; transform: translateY(0px);
+        }
+        
+        /* Custom focus style for specific inputs if needed beyond Tailwind defaults */
+        .math-textarea:focus {
+            outline: 2px solid transparent; outline-offset: 2px;
+            --tw-ring-offset-shadow: var(--tw-ring-inset) 0 0 0 var(--tw-ring-offset-width) var(--tw-ring-offset-color);
+            --tw-ring-shadow: var(--tw-ring-inset) 0 0 0 calc(2px + var(--tw-ring-offset-width)) var(--tw-ring-color);
+            box-shadow: var(--tw-ring-offset-shadow), var(--tw-ring-shadow), var(--tw-shadow, 0 0 #0000);
+            border-color: #3B82F6 !important; /* primary-DEFAULT */
+            --tw-ring-color: #3B82F6; /* primary-DEFAULT */
+        }
+        /* For contenteditable MathJax input simulation */
+        .math-input-area[contenteditable=true]:focus {
+            outline: 2px solid #3B82F6; /* primary-DEFAULT */
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.3); /* primary-DEFAULT with opacity */
+        }
+    </style>
+</head>
+<body class="bg-lightBg text-mediumText font-sans antialiased">
+
+    <!-- Main Navigation -->
+    <nav class="bg-white shadow-md sticky top-0 z-50">
+        <div class="container mx-auto px-4 sm:px-6 py-3 flex justify-between items-center">
+            <div class="flex items-center space-x-3">
+                <div class="bg-primary rounded-full w-9 h-9 flex items-center justify-center text-white font-bold text-base shadow">LP</div>
+                <span class="font-semibold text-xl text-primary-dark">LearnPlatform</span>
+            </div>
+            <div class="hidden md:flex space-x-1">
+                <a href="#" class="nav-link px-3 py-2 rounded-md text-sm" data-target="component-library-screen">Components</a>
+                <a href="#" class="nav-link px-3 py-2 rounded-md text-sm" data-target="dashboard-screen">Dashboard</a>
+                <a href="#" class="nav-link px-3 py-2 rounded-md text-sm" data-target="topic-selection-screen">Topics</a>
+                <a href="#" class="nav-link px-3 py-2 rounded-md text-sm" data-target="problem-view-screen">Problem</a>
+            </div>
+            <div class="md:hidden">
+                <button id="mobile-menu-button" class="text-mediumText hover:text-primary focus:outline-none">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16m-7 6h7"></path></svg>
+                </button>
+            </div>
+        </div>
+        <!-- Mobile Menu -->
+        <div id="mobile-menu" class="md:hidden hidden bg-white shadow-lg">
+            <a href="#" class="nav-link block px-4 py-3 text-sm text-mediumText hover:bg-primary-light hover:text-primary-dark" data-target="component-library-screen">Components</a>
+            <a href="#" class="nav-link block px-4 py-3 text-sm text-mediumText hover:bg-primary-light hover:text-primary-dark" data-target="dashboard-screen">Dashboard</a>
+            <a href="#" class="nav-link block px-4 py-3 text-sm text-mediumText hover:bg-primary-light hover:text-primary-dark" data-target="topic-selection-screen">Topics</a>
+            <a href="#" class="nav-link block px-4 py-3 text-sm text-mediumText hover:bg-primary-light hover:text-primary-dark" data-target="problem-view-screen">Problem</a>
+        </div>
+    </nav>
+
+    <!-- Screens Container -->
+    <main class="container mx-auto p-4 md:p-6 lg:p-8 min-h-[calc(100vh-60px)]">
+        <!-- Component Library Screen -->
+        <div id="component-library-screen" class="screen hidden space-y-10">
+            <h1 class="text-3xl font-bold text-darkText mb-8 border-b border-borderLight pb-4">Component Library</h1>
+
+            <!-- Buttons -->
+            <section>
+                <h2 class="text-2xl font-semibold text-darkText mb-4">Buttons</h2>
+                <div class="space-y-4 md:space-y-0 md:space-x-4 flex flex-wrap items-start">
+                    <button class="px-5 py-2.5 text-sm font-medium text-white bg-primary hover:bg-primary-dark focus:ring-4 focus:outline-none focus:ring-blue-300 rounded-lg shadow-sm transition-colors">Primary</button>
+                    <button class="px-5 py-2.5 text-sm font-medium text-darkText bg-secondary-light hover:bg-slate-200 focus:ring-4 focus:outline-none focus:ring-slate-300 rounded-lg shadow-sm transition-colors">Secondary</button>
+                    <button class="px-5 py-2.5 text-sm font-medium text-primary hover:text-primary-dark focus:outline-none rounded-lg transition-colors">Text Button</button>
+                    <button class="px-5 py-2.5 text-sm font-medium text-slate-400 bg-slate-200 rounded-lg shadow-sm cursor-not-allowed" disabled>Disabled</button>
+                    <button class="p-2.5 text-white bg-primary hover:bg-primary-dark focus:ring-4 focus:outline-none focus:ring-blue-300 rounded-lg shadow-sm transition-colors" aria-label="Icon Button">
+                        <span class="icon-placeholder w-5 h-5"><!-- settings --></span>
+                    </button>
+                     <button class="p-2.5 text-mediumText hover:bg-secondary-light rounded-lg transition-colors" aria-label="Icon Button Plain">
+                        <span class="icon-placeholder w-5 h-5"><!-- academicCap --></span>
+                    </button>
+                </div>
+            </section>
+
+            <!-- Input Fields -->
+            <section>
+                <h2 class="text-2xl font-semibold text-darkText mb-4">Input Fields</h2>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                        <label for="text-input" class="block mb-2 text-sm font-medium text-darkText">Text Input</label>
+                        <input type="text" id="text-input" class="bg-white border border-borderDefault text-darkText text-sm rounded-lg focus:ring-primary focus:border-primary block w-full p-2.5" placeholder="Enter text">
+                    </div>
+                    <div>
+                        <label for="numeric-input" class="block mb-2 text-sm font-medium text-darkText">Numeric Input</label>
+                        <input type="number" id="numeric-input" class="bg-white border border-borderDefault text-darkText text-sm rounded-lg focus:ring-primary focus:border-primary block w-full p-2.5" placeholder="123">
+                    </div>
+                    <div class="md:col-span-2">
+                        <label for="math-input-textarea" class="block mb-2 text-sm font-medium text-darkText">Math Input (Textarea for LaTeX)</label>
+                        <textarea id="math-input-textarea" rows="3" class="math-textarea bg-white border border-borderDefault text-darkText text-sm rounded-lg block w-full p-2.5" placeholder="e.g., x^2 + y^2 = z^2"></textarea>
+                        <p class="mt-1 text-xs text-lightText">Use LaTeX syntax. Rendered output would use MathJax.</p>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Cards -->
+            <section>
+                <h2 class="text-2xl font-semibold text-darkText mb-4">Cards</h2>
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    <div class="bg-white p-6 rounded-xl shadow-lg hover:shadow-xl transition-shadow">
+                        <h3 class="text-lg font-semibold text-darkText mb-2">Content Summary Card</h3>
+                        <div class="bg-gray-200 border-2 border-dashed rounded-xl w-full h-24 mb-3 flex items-center justify-center text-slate-400 text-sm">Placeholder Image/Content</div>
+                        <p class="text-sm text-mediumText mb-3">This card provides a brief summary of content. It can include images, text, and actions.</p>
+                        <button class="text-sm font-medium text-primary hover:text-primary-dark">Read More &rarr;</button>
+                    </div>
+                    <div class="bg-white p-6 rounded-xl shadow-lg hover:shadow-xl transition-shadow">
+                        <h3 class="text-lg font-semibold text-darkText mb-2">Progress Tracking Card</h3>
+                        <p class="text-sm text-mediumText mb-1">Module Completion: 75%</p>
+                        <div class="w-full bg-secondary-light rounded-full h-2.5 mb-4">
+                            <div class="bg-primary h-2.5 rounded-full" style="width: 75%"></div>
+                        </div>
+                        <p class="text-sm text-mediumText">Keep up the great work! Only a few lessons left.</p>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Progress Bars -->
+            <section>
+                <h2 class="text-2xl font-semibold text-darkText mb-4">Progress Bars</h2>
+                <div class="space-y-4">
+                    <div>
+                        <p class="text-sm text-mediumText mb-1">Linear Progress (45%)</p>
+                        <div class="w-full bg-secondary-light rounded-full h-4 overflow-hidden">
+                            <div class="bg-primary h-4 rounded-full flex items-center justify-center text-xs text-white" style="width: 45%">45%</div>
+                        </div>
+                    </div>
+                    <div>
+                        <p class="text-sm text-mediumText mb-1">Circular Progress (60%) - SVG based</p>
+                        <div class="flex items-center space-x-4">
+                            <div class="relative w-24 h-24">
+                                <svg class="w-full h-full" viewBox="0 0 100 100">
+                                    <circle class="text-secondary-light" stroke-width="10" stroke="currentColor" fill="transparent" r="40" cx="50" cy="50"/>
+                                    <circle class="text-primary progress-ring-circle" stroke-width="10" stroke-linecap="round" stroke="currentColor" fill="transparent" r="40" cx="50" cy="50" data-progress="60"/>
+                                </svg>
+                                <span class="absolute inset-0 flex items-center justify-center text-lg font-semibold text-primary">60%</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Tooltips -->
+            <section>
+                <h2 class="text-2xl font-semibold text-darkText mb-4">Tooltips</h2>
+                <div class="flex space-x-6 items-center">
+                    <div class="relative tooltip">
+                        <button class="px-5 py-2.5 text-sm font-medium text-white bg-secondary hover:bg-secondary-dark rounded-lg shadow-sm">Hover for Tooltip</button>
+                        <span class="tooltip-text absolute z-10 bottom-full mb-2 left-1/2 -translate-x-1/2 px-3 py-1.5 text-xs font-medium text-white bg-slate-700 rounded-md shadow-lg whitespace-nowrap">
+                            This is a hover tooltip!
+                            <svg class="absolute text-slate-700 h-2 w-full left-0 top-full" x="0px" y="0px" viewBox="0 0 255 255" xml:space="preserve"><polygon class="fill-current" points="0,0 127.5,127.5 255,0"/></svg>
+                        </span>
+                    </div>
+                    <div class="relative tooltip">
+                        <input type="text" class="bg-white border border-borderDefault text-darkText text-sm rounded-lg focus:ring-primary focus:border-primary p-2.5 focus-within:tooltip-text-focus" placeholder="Focus for Tooltip">
+                         <span class="tooltip-text-focus absolute z-10 bottom-full mb-2 left-1/2 -translate-x-1/2 px-3 py-1.5 text-xs font-medium text-white bg-slate-700 rounded-md shadow-lg whitespace-nowrap">
+                            Tooltip on focus!
+                            <svg class="absolute text-slate-700 h-2 w-full left-0 top-full" x="0px" y="0px" viewBox="0 0 255 255" xml:space="preserve"><polygon class="fill-current" points="0,0 127.5,127.5 255,0"/></svg>
+                        </span>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Modals -->
+            <section>
+                <h2 class="text-2xl font-semibold text-darkText mb-4">Modals</h2>
+                <button id="open-basic-modal-button" class="px-5 py-2.5 text-sm font-medium text-white bg-primary hover:bg-primary-dark rounded-lg shadow-sm">Open Basic Modal</button>
+                <button id="open-form-modal-button" class="ml-4 px-5 py-2.5 text-sm font-medium text-white bg-accent-green hover:bg-green-600 rounded-lg shadow-sm">Open Form Dialog</button>
+            </section>
+
+            <!-- Loading Indicators -->
+            <section>
+                <h2 class="text-2xl font-semibold text-darkText mb-4">Loading Indicators</h2>
+                <div class="flex items-center space-x-8">
+                    <div class="spinner-legacy"></div>
+                    <div class="flex items-center space-x-2">
+                        <div class="h-3 w-3 bg-primary rounded-full animate-spinnerGrow [animation-delay:-0.3s]"></div>
+                        <div class="h-3 w-3 bg-primary rounded-full animate-spinnerGrow [animation-delay:-0.15s]"></div>
+                        <div class="h-3 w-3 bg-primary rounded-full animate-spinnerGrow"></div>
+                        <span class="text-sm text-mediumText">Loading...</span>
+                    </div>
+                    <div>(Progress bar shown above)</div>
+                </div>
+            </section>
+
+             <!-- Text Areas (already shown in Input Fields) -->
+            <section>
+                <h2 class="text-2xl font-semibold text-darkText mb-4">Text Areas</h2>
+                 <p class="text-mediumText">Standard text area and MathJax-enabled text area (for LaTeX input) examples are included in the "Input Fields" section.</p>
+            </section>
+        </div>
+
+        <!-- Dashboard Screen -->
+        <div id="dashboard-screen" class="screen">
+            <header class="flex justify-between items-center mb-8">
+                <div>
+                    <h1 class="text-3xl font-bold text-darkText">Welcome Back, Alex!</h1>
+                    <p class="text-mediumText">Here's your learning snapshot for today.</p>
+                </div>
+                <div class="flex items-center space-x-3">
+                    <span class="text-sm text-mediumText hidden sm:block">Alex Thompson</span>
+                    <button class="p-2 text-mediumText hover:text-primary hover:bg-primary-light rounded-full transition-colors" aria-label="User Settings">
+                        <span class="icon-placeholder w-6 h-6"><!-- user --></span>
+                    </button>
+                    <button class="p-2 text-mediumText hover:text-primary hover:bg-primary-light rounded-full transition-colors" aria-label="Settings">
+                        <span class="icon-placeholder w-6 h-6"><!-- settings --></span>
+                    </button>
+                </div>
+            </header>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <!-- Progress Card -->
+                <div class="lg:col-span-2 bg-white p-6 rounded-xl shadow-lg hover:shadow-xl transition-shadow">
+                    <h3 class="text-xl font-semibold text-darkText mb-1">Overall Progress</h3>
+                    <p class="text-sm text-mediumText mb-4">You're doing great! Keep pushing forward.</p>
+                    <div class="mb-1 flex justify-between text-sm">
+                        <span class="text-mediumText font-medium">Calculus Fundamentals</span>
+                        <span class="text-primary font-semibold">65%</span>
+                    </div>
+                    <div class="w-full bg-secondary-light rounded-full h-3 mb-4">
+                        <div class="bg-primary h-3 rounded-full" style="width: 65%"></div>
+                    </div>
+                    <div class="mb-1 flex justify-between text-sm">
+                        <span class="text-mediumText font-medium">Linear Algebra</span>
+                        <span class="text-accent-green font-semibold">80%</span>
+                    </div>
+                    <div class="w-full bg-secondary-light rounded-full h-3 mb-4">
+                        <div class="bg-accent-green h-3 rounded-full" style="width: 80%"></div>
+                    </div>
+                     <div class="mb-1 flex justify-between text-sm">
+                        <span class="text-mediumText font-medium">Probability Theory</span>
+                        <span class="text-accent-orange font-semibold">30%</span>
+                    </div>
+                    <div class="w-full bg-secondary-light rounded-full h-3">
+                        <div class="bg-accent-orange h-3 rounded-full" style="width: 30%"></div>
+                    </div>
+                </div>
+
+                <!-- Recommendation Card -->
+                <div class="bg-white p-6 rounded-xl shadow-lg hover:shadow-xl transition-shadow">
+                    <h3 class="text-xl font-semibold text-darkText mb-3">Recommended For You</h3>
+                    <div class="space-y-4">
+                        <div class="flex items-start space-x-3">
+                            <div class="bg-primary-light rounded-lg p-2 text-primary">
+                                <span class="icon-placeholder w-5 h-5"><!-- academicCap --></span>
+                            </div>
+                            <div>
+                                <h4 class="font-semibold text-darkText">Integration Techniques</h4>
+                                <p class="text-xs text-mediumText mb-1">Strengthen your calculus skills.</p>
+                                <a href="#" class="text-sm font-medium text-primary hover:text-primary-dark">Start Learning &rarr;</a>
+                            </div>
+                        </div>
+                         <div class="border-t border-borderLight pt-4 flex items-start space-x-3">
+                            <div class="bg-green-100 rounded-lg p-2 text-accent-green">
+                                <span class="icon-placeholder w-5 h-5"><!-- lightBulb --></span>
+                            </div>
+                            <div>
+                                <h4 class="font-semibold text-darkText">Eigenvalues Explained</h4>
+                                <p class="text-xs text-mediumText mb-1">Dive deeper into linear algebra.</p>
+                                <a href="#" class="text-sm font-medium text-primary hover:text-primary-dark">Explore Topic &rarr;</a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Activity List -->
+                <div class="md:col-span-2 lg:col-span-3 bg-white p-6 rounded-xl shadow-lg hover:shadow-xl transition-shadow">
+                    <h3 class="text-xl font-semibold text-darkText mb-4">Recent Activity</h3>
+                    <ul class="space-y-4">
+                        <li class="flex items-center space-x-3 p-3 rounded-lg hover:bg-secondary-lighter transition-colors">
+                            <div class="bg-gray-200 border-2 border-dashed rounded-xl w-10 h-10 flex items-center justify-center text-slate-400 text-sm">A1</div>
+                            <div>
+                                <p class="text-sm font-medium text-darkText">Completed: <span class="text-primary">"Introduction to Derivatives"</span></p>
+                                <p class="text-xs text-lightText">2 hours ago</p>
+                            </div>
+                            <span class="ml-auto text-xs text-accent-green font-semibold">+10 XP</span>
+                        </li>
+                        <li class="flex items-center space-x-3 p-3 rounded-lg hover:bg-secondary-lighter transition-colors">
+                            <div class="bg-gray-200 border-2 border-dashed rounded-xl w-10 h-10 flex items-center justify-center text-slate-400 text-sm">QZ</div>
+                            <div>
+                                <p class="text-sm font-medium text-darkText">Quiz Attempted: <span class="text-primary">"Basic Algebra Quiz"</span> - Score: 85%</p>
+                                <p class="text-xs text-lightText">1 day ago</p>
+                            </div>
+                             <span class="ml-auto text-xs text-accent-green font-semibold">+25 XP</span>
+                        </li>
+                        <li class="flex items-center space-x-3 p-3 rounded-lg hover:bg-secondary-lighter transition-colors">
+                           <div class="bg-gray-200 border-2 border-dashed rounded-xl w-10 h-10 flex items-center justify-center text-slate-400 text-sm">LP</div>
+                            <div>
+                                <p class="text-sm font-medium text-darkText">Started: <span class="text-primary">"Vectors and Spaces"</span></p>
+                                <p class="text-xs text-lightText">3 days ago</p>
+                            </div>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <!-- Topic Selection Screen -->
+        <div id="topic-selection-screen" class="screen hidden">
+            <header class="flex justify-between items-center mb-8">
+                <div class="flex items-center space-x-3">
+                     <button class="p-2 text-mediumText hover:text-primary hover:bg-primary-light rounded-full transition-colors nav-link-back" aria-label="Back to Dashboard" data-target="dashboard-screen">
+                        <span class="icon-placeholder w-6 h-6"><!-- backArrow --></span>
+                    </button>
+                    <h1 class="text-3xl font-bold text-darkText">Select a Topic</h1>
+                </div>
+                <div class="relative w-full max-w-xs">
+                    <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-lightText">
+                        <span class="icon-placeholder w-5 h-5"><!-- search --></span>
+                    </div>
+                    <input type="search" class="bg-white border border-borderDefault text-darkText text-sm rounded-lg focus:ring-primary focus:border-primary block w-full pl-10 p-2.5" placeholder="Search topics...">
+                </div>
+            </header>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                <!-- TopicCard Example -->
+                <div class="bg-white p-5 rounded-xl shadow-lg hover:shadow-xl transition-shadow flex flex-col">
+                    <div class="bg-gray-200 border-2 border-dashed rounded-lg w-full h-32 mb-4 flex items-center justify-center text-slate-400 text-sm">Topic Image/Icon</div>
+                    <h3 class="text-lg font-semibold text-darkText mb-2">Calculus I</h3>
+                    <p class="text-sm text-mediumText mb-3 flex-grow">Limits, derivatives, and introduction to integration. Master the fundamentals.</p>
+                    <div class="mb-1 text-xs text-mediumText">Progress: 45%</div>
+                    <div class="w-full bg-secondary-light rounded-full h-2 mb-4">
+                        <div class="bg-primary h-2 rounded-full" style="width: 45%"></div>
+                    </div>
+                    <button class="w-full mt-auto px-4 py-2 text-sm font-medium text-white bg-primary hover:bg-primary-dark rounded-lg shadow-sm transition-colors">View Topic</button>
+                </div>
+                <div class="bg-white p-5 rounded-xl shadow-lg hover:shadow-xl transition-shadow flex flex-col">
+                    <div class="bg-gray-200 border-2 border-dashed rounded-lg w-full h-32 mb-4 flex items-center justify-center text-slate-400 text-sm">Topic Image/Icon</div>
+                    <h3 class="text-lg font-semibold text-darkText mb-2">Linear Algebra</h3>
+                    <p class="text-sm text-mediumText mb-3 flex-grow">Vectors, matrices, and linear transformations. Essential for many fields.</p>
+                     <div class="mb-1 text-xs text-mediumText">Progress: 80%</div>
+                    <div class="w-full bg-secondary-light rounded-full h-2 mb-4">
+                        <div class="bg-accent-green h-2 rounded-full" style="width: 80%"></div>
+                    </div>
+                    <button class="w-full mt-auto px-4 py-2 text-sm font-medium text-white bg-primary hover:bg-primary-dark rounded-lg shadow-sm transition-colors">View Topic</button>
+                </div>
+                 <div class="bg-white p-5 rounded-xl shadow-lg hover:shadow-xl transition-shadow flex flex-col">
+                    <div class="bg-gray-200 border-2 border-dashed rounded-lg w-full h-32 mb-4 flex items-center justify-center text-slate-400 text-sm">Topic Image/Icon</div>
+                    <h3 class="text-lg font-semibold text-darkText mb-2">Probability</h3>
+                    <p class="text-sm text-mediumText mb-3 flex-grow">Understanding chance and uncertainty. Foundational for data science.</p>
+                    <div class="mb-1 text-xs text-mediumText">Progress: 15%</div>
+                    <div class="w-full bg-secondary-light rounded-full h-2 mb-4">
+                        <div class="bg-accent-orange h-2 rounded-full" style="width: 15%"></div>
+                    </div>
+                    <button class="w-full mt-auto px-4 py-2 text-sm font-medium text-white bg-primary hover:bg-primary-dark rounded-lg shadow-sm transition-colors">View Topic</button>
+                </div>
+                <div class="bg-white p-5 rounded-xl shadow-lg hover:shadow-xl transition-shadow flex flex-col">
+                    <div class="bg-gray-200 border-2 border-dashed rounded-lg w-full h-32 mb-4 flex items-center justify-center text-slate-400 text-sm">Topic Image/Icon</div>
+                    <h3 class="text-lg font-semibold text-darkText mb-2">Statistics</h3>
+                    <p class="text-sm text-mediumText mb-3 flex-grow">Data analysis, interpretation, and inference. Make sense of data.</p>
+                    <div class="mb-1 text-xs text-mediumText">Not Started</div>
+                    <div class="w-full bg-secondary-light rounded-full h-2 mb-4">
+                        <div class="bg-slate-400 h-2 rounded-full" style="width: 0%"></div>
+                    </div>
+                    <button class="w-full mt-auto px-4 py-2 text-sm font-medium text-white bg-primary hover:bg-primary-dark rounded-lg shadow-sm transition-colors">View Topic</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Problem View Screen -->
+        <div id="problem-view-screen" class="screen hidden">
+            <header class="flex justify-between items-center mb-6">
+                 <div class="flex items-center space-x-3">
+                    <button class="p-2 text-mediumText hover:text-primary hover:bg-primary-light rounded-full transition-colors nav-link-back" aria-label="Back to Topics" data-target="topic-selection-screen">
+                        <span class="icon-placeholder w-6 h-6"><!-- backArrow --></span>
+                    </button>
+                    <h1 class="text-2xl font-bold text-darkText">Problem: Quadratic Equation</h1>
+                </div>
+                <button class="p-2 text-mediumText hover:text-primary hover:bg-primary-light rounded-full transition-colors" aria-label="Problem Settings">
+                    <span class="icon-placeholder w-6 h-6"><!-- settings --></span>
+                </button>
+            </header>
+
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div class="md:col-span-2 bg-white p-6 rounded-xl shadow-lg">
+                    <h2 class="text-xl font-semibold text-darkText mb-2">Problem Statement</h2>
+                    <div id="problem-statement-content" class="text-mediumText prose max-w-none">
+                        <p>Solve the following quadratic equation for \(x\):</p>
+                        <p class="text-lg font-mono my-4 p-4 bg-secondary-lighter rounded-md text-center">
+                            \(ax^2 + bx + c = 0\)
+                        </p>
+                        <p>Where \(a=1\), \(b=-3\), and \(c=2\).</p>
+                        <p>Find the values of \(x\).</p>
+                    </div>
+
+                    <h2 class="text-xl font-semibold text-darkText mt-8 mb-3">Your Answer</h2>
+                    <div class="space-y-4">
+                        <div>
+                            <label for="math-answer-input" class="block mb-1 text-sm font-medium text-darkText">Enter your solution (e.g., x=1, x=2 or in LaTeX \(x_1=1, x_2=2\))</label>
+                            <textarea id="math-answer-input" rows="3" class="math-textarea bg-white border border-borderDefault text-darkText text-sm rounded-lg block w-full p-2.5" placeholder="Type your answer here..."></textarea>
+                             <div id="math-answer-preview" class="mt-2 p-3 border border-borderLight rounded-md bg-secondary-lighter min-h-[40px]"></div>
+                        </div>
+                    </div>
+                     <div id="feedback-area" class="mt-6 p-4 rounded-md hidden items-start space-x-3">
+                        <span id="feedback-icon" class="w-5 h-5 mt-0.5"></span>
+                        <p id="feedback-text" class="text-sm"></p>
+                    </div>
+                </div>
+
+                <div class="md:col-span-1 space-y-4">
+                    <div class="bg-white p-6 rounded-xl shadow-lg">
+                        <h3 class="text-lg font-semibold text-darkText mb-4">Controls</h3>
+                        <div class="space-y-3">
+                            <button id="submit-answer-button" class="w-full px-5 py-2.5 text-sm font-medium text-white bg-primary hover:bg-primary-dark rounded-lg shadow-sm transition-colors">Submit Answer</button>
+                            <button class="w-full px-5 py-2.5 text-sm font-medium text-darkText bg-secondary-light hover:bg-slate-200 rounded-lg shadow-sm transition-colors">Get a Hint</button>
+                            <button class="w-full px-5 py-2.5 text-sm font-medium text-darkText bg-secondary-light hover:bg-slate-200 rounded-lg shadow-sm transition-colors">Step-by-Step Solution</button>
+                        </div>
+                    </div>
+                    <div class="bg-white p-6 rounded-xl shadow-lg">
+                        <h3 class="text-lg font-semibold text-darkText mb-3">Tools</h3>
+                         <div class="bg-gray-200 border-2 border-dashed rounded-xl w-full h-24 flex items-center justify-center text-slate-400 text-sm">Scratchpad / Calculator Placeholder</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Modal Container -->
+    <div id="modal-backdrop" class="fixed inset-0 bg-slate-900 bg-opacity-75 backdrop-blur-sm flex items-center justify-center p-4 z-[100] hidden transition-opacity duration-300 opacity-0" aria-hidden="true">
+        <div id="modal-content-wrapper" class="bg-white rounded-xl shadow-2xl w-full max-w-md transform transition-all duration-300 scale-95 opacity-0" role="dialog" aria-modal="true" aria-labelledby="modal-title-content">
+            <div class="flex justify-between items-center p-4 sm:p-6 border-b border-borderLight">
+                <h3 id="modal-title-content" class="text-xl font-semibold text-darkText">Modal Title</h3>
+                <button id="close-modal-button" class="text-lightText hover:text-darkText transition-colors" aria-label="Close modal">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-6 h-6">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                </button>
+            </div>
+            <div id="modal-body-content" class="p-4 sm:p-6 text-mediumText">
+                <p>This is a basic modal. You can put any content here.</p>
+            </div>
+            <div id="modal-footer-content" class="px-4 sm:px-6 py-4 bg-secondary-lighter rounded-b-xl flex justify-end space-x-3">
+                <button id="modal-cancel-button" class="px-4 py-2 text-sm font-medium text-darkText bg-white hover:bg-secondary-light border border-borderDefault rounded-lg focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary transition-colors">Cancel</button>
+                <button id="modal-confirm-button" class="px-4 py-2 text-sm font-medium text-white bg-primary hover:bg-primary-dark rounded-lg focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-dark transition-colors">Confirm</button>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        // --- Icon SVGs (Heroicons simplified) ---
+        const ICONS = {
+            settings: `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-full h-full"><path stroke-linecap="round" stroke-linejoin="round" d="M9.594 3.94c.09-.542.56-.94 1.11-.94h2.593c.55 0 1.02.398 1.11.94l.213 1.281c.063.374.313.686.646.87.074.04.147.083.22.127.324.196.72.257 1.075.124l1.217-.456a1.125 1.125 0 011.37.49l1.296 2.247a1.125 1.125 0 01-.26 1.431l-1.003.827c-.293.24-.438.613-.431.992a6.759 6.759 0 010 1.655c.007.379.138.75.43.99l1.005.828c.424.35.534.954.26 1.43l-1.298 2.247a1.125 1.125 0 01-1.369.491l-1.217-.456c-.355-.133-.75-.072-1.076.124a6.57 6.57 0 01-.22.128c-.333.183-.583.495-.646.869l-.213 1.28c-.09.543-.56.941-1.11.941h-2.594c-.55 0-1.02-.398-1.11-.94l-.213-1.281c-.062-.374-.312-.686-.645-.87a6.52 6.52 0 01-.22-.127c-.325-.196-.72-.257-1.076-.124l-1.217.456a1.125 1.125 0 01-1.369-.49l-1.297-2.247a1.125 1.125 0 01.26-1.431l1.004-.827c.292-.24.437-.613.43-.992a6.932 6.932 0 010-1.655c-.007-.379-.137-.75-.43-.99l-1.004-.828a1.125 1.125 0 01-.26-1.43l1.297-2.247a1.125 1.125 0 011.37-.491l1.216.456c.356.133.751.072 1.076-.124.072-.044.146-.087.22-.128.332-.183.582-.495.644-.869l.214-1.281z" /><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>`,
+            user: `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-full h-full"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z" /></svg>`,
+            backArrow: `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-full h-full"><path stroke-linecap="round" stroke-linejoin="round" d="M10.5 19.5L3 12m0 0l7.5-7.5M3 12h18" /></svg>`,
+            search: `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-full h-full"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" /></svg>`,
+            academicCap: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-full h-full"><path d="M7.75 2.75a.75.75 0 00-1.5 0V3.5h1.5V2.75z"/><path fill-rule="evenodd" d="M7 6.25A2.25 2.25 0 004.75 8.5v5.519l.636.318a.75.75 0 00.728 0l.636-.318V8.5A2.25 2.25 0 007 6.25zm0 0A2.25 2.25 0 019.25 8.5v5.519l.636.318a.75.75 0 01.728 0l.636-.318V8.5A2.25 2.25 0 0113 6.25M3 8.5A2.25 2.25 0 01.75 6.25a.75.75 0 011.5 0A.75.75 0 003 7v1.5zm14 0A2.25 2.25 0 0019.25 6.25a.75.75 0 00-1.5 0A.75.75 0 0117 7v1.5zM7.002 1.25A2.25 2.25 0 019.25 3.5v1.083l.98-.065a.75.75 0 01.242 1.483L8.5 6.59V15c0 .414-.336.75-.75.75s-.75-.336-.75-.75V3.5A2.25 2.25 0 017.002 1.25z" clip-rule="evenodd"/></svg>`,
+            lightBulb: `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-full h-full"><path stroke-linecap="round" stroke-linejoin="round" d="M12 18v-5.25m0 0a6.01 6.01 0 001.5-.189m-1.5.189a6.01 6.01 0 01-1.5-.189m3.75 7.478a12.06 12.06 0 01-4.5 0m3.75 2.355a15.07 15.07 0 01-4.5 0M12 6.75A2.25 2.25 0 009.75 9v1.076c0 .656.099 1.294.272 1.899C10.68 13.53 11.323 14 12 14s1.32-.47 1.978-1.025c.173-.605.272-1.243.272-1.899V9A2.25 2.25 0 0012 6.75z" /></svg>`,
+            checkCircle: `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-full h-full"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>`,
+            xCircle: `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-full h-full"><path stroke-linecap="round" stroke-linejoin="round" d="M9.75 9.75l4.5 4.5m0-4.5l-4.5 4.5M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>`,
+            informationCircle: `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-full h-full"><path stroke-linecap="round" stroke-linejoin="round" d="M11.25 11.25l.041-.02a.75.75 0 011.063.852l-.708 2.836a.75.75 0 001.063.853l.041-.021M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-9-3.75h.008v.008H12V8.25z" /></svg>`
+        };
+
+        function replaceIconPlaceholders() {
+            document.querySelectorAll('.icon-placeholder').forEach(el => {
+                const iconName = Array.from(el.classList).find(cls => cls.startsWith('w-') || cls.startsWith('h-') ? false : true); // crude way to get icon name from comment
+                // A better way would be to have a data-icon attribute or specific class
+                let actualIconName = '';
+                if (el.innerHTML.includes('settings')) actualIconName = 'settings';
+                else if (el.innerHTML.includes('user')) actualIconName = 'user';
+                else if (el.innerHTML.includes('backArrow')) actualIconName = 'backArrow';
+                else if (el.innerHTML.includes('search')) actualIconName = 'search';
+                else if (el.innerHTML.includes('academicCap')) actualIconName = 'academicCap';
+                else if (el.innerHTML.includes('lightBulb')) actualIconName = 'lightBulb';
+                
+                if (ICONS[actualIconName]) {
+                    el.innerHTML = ICONS[actualIconName];
+                } else {
+                     el.innerHTML = ICONS.informationCircle; // Default or error icon
+                }
+            });
+        }
+
+
+        // --- State & Navigation ---
+        let currentScreen = 'dashboard-screen'; // Default screen
+        const screens = document.querySelectorAll('.screen');
+        const navLinks = document.querySelectorAll('.nav-link'); // For both desktop and mobile
+        const mobileMenuButton = document.getElementById('mobile-menu-button');
+        const mobileMenu = document.getElementById('mobile-menu');
+
+        function showScreen(screenId, skipAnimation = false) {
+            screens.forEach(screen => {
+                if (screen.id === screenId) {
+                    screen.classList.remove('hidden');
+                    if (!skipAnimation) {
+                        screen.classList.add('opacity-0', 'animate-fadeIn');
+                    } else {
+                        screen.classList.remove('opacity-0', 'animate-fadeIn'); // Ensure no animation if skipping
+                    }
+                } else {
+                    screen.classList.add('hidden');
+                    screen.classList.remove('opacity-0', 'animate-fadeIn');
+                }
+            });
+            navLinks.forEach(link => {
+                if (link.dataset.target === screenId) {
+                    link.classList.add('text-primary-dark', 'font-semibold', 'bg-primary-light');
+                    link.classList.remove('text-mediumText', 'text-primary', 'font-medium');
+                } else {
+                    link.classList.remove('text-primary-dark', 'font-semibold', 'bg-primary-light');
+                    link.classList.add('text-mediumText'); // Default for non-active mobile links
+                    // For desktop links, they might have 'text-primary' from initial styling
+                    if (!link.closest('#mobile-menu')) {
+                         link.classList.add('text-primary','font-medium');
+                         link.classList.remove('text-mediumText');
+                    } else {
+                         link.classList.remove('font-medium'); // ensure mobile is not bold if not active
+                    }
+                }
+            });
+            currentScreen = screenId;
+            window.scrollTo(0, 0); // Scroll to top on screen change
+
+            if (screenId === 'problem-view-screen' && window.MathJax && MathJax.typesetPromise) {
+                setTimeout(() => MathJax.typesetPromise([document.getElementById('problem-statement-content')]), 0);
+            }
+            if (screenId === 'component-library-screen') {
+                initializeCircularProgressBars();
+            }
+        }
+        
+        mobileMenuButton.addEventListener('click', () => {
+            mobileMenu.classList.toggle('hidden');
+        });
+
+        navLinks.forEach(link => {
+            link.addEventListener('click', (e) => {
+                e.preventDefault();
+                const targetScreen = e.target.closest('a').dataset.target;
+                showScreen(targetScreen);
+                if (mobileMenu.contains(link)) { // If mobile link clicked, close menu
+                    mobileMenu.classList.add('hidden');
+                }
+            });
+        });
+        
+        document.querySelectorAll('.nav-link-back').forEach(link => {
+             link.addEventListener('click', (e) => {
+                e.preventDefault();
+                const targetScreen = e.target.closest('button').dataset.target;
+                showScreen(targetScreen);
+            });
+        });
+
+
+        // --- Modal Logic ---
+        const modalBackdrop = document.getElementById('modal-backdrop');
+        const modalContentWrapper = document.getElementById('modal-content-wrapper');
+        const closeModalButton = document.getElementById('close-modal-button');
+        const modalCancelButton = document.getElementById('modal-cancel-button');
+        const modalConfirmButton = document.getElementById('modal-confirm-button');
+        const modalTitleEl = document.getElementById('modal-title-content');
+        const modalBodyEl = document.getElementById('modal-body-content');
+        const modalFooterEl = document.getElementById('modal-footer-content');
+
+        let onModalConfirm = null;
+
+        function openModal({title, bodyHtml, showConfirm = true, confirmText = "Confirm", cancelText = "Cancel", onConfirm = null}) {
+            modalTitleEl.textContent = title;
+            if (typeof bodyHtml === 'string') {
+                modalBodyEl.innerHTML = bodyHtml;
+            } else { 
+                modalBodyEl.innerHTML = '';
+                modalBodyEl.appendChild(bodyHtml);
+            }
+            
+            modalConfirmButton.textContent = confirmText;
+            modalCancelButton.textContent = cancelText;
+            modalConfirmButton.style.display = showConfirm ? 'inline-flex' : 'none';
+            
+            onModalConfirm = onConfirm;
+
+            modalBackdrop.classList.remove('hidden');
+            modalBackdrop.setAttribute('aria-hidden', 'false');
+            setTimeout(() => { 
+                modalBackdrop.classList.remove('opacity-0');
+                modalContentWrapper.classList.remove('scale-95', 'opacity-0');
+                modalContentWrapper.classList.add('scale-100', 'opacity-100');
+            }, 20);
+            closeModalButton.focus();
+        }
+
+        function closeModal() {
+            modalContentWrapper.classList.add('scale-95', 'opacity-0');
+            modalContentWrapper.classList.remove('scale-100', 'opacity-100');
+            modalBackdrop.classList.add('opacity-0');
+            setTimeout(() => {
+                 modalBackdrop.classList.add('hidden');
+                 modalBackdrop.setAttribute('aria-hidden', 'true');
+                 onModalConfirm = null; // Clear callback
+            }, 300); 
+        }
+
+        closeModalButton.addEventListener('click', closeModal);
+        modalCancelButton.addEventListener('click', closeModal);
+        modalConfirmButton.addEventListener('click', () => {
+            if (typeof onModalConfirm === 'function') {
+                onModalConfirm();
+            }
+            closeModal();
+        });
+        modalBackdrop.addEventListener('click', (e) => {
+            if (e.target === modalBackdrop) closeModal();
+        });
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape' && !modalBackdrop.classList.contains('hidden')) closeModal();
+        });
+
+        // Component Library Modal Triggers
+        document.getElementById('open-basic-modal-button')?.addEventListener('click', () => {
+            openModal({
+                title: "Basic Modal", 
+                bodyHtml: "<p>This is a standard modal dialog. It can be used for confirmations, alerts, or displaying additional information.</p>",
+                confirmText: "Got it!",
+                cancelText: "Close"
+            });
+        });
+        document.getElementById('open-form-modal-button')?.addEventListener('click', () => {
+            const formHtml = `
+                <form id="sample-modal-form">
+                    <div class="mb-4">
+                        <label for="modal-name" class="block text-sm font-medium text-darkText mb-1">Name</label>
+                        <input type="text" id="modal-name" class="bg-white border border-borderDefault text-darkText text-sm rounded-lg focus:ring-primary focus:border-primary block w-full p-2.5" required>
+                    </div>
+                    <div class="mb-2">
+                        <label for="modal-feedback" class="block text-sm font-medium text-darkText mb-1">Feedback</label>
+                        <textarea id="modal-feedback" rows="3" class="bg-white border border-borderDefault text-darkText text-sm rounded-lg focus:ring-primary focus:border-primary block w-full p-2.5"></textarea>
+                    </div>
+                </form>
+            `;
+            openModal({
+                title: "Feedback Form", 
+                bodyHtml: formHtml,
+                confirmText: "Submit",
+                onConfirm: () => {
+                    const name = document.getElementById('modal-name').value;
+                    const feedback = document.getElementById('modal-feedback').value;
+                    console.log("Form submitted:", { name, feedback });
+                    alert(`Thanks for your feedback, ${name}!`);
+                }
+            });
+        });
+
+        // Problem View Screen Logic
+        const mathAnswerInput = document.getElementById('math-answer-input');
+        const mathAnswerPreview = document.getElementById('math-answer-preview');
+        const submitAnswerButton = document.getElementById('submit-answer-button');
+        const feedbackArea = document.getElementById('feedback-area');
+        const feedbackIcon = document.getElementById('feedback-icon');
+        const feedbackText = document.getElementById('feedback-text');
+
+        mathAnswerInput?.addEventListener('input', () => {
+            if (window.MathJax && MathJax.typesetPromise) {
+                mathAnswerPreview.innerHTML = `Preview: \\( ${mathAnswerInput.value} \\)`;
+                MathJax.typesetPromise([mathAnswerPreview]);
+            } else {
+                mathAnswerPreview.textContent = `Preview: ${mathAnswerInput.value}`;
+            }
+        });
+
+        submitAnswerButton?.addEventListener('click', () => {
+            const answer = mathAnswerInput.value.toLowerCase().replace(/\s/g, '');
+            // Simple check for x=1, x=2 or x=2, x=1
+            const isCorrect = (answer.includes("x=1") && answer.includes("x=2")) || (answer.includes("x_1=1") && answer.includes("x_2=2")) || (answer.includes("x_2=1") && answer.includes("x_1=2"));
+
+            feedbackArea.classList.remove('hidden', 'bg-accent-green', 'bg-red-100', 'bg-primary-light');
+            feedbackIcon.innerHTML = '';
+
+            if (isCorrect) {
+                feedbackArea.classList.add('bg-green-100');
+                feedbackIcon.innerHTML = ICONS.checkCircle;
+                feedbackIcon.querySelector('svg').classList.add('text-accent-green');
+                feedbackText.textContent = "Correct! Well done. The solutions are x=1 and x=2.";
+                feedbackText.className = 'text-sm text-green-700';
+            } else if(answer === "") {
+                feedbackArea.classList.add('bg-orange-100');
+                feedbackIcon.innerHTML = ICONS.informationCircle;
+                feedbackIcon.querySelector('svg').classList.add('text-accent-orange');
+                feedbackText.textContent = "Please enter an answer.";
+                feedbackText.className = 'text-sm text-orange-700';
+            } else {
+                feedbackArea.classList.add('bg-red-100');
+                feedbackIcon.innerHTML = ICONS.xCircle;
+                feedbackIcon.querySelector('svg').classList.add('text-accent-red');
+                feedbackText.textContent = "Not quite. Try checking your calculations or the quadratic formula.";
+                feedbackText.className = 'text-sm text-red-700';
+            }
+        });
+
+        // Circular Progress Bar Initialization
+        function initializeCircularProgressBars() {
+            document.querySelectorAll('.progress-ring-circle').forEach(circle => {
+                const radius = circle.r.baseVal.value;
+                const circumference = 2 * Math.PI * radius;
+                const progress = circle.dataset.progress || 0;
+                const offset = circumference - (progress / 100) * circumference;
+
+                circle.style.strokeDasharray = `${circumference} ${circumference}`;
+                circle.style.strokeDashoffset = circumference; // Start with full offset (empty)
+                
+                // Trigger reflow to apply initial offset before transition
+                circle.getBoundingClientRect(); 
+                
+                circle.style.transition = 'stroke-dashoffset 0.8s ease-out';
+                circle.style.strokeDashoffset = offset;
+            });
+        }
+        
+        // --- Initial Setup ---
+        document.addEventListener('DOMContentLoaded', () => {
+            replaceIconPlaceholders();
+            showScreen(currentScreen, true); // Show the default screen without animation on first load
+            if (currentScreen === 'component-library-screen') { // If default is component lib
+                 initializeCircularProgressBars();
+            }
+            // Initial MathJax typesetting for problem statement if it's the default visible screen
+            if (currentScreen === 'problem-view-screen' && window.MathJax && MathJax.typesetPromise) {
+                 MathJax.typesetPromise([document.getElementById('problem-statement-content')]);
+            }
+        });
+    </script>
+</body>
+</html>

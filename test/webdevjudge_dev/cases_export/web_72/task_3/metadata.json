@@ -1,0 +1,9 @@
+{
+  "web_id": "web_72",
+  "task_id": 3,
+  "task_type": "dynamic",
+  "instruction": "Task: Click an 'Upvote' button on a project update card.\nExpected Result: The upvote count on the card increments, and the button's visual state changes to indicate the upvote action (e.g., becomes highlighted or icon changes).\n\nNote: The task is only considered successful if the expected result is achieved; otherwise, it is deemed infeasible.",
+  "max_steps": 15,
+  "expected": "The upvote count on the card increments, and the button's visual state changes to indicate the upvote action (e.g., becomes highlighted or icon changes).",
+  "label": 1
+}

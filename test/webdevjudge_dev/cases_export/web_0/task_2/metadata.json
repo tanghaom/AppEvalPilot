@@ -1,0 +1,9 @@
+{
+  "web_id": "web_0",
+  "task_id": 2,
+  "task_type": "dynamic",
+  "instruction": "Task: Click a segment of the 'Competency Status' donut chart\nExpected Result: A (simulated) detailed view or modal corresponding to the clicked chart segment (e.g., 'Signed Off') is displayed.\n\nNote: The task is only considered successful if the expected result is achieved; otherwise, it is deemed infeasible.",
+  "max_steps": 15,
+  "expected": "A (simulated) detailed view or modal corresponding to the clicked chart segment (e.g., 'Signed Off') is displayed.",
+  "label": 1
+}

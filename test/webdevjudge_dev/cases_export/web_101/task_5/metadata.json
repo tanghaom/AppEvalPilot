@@ -1,0 +1,9 @@
+{
+  "web_id": "web_101",
+  "task_id": 5,
+  "task_type": "dynamic",
+  "instruction": "Task: Click the 'Download All' button within the media basket view.\nExpected Result: A confirmation message or a (simulated) download preparation indicator (e.g., 'Preparing your files...') is shown on the page. No actual file download will occur.\n\nNote: The task is only considered successful if the expected result is achieved; otherwise, it is deemed infeasible.",
+  "max_steps": 15,
+  "expected": "A confirmation message or a (simulated) download preparation indicator (e.g., 'Preparing your files...') is shown on the page. No actual file download will occur.",
+  "label": 0
+}

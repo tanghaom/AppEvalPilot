@@ -1,0 +1,9 @@
+{
+  "web_id": "web_37",
+  "task_id": 1,
+  "task_type": "dynamic",
+  "instruction": "Task: Rate a keyword as relevant by swiping right on the current keyword card or clicking the 'Relevant' button.\nExpected Result: The current keyword is recorded as relevant. The card animates off-screen. The next keyword card is displayed. The progress indicator (e.g., '1/15 rated') updates. If this was the last keyword, the 'Relevant Keywords' and 'Irrelevant Keywords' summary lists are displayed.\n\nNote: The task is only considered successful if the expected result is achieved; otherwise, it is deemed infeasible.",
+  "max_steps": 15,
+  "expected": "The current keyword is recorded as relevant. The card animates off-screen. The next keyword card is displayed. The progress indicator (e.g., '1/15 rated') updates. If this was the last keyword, the 'Relevant Keywords' and 'Irrelevant Keywords' summary lists are displayed.",
+  "label": 0
+}

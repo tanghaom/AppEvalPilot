@@ -1,0 +1,9 @@
+{
+  "web_id": "web_27",
+  "task_id": 4,
+  "task_type": "dynamic",
+  "instruction": "Task: Switch between available weapons in the player's arsenal (e.g., using number keys or a mouse wheel).\nExpected Result: The player's active weapon changes, visually and functionally, allowing them to use different attack types or manage ammunition.\n\nNote: The task is only considered successful if the expected result is achieved; otherwise, it is deemed infeasible.",
+  "max_steps": 15,
+  "expected": "The player's active weapon changes, visually and functionally, allowing them to use different attack types or manage ammunition.",
+  "label": 0
+}

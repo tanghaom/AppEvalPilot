@@ -1,0 +1,9 @@
+{
+  "web_id": "web_56",
+  "task_id": 1,
+  "task_type": "dynamic",
+  "instruction": "Task: Hover the mouse over the canvas to see a circle preview, then click to place the circle at the cursor's current position.\nExpected Result: A visual preview of a circle follows the mouse cursor on the canvas. Upon clicking, a new circle is permanently placed at that location, and its properties might become editable or it becomes selected.\n\nNote: The task is only considered successful if the expected result is achieved; otherwise, it is deemed infeasible.",
+  "max_steps": 15,
+  "expected": "A visual preview of a circle follows the mouse cursor on the canvas. Upon clicking, a new circle is permanently placed at that location, and its properties might become editable or it becomes selected.",
+  "label": 1
+}

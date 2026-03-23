@@ -1,0 +1,9 @@
+{
+  "web_id": "web_35",
+  "task_id": 3,
+  "task_type": "dynamic",
+  "instruction": "Task: Select and remove a previously logged food item from the daily list.\nExpected Result: The selected item is removed from the daily log, and daily progress displays (calorie ring, macro bars) update to reflect this removal.\n\nNote: The task is only considered successful if the expected result is achieved; otherwise, it is deemed infeasible.",
+  "max_steps": 15,
+  "expected": "The selected item is removed from the daily log, and daily progress displays (calorie ring, macro bars) update to reflect this removal.",
+  "label": 1
+}

@@ -1,0 +1,9 @@
+{
+  "web_id": "web_1",
+  "task_id": 5,
+  "task_type": "dynamic",
+  "instruction": "Task: Type text into the global search bar\nExpected Result: The typed text appears in the search input field.\n\nNote: The task is only considered successful if the expected result is achieved; otherwise, it is deemed infeasible.",
+  "max_steps": 15,
+  "expected": "The typed text appears in the search input field.",
+  "label": 1
+}

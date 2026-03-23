@@ -1,0 +1,9 @@
+{
+  "web_id": "web_64",
+  "task_id": 5,
+  "task_type": "dynamic",
+  "instruction": "Task: Click on a designated, discreetly placed 'hidden' element (e.g., a small icon or text in the footer).\nExpected Result: A pre-defined 'easter egg' content (such as a hidden message, an unusual visual, or a small interactive piece) is revealed.\n\nNote: The task is only considered successful if the expected result is achieved; otherwise, it is deemed infeasible.",
+  "max_steps": 15,
+  "expected": "A pre-defined 'easter egg' content (such as a hidden message, an unusual visual, or a small interactive piece) is revealed.",
+  "label": 0
+}

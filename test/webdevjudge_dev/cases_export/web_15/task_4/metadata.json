@@ -1,0 +1,9 @@
+{
+  "web_id": "web_15",
+  "task_id": 4,
+  "task_type": "dynamic",
+  "instruction": "Task: Click an 'Edit' button/icon associated with a specific message, modify its text in an input field, and click a 'Save' button.\nExpected Result: The message's text in the list is updated, and an 'edited' timestamp is displayed or updated for that message. Any URLs in the edited message are re-evaluated for hyperlink/embedding.\n\nNote: The task is only considered successful if the expected result is achieved; otherwise, it is deemed infeasible.",
+  "max_steps": 15,
+  "expected": "The message's text in the list is updated, and an 'edited' timestamp is displayed or updated for that message. Any URLs in the edited message are re-evaluated for hyperlink/embedding.",
+  "label": 1
+}

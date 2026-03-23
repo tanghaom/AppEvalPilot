@@ -1,0 +1,9 @@
+{
+  "web_id": "web_20",
+  "task_id": 3,
+  "task_type": "dynamic",
+  "instruction": "Task: Select a watch schedule (e.g., '00-06', 'custom') from the 'Watch Schedule' dropdown list for the crew member.\nExpected Result: The selected watch schedule is displayed. If 'custom' is chosen, an input field for custom schedule details becomes visible/active.\n\nNote: The task is only considered successful if the expected result is achieved; otherwise, it is deemed infeasible.",
+  "max_steps": 15,
+  "expected": "The selected watch schedule is displayed. If 'custom' is chosen, an input field for custom schedule details becomes visible/active.",
+  "label": 1
+}

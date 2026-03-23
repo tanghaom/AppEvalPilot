@@ -1,0 +1,527 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Jarvis UI Enhanced</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Import a futuristic font */
+        @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;700&display=swap');
+
+        body {
+            font-family: 'Orbitron', sans-serif;
+            color: #99f6e4; /* cyan-200 as default text */
+            background-color: #0f172a; /* slate-900 */
+        }
+
+        .perspective {
+            perspective: 1000px;
+        }
+        .preserve-3d {
+            transform-style: preserve-3d;
+        }
+
+        /* Ring Animations */
+        .rotate-ring-1 { animation: rotate3DRing1 32s linear infinite; }
+        .rotate-ring-2 { animation: rotate3DRing2 24s linear infinite reverse; }
+        .rotate-ring-3 { animation: rotate3DRing3 18s linear infinite; }
+
+        @keyframes rotate3DRing1 {
+            0% { transform: translateX(-50%) translateY(-50%) rotateX(65deg) rotateZ(0deg); }
+            100% { transform: translateX(-50%) translateY(-50%) rotateX(65deg) rotateZ(360deg); }
+        }
+        @keyframes rotate3DRing2 {
+            0% { transform: translateX(-50%) translateY(-50%) rotateX(65deg) rotateZ(0deg); }
+            100% { transform: translateX(-50%) translateY(-50%) rotateX(65deg) rotateZ(360deg); }
+        }
+        @keyframes rotate3DRing3 {
+            0% { transform: translateX(-50%) translateY(-50%) rotateX(70deg) rotateY(15deg) rotateZ(0deg); }
+            100% { transform: translateX(-50%) translateY(-50%) rotateX(70deg) rotateY(15deg) rotateZ(360deg); }
+        }
+
+        /* Central Core Pulse */
+        .core-pulse-base {
+            animation: corePulseEffect 3s infinite ease-in-out;
+            box-shadow: 0 0 25px 8px var(--tw-shadow-color-cyan-500, #06b6d4), 
+                        inset 0 0 15px 3px var(--tw-shadow-color-cyan-400, #22d3ee);
+        }
+        @keyframes corePulseEffect {
+            0%, 100% { transform: scale(1); opacity: 0.9; }
+            50% { transform: scale(1.03); opacity: 1; }
+        }
+        .core-inner-pulse {
+            animation: coreInnerPulseAnim 1.5s infinite ease-in-out alternate;
+        }
+        @keyframes coreInnerPulseAnim {
+            0% { opacity: 0.6; transform: scale(0.95) translateZ(var(--start-z)); }
+            100% { opacity: 0.9; transform: scale(1) translateZ(var(--end-z));}
+        }
+        
+        /* Typewriter Cursor Blink */
+        .typewriter-cursor::after {
+            content: '_';
+            animation: blink 0.8s step-end infinite;
+            margin-left: 0.2em;
+        }
+        @keyframes blink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0; }
+        }
+
+        /* Audio Wave Bar Transition */
+        .audio-wave-bar {
+            transition: height 0.15s ease-out, background-color 0.15s ease-out;
+        }
+
+        /* Main Interface Initial Scale-In Animation */
+        .main-interface-animate {
+            animation: scaleInInterface 1.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+            transform: scale(0.7);
+            opacity: 0;
+        }
+        @keyframes scaleInInterface {
+            0% { transform: scale(0.7) translateY(20px); opacity: 0; }
+            100% { transform: scale(1) translateY(0px); opacity: 1; }
+        }
+
+        /* Settings Modal Transitions */
+        .settings-modal {
+            transition: opacity 0.3s ease-in-out, transform 0.3s ease-in-out;
+        }
+        .settings-modal.hidden {
+            opacity: 0;
+            transform: scale(0.9) translateY(-10px);
+            pointer-events: none;
+        }
+        
+        /* Custom Scrollbar for Modal */
+        .modal-content::-webkit-scrollbar { width: 6px; }
+        .modal-content::-webkit-scrollbar-track { background: rgba(15, 23, 42, 0.5); border-radius: 3px; } /* slate-900 */
+        .modal-content::-webkit-scrollbar-thumb { background: #06b6d4; border-radius: 3px; } /* cyan-500 */
+        .modal-content::-webkit-scrollbar-thumb:hover { background: #0891b2; } /* cyan-600 */
+
+        /* Background Grid Cell Animation */
+        @keyframes gridPulse {
+            0% { background-color: rgba(6, 182, 212, 0.03); transform: scale(0.9); } /* cyan-500 with low opacity */
+            100% { background-color: rgba(6, 182, 212, 0.1); transform: scale(1); } /* cyan-500 with slightly higher opacity */
+        }
+        :root {
+            --tw-shadow-color-cyan-500: #06b6d4;
+            --tw-shadow-color-cyan-400: #22d3ee;
+        }
+    </style>
+</head>
+<body class="bg-slate-950 min-h-screen flex items-center justify-center p-4 overflow-hidden">
+
+    <div id="jarvis-ui" class="w-full h-full flex items-center justify-center relative perspective">
+        
+        <!-- Background Grid -->
+        <div id="background-grid" class="absolute inset-0 grid grid-cols-24 gap-px opacity-40 pointer-events-none" 
+             style="transform: rotateX(75deg) scale(1.6) translateY(25%);">
+            <!-- Populated by JS -->
+        </div>
+
+        <!-- Main Interface Container -->
+        <div id="main-interface" class="relative w-full max-w-5xl preserve-3d main-interface-animate">
+            
+            <!-- Central Core with 3D effect -->
+            <div class="w-36 h-36 md:w-44 md:h-44 mx-auto relative preserve-3d core-pulse-base rounded-full bg-gradient-to-br from-cyan-600 via-blue-700 to-slate-800"
+                 style="transform: translateZ(20px);">
+                <div class="absolute inset-1.5 rounded-full core-inner-pulse" style="--start-z: 15px; --end-z: 20px; background-image: radial-gradient(circle at center, rgba(34,211,238,0.5) 0%, rgba(14,116,144,0.3) 70%);"></div>
+                <div class="absolute inset-3 rounded-full core-inner-pulse" style="animation-delay: 0.2s; --start-z: 25px; --end-z: 30px; background-image: radial-gradient(circle at center, rgba(103,232,249,0.4) 0%, rgba(6,182,212,0.2) 70%);"></div>
+                <div class="absolute inset-5 rounded-full core-inner-pulse" style="animation-delay: 0.4s; --start-z: 35px; --end-z: 40px; background-image: radial-gradient(circle at center, rgba(165,243,252,0.3) 0%, rgba(34,211,238,0.1) 70%);"></div>
+                <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-6 h-6 md:w-8 md:h-8 rounded-full bg-cyan-200 shadow-[0_0_20px_7px_rgba(103,232,249,0.8)]"
+                     style="transform: translateZ(50px);">
+                </div>
+            </div>
+
+            <!-- Rotating Rings (3D) -->
+            <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full h-full preserve-3d pointer-events-none">
+                <div class="absolute top-1/2 left-1/2 border-2 border-cyan-500/30 rounded-full rotate-ring-1" style="width: 44rem; height: 44rem;"></div>
+                <div class="absolute top-1/2 left-1/2 border-2 border-cyan-400/40 rounded-full rotate-ring-2" style="width: 36rem; height: 36rem;"></div>
+                <div class="absolute top-1/2 left-1/2 border-2 border-cyan-300/50 rounded-full rotate-ring-3" style="width: 30rem; height: 30rem;"></div>
+            </div>
+            
+            <!-- Floating Particles Container -->
+            <div id="particle-container" class="absolute inset-0 pointer-events-none preserve-3d" style="transform: translateZ(-100px);">
+                <!-- Particles generated by JS -->
+            </div>
+
+            <!-- Status Text -->
+            <div class="text-center mt-10 md:mt-12 relative z-10" style="transform: translateZ(60px);">
+                <h2 id="status-message" class="text-cyan-300 text-xl sm:text-2xl md:text-3xl mb-4 md:mb-6"></h2>
+            </div>
+
+            <!-- Audio Wave Animation -->
+            <div id="audio-wave-container" class="flex justify-center items-end gap-0.5 md:gap-1 h-12 md:h-16 mt-2 mb-6 md:mb-8 relative z-10" style="transform: translateZ(50px);">
+                <!-- Audio bars generated by JS -->
+            </div>
+
+            <!-- Status Indicators -->
+            <div class="flex justify-center gap-4 md:gap-6 mt-4 relative z-10" style="transform: translateZ(40px);">
+              {[
+                {name: 'SYSTEMS', color: 'bg-cyan-500', shadow: 'shadow-[0_0_10px_2px_#06b6d4]'}, 
+                {name: 'NETWORK', color: 'bg-green-400', shadow: 'shadow-[0_0_10px_2px_#4ade80]'}, 
+                {name: 'SECURITY', color: 'bg-yellow-400', shadow: 'shadow-[0_0_10px_2px_#facc15]'},
+                {name: 'AI CORE', color: 'bg-purple-400', shadow: 'shadow-[0_0_10px_2px_#c084fc]'}
+              ].map(system => `
+                <div class="text-center">
+                  <div class="w-2.5 h-2.5 md:w-3 md:h-3 ${system.color} rounded-full mx-auto animate-pulse ${system.shadow}" style="animation-duration: 1.5s;"></div>
+                  <p class="text-slate-400 text-[10px] md:text-xs mt-1.5 md:mt-2 uppercase tracking-wider">${system.name}</p>
+                </div>
+              `).join('')}
+            </div>
+
+            <!-- Interactive Buttons -->
+            <div class="flex flex-wrap justify-center gap-3 md:gap-4 mt-8 md:mt-10 relative z-10" style="transform: translateZ(30px);">
+              {['INITIATE SCAN', 'ANALYZE DATA', 'DEPLOY DEFENSES', 'SYSTEM DIAGNOSTICS'].map(action => `
+                <button
+                  class="px-4 py-2 md:px-5 md:py-2.5 bg-cyan-700/60 text-cyan-100 rounded-md 
+                         border border-cyan-600/70
+                         hover:bg-cyan-600/80 hover:shadow-[0_0_20px_4px_rgba(6,182,212,0.4)] hover:border-cyan-500
+                         active:scale-95 active:bg-cyan-500/80 transition-all duration-200
+                         text-xs md:text-sm uppercase tracking-wider font-medium"
+                >
+                  ${action}
+                </button>
+              `).join('')}
+            </div>
+        </div>
+
+        <!-- Settings Icon -->
+        <button id="settings-icon" title="Settings" class="fixed top-4 right-4 md:top-5 md:right-5 z-50 p-2.5 md:p-3 rounded-full text-cyan-300 hover:text-cyan-100 hover:bg-cyan-700/50 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:ring-opacity-50">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6 md:w-7 md:h-7">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M9.594 3.94c.09-.542.56-.94 1.11-.94h2.593c.55 0 1.02.398 1.11.94l.213 1.281c.096.573.397 1.076.784 1.464l.944.944c.505.505.708 1.18.546 1.817l-.25.999a11.955 11.955 0 0 1 0 2.576l.25.999c.162.637-.04 1.312-.546 1.817l-.944.944a2.55 2.55 0 0 1-.784 1.464l-.213 1.281c-.09.542-.56.94-1.11.94h-2.593c-.55 0-1.02-.398-1.11-.94l-.213-1.281a2.55 2.55 0 0 1-.784-1.464l-.944-.944c-.505-.505-.708-1.18-.546-1.817l.25-.999a11.955 11.955 0 0 1 0-2.576l-.25-.999c-.162-.637.04-1.312.546-1.817l.944.944c.387-.388.688-.891.784-1.464l.213-1.281zm3.406 9.06a2.657 2.657 0 1 0 0-5.314 2.657 2.657 0 0 0 0 5.314z" />
+            </svg>
+        </button>
+
+        <!-- Settings Modal -->
+        <div id="settings-modal" class="settings-modal hidden fixed inset-0 bg-slate-950/70 backdrop-blur-sm flex items-center justify-center z-[60] p-4">
+            <div class="bg-slate-800/90 border border-cyan-500/30 shadow-2xl shadow-cyan-600/20 rounded-lg w-full max-w-md md:max-w-lg p-5 md:p-6 relative text-cyan-200">
+                <button id="close-settings-modal" title="Close settings" class="absolute top-3 right-3 md:top-4 md:right-4 text-slate-400 hover:text-cyan-300 transition-colors">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6 md:w-7 md:h-7">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                </button>
+                <h3 class="text-xl md:text-2xl font-semibold text-cyan-300 mb-5 md:mb-6 text-center border-b border-cyan-500/20 pb-3">INTERFACE CONFIGURATION</h3>
+                
+                <div class="space-y-4 md:space-y-5 modal-content max-h-[60vh] overflow-y-auto pr-2 -mr-2">
+                    <div class="setting-item">
+                        <label for="theme-select" class="block text-sm font-medium text-cyan-300 mb-1.5">Visual Theme</label>
+                        <select id="theme-select" class="w-full p-2.5 bg-slate-700/60 border border-cyan-600/50 rounded-md text-cyan-200 focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500 outline-none transition-colors">
+                            <option value="default_dark">Default Dark (Cyan)</option>
+                            <option value="classic_blue">Arc Reactor Blue</option>
+                            <option value="matrix_green">Terminal Green</option>
+                        </select>
+                    </div>
+
+                    <div class="setting-item">
+                        <label for="particle-density" class="block text-sm font-medium text-cyan-300 mb-1.5">Particle Density: <span id="particle-density-value" class="font-bold text-cyan-400">50</span></label>
+                        <div class="flex items-center gap-3">
+                            <span class="text-xs text-cyan-400/80">Low</span>
+                            <input type="range" min="10" max="150" value="50" class="w-full h-2 bg-slate-700/60 rounded-lg appearance-none cursor-pointer accent-cyan-500" id="particle-density">
+                            <span class="text-xs text-cyan-400/80">High</span>
+                        </div>
+                    </div>
+                    
+                    <div class="setting-item">
+                        <label for="animation-intensity" class="block text-sm font-medium text-cyan-300 mb-1.5">Animation Intensity: <span id="animation-intensity-value" class="font-bold text-cyan-400">Medium</span></label>
+                        <select id="animation-intensity" class="w-full p-2.5 bg-slate-700/60 border border-cyan-600/50 rounded-md text-cyan-200 focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500 outline-none transition-colors">
+                            <option value="low">Low</option>
+                            <option value="medium" selected>Medium</option>
+                            <option value="high">High</option>
+                        </select>
+                    </div>
+
+                    <div class="setting-item">
+                        <label class="block text-sm font-medium text-cyan-300 mb-2">Sound Effects</label>
+                        <label class="flex items-center cursor-pointer">
+                            <input type="checkbox" class="sr-only peer" id="sound-effects-toggle" checked>
+                            <div class="relative w-11 h-6 bg-slate-700/60 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-offset-2 peer-focus:ring-offset-slate-800 peer-focus:ring-cyan-500 rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-slate-500 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-cyan-600"></div>
+                            <span class="ms-3 text-sm font-medium text-cyan-300">Enable UI Sounds</span>
+                        </label>
+                    </div>
+                </div>
+                <div class="mt-6 md:mt-8 pt-4 border-t border-cyan-500/20 flex justify-end gap-3">
+                    <button id="settings-cancel" class="px-4 py-2 bg-slate-600/50 hover:bg-slate-500/60 text-cyan-200 rounded-md transition-colors text-sm">Cancel</button>
+                    <button id="settings-apply" class="px-5 py-2 bg-cyan-600 hover:bg-cyan-500 text-white rounded-md transition-colors font-semibold text-sm">Apply Changes</button>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Notification Area -->
+        <div id="notification-area" class="fixed bottom-5 right-5 z-[100] space-y-2"></div>
+
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const statusMessageEl = document.getElementById('status-message');
+            const mainInterfaceEl = document.getElementById('main-interface');
+            const particleContainer = document.getElementById('particle-container');
+            const audioWaveContainer = document.getElementById('audio-wave-container');
+            const backgroundGridEl = document.getElementById('background-grid');
+
+            // --- Templating for dynamic elements ---
+            const statusIndicatorsContainer = mainInterfaceEl.querySelector('.flex.justify-center.gap-4.md\\:gap-6');
+            statusIndicatorsContainer.innerHTML = statusIndicatorsContainer.innerHTML.trim(); // Render the template string
+
+            const actionButtonsContainer = mainInterfaceEl.querySelector('.flex.flex-wrap.justify-center.gap-3');
+            actionButtonsContainer.innerHTML = actionButtonsContainer.innerHTML.trim(); // Render the template string
+
+            // --- Typewriter Effect ---
+            const initialMessage = "INITIALIZING A.R.C. INTERFACE V4.2...";
+            let currentMessage = '';
+            let messageIndex = 0;
+            function typeMessage() {
+                if (!statusMessageEl) return;
+                if (messageIndex < initialMessage.length) {
+                    currentMessage += initialMessage[messageIndex];
+                    statusMessageEl.textContent = currentMessage;
+                    if (messageIndex === 0) statusMessageEl.classList.add('typewriter-cursor');
+                    messageIndex++;
+                    setTimeout(typeMessage, 60 + Math.random() * 30);
+                } else {
+                    statusMessageEl.classList.remove('typewriter-cursor');
+                }
+            }
+
+            // --- Background Grid ---
+            function populateBackgroundGrid() {
+                if (!backgroundGridEl) return;
+                const numCols = 24;
+                const numRows = 18; // Adjust for aspect ratio
+                let html = '';
+                for (let i = 0; i < numCols * numRows; i++) {
+                    const randomDelay = Math.random() * 3; // delay up to 3s
+                    const randomDuration = Math.random() * 2 + 2.5; // duration 2.5s to 4.5s
+                    html += `<div class="bg-cyan-600/5 rounded-sm aspect-square" style="animation: gridPulse ${randomDuration}s infinite alternate ${randomDelay}s;"></div>`;
+                }
+                backgroundGridEl.innerHTML = html;
+            }
+            
+            // --- Particles ---
+            let numParticles = 50; // Default, can be changed by settings
+            const particles = [];
+            
+            function updateParticleDensityValue(value) {
+                const display = document.getElementById('particle-density-value');
+                if(display) display.textContent = value;
+            }
+
+            function createParticles() {
+                if (!particleContainer) return;
+                particleContainer.innerHTML = ''; // Clear existing particles
+                particles.length = 0; // Clear particles array
+
+                for (let i = 0; i < numParticles; i++) {
+                    const particle = document.createElement('div');
+                    particle.className = 'absolute rounded-full';
+                    const size = Math.random() * 2.5 + 0.5; // 0.5px to 3px
+                    particle.style.width = `${size}px`;
+                    particle.style.height = `${size}px`;
+                    // Color variation for particles
+                    const particleColor = Math.random() > 0.6 ? 'bg-cyan-300' : (Math.random() > 0.3 ? 'bg-cyan-400' : 'bg-blue-400');
+                    particle.classList.add(particleColor);
+                    
+                    const pData = {
+                        el: particle,
+                        x: (Math.random() - 0.5) * mainInterfaceEl.offsetWidth * 1.2,
+                        y: (Math.random() - 0.5) * mainInterfaceEl.offsetHeight * 1.2,
+                        z: (Math.random() - 0.5) * 800,
+                        vx: (Math.random() - 0.5) * 0.15,
+                        vy: (Math.random() - 0.5) * 0.15,
+                        vz: (Math.random() - 0.5) * 0.2,
+                        baseOpacity: Math.random() * 0.4 + 0.2,
+                        baseScale: size / 1.5
+                    };
+                    particles.push(pData);
+                    particleContainer.appendChild(particle);
+                }
+            }
+
+            let lastTimestamp = 0;
+            function animateParticles(timestamp) {
+                if (!mainInterfaceEl) return requestAnimationFrame(animateParticles);
+
+                const deltaTime = timestamp - lastTimestamp;
+                lastTimestamp = timestamp;
+
+                // Fallback for first frame or large gaps
+                if (deltaTime > 100 || deltaTime <= 0) { 
+                    requestAnimationFrame(animateParticles);
+                    return;
+                }
+                
+                const bounds = {
+                    x: mainInterfaceEl.offsetWidth * 0.7,
+                    y: mainInterfaceEl.offsetHeight * 0.7,
+                    z: 400
+                };
+
+                particles.forEach(p => {
+                    p.x += p.vx * (deltaTime / 16); // Normalize speed based on 60FPS
+                    p.y += p.vy * (deltaTime / 16);
+                    p.z += p.vz * (deltaTime / 16);
+
+                    if (Math.abs(p.x) > bounds.x) p.vx *= -1;
+                    if (Math.abs(p.y) > bounds.y) p.vy *= -1;
+                    if (Math.abs(p.z) > bounds.z) {
+                         p.vz *= -1;
+                         // Optional: Slightly reposition to prevent sticking at boundary
+                         p.z = Math.sign(p.z) * bounds.z * (Math.random() * 0.1 + 0.9);
+                    }
+                    
+                    const perspectiveFactor = 1000 / (1000 - p.z); // Simple perspective
+                    const scale = Math.max(0.1, perspectiveFactor * p.baseScale);
+                    const opacity = Math.max(0, perspectiveFactor * p.baseOpacity * (1 - Math.abs(p.z / bounds.z) * 0.5));
+                    
+                    p.el.style.transform = `translateX(${p.x}px) translateY(${p.y}px) translateZ(${p.z}px) scale(${scale})`;
+                    p.el.style.opacity = opacity;
+                });
+                requestAnimationFrame(animateParticles);
+            }
+
+            // --- Audio Wave Animation ---
+            const numAudioBars = 30;
+            const audioBars = [];
+            function createAudioWave() {
+                if (!audioWaveContainer) return;
+                audioWaveContainer.innerHTML = ''; // Clear existing
+                audioBars.length = 0;
+
+                for (let i = 0; i < numAudioBars; i++) {
+                    const bar = document.createElement('div');
+                    bar.className = 'audio-wave-bar rounded-t-sm';
+                    bar.style.width = `calc((100% / ${numAudioBars}) - 1px)`;
+                    // Initial color, can be dynamic
+                    bar.style.backgroundColor = `rgba(34, 211, 238, ${Math.random() * 0.3 + 0.4})`; // cyan-400 range
+                    audioWaveContainer.appendChild(bar);
+                    audioBars.push(bar);
+                }
+            }
+
+            function animateAudioWave() {
+                audioBars.forEach(bar => {
+                    const height = Math.random() * 80 + 10; // 10% to 90%
+                    bar.style.height = `${height}%`;
+                    // Optional: Change color slightly with height
+                    bar.style.backgroundColor = `rgba(34, 211, 238, ${0.3 + (height/100)*0.5})`;
+                });
+                setTimeout(animateAudioWave, Math.random() * 150 + 80);
+            }
+
+            // --- Settings Modal Logic ---
+            const settingsIcon = document.getElementById('settings-icon');
+            const settingsModal = document.getElementById('settings-modal');
+            const closeSettingsModalBtn = document.getElementById('close-settings-modal');
+            const particleDensitySlider = document.getElementById('particle-density');
+            const particleDensityValueDisplay = document.getElementById('particle-density-value');
+            const settingsApplyBtn = document.getElementById('settings-apply');
+            const settingsCancelBtn = document.getElementById('settings-cancel');
+
+            if (settingsIcon && settingsModal && closeSettingsModalBtn) {
+                settingsIcon.addEventListener('click', () => settingsModal.classList.remove('hidden'));
+                closeSettingsModalBtn.addEventListener('click', () => settingsModal.classList.add('hidden'));
+                settingsCancelBtn.addEventListener('click', () => settingsModal.classList.add('hidden'));
+                
+                settingsModal.addEventListener('click', (event) => {
+                    if (event.target === settingsModal) settingsModal.classList.add('hidden');
+                });
+                document.addEventListener('keydown', (event) => {
+                    if (event.key === 'Escape' && !settingsModal.classList.contains('hidden')) {
+                        settingsModal.classList.add('hidden');
+                    }
+                });
+
+                if(particleDensitySlider && particleDensityValueDisplay) {
+                    particleDensitySlider.addEventListener('input', (e) => {
+                        updateParticleDensityValue(e.target.value);
+                    });
+                }
+
+                settingsApplyBtn.addEventListener('click', () => {
+                    numParticles = parseInt(particleDensitySlider.value);
+                    createParticles(); // Recreate particles with new density
+                    showNotification(`Settings applied. Particle density set to ${numParticles}.`, 'success');
+                    settingsModal.classList.add('hidden');
+                });
+
+            }
+
+            // --- Action Button Feedback & Notifications ---
+            const notificationArea = document.getElementById('notification-area');
+            function showNotification(message, type = 'info') {
+                if(!notificationArea) return;
+                const notifId = `notif-${Date.now()}`;
+                const notif = document.createElement('div');
+                notif.id = notifId;
+                let bgColor = 'bg-cyan-600/90';
+                if (type === 'success') bgColor = 'bg-green-500/90';
+                if (type === 'error') bgColor = 'bg-red-500/90';
+
+                notif.className = `${bgColor} text-white py-2 px-4 rounded-md shadow-lg text-xs md:text-sm transition-all duration-300 opacity-0 transform translate-x-full`;
+                notif.textContent = message;
+                notificationArea.appendChild(notif);
+
+                // Force reflow for transition
+                void notif.offsetWidth; 
+
+                notif.classList.remove('opacity-0', 'translate-x-full');
+                notif.classList.add('opacity-100', 'translate-x-0');
+
+                setTimeout(() => {
+                    notif.classList.remove('opacity-100', 'translate-x-0');
+                    notif.classList.add('opacity-0', 'translate-x-full');
+                    setTimeout(() => notif.remove(), 300);
+                }, 3500);
+            }
+
+            document.querySelectorAll('#main-interface button:not(#settings-icon):not(#close-settings-modal)').forEach(button => {
+                if (button.closest('#settings-modal')) return; 
+                button.addEventListener('click', () => {
+                    const originalText = button.textContent.trim();
+                    if (button.disabled) return;
+
+                    button.disabled = true;
+                    button.innerHTML = `<span class="animate-pulse">PROCESSING...</span>`;
+                    button.classList.add('opacity-70', 'cursor-wait');
+                    
+                    setTimeout(() => {
+                        button.textContent = originalText;
+                        button.disabled = false;
+                        button.classList.remove('opacity-70', 'cursor-wait');
+                        showNotification(`Task "${originalText}" initiated.`, 'info');
+                    }, 1500 + Math.random() * 500);
+                });
+            });
+            
+
+            // --- Initialization ---
+            populateBackgroundGrid();
+            typeMessage();
+            
+            // Initialize particles with default density
+            if(particleDensitySlider) particleDensitySlider.value = numParticles;
+            updateParticleDensityValue(numParticles); // Show initial value
+            createParticles();
+            requestAnimationFrame(animateParticles);
+            
+            createAudioWave();
+            animateAudioWave();
+
+            // Update animation intensity display (example)
+            const animIntensitySelect = document.getElementById('animation-intensity');
+            const animIntensityValue = document.getElementById('animation-intensity-value');
+            if(animIntensitySelect && animIntensityValue){
+                animIntensityValue.textContent = animIntensitySelect.options[animIntensitySelect.selectedIndex].text;
+                animIntensitySelect.addEventListener('change', (e) => {
+                     animIntensityValue.textContent = e.target.options[e.target.selectedIndex].text;
+                });
+            }
+
+        });
+    </script>
+</body>
+</html>

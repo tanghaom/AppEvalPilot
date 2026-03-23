@@ -1,0 +1,9 @@
+{
+  "web_id": "web_3",
+  "task_id": 4,
+  "task_type": "dynamic",
+  "instruction": "Task: Click on a main category in the header menu (e.g., 'Döviz Kurları', 'Hisse Senetleri').\nExpected Result: The main content area changes to display content specific to the selected category (e.g., a list of currency pairs or stocks).\n\nNote: The task is only considered successful if the expected result is achieved; otherwise, it is deemed infeasible.",
+  "max_steps": 15,
+  "expected": "The main content area changes to display content specific to the selected category (e.g., a list of currency pairs or stocks).",
+  "label": 0
+}

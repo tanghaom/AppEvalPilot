@@ -1,0 +1,9 @@
+{
+  "web_id": "web_79",
+  "task_id": 4,
+  "task_type": "dynamic",
+  "instruction": "Task: Click a 'Delete' button associated with an item in the list.\nExpected Result: The corresponding item is removed from the list.\n\nNote: The task is only considered successful if the expected result is achieved; otherwise, it is deemed infeasible.",
+  "max_steps": 15,
+  "expected": "The corresponding item is removed from the list.",
+  "label": 1
+}

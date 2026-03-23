@@ -1,0 +1,9 @@
+{
+  "web_id": "web_81",
+  "task_id": 4,
+  "task_type": "dynamic",
+  "instruction": "Task: Click on a specific monster image/element after selecting a single-target spell/ability that requires targeting.\nExpected Result: The selected spell/ability is visually cast on the targeted monster. The monster's health bar updates to reflect damage or effects. The spell icon enters its cooldown state (e.g., becomes greyed out, shows a timer). If a monster's health reaches zero, it is visually removed or marked as defeated, and the hero may gain experience.\n\nNote: The task is only considered successful if the expected result is achieved; otherwise, it is deemed infeasible.",
+  "max_steps": 15,
+  "expected": "The selected spell/ability is visually cast on the targeted monster. The monster's health bar updates to reflect damage or effects. The spell icon enters its cooldown state (e.g., becomes greyed out, shows a timer). If a monster's health reaches zero, it is visually removed or marked as defeated, and the hero may gain experience.",
+  "label": 1
+}

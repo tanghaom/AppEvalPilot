@@ -1,0 +1,9 @@
+{
+  "web_id": "web_61",
+  "task_id": 2,
+  "task_type": "dynamic",
+  "instruction": "Task: Input/edit text in the active note\nExpected Result: The typed text appears or updates in the content area of the active note.\n\nNote: The task is only considered successful if the expected result is achieved; otherwise, it is deemed infeasible.",
+  "max_steps": 15,
+  "expected": "The typed text appears or updates in the content area of the active note.",
+  "label": 0
+}

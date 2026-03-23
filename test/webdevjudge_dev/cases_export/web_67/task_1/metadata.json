@@ -1,0 +1,9 @@
+{
+  "web_id": "web_67",
+  "task_id": 1,
+  "task_type": "dynamic",
+  "instruction": "Task: Type a message into the designated input field and click the 'Send' button (or press Enter).\nExpected Result: The user's message appears in the conversation display area, styled as a user message. Shortly after, a simulated AI response appears, styled as an AI message.\n\nNote: The task is only considered successful if the expected result is achieved; otherwise, it is deemed infeasible.",
+  "max_steps": 15,
+  "expected": "The user's message appears in the conversation display area, styled as a user message. Shortly after, a simulated AI response appears, styled as an AI message.",
+  "label": 1
+}

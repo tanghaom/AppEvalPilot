@@ -1,0 +1,9 @@
+{
+  "web_id": "web_13",
+  "task_id": 3,
+  "task_type": "dynamic",
+  "instruction": "Task: Change the total number of vehicles simulated on the assembly line using a provided UI control (e.g., an input field or +/- buttons)\nExpected Result: The simulation updates to display and manage the specified number of vehicles on the line.\n\nNote: The task is only considered successful if the expected result is achieved; otherwise, it is deemed infeasible.",
+  "max_steps": 15,
+  "expected": "The simulation updates to display and manage the specified number of vehicles on the line.",
+  "label": 1
+}

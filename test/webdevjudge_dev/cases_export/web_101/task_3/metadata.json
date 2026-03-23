@@ -1,0 +1,9 @@
+{
+  "web_id": "web_101",
+  "task_id": 3,
+  "task_type": "dynamic",
+  "instruction": "Task: Click the 'Add to Basket' (e.g., a '+' icon) button associated with a displayed media item.\nExpected Result: The item is visually marked as added (e.g., button changes state or item gets a badge), and the basket's item count indicator updates.\n\nNote: The task is only considered successful if the expected result is achieved; otherwise, it is deemed infeasible.",
+  "max_steps": 15,
+  "expected": "The item is visually marked as added (e.g., button changes state or item gets a badge), and the basket's item count indicator updates.",
+  "label": 1
+}

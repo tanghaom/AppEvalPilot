@@ -1,0 +1,9 @@
+{
+  "web_id": "web_93",
+  "task_id": 4,
+  "task_type": "dynamic",
+  "instruction": "Task: Select an option from the 'Negative Cognition' dropdown list within an expanded timeline entry.\nExpected Result: The selected cognition is displayed as the chosen negative cognition for that entry. The underlying data for the entry is updated.\n\nNote: The task is only considered successful if the expected result is achieved; otherwise, it is deemed infeasible.",
+  "max_steps": 15,
+  "expected": "The selected cognition is displayed as the chosen negative cognition for that entry. The underlying data for the entry is updated.",
+  "label": 0
+}

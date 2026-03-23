@@ -1,0 +1,9 @@
+{
+  "web_id": "web_27",
+  "task_id": 5,
+  "task_type": "dynamic",
+  "instruction": "Task: Activate a 'finishing move' on a designated vulnerable enemy with a specific key press (e.g., 'F' key) when prompted.\nExpected Result: A special animation plays, the targeted enemy is defeated, and the player receives a simulated reward such as health or ammunition.\n\nNote: The task is only considered successful if the expected result is achieved; otherwise, it is deemed infeasible.",
+  "max_steps": 15,
+  "expected": "A special animation plays, the targeted enemy is defeated, and the player receives a simulated reward such as health or ammunition.",
+  "label": 0
+}

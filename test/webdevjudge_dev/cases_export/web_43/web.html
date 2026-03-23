@@ -1,0 +1,761 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AFCON Morocco Guide</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        /* Custom scrollbar for webkit browsers */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #f1f1f1;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #c1272d; /* Moroccan Red */
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #a02026;
+        }
+        .active-nav-item {
+            color: #c1272d; /* Moroccan Red */
+            border-top-width: 2px;
+            border-color: #c1272d;
+        }
+        /* Basic transition for page content */
+        #main-content > div {
+            animation: fadeIn 0.3s ease-out;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+    </style>
+</head>
+<body class="bg-gray-800 font-sans antialiased">
+
+    <div id="app-container" class="max-w-sm mx-auto h-screen flex flex-col bg-gray-50 shadow-2xl overflow-hidden">
+        <!-- Top Bar -->
+        <header id="app-header" class="bg-red-700 text-white p-4 flex items-center justify-between shadow-md sticky top-0 z-50">
+            <button id="back-button" class="hidden p-1 -ml-1">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-6 h-6">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" />
+                </svg>
+            </button>
+            <h1 id="app-title" class="text-xl font-bold">AFCON Morocco Guide</h1>
+            <div class="w-6"> <!-- Placeholder for potential right icon --></div>
+        </header>
+
+        <!-- Main Content Area (scrollable) -->
+        <main id="main-content" class="flex-grow overflow-y-auto p-1">
+            <!-- Content will be injected here by JavaScript -->
+        </main>
+
+        <!-- Bottom Navigation -->
+        <nav id="bottom-nav" class="bg-white border-t border-gray-200 grid grid-cols-5 shadow-inner sticky bottom-0 z-50">
+            <!-- Nav items will be injected here by JavaScript -->
+        </nav>
+    </div>
+
+    <!-- Modal Container (Generic) -->
+    <div id="modal-container" class="hidden fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center p-4 z-[100]">
+        <div class="bg-white p-5 rounded-lg shadow-xl max-w-sm w-full max-h-[80vh] overflow-y-auto">
+            <div class="flex justify-between items-center mb-4">
+                <h2 id="modal-title" class="text-xl font-semibold text-red-700">Modal Title</h2>
+                <button id="modal-close-button" class="text-gray-500 hover:text-gray-700">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-6 h-6">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                </button>
+            </div>
+            <div id="modal-body">
+                <!-- Modal content here -->
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // --- SVG ICONS --- (Heroicons)
+        const ICONS = {
+            home: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-6 h-6 mx-auto"><path d="M11.47 3.841a.75.75 0 0 1 1.06 0l8.69 8.69a.75.75 0 1 0 1.06-1.061l-8.689-8.69a2.25 2.25 0 0 0-3.182 0l-8.69 8.69a.75.75 0 1 0 1.061 1.061l8.69-8.69Z" /><path d="m12 5.432 8.159 8.159c.03.03.06.058.091.086v6.198c0 1.035-.84 1.875-1.875 1.875H15a.75.75 0 0 1-.75-.75v-4.5a.75.75 0 0 0-.75-.75h-3a.75.75 0 0 0-.75.75V21a.75.75 0 0 1-.75.75H5.625a1.875 1.875 0 0 1-1.875-1.875v-6.198a2.29 2.29 0 0 0 .091-.086L12 5.432Z" /></svg>`,
+            matches: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-6 h-6 mx-auto"><path fill-rule="evenodd" d="M6.75 2.25A.75.75 0 0 1 7.5 3v1.5h9V3A.75.75 0 0 1 18 3v1.5h.75a3 3 0 0 1 3 3v11.25a3 3 0 0 1-3 3H5.25a3 3 0 0 1-3-3V7.5a3 3 0 0 1 3-3H6V3a.75.75 0 0 1 .75-.75Zm13.5 9a1.5 1.5 0 0 0-1.5-1.5H5.25a1.5 1.5 0 0 0-1.5 1.5v7.5a1.5 1.5 0 0 0 1.5 1.5h13.5a1.5 1.5 0 0 0 1.5-1.5v-7.5Z" clip-rule="evenodd" /></svg>`,
+            venues: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-6 h-6 mx-auto"><path fill-rule="evenodd" d="M11.54 22.351l.07.04.028.016a.76.76 0 0 0 .723 0l.028-.015.071-.041a16.975 16.975 0 0 0 5.169-4.456 1.75 1.75 0 0 0 .064-.088 1.75 1.75 0 0 0-.02-2.473l-.001-.001L12 2.3l-6.24 9.923a1.75 1.75 0 0 0-.02 2.472l.001.001a1.75 1.75 0 0 0 .064.088 16.975 16.975 0 0 0 5.17 4.455ZM8.25 13.5a.75.75 0 0 1 .75-.75h6a.75.75 0 0 1 0 1.5h-6a.75.75 0 0 1-.75-.75Zm.75 2.25a.75.75 0 0 0 0 1.5H12a.75.75 0 0 0 0-1.5H9Zm3-8.25a.75.75 0 0 1 .75-.75h.008a.75.75 0 0 1 .75.75v.008a.75.75 0 0 1-.75.75h-.008a.75.75 0 0 1-.75-.75V7.5Z" clip-rule="evenodd" /></svg>`,
+            explore: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-6 h-6 mx-auto"><path fill-rule="evenodd" d="M12 2.25c-5.385 0-9.75 4.365-9.75 9.75s4.365 9.75 9.75 9.75 9.75-4.365 9.75-9.75S17.385 2.25 12 2.25Zm4.25 5.69L9.12 12.118l-2.94-1.47a.75.75 0 0 0-.964.066 10.102 10.102 0 0 0-1.042 1.298.75.75 0 0 0 .22 1.002l3.106 2.07 1.751 3.504a.75.75 0 0 0 1.34.314 10.102 10.102 0 0 0 1.298-1.042.75.75 0 0 0 .066-.964l-1.47-2.941 4.238-2.626a.75.75 0 0 0 .286-1.095 9.422 9.422 0 0 0-1.218-1.218.75.75 0 0 0-1.095.286Z" clip-rule="evenodd" /></svg>`,
+            more: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-6 h-6 mx-auto"><path fill-rule="evenodd" d="M10.5 6a1.5 1.5 0 1 1 3 0 1.5 1.5 0 0 1-3 0Zm0 6a1.5 1.5 0 1 1 3 0 1.5 1.5 0 0 1-3 0Zm0 6a1.5 1.5 0 1 1 3 0 1.5 1.5 0 0 1-3 0Z" clip-rule="evenodd" /></svg>`,
+            ticket: `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6 mr-3 text-red-600"><path stroke-linecap="round" stroke-linejoin="round" d="M16.5 6v.75m0 3v.75m0 3v.75m0 3V18m-9-5.25h5.25M7.5 15h3M3.375 5.25c-.621 0-1.125.504-1.125 1.125v3.026a2.999 2.999 0 010 5.198v3.026c0 .621.504 1.125 1.125 1.125h17.25c.621 0 1.125-.504 1.125-1.125v-3.026a2.999 2.999 0 010-5.198V6.375c0-.621-.504-1.125-1.125-1.125H3.375z" /></svg>`,
+            shop: `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6 mr-3 text-red-600"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 10.5V6a3.75 3.75 0 10-7.5 0v4.5m11.356-1.993l1.263 12c.07.665-.45 1.243-1.119 1.243H4.25a1.125 1.125 0 01-1.12-1.243l1.264-12A1.125 1.125 0 015.513 7.5h12.974c.576 0 1.059.435 1.119 1.007zM8.625 10.5a.375.375 0 11-.75 0 .375.375 0 01.75 0zm7.5 0a.375.375 0 11-.75 0 .375.375 0 01.75 0z" /></svg>`,
+            users: `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6 mr-3 text-red-600"><path stroke-linecap="round" stroke-linejoin="round" d="M18 18.72a9.094 9.094 0 003.741-.479 3 3 0 00-4.682-2.72m.247-3.03c-.526-.976-1.646-1.599-2.887-1.599a4.5 4.5 0 00-4.5 4.5v.75c0 .621.504 1.125 1.125 1.125h3.375c.621 0 1.125-.504 1.125-1.125v-.75zM16.5 9.75a4.5 4.5 0 11-9 0 4.5 4.5 0 019 0zM10.5 6a4.5 4.5 0 11-9 0 4.5 4.5 0 019 0zM6 18.75a9.094 9.094 0 003.741-.479 3 3 0 00-4.682-2.72m.247-3.03c-.526-.976-1.646-1.599-2.887-1.599a4.5 4.5 0 00-4.5 4.5v.75c0 .621.504 1.125 1.125 1.125h3.375c.621 0 1.125-.504 1.125-1.125v-.75z" /></svg>`,
+            mapMarker: `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6 mr-3 text-red-600"><path stroke-linecap="round" stroke-linejoin="round" d="M15 10.5a3 3 0 11-6 0 3 3 0 016 0z" /><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1115 0z" /></svg>`,
+            bookOpen: `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6 mr-3 text-red-600"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6.042A8.967 8.967 0 006 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 016 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 016-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0018 18a8.967 8.967 0 00-6 2.292m0-14.25v14.25" /></svg>`,
+            language: `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6 mr-3 text-red-600"><path stroke-linecap="round" stroke-linejoin="round" d="M10.5 21l5.25-11.25L21 21m-9-3h7.5M3 5.621a48.474 48.474 0 016-.371m0 0c1.12 0 2.233.038 3.334.114M9 5.25V3m3.334 2.364C11.176 10.658 7.69 15.08 3 17.502m9.084-12.138c.081.56.108 1.14.108 1.727m0 0c0 .587-.027 1.167-.081 1.727m0 0c0 6.21-5.04 11.25-11.25 11.25S3 14.71 3 8.5c0-1.94.504-3.75 1.375-5.25m11.059 12.864c-2.286.091-4.464.33-6.514.761" /></svg>`,
+            food: `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6 mr-3 text-red-600"><path stroke-linecap="round" stroke-linejoin="round" d="M21.75 12.75a4.5 4.5 0 01-4.5 4.5H6.75a4.5 4.5 0 01-4.5-4.5V7.5a4.5 4.5 0 014.5-4.5h7.5a3.75 3.75 0 013.75 3.75V7.5m-4.5-.75H9.75M15 12H9M15 15H9" /></svg>`, // Simplified icon for food / restaurant
+            calendarDays: `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6 mr-3 text-red-600"><path stroke-linecap="round" stroke-linejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5A2.25 2.25 0 0121 11.25v7.5m-9-3.75h.008v.008H12v-.008zM12 15h.008v.008H12V15zm0 2.25h.008v.008H12v-.008zM9.75 15h.008v.008H9.75V15zm0 2.25h.008v.008H9.75v-.008zM7.5 15h.008v.008H7.5V15zm0 2.25h.008v.008H7.5v-.008zm6.75-4.5h.008v.008h-.008v-.008zm0 2.25h.008v.008h-.008V15zm0 2.25h.008v.008h-.008v-.008zm2.25-4.5h.008v.008H16.5v-.008zm0 2.25h.008v.008H16.5V15z" /></svg>`,
+            star: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-5 h-5 text-yellow-400"><path fill-rule="evenodd" d="M10.788 3.21c.448-1.077 1.976-1.077 2.424 0l2.082 5.006 5.404.434c1.164.093 1.636 1.545.749 2.305l-4.117 3.527 1.257 5.273c.271 1.136-.964 2.033-1.96 1.425L12 18.354 7.373 21.18c-.996.608-2.231-.29-1.96-1.425l1.257-5.273-4.117-3.527c-.887-.76-.415-2.212.749-2.305l5.404-.434 2.082-5.006Z" clip-rule="evenodd" /></svg>`,
+            chat: `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6 mr-3 text-red-600"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 12.76c0 1.6 1.123 2.994 2.707 3.227 1.087.16 2.185.283 3.293.369V21l4.076-4.076a1.526 1.526 0 011.037-.443 48.282 48.282 0 005.68-.494c1.584-.233 2.707-1.626 2.707-3.228V6.741c0-1.602-1.123-2.995-2.707-3.228A48.394 48.394 0 0012 3c-2.392 0-4.744.175-7.043.513C3.373 3.746 2.25 5.14 2.25 6.741v6.018z" /></svg>`,
+            challenge: `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6 mr-3 text-red-600"><path stroke-linecap="round" stroke-linejoin="round" d="M16.5 18.75h-9m9 0a3 3 0 013 3h-15a3 3 0 013-3m9 0v-4.5A3.375 3.375 0 0012 10.5V12M7.5 18.75v-4.5A3.375 3.375 0 0112 10.5V12m0-8.25V5.625c0 .621.504 1.125 1.125 1.125h1.5c.621 0 1.125-.504 1.125-1.125V3.375m0 0A3.375 3.375 0 0012 2.25V3.375m3.375 0A3.375 3.375 0 0012 2.25V3.375M12 12h3.75m-3.75 0H8.25m0 0H5.625M12 12v3.75m0 0v3.75m0-3.75H14.25m-3.75 0H8.25" /></svg>`, // Trophy like
+        };
+
+        // --- MOCK DATA ---
+        const afconData = {
+            matches: [
+                { id: 1, group: 'A', teamA: 'Morocco', teamB: 'Algeria', teamAFlag: '🇲🇦', teamBFlag: '🇩🇿', scoreA: 2, scoreB: 1, time: '2025-01-13T19:00:00Z', venueId: 1, status: 'Finished', highlights: 'https://example.com/highlight1', lineupA: ['Bounou', 'Hakimi', 'Saiss', 'Aguerd', 'Mazraoui', 'Amrabat', 'Ounahi', 'Amallah', 'Ziyech', 'En-Nesyri', 'Boufal'], lineupB: ['Mbolhi', 'Atal', 'Mandi', 'Bedrane', 'Bensebaini', 'Bentaleb', 'Bennacer', 'Feghouli', 'Mahrez', 'Slimani', 'Belaili'], stats: { teamA: { possession: 60, shots: 15, onTarget: 7 }, teamB: { possession: 40, shots: 10, onTarget: 3 }} },
+                { id: 2, group: 'A', teamA: 'Egypt', teamB: 'Tunisia', teamAFlag: '🇪🇬', teamBFlag: '🇹🇳', scoreA: 1, scoreB: 1, time: '2025-01-13T22:00:00Z', venueId: 2, status: 'Finished', lineupA: [], lineupB: [], stats: { teamA: { possession: 55, shots: 12, onTarget: 5 }, teamB: { possession: 45, shots: 8, onTarget: 4 }} },
+                { id: 3, group: 'B', teamA: 'Senegal', teamB: 'Nigeria', teamAFlag: '🇸🇳', teamBFlag: '🇳🇬', scoreA: 0, scoreB: 0, time: '2025-01-14T19:00:00Z', venueId: 3, status: 'Live', liveMinute: 75, lineupA: [], lineupB: [], stats: { teamA: { possession: 48, shots: 9, onTarget: 2 }, teamB: { possession: 52, shots: 11, onTarget: 5 }} },
+                { id: 4, group: 'B', teamA: 'Ghana', teamB: 'Cameroon', teamAFlag: '🇬🇭', teamBFlag: '🇨🇲', scoreA: null, scoreB: null, time: '2025-01-14T22:00:00Z', venueId: 4, status: 'Upcoming', lineupA: [], lineupB: [], stats: {}},
+                { id: 5, group: 'C', teamA: 'Ivory Coast', teamB: 'South Africa', teamAFlag: '🇨🇮', teamBFlag: '🇿🇦', scoreA: null, scoreB: null, time: '2025-01-15T19:00:00Z', venueId: 5, status: 'Upcoming', lineupA: [], lineupB: [], stats: {}},
+            ],
+            venues: [
+                { id: 1, name: 'Grand Stade de Marrakech', city: 'Marrakech', capacity: 45240, image: 'marrakech_stadium.jpg', mapEmbed: '<div class="bg-gray-200 border-2 border-dashed rounded-xl w-full h-48 flex items-center justify-center text-gray-500 text-sm">Embedded Map Placeholder</div>', parking: 'Ample parking available (P1, P2, P3). Arrive early.', transport: 'Special shuttle buses from city center. Taxi drop-off zone.', near: [1, 2] },
+                { id: 2, name: 'Stade Mohammed V', city: 'Casablanca', capacity: 45891, image: 'casablanca_stadium.jpg', mapEmbed: '<div class="bg-gray-200 border-2 border-dashed rounded-xl w-full h-48 flex items-center justify-center text-gray-500 text-sm">Embedded Map Placeholder</div>', parking: 'Limited street parking. Use public transport.', transport: 'Tramway Line T1, Bus lines 10, 22.', near: [3] },
+                { id: 3, name: 'Stade Moulay Abdellah', city: 'Rabat', capacity: 53000, image: 'rabat_stadium.jpg', mapEmbed: '<div class="bg-gray-200 border-2 border-dashed rounded-xl w-full h-48 flex items-center justify-center text-gray-500 text-sm">Embedded Map Placeholder</div>', parking: 'Designated parking areas. Follow signs.', transport: 'Bus lines R3, R5. Train station nearby (Rabat Agdal).', near: [4] },
+                { id: 4, name: 'Stade Adrar', city: 'Agadir', capacity: 45480, image: 'agadir_stadium.jpg', mapEmbed: '<div class="bg-gray-200 border-2 border-dashed rounded-xl w-full h-48 flex items-center justify-center text-gray-500 text-sm">Embedded Map Placeholder</div>', parking: 'Available.', transport: 'Bus line A1.', near: [] },
+                { id: 5, name: 'Stade de Tanger', city: 'Tangier', capacity: 65000, image: 'tangier_stadium.jpg', mapEmbed: '<div class="bg-gray-200 border-2 border-dashed rounded-xl w-full h-48 flex items-center justify-center text-gray-500 text-sm">Embedded Map Placeholder</div>', parking: 'Available.', transport: 'Bus line T2.', near: [] },
+            ],
+            attractions: [
+                { id: 1, name: 'Jemaa el-Fnaa', city: 'Marrakech', description: 'Iconic square with street performers, food stalls, and vibrant atmosphere. A UNESCO World Heritage site.', image: 'jemaa_el_fnaa.jpg', category: 'Historic Site' },
+                { id: 2, name: 'Koutoubia Mosque', city: 'Marrakech', description: 'Largest mosque in Marrakech, famous for its beautiful minaret. (Exterior view for non-Muslims)', image: 'koutoubia.jpg', category: 'Landmark' },
+                { id: 3, name: 'Hassan II Mosque', city: 'Casablanca', description: 'One of the largest mosques in the world, with stunning architecture and ocean views.', image: 'hassan2_mosque.jpg', category: 'Landmark' },
+                { id: 4, name: 'Kasbah of the Udayas', city: 'Rabat', description: 'Historic kasbah with narrow blue and white streets, offering views of the Atlantic Ocean.', image: 'udayas.jpg', category: 'Historic Site' },
+            ],
+            cuisine: [
+                { id: 1, name: 'Nomad', city: 'Marrakech', type: 'Modern Moroccan', dish: 'Lamb Tagine with Apricots', rating: 4.5, image: 'nomad_restaurant.jpg' },
+                { id: 2, name: 'Le Foundouk', city: 'Marrakech', type: 'Traditional & International', dish: 'Chicken Couscous', rating: 4.2, image: 'le_foundouk.jpg' },
+                { id: 3, name: 'Rick\'s Cafe', city: 'Casablanca', type: 'International (Iconic)', dish: 'Seafood Pastilla', rating: 4.0, image: 'ricks_cafe.jpg' },
+                { id: 4, name: 'Dar Naji', city: 'Rabat', type: 'Traditional Moroccan', dish: 'Assorted Moroccan Salads', rating: 4.3, image: 'dar_naji.jpg' },
+            ],
+            culturalTips: [
+                { id: 1, title: 'Greetings', content: 'A common greeting is "Salam Alaikum" (Peace be upon you), respond with "Wa Alaikum Salam". Handshakes are common, often followed by placing the right hand on the heart.' },
+                { id: 2, title: 'Dress Code', content: 'Dress modestly, especially when visiting religious sites. Shoulders and knees should be covered for both men and women in such places.' },
+                { id: 3, title: 'Hospitality', content: 'Moroccans are known for their hospitality. If invited for tea or a meal, it\'s polite to accept. Mint tea is a staple.' },
+                { id: 4, title: 'Bargaining', content: 'In souks (markets), bargaining is expected. Start with a price lower than you\'re willing to pay and negotiate respectfully.' },
+            ],
+            languagePhrases: [
+                { id: 1, category: 'Greetings', phrase_en: 'Hello', phrase_ar: 'Salam Alaikum / مرحبا (Marhaban)', pronunciation: 'Sa-LAM Wa-a-LAY-koom / MAR-ha-ban' },
+                { id: 2, category: 'Greetings', phrase_en: 'Thank you', phrase_ar: 'Shukran / شكرا', pronunciation: 'SHOOK-ran' },
+                { id: 3, category: 'Basics', phrase_en: 'Yes', phrase_ar: 'Na\'am / نعم', pronunciation: 'NA-am' },
+                { id: 4, category: 'Basics', phrase_en: 'No', phrase_ar: 'La / لا', pronunciation: 'LA' },
+                { id: 5, category: 'Directions', phrase_en: 'Where is the stadium?', phrase_ar: 'Ayna al-mal\'ab? / أين الملعب؟', pronunciation: 'AY-na al-MAL-ab?' },
+                { id: 6, category: 'Food', phrase_en: 'Water, please', phrase_ar: 'Maa, min fadlik / ماء من فضلك', pronunciation: 'MAA, min FUD-lick' },
+            ],
+            // More data for other sections (simplified)
+            fanZones: [
+                {id: 1, name: 'Marrakech Fan Fest', location: 'Near Jemaa el-Fnaa', details: 'Live screenings, food stalls, music.'},
+                {id: 2, name: 'Casablanca Corniche Zone', location: 'Ain Diab Corniche', details: 'Beachside fan zone with large screens.'}
+            ],
+            reviews: [ // For restaurants/attractions, could be linked
+                {itemId: 1, itemType: 'cuisine', user: 'Fan123', rating: 5, comment: 'Amazing tagine at Nomad!'},
+                {itemId: 1, itemType: 'attraction', user: 'TravelerX', rating: 4, comment: 'Jemaa el-Fnaa is vibrant but crowded.'}
+            ],
+            merchandise: [
+                {id:1, name: 'Official AFCON Jersey', price: '700 MAD', image: 'placeholder_jersey.jpg'},
+                {id:2, name: 'Morocco Team Scarf', price: '200 MAD', image: 'placeholder_scarf.jpg'}
+            ]
+        };
+
+        // --- APP STATE ---
+        const appState = {
+            currentPage: 'home', // Initial page
+            currentDetailId: null, // For showing details of an item
+            previousPages: [], // For back button functionality
+            liveMatchSimulationInterval: null,
+        };
+
+        // --- DOM ELEMENTS ---
+        const mainContent = document.getElementById('main-content');
+        const bottomNav = document.getElementById('bottom-nav');
+        const appTitle = document.getElementById('app-title');
+        const backButton = document.getElementById('back-button');
+        const modalContainer = document.getElementById('modal-container');
+        const modalTitle = document.getElementById('modal-title');
+        const modalBody = document.getElementById('modal-body');
+        const modalCloseButton = document.getElementById('modal-close-button');
+
+        // --- NAVIGATION ITEMS ---
+        const NAV_ITEMS = [
+            { id: 'home', label: 'Home', icon: ICONS.home, title: 'AFCON Morocco Guide' },
+            { id: 'matches', label: 'Matches', icon: ICONS.matches, title: 'Match Schedule' },
+            { id: 'venues', label: 'Venues', icon: ICONS.venues, title: 'Stadiums' },
+            { id: 'explore', label: 'Explore', icon: ICONS.explore, title: 'Explore Morocco' },
+            { id: 'more', label: 'More', icon: ICONS.more, title: 'More Options' },
+        ];
+
+        // --- UTILITY FUNCTIONS ---
+        function formatDate(dateString) {
+            const options = { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' };
+            return new Date(dateString).toLocaleDateString(undefined, options);
+        }
+
+        function getVenueById(id) {
+            return afconData.venues.find(v => v.id === id);
+        }
+
+        function createPlaceholderImage(size = 'w-16 h-16') {
+            return `<div class="bg-gray-200 border-2 border-dashed border-gray-300 rounded-xl ${size} flex items-center justify-center text-gray-500 text-xs">Image</div>`;
+        }
+        
+        function showModal(title, contentHtml) {
+            modalTitle.textContent = title;
+            modalBody.innerHTML = contentHtml;
+            modalContainer.classList.remove('hidden');
+        }
+
+        function hideModal() {
+            modalContainer.classList.add('hidden');
+        }
+
+        // --- RENDER COMPONENTS ---
+        function renderMatchCard(match) {
+            const venue = getVenueById(match.venueId);
+            let scoreDisplay = '';
+            if (match.status === 'Finished' || match.status === 'Live') {
+                scoreDisplay = `<span class="text-xl font-bold">${match.scoreA} - ${match.scoreB}</span>`;
+            } else {
+                scoreDisplay = `<span class="text-sm text-gray-500">VS</span>`;
+            }
+
+            let statusClass = '';
+            if (match.status === 'Live') statusClass = 'text-red-500 font-semibold animate-pulse';
+            else if (match.status === 'Finished') statusClass = 'text-gray-700';
+            else statusClass = 'text-blue-500';
+            
+            return `
+                <div class="bg-white p-4 rounded-lg shadow-md hover:shadow-lg transition-shadow cursor-pointer" onclick="navigateTo('matchDetail', ${match.id})">
+                    <div class="text-xs text-gray-500 mb-1">Group ${match.group} | ${venue.city}</div>
+                    <div class="flex items-center justify-between mb-2">
+                        <div class="flex items-center space-x-2 w-2/5">
+                            <span class="text-2xl">${match.teamAFlag}</span>
+                            <span class="font-semibold text-gray-800 truncate">${match.teamA}</span>
+                        </div>
+                        <div class="text-center w-1/5">${scoreDisplay}</div>
+                        <div class="flex items-center space-x-2 justify-end w-2/5">
+                            <span class="font-semibold text-gray-800 truncate text-right">${match.teamB}</span>
+                            <span class="text-2xl">${match.teamBFlag}</span>
+                        </div>
+                    </div>
+                    <div class="text-xs text-gray-600 flex justify-between">
+                        <span>${formatDate(match.time)}</span>
+                        <span class="${statusClass}">${match.status === 'Live' && match.liveMinute ? `${match.status} ${match.liveMinute}'` : match.status}</span>
+                    </div>
+                </div>
+            `;
+        }
+
+        function renderVenueCard(venue) {
+            return `
+                <div class="bg-white p-4 rounded-lg shadow-md hover:shadow-lg transition-shadow cursor-pointer" onclick="navigateTo('venueDetail', ${venue.id})">
+                    <div class="w-full h-32 bg-gray-200 rounded-md mb-3 overflow-hidden">
+                        ${createPlaceholderImage('w-full h-full')}
+                        <!-- Real image would be <img src="path/to/${venue.image}" alt="${venue.name}" class="w-full h-full object-cover"> -->
+                    </div>
+                    <h3 class="text-lg font-semibold text-red-700">${venue.name}</h3>
+                    <p class="text-sm text-gray-600">${venue.city}</p>
+                    <p class="text-xs text-gray-500 mt-1">Capacity: ${venue.capacity.toLocaleString()}</p>
+                </div>
+            `;
+        }
+
+        function renderListItem(item) { // Generic list item for Explore/More pages
+            return `
+                <div class="bg-white p-4 rounded-lg shadow-sm hover:bg-gray-50 transition-colors cursor-pointer flex items-center" onclick="${item.onClick}">
+                    ${item.icon || ''}
+                    <div>
+                        <h3 class="text-md font-semibold text-gray-800">${item.title}</h3>
+                        ${item.subtitle ? `<p class="text-sm text-gray-500">${item.subtitle}</p>` : ''}
+                    </div>
+                </div>
+            `;
+        }
+
+        // --- RENDER PAGES ---
+        function renderPageContent(title, contentHtml) {
+            // Find current nav item to set title, or use provided title
+            const currentNavItem = NAV_ITEMS.find(item => item.id === appState.currentPage.split('_')[0]);
+            appTitle.textContent = title || (currentNavItem ? currentNavItem.title : 'AFCON Guide');
+            mainContent.innerHTML = `<div class="p-4 space-y-4">${contentHtml}</div>`;
+            mainContent.scrollTop = 0; // Scroll to top on new page
+            updateBackButton();
+        }
+        
+        function renderHomePage() {
+            const content = `
+                <div class="bg-gradient-to-br from-red-600 to-red-800 text-white p-6 rounded-lg shadow-xl mb-6">
+                    <h2 class="text-2xl font-bold mb-2">Welcome to AFCON 2025!</h2>
+                    <p class="text-red-100">Your essential guide to the Africa Cup of Nations in Morocco. Find schedules, venue info, local tips, and more!</p>
+                </div>
+
+                <div class="grid grid-cols-2 gap-4 mb-6">
+                    <div class="bg-green-600 text-white p-4 rounded-lg shadow-md hover:bg-green-700 transition-colors cursor-pointer" onclick="navigateTo('matches')">
+                        <h3 class="font-semibold text-lg">Matches</h3>
+                        <p class="text-sm opacity-90">View schedule & live scores</p>
+                    </div>
+                    <div class="bg-yellow-500 text-gray-900 p-4 rounded-lg shadow-md hover:bg-yellow-600 transition-colors cursor-pointer" onclick="navigateTo('venues')">
+                        <h3 class="font-semibold text-lg">Venues</h3>
+                        <p class="text-sm opacity-90">Stadium information</p>
+                    </div>
+                </div>
+                
+                <h3 class="text-xl font-semibold text-gray-800 mb-3">Quick Links</h3>
+                ${renderListItem({ title: 'Book Tickets', subtitle: 'Secure your match tickets', icon: ICONS.ticket, onClick: "navigateTo('tickets')" })}
+                ${renderListItem({ title: 'Official Merchandise', subtitle: 'Shop AFCON gear', icon: ICONS.shop, onClick: "navigateTo('merchandise')" })}
+                ${renderListItem({ title: 'Fan Zones & Events', subtitle: 'Find fan activities', icon: ICONS.users, onClick: "navigateTo('fanZones')" })}
+            `;
+            renderPageContent('AFCON Morocco Guide', content);
+        }
+
+        function renderMatchesPage() {
+            const upcomingMatches = afconData.matches.filter(m => m.status === 'Upcoming').map(renderMatchCard).join('');
+            const liveMatches = afconData.matches.filter(m => m.status === 'Live').map(renderMatchCard).join('');
+            const finishedMatches = afconData.matches.filter(m => m.status === 'Finished').map(renderMatchCard).join('');
+
+            let content = '';
+            if (liveMatches) {
+                content += `<h3 class="text-xl font-semibold text-red-600 mb-2">Live Now</h3><div class="space-y-3 mb-4">${liveMatches}</div>`;
+            }
+            if (upcomingMatches) {
+                content += `<h3 class="text-xl font-semibold text-gray-800 mb-2">Upcoming Matches</h3><div class="space-y-3 mb-4">${upcomingMatches}</div>`;
+            }
+            if (finishedMatches) {
+                content += `<h3 class="text-xl font-semibold text-gray-800 mb-2">Finished Matches</h3><div class="space-y-3">${finishedMatches}</div>`;
+            }
+            if (!content) {
+                content = `<p class="text-gray-600">No matches to display currently. Check back soon!</p>`;
+            }
+            renderPageContent('Match Schedule', content);
+        }
+
+        function renderMatchDetailPage(matchId) {
+            const match = afconData.matches.find(m => m.id === matchId);
+            if (!match) {
+                renderPageContent('Error', '<p>Match not found.</p>');
+                return;
+            }
+            const venue = getVenueById(match.venueId);
+
+            let chartHtml = '';
+            if (match.status !== 'Upcoming' && match.stats && match.stats.teamA && match.stats.teamB) {
+                chartHtml = `<div class="bg-white p-4 rounded-lg shadow-md mt-4">
+                    <h4 class="text-md font-semibold text-gray-700 mb-2">Match Stats</h4>
+                    <canvas id="matchStatsChart" class="max-h-64"></canvas>
+                </div>`;
+            }
+            
+            const content = `
+                <div class="bg-white p-4 rounded-lg shadow-lg">
+                    <div class="text-center mb-4">
+                        <p class="text-sm text-gray-500">Group ${match.group} | ${venue.name}, ${venue.city}</p>
+                        <p class="text-sm text-gray-500">${formatDate(match.time)}</p>
+                    </div>
+                    <div class="flex items-center justify-around mb-4">
+                        <div class="text-center w-2/5">
+                            <span class="text-5xl">${match.teamAFlag}</span>
+                            <h2 class="text-xl font-bold text-gray-800 mt-1">${match.teamA}</h2>
+                        </div>
+                        <div class="text-center w-1/5">
+                            ${match.status === 'Finished' || match.status === 'Live' ? 
+                                `<p class="text-4xl font-bold text-red-700">${match.scoreA} - ${match.scoreB}</p>` :
+                                `<p class="text-2xl text-gray-500">VS</p>`}
+                            <p class="text-sm ${match.status === 'Live' ? 'text-red-500 animate-pulse' : 'text-gray-600'} mt-1">
+                                ${match.status === 'Live' && match.liveMinute ? `${match.status} ${match.liveMinute}'` : match.status}
+                            </p>
+                        </div>
+                        <div class="text-center w-2/5">
+                            <span class="text-5xl">${match.teamBFlag}</span>
+                            <h2 class="text-xl font-bold text-gray-800 mt-1">${match.teamB}</h2>
+                        </div>
+                    </div>
+                    ${match.highlights ? `<div class="mt-4 text-center"><a href="${match.highlights}" target="_blank" class="bg-red-600 hover:bg-red-700 text-white font-semibold py-2 px-4 rounded-lg transition-colors">Watch Highlights</a></div>` : ''}
+                </div>
+                ${chartHtml}
+                <div class="bg-white p-4 rounded-lg shadow-md mt-4">
+                    <h4 class="text-md font-semibold text-gray-700 mb-2">Team Lineups (Placeholder)</h4>
+                    <div class="grid grid-cols-2 gap-4 text-sm">
+                        <div>
+                            <h5 class="font-semibold text-gray-600">${match.teamA}</h5>
+                            <ul class="list-disc list-inside text-gray-500">
+                                ${match.lineupA && match.lineupA.length > 0 ? match.lineupA.slice(0,5).map(p => `<li>${p}</li>`).join('') + (match.lineupA.length > 5 ? '<li>... and more</li>' : '') : '<li>Not available</li>'}
+                            </ul>
+                        </div>
+                        <div>
+                            <h5 class="font-semibold text-gray-600">${match.teamB}</h5>
+                            <ul class="list-disc list-inside text-gray-500">
+                                ${match.lineupB && match.lineupB.length > 0 ? match.lineupB.slice(0,5).map(p => `<li>${p}</li>`).join('') + (match.lineupB.length > 5 ? '<li>... and more</li>' : '') : '<li>Not available</li>'}
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            `;
+            renderPageContent(`${match.teamA} vs ${match.teamB}`, content);
+
+            if (chartHtml) { // Render chart if data exists
+                setTimeout(() => { // Ensure canvas is in DOM
+                    const ctx = document.getElementById('matchStatsChart')?.getContext('2d');
+                    if (ctx) {
+                        new Chart(ctx, {
+                            type: 'bar',
+                            data: {
+                                labels: ['Possession (%)', 'Total Shots', 'Shots on Target'],
+                                datasets: [
+                                    {
+                                        label: match.teamA,
+                                        data: [match.stats.teamA.possession, match.stats.teamA.shots, match.stats.teamA.onTarget],
+                                        backgroundColor: 'rgba(220, 38, 38, 0.7)', // Red-600
+                                        borderColor: 'rgba(199, 27, 45, 1)',
+                                        borderWidth: 1
+                                    },
+                                    {
+                                        label: match.teamB,
+                                        data: [match.stats.teamB.possession, match.stats.teamB.shots, match.stats.teamB.onTarget],
+                                        backgroundColor: 'rgba(22, 163, 74, 0.7)', // Green-600
+                                        borderColor: 'rgba(21, 128, 61, 1)',
+                                        borderWidth: 1
+                                    }
+                                ]
+                            },
+                            options: {
+                                responsive: true,
+                                scales: { y: { beginAtZero: true } },
+                                indexAxis: 'y',
+                            }
+                        });
+                    }
+                }, 0);
+            }
+        }
+
+        function renderVenuesPage() {
+            const content = afconData.venues.map(renderVenueCard).join('<div class="my-3"></div>'); // Adding spacing this way for grid
+            renderPageContent('Stadiums', `<div class="grid grid-cols-1 md:grid-cols-2 gap-4">${content}</div>`);
+        }
+
+        function renderVenueDetailPage(venueId) {
+            const venue = afconData.venues.find(v => v.id === venueId);
+            if (!venue) {
+                renderPageContent('Error', '<p>Venue not found.</p>');
+                return;
+            }
+            const content = `
+                <div class="bg-white rounded-lg shadow-lg overflow-hidden">
+                    <div class="w-full h-48 bg-gray-300">
+                         ${createPlaceholderImage('w-full h-full')}
+                        <!-- <img src="path/to/${venue.image}" alt="${venue.name}" class="w-full h-full object-cover"> -->
+                    </div>
+                    <div class="p-4">
+                        <h2 class="text-2xl font-bold text-red-700 mb-2">${venue.name}</h2>
+                        <p class="text-md text-gray-700 mb-1">${venue.city}</p>
+                        <p class="text-sm text-gray-500 mb-4">Capacity: ${venue.capacity.toLocaleString()}</p>
+                        
+                        <div class="mb-4">
+                            <h4 class="font-semibold text-gray-800 mb-1">Map & Directions:</h4>
+                            ${venue.mapEmbed}
+                            <a href="${venue.mapLink || '#'}" target="_blank" class="mt-2 inline-block text-sm text-red-600 hover:text-red-800 font-semibold">Open in Maps (Placeholder)</a>
+                        </div>
+                        <div class="mb-4">
+                            <h4 class="font-semibold text-gray-800 mb-1">Parking:</h4>
+                            <p class="text-sm text-gray-600">${venue.parking}</p>
+                        </div>
+                        <div>
+                            <h4 class="font-semibold text-gray-800 mb-1">Public Transport:</h4>
+                            <p class="text-sm text-gray-600">${venue.transport}</p>
+                        </div>
+                        ${venue.near && venue.near.length > 0 ? `
+                        <div class="mt-4">
+                            <h4 class="font-semibold text-gray-800 mb-1">Nearby Attractions:</h4>
+                            <ul class="list-disc list-inside text-sm text-gray-600">
+                                ${afconData.attractions.filter(a => venue.near.includes(a.id)).map(a => `<li class="cursor-pointer hover:text-red-600" onclick="navigateTo('explore_attractionDetail', ${a.id})">${a.name}</li>`).join('')}
+                            </ul>
+                        </div>
+                        ` : ''}
+                    </div>
+                </div>
+            `;
+            renderPageContent(venue.name, content);
+        }
+
+        function renderExplorePage() {
+            const items = [
+                { title: 'Local Attractions', subtitle: 'Must-see spots near host cities', icon: ICONS.mapMarker, onClick: "navigateTo('explore_attractions')" },
+                { title: 'Local Cuisine Map', subtitle: 'Find traditional Moroccan dishes', icon: ICONS.food, onClick: "navigateTo('explore_cuisine')" },
+                { title: 'Cultural Tips', subtitle: 'Guides on customs and etiquette', icon: ICONS.bookOpen, onClick: "navigateTo('explore_culturalTips')" },
+                { title: 'Language Assistance', subtitle: 'Common phrases & pronunciation', icon: ICONS.language, onClick: "navigateTo('explore_language')" }
+            ];
+            const content = items.map(renderListItem).join('');
+            renderPageContent('Explore Morocco', content);
+        }
+
+        function renderAttractionsPage() {
+            const content = afconData.attractions.map(attraction => `
+                <div class="bg-white p-3 rounded-lg shadow-md flex items-start space-x-3 cursor-pointer hover:shadow-lg" onclick="navigateTo('explore_attractionDetail', ${attraction.id})">
+                    ${createPlaceholderImage('w-20 h-20 flex-shrink-0')}
+                    <div>
+                        <h3 class="text-md font-semibold text-red-700">${attraction.name}</h3>
+                        <p class="text-xs text-gray-500 mb-1">${attraction.city} - ${attraction.category}</p>
+                        <p class="text-sm text-gray-600 leading-tight">${attraction.description.substring(0, 70)}...</p>
+                    </div>
+                </div>
+            `).join('');
+            renderPageContent('Local Attractions', `<div class="space-y-3">${content}</div>`);
+        }
+        
+        function renderAttractionDetailPage(attractionId) {
+            const attraction = afconData.attractions.find(a => a.id === attractionId);
+             if (!attraction) {
+                renderPageContent('Error', '<p>Attraction not found.</p>');
+                return;
+            }
+            const content = `
+                <div class="bg-white p-4 rounded-lg shadow-lg">
+                    <div class="w-full h-48 bg-gray-200 rounded-md mb-3 overflow-hidden">
+                        ${createPlaceholderImage('w-full h-full')}
+                    </div>
+                    <h2 class="text-2xl font-bold text-red-700 mb-1">${attraction.name}</h2>
+                    <p class="text-sm text-gray-500 mb-1">${attraction.city} - ${attraction.category}</p>
+                    <p class="text-gray-700 leading-relaxed mt-3">${attraction.description}</p>
+                </div>
+            `;
+            renderPageContent(attraction.name, content);
+        }
+
+        function renderCuisinePage() {
+            const content = afconData.cuisine.map(item => `
+                <div class="bg-white p-3 rounded-lg shadow-md flex items-start space-x-3">
+                     ${createPlaceholderImage('w-20 h-20 flex-shrink-0')}
+                    <div>
+                        <h3 class="text-md font-semibold text-red-700">${item.name}</h3>
+                        <p class="text-xs text-gray-500 mb-1">${item.city} - ${item.type}</p>
+                        <p class="text-sm text-gray-600">Try: ${item.dish}</p>
+                        <div class="flex items-center mt-1">
+                            ${Array(Math.floor(item.rating)).fill(0).map(() => ICONS.star).join('')}
+                            ${item.rating % 1 !== 0 ? `<svg viewBox="0 0 24 24" fill="currentColor" class="w-5 h-5 text-yellow-400"><path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21 12 17.27zM12 15.4V6.1l1.71 4.04 4.38.38-3.32 2.88 1 4.28L12 15.4z"></path></svg>`:''}
+                            <span class="text-xs text-gray-500 ml-1">(${item.rating})</span>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+            renderPageContent('Local Cuisine', `<div class="space-y-3">${content}</div>`);
+        }
+        
+        function renderCulturalTipsPage() {
+            const content = afconData.culturalTips.map(tip => `
+                <details class="bg-white p-3 rounded-lg shadow-sm group">
+                    <summary class="font-semibold text-gray-700 cursor-pointer group-hover:text-red-600 list-none flex justify-between items-center">
+                        ${tip.title}
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-4 h-4 transition-transform duration-200 group-open:rotate-180">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />
+                        </svg>
+                    </summary>
+                    <p class="text-sm text-gray-600 mt-2">${tip.content}</p>
+                </details>
+            `).join('');
+            renderPageContent('Cultural Tips', `<div class="space-y-3">${content}</div>`);
+        }
+
+        function renderLanguagePage() {
+            const categories = [...new Set(afconData.languagePhrases.map(p => p.category))];
+            const content = categories.map(category => `
+                <div class="mb-4">
+                    <h3 class="text-lg font-semibold text-gray-700 mb-2">${category}</h3>
+                    <div class="space-y-2">
+                    ${afconData.languagePhrases.filter(p => p.category === category).map(phrase => `
+                        <div class="bg-white p-3 rounded-lg shadow-sm">
+                            <p class="font-medium text-gray-800">${phrase.phrase_en}</p>
+                            <p class="text-green-700 text-sm">${phrase.phrase_ar}</p>
+                            <p class="text-xs text-gray-500 italic">${phrase.pronunciation}</p>
+                        </div>
+                    `).join('')}
+                    </div>
+                </div>
+            `).join('');
+            renderPageContent('Language Assistance', content);
+        }
+        
+        function renderMorePage() {
+            const items = [
+                { title: 'Ticket Booking', subtitle: 'Official ticket portal', icon: ICONS.ticket, onClick: "navigateTo('tickets')" },
+                { title: 'Merchandise Store', subtitle: 'Buy AFCON souvenirs', icon: ICONS.shop, onClick: "navigateTo('merchandise')" },
+                { title: 'Fan Zones & Events', subtitle: 'Info on official fan areas', icon: ICONS.users, onClick: "navigateTo('fanZones')" },
+                { title: 'Ratings & Reviews', subtitle: 'User feedback on spots (Placeholder)', icon: ICONS.star, onClick: "alert('Ratings & Reviews: Coming Soon!')" },
+                { title: 'Meet & Greet', subtitle: 'Connect with other fans (Placeholder)', icon: ICONS.users, onClick: "alert('Meet & Greet: Coming Soon!')" },
+                { title: 'Fan Challenges', subtitle: 'Participate in challenges (Placeholder)', icon: ICONS.challenge, onClick: "alert('Fan Challenges: Coming Soon!')" },
+                { title: 'Live Chat Rooms', subtitle: 'Discuss matches (Placeholder)', icon: ICONS.chat, onClick: "alert('Live Chat Rooms: Coming Soon!')" },
+            ];
+            const content = items.map(renderListItem).join('');
+            renderPageContent('More Options', content);
+        }
+        
+        function renderPlaceholderPage(title, message = "This section is under development. Check back soon!") {
+            const content = `<div class="text-center py-10">
+                ${createPlaceholderImage('w-32 h-32 mx-auto mb-4')}
+                <h2 class="text-xl font-semibold text-gray-700 mb-2">${title}</h2>
+                <p class="text-gray-500">${message}</p>
+                ${ title === 'Ticket Booking' ? '<a href="#" class="mt-4 inline-block bg-red-600 hover:bg-red-700 text-white font-semibold py-2 px-4 rounded-lg transition-colors">Go to Ticket Website (External)</a>':''}
+                ${ title === 'Merchandise Store' ? '<a href="#" class="mt-4 inline-block bg-green-600 hover:bg-green-700 text-white font-semibold py-2 px-4 rounded-lg transition-colors">Go to Official Shop (External)</a>':''}
+            </div>`;
+            renderPageContent(title, content);
+        }
+        
+        function renderFanZonesPage() {
+             const content = afconData.fanZones.map(zone => `
+                <div class="bg-white p-4 rounded-lg shadow-md">
+                    <h3 class="text-lg font-semibold text-red-700">${zone.name}</h3>
+                    <p class="text-sm text-gray-600"><span class="font-medium">Location:</span> ${zone.location}</p>
+                    <p class="text-sm text-gray-600"><span class="font-medium">Details:</span> ${zone.details}</p>
+                </div>
+            `).join('');
+            renderPageContent('Fan Zones & Events', `<div class="space-y-3">${content}</div>`);
+        }
+
+        function renderMerchandisePage() {
+            const content = `
+                <p class="text-gray-600 mb-4">Browse official AFCON and team merchandise. Click on an item to learn more (simulated).</p>
+                <div class="grid grid-cols-2 gap-4">
+                    ${afconData.merchandise.map(item => `
+                        <div class="bg-white p-3 rounded-lg shadow-md cursor-pointer hover:shadow-lg transition-shadow">
+                            ${createPlaceholderImage('w-full h-32 mb-2')}
+                            <h4 class="font-semibold text-gray-800 text-sm">${item.name}</h4>
+                            <p class="text-red-600 font-bold text-xs">${item.price}</p>
+                        </div>
+                    `).join('')}
+                </div>
+                <a href="#" class="mt-6 block text-center bg-green-600 hover:bg-green-700 text-white font-semibold py-3 px-4 rounded-lg transition-colors w-full">Visit Official Online Store (External)</a>
+            `;
+            renderPageContent('Merchandise Store', content);
+        }
+
+        // --- NAVIGATION LOGIC ---
+        function navigateTo(pageId, detailId = null) {
+            if (appState.currentPage === pageId && appState.currentDetailId === detailId) return; // Avoid re-rendering same page
+
+            // Push current state to history if it's a new page (not just a detail view of same list)
+            if (pageId.split('_')[0] !== appState.currentPage.split('_')[0] || !detailId) {
+                 if(appState.currentPage !== 'home' || appState.currentDetailId !== null) { // Don't push home as first item
+                    appState.previousPages.push({ page: appState.currentPage, detailId: appState.currentDetailId });
+                 }
+            }
+            
+            appState.currentPage = pageId;
+            appState.currentDetailId = detailId;
+            renderCurrentPage();
+            updateActiveNav();
+        }
+        
+        function navigateBack() {
+            if (appState.previousPages.length > 0) {
+                const prevState = appState.previousPages.pop();
+                appState.currentPage = prevState.page;
+                appState.currentDetailId = prevState.detailId;
+                renderCurrentPage();
+                updateActiveNav();
+            } else { // Fallback to home if history is empty
+                navigateTo('home');
+            }
+        }
+
+        function updateBackButton() {
+            if (appState.previousPages.length > 0 && appState.currentPage !== 'home') {
+                backButton.classList.remove('hidden');
+            } else {
+                backButton.classList.add('hidden');
+            }
+        }
+
+        function renderCurrentPage() {
+            // Clear previous live match simulation if any
+            if (appState.liveMatchSimulationInterval) {
+                clearInterval(appState.liveMatchSimulationInterval);
+                appState.liveMatchSimulationInterval = null;
+            }
+
+            const [basePage, subPageOrDetail] = appState.currentPage.split('_');
+            
+            switch (basePage) {
+                case 'home': renderHomePage(); break;
+                case 'matches': renderMatchesPage(); break;
+                case 'matchDetail': renderMatchDetailPage(appState.currentDetailId); break;
+                case 'venues': renderVenuesPage(); break;
+                case 'venueDetail': renderVenueDetailPage(appState.currentDetailId); break;
+                case 'explore':
+                    if (subPageOrDetail === 'attractions') renderAttractionsPage();
+                    else if (subPageOrDetail === 'attractionDetail') renderAttractionDetailPage(appState.currentDetailId);
+                    else if (subPageOrDetail === 'cuisine') renderCuisinePage();
+                    else if (subPageOrDetail === 'culturalTips') renderCulturalTipsPage();
+                    else if (subPageOrDetail === 'language') renderLanguagePage();
+                    else renderExplorePage(); // Main explore menu
+                    break;
+                case 'more': renderMorePage(); break;
+                case 'tickets': renderPlaceholderPage('Ticket Booking', 'Access the official AFCON ticket portal here.'); break;
+                case 'merchandise': renderMerchandisePage(); break;
+                case 'fanZones': renderFanZonesPage(); break;
+                // Add more cases for sub-pages of 'More' if they become complex
+                default: renderHomePage();
+            }
+        }
+
+        function updateActiveNav() {
+            document.querySelectorAll('#bottom-nav button').forEach(button => {
+                button.classList.remove('active-nav-item', 'text-red-700');
+                button.classList.add('text-gray-500');
+                if (button.dataset.page.startsWith(appState.currentPage.split('_')[0])) {
+                    button.classList.add('active-nav-item', 'text-red-700');
+                    button.classList.remove('text-gray-500');
+                }
+            });
+        }
+
+        // Initialize Bottom Navigation
+        function initNav() {
+            NAV_ITEMS.forEach(item => {
+                const button = document.createElement('button');
+                button.className = 'flex-1 py-2 px-1 text-center text-gray-500 hover:text-red-600 transition-colors focus:outline-none';
+                button.dataset.page = item.id;
+                button.innerHTML = `
+                    ${item.icon}
+                    <span class="text-xs block">${item.label}</span>
+                `;
+                button.onclick = () => navigateTo(item.id);
+                bottomNav.appendChild(button);
+            });
+        }
+        
+        // --- LIVE SCORE SIMULATION ---
+        function simulateLiveScores() {
+            const liveMatch = afconData.matches.find(m => m.status === 'Live');
+            if (liveMatch) {
+                appState.liveMatchSimulationInterval = setInterval(() => {
+                    if (liveMatch.liveMinute < 90) {
+                        liveMatch.liveMinute += 1;
+                        // Randomly change score sometimes
+                        if (Math.random() < 0.05) { // 5% chance of a goal
+                            if (Math.random() < 0.5) liveMatch.scoreA++; else liveMatch.scoreB++;
+                        }
+                        if (appState.currentPage === 'matches' || (appState.currentPage === 'matchDetail' && appState.currentDetailId === liveMatch.id)) {
+                           renderCurrentPage(); // Re-render if viewing matches or the specific live match
+                        }
+                    } else {
+                        liveMatch.status = 'Finished';
+                        clearInterval(appState.liveMatchSimulationInterval);
+                        appState.liveMatchSimulationInterval = null;
+                        if (appState.currentPage === 'matches' || (appState.currentPage === 'matchDetail' && appState.currentDetailId === liveMatch.id)) {
+                           renderCurrentPage();
+                        }
+                    }
+                }, 5000); // Update every 5 seconds
+            }
+        }
+
+        // --- INITIALIZATION ---
+        document.addEventListener('DOMContentLoaded', () => {
+            initNav();
+            navigateTo('home'); // Start with home page
+            simulateLiveScores(); // Start live score simulation
+
+            backButton.addEventListener('click', navigateBack);
+            modalCloseButton.addEventListener('click', hideModal);
+        });
+
+    </script>
+</body>
+</html>

@@ -1,0 +1,9 @@
+{
+  "web_id": "web_39",
+  "task_id": 4,
+  "task_type": "dynamic",
+  "instruction": "Task: Press the designated key to rotate the falling tetromino\nExpected Result: The tetromino rotates 90 degrees (e.g., clockwise), provided the new orientation is valid and does not collide with other blocks or game boundaries.\n\nNote: The task is only considered successful if the expected result is achieved; otherwise, it is deemed infeasible.",
+  "max_steps": 15,
+  "expected": "The tetromino rotates 90 degrees (e.g., clockwise), provided the new orientation is valid and does not collide with other blocks or game boundaries.",
+  "label": 1
+}

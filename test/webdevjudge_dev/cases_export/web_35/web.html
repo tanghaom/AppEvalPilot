@@ -1,0 +1,859 @@
+<!DOCTYPE html>
+<html lang="en" class=""> <!-- 'dark' class will be added here by JS -->
+<head>
+    <meta charset="UTF-R-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NutriTrack - Calorie & Macro Tracker</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        /* Custom scrollbar for webkit browsers */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #888;
+            border-radius: 10px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #555;
+        }
+        .dark ::-webkit-scrollbar-thumb {
+            background: #555;
+        }
+        .dark ::-webkit-scrollbar-thumb:hover {
+            background: #333;
+        }
+
+        /* Smooth transitions */
+        body, .bg-card, .text-color, .border-color {
+            transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease;
+        }
+        .progress-ring-circle {
+            transition: stroke-dashoffset 0.5s ease-out;
+        }
+        .progress-bar-fill {
+            transition: width 0.5s ease-out;
+        }
+        .modal {
+            transition: opacity 0.3s ease, transform 0.3s ease;
+        }
+        .modal-content {
+            transition: transform 0.3s ease;
+        }
+        .modal.opacity-0 {
+            pointer-events: none;
+        }
+        
+        /* Shadcn/ui inspired focus rings */
+        input:focus, button:focus-visible, select:focus {
+            outline: 2px solid transparent;
+            outline-offset: 2px;
+            --tw-ring-inset: var(--tw-empty,/*!*/ /*!*/);
+            --tw-ring-offset-width: 0px;
+            --tw-ring-offset-color: #fff;
+            --tw-ring-color: #3b82f6; /* blue-500 */
+            --tw-ring-offset-shadow: var(--tw-ring-inset) 0 0 0 var(--tw-ring-offset-width) var(--tw-ring-offset-color);
+            --tw-ring-shadow: var(--tw-ring-inset) 0 0 0 calc(2px + var(--tw-ring-offset-width)) var(--tw-ring-color);
+            box-shadow: var(--tw-ring-offset-shadow), var(--tw-ring-shadow), var(--tw-shadow, 0 0 #0000);
+        }
+        .dark input:focus, .dark button:focus-visible, .dark select:focus {
+            --tw-ring-offset-color: #0f172a; /* slate-900 */
+            --tw-ring-color: #60a5fa; /* blue-400 */
+        }
+    </style>
+    <script>
+        tailwind.config = {
+            darkMode: 'class', // or 'media'
+            theme: {
+                extend: {
+                    colors: {
+                        // Light theme (default)
+                        background: 'var(--color-background)',
+                        foreground: 'var(--color-foreground)',
+                        card: 'var(--color-card)',
+                        'card-foreground': 'var(--color-card-foreground)',
+                        popover: 'var(--color-popover)',
+                        'popover-foreground': 'var(--color-popover-foreground)',
+                        primary: 'var(--color-primary)',
+                        'primary-foreground': 'var(--color-primary-foreground)',
+                        secondary: 'var(--color-secondary)',
+                        'secondary-foreground': 'var(--color-secondary-foreground)',
+                        muted: 'var(--color-muted)',
+                        'muted-foreground': 'var(--color-muted-foreground)',
+                        accent: 'var(--color-accent)',
+                        'accent-foreground': 'var(--color-accent-foreground)',
+                        destructive: 'var(--color-destructive)',
+                        'destructive-foreground': 'var(--color-destructive-foreground)',
+                        border: 'var(--color-border)',
+                        input: 'var(--color-input)',
+                        ring: 'var(--color-ring)',
+
+                        // Custom colors for macros
+                        protein: 'var(--color-protein)',
+                        carbs: 'var(--color-carbs)',
+                        fat: 'var(--color-fat)',
+                    },
+                    borderRadius: {
+                        lg: `var(--radius)`,
+                        md: `calc(var(--radius) - 2px)`,
+                        sm: "calc(var(--radius) - 4px)"
+                    },
+                }
+            },
+            plugins: [
+                function({ addBase, theme }) {
+                    function extractColorVars(colorObj, colorGroup = '') {
+                        return Object.keys(colorObj).reduce((vars, colorKey) => {
+                            const value = colorObj[colorKey];
+                            const cssVariable = colorKey === "DEFAULT" ? `--color${colorGroup}` : `--color${colorGroup}-${colorKey}`;
+                            
+                            if (typeof value === 'string') {
+                                vars[cssVariable] = value;
+                            } else if (typeof value === 'object') {
+                                Object.assign(vars, extractColorVars(value, `-${colorKey}`));
+                            }
+                            return vars;
+                        }, {});
+                    }
+
+                    addBase({
+                        ':root': {
+                            '--color-background': '#ffffff', // bg-white
+                            '--color-foreground': '#0f172a', // slate-900
+                            '--color-card': '#ffffff', // bg-white
+                            '--color-card-foreground': '#0f172a', // slate-900
+                            '--color-popover': '#ffffff',
+                            '--color-popover-foreground': '#0f172a',
+                            '--color-primary': '#2563eb', // blue-600
+                            '--color-primary-foreground': '#ffffff', // white
+                            '--color-secondary': '#f1f5f9', // slate-100
+                            '--color-secondary-foreground': '#0f172a', // slate-900
+                            '--color-muted': '#f1f5f9', // slate-100
+                            '--color-muted-foreground': '#64748b', // slate-500
+                            '--color-accent': '#f1f5f9', // slate-100
+                            '--color-accent-foreground': '#0f172a', // slate-900
+                            '--color-destructive': '#ef4444', // red-500
+                            '--color-destructive-foreground': '#ffffff',
+                            '--color-border': '#e2e8f0', // slate-200
+                            '--color-input': '#e2e8f0', // slate-200
+                            '--color-ring': '#3b82f6', // blue-500
+                            '--radius': '0.75rem', // rounded-xl
+                            '--color-protein': '#22c55e', // green-500
+                            '--color-carbs': '#eab308', // yellow-500
+                            '--color-fat': '#ec4899', // pink-500
+                        },
+                        '.dark': {
+                            '--color-background': '#020617', // slate-950
+                            '--color-foreground': '#f8fafc', // slate-50
+                            '--color-card': '#0f172a', // slate-900
+                            '--color-card-foreground': '#f8fafc', // slate-50
+                            '--color-popover': '#0f172a',
+                            '--color-popover-foreground': '#f8fafc',
+                            '--color-primary': '#3b82f6', // blue-500
+                            '--color-primary-foreground': '#f8fafc', // slate-50
+                            '--color-secondary': '#1e293b', // slate-800
+                            '--color-secondary-foreground': '#f8fafc', // slate-50
+                            '--color-muted': '#1e293b', // slate-800
+                            '--color-muted-foreground': '#94a3b8', // slate-400
+                            '--color-accent': '#1e293b', // slate-800
+                            '--color-accent-foreground': '#f8fafc', // slate-50
+                            '--color-destructive': '#dc2626', // red-600
+                            '--color-destructive-foreground': '#f8fafc',
+                            '--color-border': '#1e293b', // slate-800
+                            '--color-input': '#1e293b', // slate-800
+                            '--color-ring': '#60a5fa', // blue-400
+                            '--color-protein': '#4ade80', // green-400
+                            '--color-carbs': '#facc15', // yellow-400
+                            '--color-fat': '#f472b6', // pink-400
+                        }
+                    });
+                }
+            ]
+        }
+    </script>
+</head>
+<body class="bg-background text-foreground font-sans antialiased">
+    <div id="app" class="min-h-screen flex flex-col">
+        <!-- Header -->
+        <header class="sticky top-0 z-40 w-full border-b border-border bg-card/80 backdrop-blur">
+            <div class="container mx-auto px-4 h-16 flex items-center justify-between">
+                <h1 class="text-xl font-bold text-primary">NutriTrack</h1>
+                <div class="flex items-center gap-4">
+                    <button id="setGoalsButton" aria-label="Set Goals" class="p-2 rounded-md hover:bg-muted">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20v-6M12 14V4M6 14H4M10 14H8M16 14h-2M20 14h-2M12 6V4M6 6V4M10 6V4M16 6V4M20 6V4M4 20h16"/></svg>
+                    </button>
+                    <button id="themeToggle" aria-label="Toggle theme" class="p-2 rounded-md hover:bg-muted">
+                        <svg id="themeIconSun" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="hidden"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+                        <svg id="themeIconMoon" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="hidden"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+                    </button>
+                </div>
+            </div>
+        </header>
+
+        <!-- Main Content -->
+        <main class="flex-grow container mx-auto px-4 py-8">
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <!-- Daily Tracking Column -->
+                <div class="lg:col-span-2 space-y-6">
+                    <!-- Daily Summary Card -->
+                    <div class="bg-card text-card-foreground p-6 rounded-lg border border-border shadow-sm">
+                        <div class="flex justify-between items-center mb-4">
+                            <h2 class="text-2xl font-semibold">Today's Summary</h2>
+                            <span id="currentDateDisplay" class="text-sm text-muted-foreground"></span>
+                        </div>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 items-center">
+                            <!-- Calorie Progress Ring -->
+                            <div class="flex flex-col items-center">
+                                <div class="relative w-40 h-40">
+                                    <svg class="w-full h-full transform -rotate-90" viewBox="0 0 100 100">
+                                        <circle cx="50" cy="50" r="45" stroke="currentColor" stroke-width="8" fill="transparent" class="text-muted" />
+                                        <circle id="calorieProgressCircle" cx="50" cy="50" r="45" stroke="currentColor" stroke-width="8" fill="transparent"
+                                            stroke-linecap="round"
+                                            class="text-primary progress-ring-circle"
+                                            stroke-dasharray="282.74" 
+                                            stroke-dashoffset="282.74" />
+                                    </svg>
+                                    <div class="absolute inset-0 flex flex-col items-center justify-center">
+                                        <span id="caloriesConsumed" class="text-3xl font-bold text-foreground">0</span>
+                                        <span class="text-sm text-muted-foreground">/ <span id="calorieGoal">0</span> kcal</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <!-- Macronutrient Progress Bars -->
+                            <div class="space-y-4">
+                                <div id="proteinTracker">
+                                    <div class="flex justify-between text-sm mb-1">
+                                        <span class="font-medium text-protein">Protein</span>
+                                        <span class="text-muted-foreground"><span id="proteinConsumed">0</span>g / <span id="proteinGoal">0</span>g</span>
+                                    </div>
+                                    <div class="w-full bg-muted rounded-full h-3">
+                                        <div id="proteinProgressBar" class="bg-protein h-3 rounded-full progress-bar-fill" style="width: 0%"></div>
+                                    </div>
+                                </div>
+                                <div id="carbsTracker">
+                                    <div class="flex justify-between text-sm mb-1">
+                                        <span class="font-medium text-carbs">Carbs</span>
+                                        <span class="text-muted-foreground"><span id="carbsConsumed">0</span>g / <span id="carbsGoal">0</span>g</span>
+                                    </div>
+                                    <div class="w-full bg-muted rounded-full h-3">
+                                        <div id="carbsProgressBar" class="bg-carbs h-3 rounded-full progress-bar-fill" style="width: 0%"></div>
+                                    </div>
+                                </div>
+                                <div id="fatTracker">
+                                    <div class="flex justify-between text-sm mb-1">
+                                        <span class="font-medium text-fat">Fat</span>
+                                        <span class="text-muted-foreground"><span id="fatConsumed">0</span>g / <span id="fatGoal">0</span>g</span>
+                                    </div>
+                                    <div class="w-full bg-muted rounded-full h-3">
+                                        <div id="fatProgressBar" class="bg-fat h-3 rounded-full progress-bar-fill" style="width: 0%"></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Food Log Card -->
+                    <div class="bg-card text-card-foreground p-6 rounded-lg border border-border shadow-sm">
+                        <div class="flex justify-between items-center mb-4">
+                            <h2 class="text-2xl font-semibold">Food Log</h2>
+                            <button id="addFoodButton" class="bg-primary text-primary-foreground hover:bg-primary/90 px-4 py-2 rounded-md text-sm font-medium flex items-center gap-2">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                                Add Food
+                            </button>
+                        </div>
+                        <div id="foodLogList" class="space-y-3 max-h-96 overflow-y-auto">
+                            <!-- Food items will be appended here -->
+                            <p id="emptyLogMessage" class="text-muted-foreground">No food logged yet for today.</p>
+                        </div>
+                         <button id="clearTodaysLogButton" class="mt-4 w-full bg-destructive text-destructive-foreground hover:bg-destructive/90 px-4 py-2 rounded-md text-sm font-medium">Clear Today's Log</button>
+                    </div>
+                </div>
+
+                <!-- Weekly Report Column -->
+                <div class="lg:col-span-1 space-y-6">
+                    <div class="bg-card text-card-foreground p-6 rounded-lg border border-border shadow-sm">
+                        <h2 class="text-2xl font-semibold mb-4">Weekly Report</h2>
+                        <div class="h-80 md:h-96">
+                             <canvas id="weeklyChart"></canvas>
+                        </div>
+                    </div>
+                     <div class="bg-card text-card-foreground p-6 rounded-lg border border-border shadow-sm">
+                        <h2 class="text-xl font-semibold mb-4">App Data</h2>
+                        <button id="clearAllDataButton" class="w-full bg-destructive text-destructive-foreground hover:bg-destructive/90 px-4 py-2 rounded-md text-sm font-medium">Clear All App Data (Reset)</button>
+                        <p class="text-xs text-muted-foreground mt-2">This will erase all your logged data and goals.</p>
+                    </div>
+                </div>
+            </div>
+        </main>
+
+        <!-- Add Food Modal -->
+        <div id="addFoodModal" class="modal fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 opacity-0 pointer-events-none">
+            <div class="modal-content bg-card text-card-foreground p-6 rounded-lg border border-border shadow-xl w-full max-w-md transform scale-95">
+                <h3 class="text-xl font-semibold mb-4">Log Food Item</h3>
+                <form id="addFoodForm" class="space-y-4">
+                    <div>
+                        <label for="foodName" class="block text-sm font-medium text-muted-foreground mb-1">Food Name</label>
+                        <input type="text" id="foodName" name="foodName" required class="w-full bg-background border border-input p-2 rounded-md text-foreground focus:ring-ring focus:border-ring">
+                    </div>
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label for="calories" class="block text-sm font-medium text-muted-foreground mb-1">Calories (kcal)</label>
+                            <input type="number" id="calories" name="calories" min="0" required class="w-full bg-background border border-input p-2 rounded-md text-foreground focus:ring-ring focus:border-ring">
+                        </div>
+                        <div>
+                            <label for="protein" class="block text-sm font-medium text-muted-foreground mb-1">Protein (g)</label>
+                            <input type="number" id="protein" name="protein" min="0" required class="w-full bg-background border border-input p-2 rounded-md text-foreground focus:ring-ring focus:border-ring">
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label for="carbs" class="block text-sm font-medium text-muted-foreground mb-1">Carbs (g)</label>
+                            <input type="number" id="carbs" name="carbs" min="0" required class="w-full bg-background border border-input p-2 rounded-md text-foreground focus:ring-ring focus:border-ring">
+                        </div>
+                        <div>
+                            <label for="fat" class="block text-sm font-medium text-muted-foreground mb-1">Fat (g)</label>
+                            <input type="number" id="fat" name="fat" min="0" required class="w-full bg-background border border-input p-2 rounded-md text-foreground focus:ring-ring focus:border-ring">
+                        </div>
+                    </div>
+                    <div class="flex justify-end gap-2 pt-2">
+                        <button type="button" id="cancelAddFood" class="px-4 py-2 rounded-md text-sm font-medium border border-input hover:bg-accent">Cancel</button>
+                        <button type="submit" class="bg-primary text-primary-foreground hover:bg-primary/90 px-4 py-2 rounded-md text-sm font-medium">Add Item</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Set Goals Modal -->
+        <div id="setGoalsModal" class="modal fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 opacity-0 pointer-events-none">
+            <div class="modal-content bg-card text-card-foreground p-6 rounded-lg border border-border shadow-xl w-full max-w-md transform scale-95">
+                <h3 class="text-xl font-semibold mb-4">Set Daily Goals</h3>
+                <form id="setGoalsForm" class="space-y-4">
+                    <div>
+                        <label for="goalCalories" class="block text-sm font-medium text-muted-foreground mb-1">Target Calories (kcal)</label>
+                        <input type="number" id="goalCalories" name="goalCalories" min="0" required class="w-full bg-background border border-input p-2 rounded-md text-foreground focus:ring-ring focus:border-ring">
+                    </div>
+                    <div>
+                        <label for="goalProtein" class="block text-sm font-medium text-muted-foreground mb-1">Target Protein (g)</label>
+                        <input type="number" id="goalProtein" name="goalProtein" min="0" required class="w-full bg-background border border-input p-2 rounded-md text-foreground focus:ring-ring focus:border-ring">
+                    </div>
+                    <div>
+                        <label for="goalCarbs" class="block text-sm font-medium text-muted-foreground mb-1">Target Carbs (g)</label>
+                        <input type="number" id="goalCarbs" name="goalCarbs" min="0" required class="w-full bg-background border border-input p-2 rounded-md text-foreground focus:ring-ring focus:border-ring">
+                    </div>
+                    <div>
+                        <label for="goalFat" class="block text-sm font-medium text-muted-foreground mb-1">Target Fat (g)</label>
+                        <input type="number" id="goalFat" name="goalFat" min="0" required class="w-full bg-background border border-input p-2 rounded-md text-foreground focus:ring-ring focus:border-ring">
+                    </div>
+                    <div class="flex justify-end gap-2 pt-2">
+                        <button type="button" id="cancelSetGoals" class="px-4 py-2 rounded-md text-sm font-medium border border-input hover:bg-accent">Cancel</button>
+                        <button type="submit" class="bg-primary text-primary-foreground hover:bg-primary/90 px-4 py-2 rounded-md text-sm font-medium">Save Goals</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            // --- STATE ---
+            let state = {
+                theme: 'light',
+                goals: { calories: 2000, protein: 150, carbs: 200, fat: 70 },
+                today: {
+                    date: getFormattedDate(new Date()),
+                    entries: [],
+                    totals: { calories: 0, protein: 0, carbs: 0, fat: 0 }
+                },
+                weeklyChartInstance: null,
+            };
+
+            // --- DOM ELEMENTS ---
+            const themeToggle = document.getElementById('themeToggle');
+            const themeIconSun = document.getElementById('themeIconSun');
+            const themeIconMoon = document.getElementById('themeIconMoon');
+            const htmlElement = document.documentElement;
+
+            const calorieGoalEl = document.getElementById('calorieGoal');
+            const caloriesConsumedEl = document.getElementById('caloriesConsumed');
+            const calorieProgressCircle = document.getElementById('calorieProgressCircle');
+            const calorieCircleCircumference = parseFloat(calorieProgressCircle.getAttribute('stroke-dasharray'));
+
+            const proteinGoalEl = document.getElementById('proteinGoal');
+            const proteinConsumedEl = document.getElementById('proteinConsumed');
+            const proteinProgressBar = document.getElementById('proteinProgressBar');
+
+            const carbsGoalEl = document.getElementById('carbsGoal');
+            const carbsConsumedEl = document.getElementById('carbsConsumed');
+            const carbsProgressBar = document.getElementById('carbsProgressBar');
+
+            const fatGoalEl = document.getElementById('fatGoal');
+            const fatConsumedEl = document.getElementById('fatConsumed');
+            const fatProgressBar = document.getElementById('fatProgressBar');
+            
+            const currentDateDisplayEl = document.getElementById('currentDateDisplay');
+
+            const addFoodButton = document.getElementById('addFoodButton');
+            const addFoodModal = document.getElementById('addFoodModal');
+            const addFoodForm = document.getElementById('addFoodForm');
+            const cancelAddFoodButton = document.getElementById('cancelAddFood');
+            const foodLogListEl = document.getElementById('foodLogList');
+            const emptyLogMessageEl = document.getElementById('emptyLogMessage');
+
+            const setGoalsButton = document.getElementById('setGoalsButton');
+            const setGoalsModal = document.getElementById('setGoalsModal');
+            const setGoalsForm = document.getElementById('setGoalsForm');
+            const cancelSetGoalsButton = document.getElementById('cancelSetGoals');
+
+            const weeklyChartCanvas = document.getElementById('weeklyChart').getContext('2d');
+            const clearTodaysLogButton = document.getElementById('clearTodaysLogButton');
+            const clearAllDataButton = document.getElementById('clearAllDataButton');
+
+
+            // --- UTILITY FUNCTIONS ---
+            function getFormattedDate(date) {
+                const year = date.getFullYear();
+                const month = String(date.getMonth() + 1).padStart(2, '0');
+                const day = String(date.getDate()).padStart(2, '0');
+                return `${year}-${month}-${day}`;
+            }
+
+            function saveState() {
+                localStorage.setItem('nutriTrackTheme', state.theme);
+                localStorage.setItem('nutriTrackGoals', JSON.stringify(state.goals));
+                localStorage.setItem(`nutriTrackData-${state.today.date}`, JSON.stringify(state.today));
+            }
+
+            function loadState() {
+                const savedTheme = localStorage.getItem('nutriTrackTheme');
+                if (savedTheme) state.theme = savedTheme;
+
+                const savedGoals = localStorage.getItem('nutriTrackGoals');
+                if (savedGoals) state.goals = JSON.parse(savedGoals);
+                
+                const todayDate = getFormattedDate(new Date());
+                state.today.date = todayDate; // Ensure current date is set
+                currentDateDisplayEl.textContent = new Date(todayDate).toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+
+
+                const savedTodayData = localStorage.getItem(`nutriTrackData-${todayDate}`);
+                if (savedTodayData) {
+                    state.today = JSON.parse(savedTodayData);
+                     // Ensure date is current, sometimes localStorage might have old date if loaded across midnight
+                    if(state.today.date !== todayDate) {
+                        state.today = { date: todayDate, entries: [], totals: { calories: 0, protein: 0, carbs: 0, fat: 0 } };
+                    }
+                } else {
+                    // Reset for new day
+                    state.today = { date: todayDate, entries: [], totals: { calories: 0, protein: 0, carbs: 0, fat: 0 } };
+                }
+            }
+
+            // --- THEME ---
+            function applyTheme() {
+                if (state.theme === 'dark') {
+                    htmlElement.classList.add('dark');
+                    themeIconSun.classList.remove('hidden');
+                    themeIconMoon.classList.add('hidden');
+                } else {
+                    htmlElement.classList.remove('dark');
+                    themeIconSun.classList.add('hidden');
+                    themeIconMoon.classList.remove('hidden');
+                }
+                // Update chart colors if chart exists
+                if (state.weeklyChartInstance) {
+                    updateChartTheme();
+                }
+            }
+
+            function toggleTheme() {
+                state.theme = state.theme === 'light' ? 'dark' : 'light';
+                applyTheme();
+                saveState();
+            }
+
+            // --- MODAL HANDLING ---
+            function openModal(modalElement) {
+                modalElement.classList.remove('opacity-0', 'pointer-events-none');
+                modalElement.querySelector('.modal-content').classList.remove('scale-95');
+                modalElement.querySelector('.modal-content').classList.add('scale-100');
+            }
+
+            function closeModal(modalElement) {
+                modalElement.classList.add('opacity-0');
+                modalElement.querySelector('.modal-content').classList.add('scale-95');
+                modalElement.querySelector('.modal-content').classList.remove('scale-100');
+                setTimeout(() => modalElement.classList.add('pointer-events-none'), 300); // Delay to allow animation
+            }
+            
+            // --- UI RENDERING ---
+            function updateUIDailySummary() {
+                // Goals
+                calorieGoalEl.textContent = state.goals.calories;
+                proteinGoalEl.textContent = state.goals.protein;
+                carbsGoalEl.textContent = state.goals.carbs;
+                fatGoalEl.textContent = state.goals.fat;
+
+                // Consumed
+                caloriesConsumedEl.textContent = Math.round(state.today.totals.calories);
+                proteinConsumedEl.textContent = Math.round(state.today.totals.protein);
+                carbsConsumedEl.textContent = Math.round(state.today.totals.carbs);
+                fatConsumedEl.textContent = Math.round(state.today.totals.fat);
+
+                // Progress Ring (Calories)
+                const calPercent = state.goals.calories > 0 ? (state.today.totals.calories / state.goals.calories) : 0;
+                const calOffset = calorieCircleCircumference * (1 - Math.min(calPercent, 1));
+                calorieProgressCircle.style.strokeDashoffset = calOffset;
+                 calorieProgressCircle.classList.toggle('text-red-500', calPercent > 1);
+                 calorieProgressCircle.classList.toggle('dark:text-red-400', calPercent > 1 && state.theme === 'dark');
+                 if (calPercent <=1) { // Reset color if not over
+                    calorieProgressCircle.classList.remove('text-red-500', 'dark:text-red-400');
+                    calorieProgressCircle.classList.add('text-primary');
+                 }
+
+
+                // Progress Bars (Macros)
+                const protPercent = state.goals.protein > 0 ? (state.today.totals.protein / state.goals.protein) * 100 : 0;
+                proteinProgressBar.style.width = `${Math.min(protPercent, 100)}%`;
+                proteinProgressBar.parentElement.nextElementSibling?.remove(); // Remove overage indicator
+                if (protPercent > 100) proteinProgressBar.style.width = `100%`; // Cap at 100% for bar display
+                
+                const carbPercent = state.goals.carbs > 0 ? (state.today.totals.carbs / state.goals.carbs) * 100 : 0;
+                carbsProgressBar.style.width = `${Math.min(carbPercent, 100)}%`;
+                if (carbPercent > 100) carbsProgressBar.style.width = `100%`;
+
+                const fatPercent = state.goals.fat > 0 ? (state.today.totals.fat / state.goals.fat) * 100 : 0;
+                fatProgressBar.style.width = `${Math.min(fatPercent, 100)}%`;
+                if (fatPercent > 100) fatProgressBar.style.width = `100%`;
+            }
+
+            function renderFoodLog() {
+                foodLogListEl.innerHTML = ''; // Clear existing items
+                if (state.today.entries.length === 0) {
+                    emptyLogMessageEl.classList.remove('hidden');
+                    return;
+                }
+                emptyLogMessageEl.classList.add('hidden');
+
+                state.today.entries.forEach((item, index) => {
+                    const itemEl = document.createElement('div');
+                    itemEl.className = 'flex justify-between items-center p-3 bg-muted/50 dark:bg-muted/20 rounded-md';
+                    itemEl.innerHTML = `
+                        <div>
+                            <p class="font-medium text-foreground">${item.name}</p>
+                            <p class="text-xs text-muted-foreground">
+                                ${Math.round(item.calories)} kcal, 
+                                P: ${Math.round(item.protein)}g, 
+                                C: ${Math.round(item.carbs)}g, 
+                                F: ${Math.round(item.fat)}g
+                            </p>
+                        </div>
+                        <button data-index="${index}" class="delete-item-btn text-destructive hover:text-destructive/80 p-1 rounded-md">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>
+                        </button>
+                    `;
+                    foodLogListEl.appendChild(itemEl);
+                });
+            }
+            
+            function calculateTotals() {
+                state.today.totals = state.today.entries.reduce((acc, item) => {
+                    acc.calories += item.calories;
+                    acc.protein += item.protein;
+                    acc.carbs += item.carbs;
+                    acc.fat += item.fat;
+                    return acc;
+                }, { calories: 0, protein: 0, carbs: 0, fat: 0 });
+            }
+
+            // --- FOOD LOGGING ---
+            function handleAddFood(event) {
+                event.preventDefault();
+                const formData = new FormData(addFoodForm);
+                const newEntry = {
+                    id: Date.now(), // Unique ID for item
+                    name: formData.get('foodName'),
+                    calories: parseFloat(formData.get('calories')),
+                    protein: parseFloat(formData.get('protein')),
+                    carbs: parseFloat(formData.get('carbs')),
+                    fat: parseFloat(formData.get('fat')),
+                };
+                state.today.entries.push(newEntry);
+                calculateTotals();
+                updateAllUI();
+                saveState();
+                addFoodForm.reset();
+                closeModal(addFoodModal);
+            }
+
+            function handleDeleteFoodItem(index) {
+                state.today.entries.splice(index, 1);
+                calculateTotals();
+                updateAllUI();
+                saveState();
+            }
+
+
+            // --- GOAL SETTING ---
+            function populateGoalForm() {
+                setGoalsForm.goalCalories.value = state.goals.calories;
+                setGoalsForm.goalProtein.value = state.goals.protein;
+                setGoalsForm.goalCarbs.value = state.goals.carbs;
+                setGoalsForm.goalFat.value = state.goals.fat;
+            }
+
+            function handleSetGoals(event) {
+                event.preventDefault();
+                state.goals.calories = parseFloat(setGoalsForm.goalCalories.value);
+                state.goals.protein = parseFloat(setGoalsForm.goalProtein.value);
+                state.goals.carbs = parseFloat(setGoalsForm.goalCarbs.value);
+                state.goals.fat = parseFloat(setGoalsForm.goalFat.value);
+                
+                updateAllUI();
+                saveState();
+                closeModal(setGoalsModal);
+            }
+            
+            // --- WEEKLY REPORT ---
+            function getWeeklyData() {
+                const weeklyData = [];
+                for (let i = 6; i >= 0; i--) {
+                    const date = new Date();
+                    date.setDate(date.getDate() - i);
+                    const formattedDate = getFormattedDate(date);
+                    const dayData = JSON.parse(localStorage.getItem(`nutriTrackData-${formattedDate}`));
+                    
+                    weeklyData.push({
+                        date: formattedDate,
+                        calories: dayData ? dayData.totals.calories : 0,
+                        protein: dayData ? dayData.totals.protein : 0,
+                        carbs: dayData ? dayData.totals.carbs : 0,
+                        fat: dayData ? dayData.totals.fat : 0,
+                    });
+                }
+                return weeklyData;
+            }
+
+            function updateChartTheme() {
+                if (!state.weeklyChartInstance) return;
+                const isDark = state.theme === 'dark';
+                const gridColor = isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)';
+                const labelColor = isDark ? '#e2e8f0' : '#334155'; // slate-200 : slate-700
+
+                state.weeklyChartInstance.options.scales.x.ticks.color = labelColor;
+                state.weeklyChartInstance.options.scales.x.grid.color = gridColor;
+                state.weeklyChartInstance.options.scales.y.ticks.color = labelColor;
+                state.weeklyChartInstance.options.scales.y.grid.color = gridColor;
+                state.weeklyChartInstance.options.plugins.legend.labels.color = labelColor;
+                state.weeklyChartInstance.update();
+            }
+            
+            function renderWeeklyChart() {
+                const data = getWeeklyData();
+                const labels = data.map(d => new Date(d.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }));
+                
+                const isDark = state.theme === 'dark';
+                const gridColor = isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)';
+                const labelColor = isDark ? '#e2e8f0' : '#334155'; // slate-200 : slate-700
+
+                const datasets = [
+                    {
+                        label: 'Calories',
+                        data: data.map(d => d.calories),
+                        backgroundColor: 'rgba(59, 130, 246, 0.7)', // blue-500
+                        borderColor: 'rgba(59, 130, 246, 1)',
+                        borderWidth: 1,
+                        yAxisID: 'yCalories',
+                        tension: 0.1
+                    },
+                    {
+                        label: 'Protein (g)',
+                        data: data.map(d => d.protein),
+                        backgroundColor: 'rgba(34, 197, 94, 0.7)', // green-500
+                        borderColor: 'rgba(34, 197, 94, 1)',
+                        borderWidth: 1,
+                        yAxisID: 'yMacros',
+                        tension: 0.1,
+                        hidden: true // Hide by default to prevent clutter
+                    },
+                    {
+                        label: 'Carbs (g)',
+                        data: data.map(d => d.carbs),
+                        backgroundColor: 'rgba(234, 179, 8, 0.7)', // yellow-500
+                        borderColor: 'rgba(234, 179, 8, 1)',
+                        borderWidth: 1,
+                        yAxisID: 'yMacros',
+                        tension: 0.1,
+                        hidden: true
+                    },
+                    {
+                        label: 'Fat (g)',
+                        data: data.map(d => d.fat),
+                        backgroundColor: 'rgba(236, 72, 153, 0.7)', // pink-500
+                        borderColor: 'rgba(236, 72, 153, 1)',
+                        borderWidth: 1,
+                        yAxisID: 'yMacros',
+                        tension: 0.1,
+                        hidden: true
+                    }
+                ];
+
+                if (state.weeklyChartInstance) {
+                    state.weeklyChartInstance.destroy();
+                }
+                
+                state.weeklyChartInstance = new Chart(weeklyChartCanvas, {
+                    type: 'bar', // Or 'line'
+                    data: {
+                        labels: labels,
+                        datasets: datasets
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        interaction: {
+                            mode: 'index',
+                            intersect: false,
+                        },
+                        scales: {
+                            x: {
+                                display: true,
+                                title: { display: false },
+                                grid: { color: gridColor },
+                                ticks: { color: labelColor }
+                            },
+                            yCalories: {
+                                type: 'linear',
+                                display: true,
+                                position: 'left',
+                                title: { display: true, text: 'Calories (kcal)', color: labelColor },
+                                grid: { color: gridColor },
+                                ticks: { color: labelColor }
+                            },
+                            yMacros: {
+                                type: 'linear',
+                                display: true,
+                                position: 'right',
+                                title: { display: true, text: 'Macronutrients (g)', color: labelColor },
+                                grid: { drawOnChartArea: false }, // only want the grid lines for one axis
+                                ticks: { color: labelColor }
+                            }
+                        },
+                        plugins: {
+                            legend: {
+                                position: 'top',
+                                labels: { color: labelColor }
+                            },
+                            tooltip: {
+                                mode: 'index',
+                                intersect: false,
+                                backgroundColor: isDark ? '#1e293b' : '#ffffff', // slate-800 or white
+                                titleColor: isDark ? '#f1f5f9' : '#0f172a', // slate-100 or slate-900
+                                bodyColor: isDark ? '#cbd5e1' : '#334155', // slate-300 or slate-700
+                                borderColor: isDark ? '#33415b' : '#e2e8f0', // slate-700 or slate-200
+                                borderWidth: 1
+                            }
+                        }
+                    }
+                });
+            }
+
+            function updateAllUI() {
+                updateUIDailySummary();
+                renderFoodLog();
+                renderWeeklyChart(); // Re-render chart as data might have changed for today
+            }
+
+            // --- DATA MANAGEMENT ---
+            function clearTodaysLog() {
+                if (confirm("Are you sure you want to clear all food entries for today?")) {
+                    state.today.entries = [];
+                    calculateTotals();
+                    updateAllUI();
+                    saveState();
+                }
+            }
+
+            function clearAllData() {
+                if (confirm("WARNING: This will erase ALL your data including goals and logged history. Are you absolutely sure?")) {
+                    localStorage.clear();
+                    // Reset state to defaults
+                    state.theme = 'light';
+                    state.goals = { calories: 2000, protein: 150, carbs: 200, fat: 70 };
+                    state.today = {
+                        date: getFormattedDate(new Date()),
+                        entries: [],
+                        totals: { calories: 0, protein: 0, carbs: 0, fat: 0 }
+                    };
+                    init(); // Re-initialize the app
+                }
+            }
+
+            // --- EVENT LISTENERS ---
+            themeToggle.addEventListener('click', toggleTheme);
+            
+            addFoodButton.addEventListener('click', () => {
+                addFoodForm.reset(); // Clear form before showing
+                openModal(addFoodModal);
+                addFoodForm.foodName.focus();
+            });
+            cancelAddFoodButton.addEventListener('click', () => closeModal(addFoodModal));
+            addFoodForm.addEventListener('submit', handleAddFood);
+
+            foodLogListEl.addEventListener('click', (event) => {
+                const deleteButton = event.target.closest('.delete-item-btn');
+                if (deleteButton) {
+                    const index = parseInt(deleteButton.dataset.index);
+                    handleDeleteFoodItem(index);
+                }
+            });
+
+            setGoalsButton.addEventListener('click', () => {
+                populateGoalForm();
+                openModal(setGoalsModal);
+                setGoalsForm.goalCalories.focus();
+            });
+            cancelSetGoalsButton.addEventListener('click', () => closeModal(setGoalsModal));
+            setGoalsForm.addEventListener('submit', handleSetGoals);
+
+            clearTodaysLogButton.addEventListener('click', clearTodaysLog);
+            clearAllDataButton.addEventListener('click', clearAllData);
+
+            // Close modals on escape key
+            document.addEventListener('keydown', (event) => {
+                if (event.key === 'Escape') {
+                    if (!addFoodModal.classList.contains('opacity-0')) {
+                        closeModal(addFoodModal);
+                    }
+                    if (!setGoalsModal.classList.contains('opacity-0')) {
+                        closeModal(setGoalsModal);
+                    }
+                }
+            });
+            // Close modals on backdrop click
+            [addFoodModal, setGoalsModal].forEach(modal => {
+                modal.addEventListener('click', (event) => {
+                    if (event.target === modal) { // Clicked on backdrop itself
+                        closeModal(modal);
+                    }
+                });
+            });
+
+
+            // --- INITIALIZATION ---
+            function init() {
+                loadState();
+                applyTheme();
+                updateAllUI();
+            }
+
+            init();
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,9 @@
+{
+  "web_id": "web_65",
+  "task_id": 1,
+  "task_type": "dynamic",
+  "instruction": "Task: Click on one of two displayed images (or an associated 'Vote' button) to select it as better.\nExpected Result: The selection is recorded, simulated Elo ratings for the involved models are updated, and a new pair of images with their prompts is displayed for the next comparison.\n\nNote: The task is only considered successful if the expected result is achieved; otherwise, it is deemed infeasible.",
+  "max_steps": 15,
+  "expected": "The selection is recorded, simulated Elo ratings for the involved models are updated, and a new pair of images with their prompts is displayed for the next comparison.",
+  "label": 0
+}

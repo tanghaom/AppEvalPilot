@@ -1,0 +1,9 @@
+{
+  "web_id": "web_6",
+  "task_id": 1,
+  "task_type": "dynamic",
+  "instruction": "Task: Click a main navigation link (e.g., 'News Feed', 'Profile', 'Messages').\nExpected Result: The main content area of the page updates to display the mock content for the selected section.\n\nNote: The task is only considered successful if the expected result is achieved; otherwise, it is deemed infeasible.",
+  "max_steps": 15,
+  "expected": "The main content area of the page updates to display the mock content for the selected section.",
+  "label": 0
+}

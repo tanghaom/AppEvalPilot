@@ -1,0 +1,9 @@
+{
+  "web_id": "web_38",
+  "task_id": 3,
+  "task_type": "dynamic",
+  "instruction": "Task: Click the language toggle button (e.g., 'RU' if current language is 'EN', or 'EN' if 'RU').\nExpected Result: Text on various UI elements (e.g., 'Login' button, 'Search streams...' placeholder) changes to the selected language.\n\nNote: The task is only considered successful if the expected result is achieved; otherwise, it is deemed infeasible.",
+  "max_steps": 15,
+  "expected": "Text on various UI elements (e.g., 'Login' button, 'Search streams...' placeholder) changes to the selected language.",
+  "label": 1
+}

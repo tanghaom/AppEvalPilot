@@ -1,0 +1,9 @@
+{
+  "web_id": "web_44",
+  "task_id": 1,
+  "task_type": "dynamic",
+  "instruction": "Task: Click the 'Call-to-Action' button (e.g., 'تعرف أكثر' or 'Learn More')\nExpected Result: A modal window opens displaying additional service details, possibly with a scale-in animation.\n\nNote: The task is only considered successful if the expected result is achieved; otherwise, it is deemed infeasible.",
+  "max_steps": 15,
+  "expected": "A modal window opens displaying additional service details, possibly with a scale-in animation.",
+  "label": 1
+}

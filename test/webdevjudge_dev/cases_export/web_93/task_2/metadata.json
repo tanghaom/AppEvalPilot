@@ -1,0 +1,9 @@
+{
+  "web_id": "web_93",
+  "task_id": 2,
+  "task_type": "dynamic",
+  "instruction": "Task: Click the 'Expand' button on a collapsed timeline entry.\nExpected Result: The details section for that entry becomes visible, showing editable fields for its title, date, negative cognition, positive cognition, notes, and a 'Delete Entry' button. The 'Expand' button's label changes to 'Collapse'.\n\nNote: The task is only considered successful if the expected result is achieved; otherwise, it is deemed infeasible.",
+  "max_steps": 15,
+  "expected": "The details section for that entry becomes visible, showing editable fields for its title, date, negative cognition, positive cognition, notes, and a 'Delete Entry' button. The 'Expand' button's label changes to 'Collapse'.",
+  "label": 1
+}

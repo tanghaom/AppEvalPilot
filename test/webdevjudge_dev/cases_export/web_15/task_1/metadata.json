@@ -1,0 +1,9 @@
+{
+  "web_id": "web_15",
+  "task_id": 1,
+  "task_type": "dynamic",
+  "instruction": "Task: Input text into the message field and click a 'Send' button.\nExpected Result: The new message appears at the top of the current channel's message list, displaying its content and creation timestamp. Any URLs are rendered as clickable hyperlinks, and video URLs are embedded.\n\nNote: The task is only considered successful if the expected result is achieved; otherwise, it is deemed infeasible.",
+  "max_steps": 15,
+  "expected": "The new message appears at the top of the current channel's message list, displaying its content and creation timestamp. Any URLs are rendered as clickable hyperlinks, and video URLs are embedded.",
+  "label": 1
+}

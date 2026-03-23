@@ -1,0 +1,9 @@
+{
+  "web_id": "web_67",
+  "task_id": 5,
+  "task_type": "dynamic",
+  "instruction": "Task: Click an 'Edit' icon or button next to one of the user's previous messages, modify its text in an editable area, and submit the change.\nExpected Result: The selected user message in the chat log is updated with the new text. All subsequent messages (both user and AI) in that conversation branch are removed, and a new simulated AI response is generated based on the edited prompt.\n\nNote: The task is only considered successful if the expected result is achieved; otherwise, it is deemed infeasible.",
+  "max_steps": 15,
+  "expected": "The selected user message in the chat log is updated with the new text. All subsequent messages (both user and AI) in that conversation branch are removed, and a new simulated AI response is generated based on the edited prompt.",
+  "label": 0
+}

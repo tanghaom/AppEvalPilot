@@ -1,0 +1,9 @@
+{
+  "web_id": "web_82",
+  "task_id": 5,
+  "task_type": "dynamic",
+  "instruction": "Task: Click a 'Create New Channel' button, enter a name for the channel in an input field (e.g., in a modal), and submit.\nExpected Result: New channel appears in channel list and may become the active chat (local simulation).\n\nNote: The task is only considered successful if the expected result is achieved; otherwise, it is deemed infeasible.",
+  "max_steps": 15,
+  "expected": "New channel appears in channel list and may become the active chat (local simulation).",
+  "label": 0
+}

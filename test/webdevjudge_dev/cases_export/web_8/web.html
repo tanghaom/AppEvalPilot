@@ -1,0 +1,455 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Futuristic Animated Website</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/three.min.js"></script>
+    <style>
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            background-color: #0F172A; /* slate-900 */
+            color: #F1F5F9; /* slate-100 */
+            overflow-x: hidden;
+        }
+        html {
+            scroll-behavior: smooth;
+        }
+        #webgl-canvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1;
+            outline: none;
+        }
+        .scroll-reveal {
+            opacity: 0;
+            transform: translateY(30px);
+            transition-property: opacity, transform;
+            transition-duration: 0.8s;
+            transition-timing-function: ease-out;
+        }
+        .scroll-reveal.is-visible {
+            opacity: 1;
+            transform: translateY(0);
+        }
+        .glassmorphism {
+            background: rgba(15, 23, 42, 0.6); /* slate-900 with opacity */
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border-bottom: 1px solid rgba(51, 65, 85, 0.5); /* slate-700 with opacity */
+        }
+        .nav-scrolled {
+            background: rgba(15, 23, 42, 0.8); /* More opaque slate-900 */
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+        }
+    </style>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        'brand-cyan': '#22D3EE', // Tailwind cyan-400
+                        'brand-cyan-dark': '#06B6D4', // Tailwind cyan-500
+                        'brand-slate-light': '#F1F5F9', // slate-100
+                        'brand-slate': '#334155',     // slate-700
+                        'brand-slate-dark': '#0F172A', // slate-900
+                    },
+                    animation: {
+                        'fade-in-up': 'fadeInUp 1s ease-out forwards',
+                    },
+                    keyframes: {
+                        fadeInUp: {
+                            '0%': { opacity: '0', transform: 'translateY(20px)' },
+                            '100%': { opacity: '1', transform: 'translateY(0)' },
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+<body class="bg-brand-slate-dark text-brand-slate-light antialiased">
+
+    <!-- WebGL Canvas -->
+    <canvas id="webgl-canvas"></canvas>
+
+    <!-- Navigation -->
+    <nav id="navbar" class="fixed top-0 left-0 right-0 z-50 transition-all duration-300 ease-in-out py-4 px-6 md:px-12">
+        <div class="container mx-auto flex justify-between items-center">
+            <a href="#" class="text-2xl font-bold text-brand-slate-light hover:text-brand-cyan transition-colors">NovaFlux</a>
+            <div class="hidden md:flex space-x-6">
+                <a href="#hero" class="hover:text-brand-cyan transition-colors">Home</a>
+                <a href="#about" class="hover:text-brand-cyan transition-colors">About</a>
+                <a href="#features" class="hover:text-brand-cyan transition-colors">Features</a>
+                <a href="#contact" class="hover:text-brand-cyan transition-colors">Contact</a>
+            </div>
+            <button id="mobile-menu-button" class="md:hidden text-2xl">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" />
+                </svg>
+            </button>
+        </div>
+        <!-- Mobile Menu -->
+        <div id="mobile-menu" class="hidden md:hidden mt-4 bg-brand-slate-dark/90 backdrop-blur-sm rounded-lg p-4">
+            <a href="#hero" class="block py-2 hover:text-brand-cyan transition-colors">Home</a>
+            <a href="#about" class="block py-2 hover:text-brand-cyan transition-colors">About</a>
+            <a href="#features" class="block py-2 hover:text-brand-cyan transition-colors">Features</a>
+            <a href="#contact" class="block py-2 hover:text-brand-cyan transition-colors">Contact</a>
+        </div>
+    </nav>
+
+    <!-- Hero Section -->
+    <section id="hero" class="h-screen flex flex-col justify-center items-center text-center relative px-4">
+        <div class="max-w-3xl z-10">
+            <h1 class="text-5xl sm:text-6xl md:text-7xl lg:text-8xl font-extrabold mb-6 animate-fade-in-up" style="animation-delay: 0.2s;">
+                <span class="bg-clip-text text-transparent bg-gradient-to-r from-brand-cyan to-purple-500">
+                    Innovate. Create. Inspire.
+                </span>
+            </h1>
+            <p class="text-lg md:text-xl text-slate-300 mb-10 animate-fade-in-up" style="animation-delay: 0.5s;">
+                Experience the future of digital interaction with cutting-edge design and seamless performance.
+            </p>
+            <a href="#about" class="bg-brand-cyan text-brand-slate-dark font-semibold py-3 px-8 rounded-lg text-lg hover:bg-brand-cyan-dark transition-all duration-300 transform hover:scale-105 animate-fade-in-up" style="animation-delay: 0.8s;">
+                Discover More
+            </a>
+        </div>
+    </section>
+
+    <!-- About Section -->
+    <section id="about" class="py-20 md:py-32 bg-brand-slate-dark relative">
+        <div class="container mx-auto px-6 md:px-12 text-center">
+            <h2 class="text-4xl md:text-5xl font-bold mb-8 scroll-reveal">
+                About <span class="text-brand-cyan">NovaFlux</span>
+            </h2>
+            <p class="text-lg md:text-xl text-slate-300 max-w-3xl mx-auto mb-6 scroll-reveal" data-delay="100">
+                We are pioneers in crafting immersive digital experiences that captivate and engage. Our philosophy blends minimalist aesthetics with powerful technology to deliver solutions that are not only visually stunning but also highly functional and intuitive.
+            </p>
+            <p class="text-lg md:text-xl text-slate-300 max-w-3xl mx-auto scroll-reveal" data-delay="200">
+                Driven by innovation, we explore the boundaries of web technology, leveraging tools like WebGL and Three.js to create truly unique interactions. Join us on a journey to redefine digital landscapes.
+            </p>
+             <div class="mt-12 grid grid-cols-1 md:grid-cols-3 gap-8">
+                <div class="bg-slate-800 p-8 rounded-xl shadow-xl scroll-reveal" data-delay="300">
+                    <div class="bg-gray-700 border-2 border-dashed border-slate-600 rounded-xl w-16 h-16 mx-auto mb-4 flex items-center justify-center">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-8 h-8 text-brand-cyan">
+                          <path stroke-linecap="round" stroke-linejoin="round" d="M9.813 15.904 9 18.75l-.813-2.846a4.5 4.5 0 0 0-3.09-3.09L1.25 12l2.846-.813a4.5 4.5 0 0 0 3.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 0 0 3.09 3.09l2.846.813-.813 2.846a4.5 4.5 0 0 0-3.09 3.09ZM18.25 12l2.846-.813a4.5 4.5 0 0 0 3.09-3.09L24 5.25l-.813 2.846a4.5 4.5 0 0 0-3.09 3.09L18.25 12l-2.846.813a4.5 4.5 0 0 0-3.09 3.09L12 18.75l.813-2.846a4.5 4.5 0 0 0 3.09-3.09L18.25 12Z" />
+                        </svg>
+                    </div>
+                    <h3 class="text-2xl font-semibold mb-2 text-brand-slate-light">Innovation</h3>
+                    <p class="text-slate-400">Pushing boundaries with novel tech solutions.</p>
+                </div>
+                <div class="bg-slate-800 p-8 rounded-xl shadow-xl scroll-reveal" data-delay="400">
+                     <div class="bg-gray-700 border-2 border-dashed border-slate-600 rounded-xl w-16 h-16 mx-auto mb-4 flex items-center justify-center">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-8 h-8 text-brand-cyan">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L6.832 19.82a4.5 4.5 0 0 1-1.897 1.13l-2.685.8.8-2.685a4.5 4.5 0 0 1 1.13-1.897L16.863 4.487Zm0 0L19.5 7.125" />
+                        </svg>
+                    </div>
+                    <h3 class="text-2xl font-semibold mb-2 text-brand-slate-light">Design</h3>
+                    <p class="text-slate-400">Elegant, minimalist, and user-centric aesthetics.</p>
+                </div>
+                <div class="bg-slate-800 p-8 rounded-xl shadow-xl scroll-reveal" data-delay="500">
+                     <div class="bg-gray-700 border-2 border-dashed border-slate-600 rounded-xl w-16 h-16 mx-auto mb-4 flex items-center justify-center">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-8 h-8 text-brand-cyan">
+                           <path stroke-linecap="round" stroke-linejoin="round" d="M6.75 7.5l3 2.25-3 2.25m4.5 0h3m-9 8.25h13.5A2.25 2.25 0 0 0 21 18V6a2.25 2.25 0 0 0-2.25-2.25H5.25A2.25 2.25 0 0 0 3 6v12a2.25 2.25 0 0 0 2.25 2.25Z" />
+                        </svg>
+                    </div>
+                    <h3 class="text-2xl font-semibold mb-2 text-brand-slate-light">Technology</h3>
+                    <p class="text-slate-400">Leveraging the latest for robust performance.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Features Section -->
+    <section id="features" class="py-20 md:py-32 bg-slate-800/30 relative">
+        <div class="container mx-auto px-6 md:px-12">
+            <h2 class="text-4xl md:text-5xl font-bold mb-16 text-center scroll-reveal">
+                Key <span class="text-brand-cyan">Features</span>
+            </h2>
+            <div class="grid md:grid-cols-2 gap-10 items-center">
+                <div class="scroll-reveal">
+                    <h3 class="text-3xl font-semibold mb-4 text-brand-slate-light">Dynamic 3D Backgrounds</h3>
+                    <p class="text-slate-300 mb-4 text-lg">
+                        Immerse your users with captivating WebGL-powered animations that respond to interaction and create a truly memorable experience. Our fluid morphing effects are optimized for performance across all devices.
+                    </p>
+                    <ul class="list-disc list-inside text-slate-300 space-y-2">
+                        <li>Smooth procedural animations</li>
+                        <li>GPU accelerated for optimal performance</li>
+                        <li>Responsive and adaptive design</li>
+                    </ul>
+                </div>
+                <div class="bg-gray-700 border-2 border-dashed border-slate-600 rounded-xl w-full h-64 md:h-80 flex items-center justify-center text-slate-500 scroll-reveal" data-delay="100">
+                    <span class="text-xl">3D Visual Placeholder</span>
+                </div>
+            </div>
+            <div class="grid md:grid-cols-2 gap-10 items-center mt-16 md:mt-24">
+                <div class="bg-gray-700 border-2 border-dashed border-slate-600 rounded-xl w-full h-64 md:h-80 flex items-center justify-center text-slate-500 order-last md:order-first scroll-reveal" data-delay="200">
+                    <span class="text-xl">Minimalist UI Placeholder</span>
+                </div>
+                <div class="scroll-reveal" data-delay="100">
+                    <h3 class="text-3xl font-semibold mb-4 text-brand-slate-light">Minimalist & Futuristic UI</h3>
+                    <p class="text-slate-300 mb-4 text-lg">
+                        Clean lines, bold typography, and a carefully chosen color palette create a sophisticated and futuristic user interface. Focus on content and usability without compromising on aesthetic appeal.
+                    </p>
+                    <ul class="list-disc list-inside text-slate-300 space-y-2">
+                        <li>Intuitive navigation</li>
+                        <li>High readability and contrast</li>
+                        <li>Subtle interactive cues</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Contact Section -->
+    <section id="contact" class="py-20 md:py-32 bg-brand-slate-dark relative">
+        <div class="container mx-auto px-6 md:px-12 text-center">
+            <h2 class="text-4xl md:text-5xl font-bold mb-8 scroll-reveal">
+                Get In <span class="text-brand-cyan">Touch</span>
+            </h2>
+            <p class="text-lg md:text-xl text-slate-300 max-w-2xl mx-auto mb-10 scroll-reveal" data-delay="100">
+                Have a project in mind or just want to say hello? We'd love to hear from you.
+            </p>
+            <a href="mailto:hello@novaflux.xyz" class="bg-brand-cyan text-brand-slate-dark font-semibold py-3 px-8 rounded-lg text-lg hover:bg-brand-cyan-dark transition-all duration-300 transform hover:scale-105 scroll-reveal" data-delay="200">
+                Contact Us
+            </a>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="py-8 bg-slate-900/50 text-center">
+        <p class="text-slate-400">&copy; <span id="currentYear"></span> NovaFlux. All rights reserved.</p>
+    </footer>
+
+    <script>
+        // Three.js Background Animation
+        let scene, camera, renderer, sphere, uniforms;
+
+        const vertexShader = `
+            uniform float time;
+            varying vec3 vNormal;
+            varying vec3 vWorldPosition;
+
+            void main() {
+                vNormal = normalMatrix * normal;
+
+                vec3 pos = position;
+                float k = 2.8; 
+                float speed = 0.4;
+                float amplitude = 0.12; 
+
+                // Complex wave-like deformation
+                float A = pos.x * k + time * speed;
+                float B = pos.y * k * 1.2 + time * speed * 0.8;
+                float C = pos.z * k * 0.8 + time * speed * 1.1;
+                
+                float displacement = amplitude * (sin(A) + cos(B) * 0.8 + sin(C) * 0.6);
+                
+                vec3 newPosition = pos + normal * displacement;
+                
+                vec4 worldPosition = modelMatrix * vec4(newPosition, 1.0);
+                vWorldPosition = worldPosition.xyz;
+
+                gl_Position = projectionMatrix * modelViewMatrix * vec4(newPosition, 1.0);
+            }
+        `;
+
+        const fragmentShader = `
+            uniform float time;
+            uniform vec3 cameraPos; // Renamed from cameraPosition
+            varying vec3 vNormal;
+            varying vec3 vWorldPosition;
+
+            void main() {
+                vec3 N = normalize(vNormal);
+                vec3 L = normalize(vec3(0.8, 0.8, 0.5)); // Adjusted light direction
+                
+                float diffuse = max(dot(N, L), 0.0) * 0.6 + 0.2; // Softer diffuse with ambient
+                
+                vec3 color1 = vec3(0.02, 0.05, 0.1);  // Darker, deeper blue
+                vec3 color2 = vec3(0.1, 0.25, 0.45); // Muted teal/blue
+                vec3 color3 = vec3(0.2, 0.6, 0.8);   // Cyan accent (less saturated)
+
+                float pattern = sin(vWorldPosition.y * 3.0 - time * 0.3) * 0.4 + 0.6;
+                pattern = mix(pattern, sin(vWorldPosition.x * 2.5 + time * 0.2) * 0.4 + 0.6, 0.5);
+
+                vec3 baseColor = mix(color1, color2, pattern);
+                
+                vec3 viewDirection = normalize(cameraPos - vWorldPosition);
+                float fresnel = pow(1.0 - abs(dot(N, viewDirection)), 2.5); // Slightly softer Fresnel
+                
+                vec3 finalColor = baseColor * diffuse;
+                finalColor += color3 * fresnel * 0.6; // Muted Fresnel effect
+                
+                // Add subtle depth variation
+                float depthFactor = smoothstep(0.5, 2.5, length(vWorldPosition - cameraPos)); // Assuming sphere radius is around 1
+                finalColor = mix(finalColor, color1 * 0.5, 1.0 - depthFactor * 0.3);
+
+
+                gl_FragColor = vec4(finalColor, 1.0);
+            }
+        `;
+
+        function initThreeJS() {
+            const canvas = document.getElementById('webgl-canvas');
+            scene = new THREE.Scene();
+            
+            camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+            camera.position.z = 2.2;
+
+            renderer = new THREE.WebGLRenderer({ canvas: canvas, antialias: true, alpha: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+
+
+            const geometry = new THREE.SphereGeometry(1, 64, 32); // Radius, width segments, height segments
+            
+            uniforms = {
+                time: { value: 0.0 },
+                cameraPos: { value: camera.position } // Pass camera position
+            };
+
+            const material = new THREE.ShaderMaterial({
+                uniforms: uniforms,
+                vertexShader: vertexShader,
+                fragmentShader: fragmentShader,
+                // wireframe: true, // For debugging
+            });
+
+            sphere = new THREE.Mesh(geometry, material);
+            scene.add(sphere);
+
+            animate();
+        }
+
+        function animate() {
+            requestAnimationFrame(animate);
+            uniforms.time.value += 0.01; // Adjust speed of animation
+            uniforms.cameraPos.value.copy(camera.position); // Update camera position uniform
+            
+            sphere.rotation.y += 0.0005; // Slow rotation of the sphere itself
+            sphere.rotation.x += 0.0003;
+
+            renderer.render(scene, camera);
+        }
+
+        function onWindowResize() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+        }
+
+        // Navigation Bar Styling on Scroll
+        function handleNavScroll() {
+            const nav = document.getElementById('navbar');
+            if (window.scrollY > 50) {
+                nav.classList.add('nav-scrolled');
+                nav.classList.remove('py-4');
+                nav.classList.add('py-3');
+            } else {
+                nav.classList.remove('nav-scrolled');
+                nav.classList.remove('py-3');
+                nav.classList.add('py-4');
+            }
+        }
+        
+        // Throttle function
+        function throttle(func, limit) {
+            let inThrottle;
+            return function() {
+                const args = arguments;
+                const context = this;
+                if (!inThrottle) {
+                    func.apply(context, args);
+                    inThrottle = true;
+                    setTimeout(() => inThrottle = false, limit);
+                }
+            }
+        }
+
+        // Scroll Reveal Animations
+        function handleScrollReveal() {
+            const scrollElements = document.querySelectorAll('.scroll-reveal');
+            const windowHeight = window.innerHeight;
+
+            scrollElements.forEach(el => {
+                const elementTop = el.getBoundingClientRect().top;
+                const revealPoint = 100; // px from bottom of viewport to trigger
+                
+                // Apply delay if specified
+                const delay = parseInt(el.dataset.delay) || 0;
+
+                if (elementTop < windowHeight - revealPoint) {
+                    if (!el.classList.contains('is-visible')) {
+                        setTimeout(() => {
+                            el.classList.add('is-visible');
+                        }, delay);
+                    }
+                } else {
+                    // Optional: remove 'is-visible' to re-trigger animation on scroll up
+                    // el.classList.remove('is-visible'); 
+                }
+            });
+        }
+
+        // Mobile Menu Toggle
+        function setupMobileMenu() {
+            const menuButton = document.getElementById('mobile-menu-button');
+            const mobileMenu = document.getElementById('mobile-menu');
+            if (menuButton && mobileMenu) {
+                menuButton.addEventListener('click', () => {
+                    mobileMenu.classList.toggle('hidden');
+                });
+                // Close menu when a link is clicked
+                mobileMenu.querySelectorAll('a').forEach(link => {
+                    link.addEventListener('click', () => {
+                        mobileMenu.classList.add('hidden');
+                    });
+                });
+            }
+        }
+
+
+        // Initialize everything on DOMContentLoaded
+        document.addEventListener('DOMContentLoaded', () => {
+            initThreeJS();
+            window.addEventListener('resize', onWindowResize, false);
+            
+            window.addEventListener('scroll', throttle(handleNavScroll, 100));
+            handleNavScroll(); // Initial check
+
+            window.addEventListener('scroll', throttle(handleScrollReveal, 150));
+            handleScrollReveal(); // Initial check for elements already in view
+
+            setupMobileMenu();
+
+            // Set current year in footer
+            document.getElementById('currentYear').textContent = new Date().getFullYear();
+
+            // Smooth scroll for anchor links
+            document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+                anchor.addEventListener('click', function (e) {
+                    const href = this.getAttribute('href');
+                    // Only prevent default if it's a true anchor link for the page
+                    if (href.startsWith('#') && href.length > 1) {
+                        const targetElement = document.querySelector(href);
+                        if (targetElement) {
+                            e.preventDefault();
+                            targetElement.scrollIntoView({
+                                behavior: 'smooth'
+                            });
+                        }
+                    }
+                });
+            });
+        });
+
+    </script>
+</body>
+</html>

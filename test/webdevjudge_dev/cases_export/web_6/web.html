@@ -1,0 +1,719 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Facebook Replica</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" integrity="sha512-DTOQO9RWCH3ppGqcWaEA1BIZOC6xxalwEsw9c2QQeAIftl+Vegovlnee1c9QX4TctnWMn13TZye+giMm8e2LwA==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+    <style>
+        body {
+            font-family: 'Segoe UI Historic', 'Segoe UI', Helvetica, Arial, sans-serif; /* Approximating Facebook font stack */
+            overflow-y: scroll; /* Always show scrollbar to prevent layout shift */
+        }
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #F1F5F9; /* slate-100 */
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #CBD5E1; /* slate-300 */
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #94A3B8; /* slate-500 */
+        }
+        
+        /* Active Nav Item Styling: Uses Tailwind classes but CSS for specificity and icon color */
+        .fb-nav-item.active > div { /* The container div for icon */
+            border-bottom-color: #2563EB; /* blue-600 */
+        }
+        .fb-nav-item.active svg,
+        .fb-nav-item.active i {
+            color: #2563EB; /* blue-600 */
+        }
+        /* Default border for nav items (transparent) */
+        .fb-nav-item > div {
+             border-bottom-width: 3px;
+             border-bottom-color: transparent;
+        }
+        /* Hover for non-active nav items */
+        .fb-nav-item:not(.active):hover > div {
+            background-color: #F1F5F9; /* slate-100, for subtle hover */
+        }
+        
+        .fb-icon-button:hover {
+            background-color: #E2E8F0; /* slate-200 */
+        }
+        .sidebar-link:hover {
+            background-color: #E2E8F0; /* slate-200 */
+        }
+        .post-action-button:hover {
+            background-color: #F1F5F9; /* slate-100, very light gray for hover */
+        }
+
+        /* Z-index helper classes */
+        .z-dropdown { z-index: 50; }
+        .z-modal-backdrop { z-index: 90; }
+        .z-modal { z-index: 100; }
+
+        /* Custom text shadow for story text for better readability */
+        .text-shadow {
+            text-shadow: 0 1px 3px rgba(0,0,0,0.5);
+        }
+    </style>
+</head>
+<body class="bg-slate-100 text-slate-900">
+
+    <!-- Navbar -->
+    <nav id="navbar" class="fixed top-0 left-0 right-0 z-40 bg-white h-14 shadow-md flex items-center justify-between px-2 sm:px-4">
+        <!-- Left Section -->
+        <div class="flex items-center space-x-2">
+            <a href="#" aria-label="Facebook home">
+                <!-- Facebook 'f' Logo SVG -->
+                <svg viewBox="0 0 36 36" class="h-10 w-10 text-blue-600 fill-current" fill="url(#fb_logo_gradient)">
+                    <defs>
+                        <linearGradient x1="50%" x2="50%" y1="97.0782153%" y2="0%" id="fb_logo_gradient">
+                            <stop offset="0%" stop-color="#0062E0"></stop>
+                            <stop offset="100%" stop-color="#19AFFF"></stop>
+                        </linearGradient>
+                    </defs>
+                    <path d="M15 35.8C6.5 34.3 0 26.9 0 18 0 8.1 8.1 0 18 0s18 8.1 18 18c0 8.9-6.5 16.3-15 17.8l-1-.8h-4l-1 .8z"></path>
+                    <path class="text-white fill-current" d="M25 23l.8-5H21v-3.5c0-1.4.5-2.5 2.7-2.5H26V7.4c-1.3-.2-2.7-.4-4-.4-4.1 0-7 2.5-7 7v4h-4.5v5H15v12.7c1 .2 2 .3 3 .3s2-.1 3-.3V23h4z"></path>
+                </svg>
+            </a>
+            <div class="relative hidden sm:block">
+                <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                    <i class="fas fa-search text-slate-500"></i>
+                </div>
+                <input type="text" placeholder="Search Facebook" class="bg-slate-100 text-slate-700 rounded-full py-2 pl-10 pr-4 h-10 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white w-60">
+            </div>
+             <button class="sm:hidden w-10 h-10 bg-slate-100 hover:bg-slate-200 rounded-full flex items-center justify-center text-slate-600" aria-label="Search">
+                <i class="fas fa-search"></i>
+            </button>
+        </div>
+
+        <!-- Center Section - Navigation -->
+        <div class="flex space-x-1 sm:space-x-2 h-full items-center justify-center flex-grow sm:flex-grow-0">
+            <a href="#" class="fb-nav-item group h-full" data-tab="home" aria-label="Home">
+                <div class="flex items-center justify-center h-full px-3 sm:px-6 rounded-lg">
+                    <i class="fas fa-home text-2xl text-slate-600 group-hover:text-blue-600"></i>
+                </div>
+            </a>
+            <a href="#" class="fb-nav-item group h-full" data-tab="friends" aria-label="Friends">
+                <div class="flex items-center justify-center h-full px-3 sm:px-6 rounded-lg">
+                    <i class="fas fa-user-friends text-2xl text-slate-600 group-hover:text-blue-600"></i>
+                </div>
+            </a>
+            <a href="#" class="fb-nav-item group h-full" data-tab="watch" aria-label="Watch">
+                <div class="flex items-center justify-center h-full px-3 sm:px-6 rounded-lg">
+                    <i class="fas fa-tv text-2xl text-slate-600 group-hover:text-blue-600"></i>
+                </div>
+            </a>
+            <a href="#" class="fb-nav-item group h-full hidden md:flex" data-tab="marketplace" aria-label="Marketplace">
+                 <div class="flex items-center justify-center h-full px-3 sm:px-6 rounded-lg">
+                    <i class="fas fa-store text-2xl text-slate-600 group-hover:text-blue-600"></i>
+                </div>
+            </a>
+            <a href="#" class="fb-nav-item group h-full hidden md:flex" data-tab="groups" aria-label="Groups">
+                 <div class="flex items-center justify-center h-full px-3 sm:px-6 rounded-lg">
+                    <i class="fas fa-users text-2xl text-slate-600 group-hover:text-blue-600"></i>
+                </div>
+            </a>
+        </div>
+
+        <!-- Right Section - User Menu/Actions -->
+        <div class="flex items-center space-x-1 sm:space-x-2">
+            <button class="w-10 h-10 bg-slate-200 rounded-full flex items-center justify-center text-slate-700 fb-icon-button hidden lg:flex" aria-label="Menu">
+                <i class="fas fa-th text-lg"></i>
+            </button>
+            <button class="w-10 h-10 bg-slate-200 rounded-full flex items-center justify-center text-slate-700 fb-icon-button" aria-label="Messenger">
+                <i class="fab fa-facebook-messenger text-lg"></i>
+            </button>
+            <button class="w-10 h-10 bg-slate-200 rounded-full flex items-center justify-center text-slate-700 fb-icon-button" aria-label="Notifications">
+                <i class="fas fa-bell text-lg"></i>
+            </button>
+            <div class="relative">
+                <button id="accountMenuButton" class="w-10 h-10 bg-slate-300 rounded-full overflow-hidden focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2" aria-label="Account menu">
+                    <!-- Placeholder for profile picture -->
+                </button>
+                <div id="accountMenuDropdown" class="absolute right-0 mt-2 w-80 bg-white rounded-md shadow-xl z-dropdown hidden py-2">
+                    <div class="p-2 border-b border-slate-200">
+                        <div class="flex items-center space-x-3 p-2 hover:bg-slate-100 rounded-md cursor-pointer">
+                            <div class="w-14 h-14 bg-slate-300 rounded-full"></div>
+                            <div>
+                                <p class="font-semibold text-slate-800">Lorem User</p>
+                                <p class="text-sm text-slate-500">See your profile</p>
+                            </div>
+                        </div>
+                    </div>
+                    <a href="#" class="flex items-center space-x-3 px-4 py-3 hover:bg-slate-100 text-slate-700">
+                        <i class="fas fa-cog w-5 text-center text-slate-500"></i>
+                        <span>Settings & Privacy</span>
+                    </a>
+                    <a href="#" class="flex items-center space-x-3 px-4 py-3 hover:bg-slate-100 text-slate-700">
+                        <i class="fas fa-question-circle w-5 text-center text-slate-500"></i>
+                        <span>Help & Support</span>
+                    </a>
+                    <a href="#" class="flex items-center space-x-3 px-4 py-3 hover:bg-slate-100 text-slate-700">
+                        <i class="fas fa-moon w-5 text-center text-slate-500"></i>
+                        <span>Display & Accessibility</span>
+                    </a>
+                    <a href="#" class="flex items-center space-x-3 px-4 py-3 hover:bg-slate-100 text-slate-700">
+                        <i class="fas fa-sign-out-alt w-5 text-center text-slate-500"></i>
+                        <span>Log Out</span>
+                    </a>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content Area -->
+    <main class="pt-14 flex h-screen">
+        <!-- Left Sidebar -->
+        <aside id="left-sidebar" class="fixed top-14 left-0 w-80 h-[calc(100vh-3.5rem)] bg-slate-50 xl:bg-transparent p-3 space-y-1 overflow-y-auto hidden lg:block border-r border-slate-200 xl:border-none">
+            <a href="#" class="flex items-center space-x-3 p-2 rounded-lg sidebar-link">
+                <div class="w-8 h-8 bg-slate-300 rounded-full"></div>
+                <span class="font-semibold text-slate-800 text-sm">Lorem User</span>
+            </a>
+            <a href="#" class="flex items-center space-x-3 p-2 rounded-lg sidebar-link">
+                <i class="fas fa-user-friends text-xl w-8 text-center text-blue-500"></i>
+                <span class="font-medium text-slate-700 text-sm">Friends</span>
+            </a>
+            <a href="#" class="flex items-center space-x-3 p-2 rounded-lg sidebar-link">
+                <i class="fas fa-flag text-xl w-8 text-center text-orange-500"></i>
+                <span class="font-medium text-slate-700 text-sm">Pages</span>
+            </a>
+            <a href="#" class="flex items-center space-x-3 p-2 rounded-lg sidebar-link">
+                <i class="fas fa-users text-xl w-8 text-center text-sky-500"></i>
+                <span class="font-medium text-slate-700 text-sm">Groups</span>
+            </a>
+            <a href="#" class="flex items-center space-x-3 p-2 rounded-lg sidebar-link">
+                <i class="fas fa-store text-xl w-8 text-center text-blue-500"></i>
+                <span class="font-medium text-slate-700 text-sm">Marketplace</span>
+            </a>
+            <a href="#" class="flex items-center space-x-3 p-2 rounded-lg sidebar-link">
+                <i class="fas fa-tv text-xl w-8 text-center text-blue-500"></i>
+                <span class="font-medium text-slate-700 text-sm">Watch</span>
+            </a>
+            <a href="#" class="flex items-center space-x-3 p-2 rounded-lg sidebar-link">
+                <i class="fas fa-calendar-alt text-xl w-8 text-center text-red-500"></i>
+                <span class="font-medium text-slate-700 text-sm">Events</span>
+            </a>
+            <a href="#" class="flex items-center space-x-3 p-2 rounded-lg sidebar-link">
+                <i class="fas fa-history text-xl w-8 text-center text-slate-500"></i>
+                <span class="font-medium text-slate-700 text-sm">Memories</span>
+            </a>
+            <a href="#" class="flex items-center space-x-3 p-2 rounded-lg sidebar-link">
+                <i class="fas fa-bookmark text-xl w-8 text-center text-purple-500"></i>
+                <span class="font-medium text-slate-700 text-sm">Saved</span>
+            </a>
+            <hr class="my-3 border-slate-300">
+            <h3 class="text-slate-600 font-semibold text-xs px-2 mb-1">Your Shortcuts</h3>
+            <a href="#" class="flex items-center space-x-3 p-2 rounded-lg sidebar-link">
+                <div class="w-8 h-8 bg-slate-300 rounded-lg"></div>
+                <span class="font-medium text-slate-700 text-sm">My Awesome Group</span>
+            </a>
+            <a href="#" class="flex items-center space-x-3 p-2 rounded-lg sidebar-link">
+                 <div class="w-8 h-8 bg-slate-300 rounded-lg"></div>
+                <span class="font-medium text-slate-700 text-sm">Design Community</span>
+            </a>
+        </aside>
+
+        <!-- Center Content (Feed) -->
+        <section id="center-content" class="flex-grow pt-6 pb-20 lg:pl-80 xl:pr-72 overflow-y-auto">
+            <div class="max-w-xl mx-auto space-y-6 px-4 sm:px-0">
+                <!-- Stories -->
+                <div class="bg-white rounded-lg shadow p-4 hidden sm:block">
+                    <div class="flex space-x-3 overflow-x-auto pb-2 -mx-4 px-4" style="-webkit-overflow-scrolling: touch; scrollbar-width: none;">
+                        <div class="flex-shrink-0 w-28 h-48 rounded-lg bg-slate-700 text-white p-2 flex flex-col justify-between cursor-pointer relative overflow-hidden group">
+                            <div class="absolute inset-0 bg-cover bg-center group-hover:scale-105 transition-transform duration-200" style="background-image: url('https://via.placeholder.com/112x192/4A5568/FFFFFF?text=Your+Story');"></div>
+                            <div class="absolute inset-0 bg-black bg-opacity-20"></div>
+                            <div class="relative z-10 w-10 h-10 bg-blue-500 border-4 border-white rounded-full flex items-center justify-center mt-auto mx-auto mb-2 group-hover:bg-blue-600 transition-colors">
+                                <i class="fas fa-plus text-xl"></i>
+                            </div>
+                            <p class="text-xs font-semibold text-center relative z-10">Create story</p>
+                        </div>
+                        <!-- Sample Story Item -->
+                        <div class="flex-shrink-0 w-28 h-48 rounded-lg bg-slate-200 relative overflow-hidden cursor-pointer group">
+                            <div class="absolute inset-0 bg-cover bg-center group-hover:scale-105 transition-transform duration-200" style="background-image: url('https://via.placeholder.com/112x192/A0A0A0/FFFFFF?text=Story+1');"></div>
+                             <div class="absolute inset-0 bg-black bg-opacity-10 group-hover:bg-opacity-0 transition-opacity"></div>
+                            <div class="absolute top-2 left-2 w-8 h-8 bg-slate-300 rounded-full border-2 border-blue-500"></div>
+                            <p class="absolute bottom-2 left-2 right-2 text-xs font-semibold text-white text-shadow">Story User</p>
+                        </div>
+                         <div class="flex-shrink-0 w-28 h-48 rounded-lg bg-slate-200 relative overflow-hidden cursor-pointer group">
+                            <div class="absolute inset-0 bg-cover bg-center group-hover:scale-105 transition-transform duration-200" style="background-image: url('https://via.placeholder.com/112x192/B0B0B0/FFFFFF?text=Story+2');"></div>
+                            <div class="absolute inset-0 bg-black bg-opacity-10 group-hover:bg-opacity-0 transition-opacity"></div>
+                            <div class="absolute top-2 left-2 w-8 h-8 bg-slate-300 rounded-full border-2 border-blue-500"></div>
+                            <p class="absolute bottom-2 left-2 right-2 text-xs font-semibold text-white text-shadow">Another User</p>
+                        </div>
+                         <div class="flex-shrink-0 w-28 h-48 rounded-lg bg-slate-200 relative overflow-hidden cursor-pointer group">
+                            <div class="absolute inset-0 bg-cover bg-center group-hover:scale-105 transition-transform duration-200" style="background-image: url('https://via.placeholder.com/112x192/C0C0C0/FFFFFF?text=Story+3');"></div>
+                            <div class="absolute inset-0 bg-black bg-opacity-10 group-hover:bg-opacity-0 transition-opacity"></div>
+                            <div class="absolute top-2 left-2 w-8 h-8 bg-slate-300 rounded-full border-2 border-blue-500"></div>
+                            <p class="absolute bottom-2 left-2 right-2 text-xs font-semibold text-white text-shadow">Example Story</p>
+                        </div>
+                        <div class="flex-shrink-0 w-28 h-48 rounded-lg bg-slate-200 relative overflow-hidden cursor-pointer group md:hidden lg:block"> <!-- Hide on md, show on lg+ for space -->
+                            <div class="absolute inset-0 bg-cover bg-center group-hover:scale-105 transition-transform duration-200" style="background-image: url('https://via.placeholder.com/112x192/D0D0D0/FFFFFF?text=Story+4');"></div>
+                            <div class="absolute inset-0 bg-black bg-opacity-10 group-hover:bg-opacity-0 transition-opacity"></div>
+                            <div class="absolute top-2 left-2 w-8 h-8 bg-slate-300 rounded-full border-2 border-blue-500"></div>
+                            <p class="absolute bottom-2 left-2 right-2 text-xs font-semibold text-white text-shadow">More Stories</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Create Post -->
+                <div class="bg-white rounded-lg shadow p-4">
+                    <div class="flex items-center space-x-3">
+                        <div class="w-10 h-10 bg-slate-300 rounded-full flex-shrink-0"></div>
+                        <button id="openCreatePostModalButton" class="flex-grow bg-slate-100 hover:bg-slate-200 text-slate-600 text-left rounded-full py-3 px-4 cursor-pointer transition-colors">
+                            What's on your mind, Lorem?
+                        </button>
+                    </div>
+                    <hr class="my-3 border-slate-200">
+                    <div class="flex justify-around">
+                        <button class="flex items-center space-x-2 py-2 px-3 rounded-lg hover:bg-slate-100 text-slate-600 font-medium w-1/3 justify-center transition-colors">
+                            <i class="fas fa-video text-red-500 text-xl"></i>
+                            <span class="text-xs sm:text-sm">Live video</span>
+                        </button>
+                        <button id="openCreatePostModalButtonPhoto" class="flex items-center space-x-2 py-2 px-3 rounded-lg hover:bg-slate-100 text-slate-600 font-medium w-1/3 justify-center transition-colors">
+                            <i class="fas fa-photo-video text-green-500 text-xl"></i>
+                            <span class="text-xs sm:text-sm">Photo/video</span>
+                        </button>
+                        <button class="flex items-center space-x-2 py-2 px-3 rounded-lg hover:bg-slate-100 text-slate-600 font-medium w-1/3 justify-center transition-colors">
+                            <i class="fas fa-laugh-beam text-yellow-500 text-xl"></i>
+                            <span class="text-xs sm:text-sm">Feeling/activity</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- News Feed Posts Container -->
+                <div id="newsFeed" class="space-y-6">
+                    <!-- Posts will be rendered here by JavaScript -->
+                </div>
+                 <div class="text-center py-8 text-slate-500">
+                    <i class="fas fa-check-circle fa-2x text-green-500"></i>
+                    <p class="mt-2 text-sm">You're all caught up!</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- Right Sidebar -->
+        <aside id="right-sidebar" class="fixed top-14 right-0 w-72 h-[calc(100vh-3.5rem)] p-3 space-y-4 overflow-y-auto hidden xl:block">
+            <!-- Sponsored -->
+            <div class="space-y-3">
+                <h3 class="text-slate-600 font-semibold text-xs px-1">Sponsored</h3>
+                <a href="#" class="flex items-center space-x-3 hover:bg-slate-200 p-2 rounded-lg transition-colors">
+                    <div class="w-28 h-16 bg-slate-300 rounded-lg bg-cover bg-center" style="background-image: url('https://via.placeholder.com/112x64/CCCCCC/969696?text=Ad+1');"></div>
+                    <div>
+                        <p class="font-medium text-slate-800 text-sm">Amazing Product</p>
+                        <p class="text-xs text-slate-500">buyme.now</p>
+                    </div>
+                </a>
+                <a href="#" class="flex items-center space-x-3 hover:bg-slate-200 p-2 rounded-lg transition-colors">
+                    <div class="w-28 h-16 bg-slate-300 rounded-lg bg-cover bg-center" style="background-image: url('https://via.placeholder.com/112x64/C0C0C0/969696?text=Ad+2');"></div>
+                    <div>
+                        <p class="font-medium text-slate-800 text-sm">Great Service</p>
+                        <p class="text-xs text-slate-500">service.io</p>
+                    </div>
+                </a>
+            </div>
+            <hr class="border-slate-300">
+            <!-- Birthdays -->
+            <div>
+                <h3 class="text-slate-600 font-semibold text-sm mb-2 px-1">Birthdays</h3>
+                <a href="#" class="flex items-center space-x-3 hover:bg-slate-200 p-2 rounded-lg transition-colors">
+                    <i class="fas fa-gift text-2xl text-pink-500"></i>
+                    <div>
+                        <p class="text-slate-800 text-sm"><span class="font-semibold">Jane Doe</span> and <span class="font-semibold">2 others</span> have birthdays today.</p>
+                    </div>
+                </a>
+            </div>
+            <hr class="border-slate-300">
+            <!-- Contacts -->
+            <div>
+                <div class="flex justify-between items-center mb-2 px-1">
+                    <h3 class="text-slate-600 font-semibold text-sm">Contacts</h3>
+                    <div class="space-x-1">
+                        <button class="w-7 h-7 rounded-full hover:bg-slate-200 flex items-center justify-center text-slate-500" aria-label="New room"><i class="fas fa-video text-xs"></i></button>
+                        <button class="w-7 h-7 rounded-full hover:bg-slate-200 flex items-center justify-center text-slate-500" aria-label="Search contacts"><i class="fas fa-search text-xs"></i></button>
+                        <button class="w-7 h-7 rounded-full hover:bg-slate-200 flex items-center justify-center text-slate-500" aria-label="Contact options"><i class="fas fa-ellipsis-h text-xs"></i></button>
+                    </div>
+                </div>
+                <div class="space-y-1">
+                    <a href="#" class="flex items-center space-x-3 p-2 rounded-lg hover:bg-slate-200 transition-colors">
+                        <div class="relative">
+                            <div class="w-8 h-8 bg-slate-300 rounded-full"></div>
+                            <span class="absolute bottom-0 right-0 block h-2.5 w-2.5 rounded-full bg-green-500 border-2 border-white"></span>
+                        </div>
+                        <span class="font-medium text-slate-700 text-sm">Alice Wonderland</span>
+                    </a>
+                    <a href="#" class="flex items-center space-x-3 p-2 rounded-lg hover:bg-slate-200 transition-colors">
+                        <div class="relative">
+                           <div class="w-8 h-8 bg-slate-300 rounded-full"></div>
+                            <span class="absolute bottom-0 right-0 block h-2.5 w-2.5 rounded-full bg-green-500 border-2 border-white"></span>
+                        </div>
+                        <span class="font-medium text-slate-700 text-sm">Bob The Builder</span>
+                    </a>
+                    <a href="#" class="flex items-center space-x-3 p-2 rounded-lg hover:bg-slate-200 transition-colors">
+                        <div class="relative">
+                            <div class="w-8 h-8 bg-slate-300 rounded-full"></div>
+                        </div>
+                        <span class="font-medium text-slate-700 text-sm">Charlie Chaplin</span>
+                    </a>
+                     <a href="#" class="flex items-center space-x-3 p-2 rounded-lg hover:bg-slate-200 transition-colors">
+                        <div class="relative">
+                           <div class="w-8 h-8 bg-slate-300 rounded-full"></div>
+                            <span class="absolute bottom-0 right-0 block h-2.5 w-2.5 rounded-full bg-green-500 border-2 border-white"></span>
+                        </div>
+                        <span class="font-medium text-slate-700 text-sm">Diana Prince</span>
+                    </a>
+                </div>
+            </div>
+        </aside>
+    </main>
+
+    <!-- Create Post Modal -->
+    <div id="createPostModal" class="fixed inset-0 bg-slate-800 bg-opacity-75 z-modal-backdrop flex items-center justify-center p-4 hidden transition-opacity duration-300">
+        <div class="bg-white rounded-lg shadow-xl w-full max-w-lg z-modal transform transition-all duration-300 scale-95 opacity-0">
+            <div class="flex items-center justify-between p-4 border-b border-slate-200">
+                <h2 class="text-xl font-bold text-slate-800">Create Post</h2>
+                <button id="closeCreatePostModalButton" class="w-8 h-8 bg-slate-200 hover:bg-slate-300 rounded-full flex items-center justify-center text-slate-600 transition-colors" aria-label="Close create post modal">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="p-4">
+                <div class="flex items-center space-x-3 mb-4">
+                    <div class="w-10 h-10 bg-slate-300 rounded-full"></div>
+                    <div>
+                        <p class="font-semibold text-slate-800">Lorem User</p>
+                        <button class="text-xs text-slate-500 bg-slate-200 px-2 py-0.5 rounded hover:bg-slate-300 transition-colors">
+                            <i class="fas fa-globe-americas"></i> Public <i class="fas fa-caret-down ml-1"></i>
+                        </button>
+                    </div>
+                </div>
+                <textarea id="postModalTextarea" rows="5" class="w-full p-2 border-none focus:ring-0 text-lg placeholder-slate-400 resize-none" placeholder="What's on your mind, Lorem?"></textarea>
+                <div class="flex justify-between items-center mt-2 p-3 border border-slate-300 rounded-lg">
+                    <span class="text-sm font-medium text-slate-700">Add to your post</span>
+                    <div class="flex space-x-1">
+                        <button class="w-9 h-9 rounded-full hover:bg-slate-100 flex items-center justify-center text-green-500 transition-colors" title="Photo/Video"><i class="fas fa-photo-video text-xl"></i></button>
+                        <button class="w-9 h-9 rounded-full hover:bg-slate-100 flex items-center justify-center text-blue-500 transition-colors" title="Tag people"><i class="fas fa-user-tag text-xl"></i></button>
+                        <button class="w-9 h-9 rounded-full hover:bg-slate-100 flex items-center justify-center text-yellow-500 transition-colors" title="Feeling/Activity"><i class="fas fa-laugh-beam text-xl"></i></button>
+                        <button class="w-9 h-9 rounded-full hover:bg-slate-100 flex items-center justify-center text-red-500 transition-colors" title="Check in"><i class="fas fa-map-marker-alt text-xl"></i></button>
+                        <button class="w-9 h-9 rounded-full hover:bg-slate-100 flex items-center justify-center text-slate-500 transition-colors" title="More"><i class="fas fa-ellipsis-h text-xl"></i></button>
+                    </div>
+                </div>
+            </div>
+            <div class="p-4">
+                <button id="submitPostButton" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2.5 px-4 rounded-lg disabled:opacity-50 transition-colors">
+                    Post
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            // State
+            let currentActiveTab = 'home';
+            let isAccountMenuOpen = false;
+            let isCreatePostModalOpen = false;
+
+            // Elements
+            const navItems = document.querySelectorAll('.fb-nav-item');
+            const accountMenuButton = document.getElementById('accountMenuButton');
+            const accountMenuDropdown = document.getElementById('accountMenuDropdown');
+            
+            const openCreatePostModalButton = document.getElementById('openCreatePostModalButton');
+            const openCreatePostModalButtonPhoto = document.getElementById('openCreatePostModalButtonPhoto');
+            const createPostModal = document.getElementById('createPostModal');
+            const createPostModalDialog = createPostModal ? createPostModal.querySelector('.z-modal') : null;
+            const closeCreatePostModalButton = document.getElementById('closeCreatePostModalButton');
+            const postModalTextarea = document.getElementById('postModalTextarea');
+            const submitPostButton = document.getElementById('submitPostButton');
+
+            const newsFeedContainer = document.getElementById('newsFeed');
+
+            // Initial setup for submit post button state
+            const toggleSubmitPostButton = () => {
+                if(submitPostButton && postModalTextarea) {
+                    submitPostButton.disabled = postModalTextarea.value.trim() === '';
+                }
+            };
+            if (postModalTextarea) {
+                 postModalTextarea.addEventListener('input', toggleSubmitPostButton);
+            }
+            toggleSubmitPostButton(); // Initial check
+
+
+            // --- Navigation Tab Activation ---
+            function setActiveTab(tabId) {
+                navItems.forEach(item => {
+                    item.classList.toggle('active', item.dataset.tab === tabId);
+                });
+                currentActiveTab = tabId;
+            }
+
+            navItems.forEach(item => {
+                item.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    setActiveTab(item.dataset.tab);
+                });
+            });
+            setActiveTab(currentActiveTab); // Set initial active tab
+
+            // --- Account Menu Dropdown ---
+            if (accountMenuButton && accountMenuDropdown) {
+                 accountMenuButton.addEventListener('click', (e) => {
+                    e.stopPropagation(); 
+                    isAccountMenuOpen = !isAccountMenuOpen;
+                    accountMenuDropdown.classList.toggle('hidden', !isAccountMenuOpen);
+                });
+            }
+
+            // --- Create Post Modal ---
+            function openModal() {
+                if (createPostModal && createPostModalDialog) {
+                    createPostModal.classList.remove('hidden');
+                    // Trigger reflow for transition
+                    void createPostModal.offsetWidth; 
+                    createPostModal.classList.remove('opacity-0');
+                    createPostModalDialog.classList.remove('scale-95', 'opacity-0');
+                    createPostModalDialog.classList.add('scale-100', 'opacity-100');
+                    
+                    isCreatePostModalOpen = true;
+                    if(postModalTextarea) postModalTextarea.focus();
+                    toggleSubmitPostButton(); 
+                }
+            }
+            function closeModal() {
+                 if (createPostModal && createPostModalDialog) {
+                    createPostModal.classList.add('opacity-0');
+                    createPostModalDialog.classList.remove('scale-100', 'opacity-100');
+                    createPostModalDialog.classList.add('scale-95', 'opacity-0');
+                    
+                    setTimeout(() => {
+                        createPostModal.classList.add('hidden');
+                        isCreatePostModalOpen = false;
+                    }, 300); // Match transition duration
+                 }
+            }
+
+            if (openCreatePostModalButton) openCreatePostModalButton.addEventListener('click', openModal);
+            if (openCreatePostModalButtonPhoto) openCreatePostModalButtonPhoto.addEventListener('click', openModal);
+            if (closeCreatePostModalButton) closeCreatePostModalButton.addEventListener('click', closeModal);
+            
+            if (createPostModal) { 
+                createPostModal.addEventListener('click', (e) => {
+                    if (e.target === createPostModal) { // Click on backdrop
+                        closeModal();
+                    }
+                });
+            }
+            if (submitPostButton) {
+                 submitPostButton.addEventListener('click', () => {
+                    const postText = postModalTextarea.value.trim();
+                    if (postText) {
+                        console.log("New Post:", postText);
+                        addPostToFeed({
+                            user: { name: "Lorem User", avatar: null },
+                            time: "Just now",
+                            content: postText,
+                            image: null, 
+                            likes: 0,
+                            comments: 0,
+                            shares: 0,
+                            isLiked: false
+                        });
+                        postModalTextarea.value = '';
+                        closeModal();
+                    }
+                });
+            }
+
+
+            // --- Close dropdowns/modals on Escape key or click outside ---
+            document.addEventListener('click', (e) => {
+                if (isAccountMenuOpen && accountMenuDropdown && !accountMenuDropdown.contains(e.target) && !accountMenuButton.contains(e.target)) {
+                    isAccountMenuOpen = false;
+                    accountMenuDropdown.classList.add('hidden');
+                }
+            });
+
+            document.addEventListener('keydown', (e) => {
+                if (e.key === 'Escape') {
+                    if (isAccountMenuOpen && accountMenuDropdown) {
+                        isAccountMenuOpen = false;
+                        accountMenuDropdown.classList.add('hidden');
+                    }
+                    if (isCreatePostModalOpen && createPostModal) {
+                       closeModal();
+                    }
+                }
+            });
+
+            // --- Sample Post Data ---
+            let postsData = [
+                {
+                    id: 1,
+                    user: { name: "Tech Reviewer", avatar: null },
+                    time: "1h ago",
+                    content: "Just unboxed the new LoremTech X1! Initial impressions are amazing. The display is crisp and the performance is super snappy. Full review coming soon! #LoremTechX1 #TechUnboxing",
+                    image: "https://via.placeholder.com/600x400/D1D5DB/374151?text=Tech+Gadget", // slate-300 bg, slate-700 text
+                    likes: 152,
+                    comments: 18,
+                    shares: 7,
+                    isLiked: false
+                },
+                {
+                    id: 2,
+                    user: { name: "Foodie Gal", avatar: null },
+                    time: "3h ago",
+                    content: "Homemade pasta night! 🍝 Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. So delicious! #PastaNight #HomeCooking #FoodLover",
+                    image: "https://via.placeholder.com/600x400/FDE68A/CA8A04?text=Delicious+Pasta", // amber-200 bg, amber-600 text
+                    likes: 289,
+                    comments: 45,
+                    shares: 12,
+                    isLiked: true
+                },
+                {
+                    id: 3,
+                    user: { name: "Travel Nomad", avatar: null },
+                    time: "Yesterday at 8:00 PM",
+                    content: "Exploring the ancient ruins of Ipsum. The history here is palpable. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. #Travel #Adventure #AncientRuins",
+                    image: null, 
+                    likes: 98,
+                    comments: 10,
+                    shares: 3,
+                    isLiked: false
+                },
+                {
+                    id: 4,
+                    user: { name: "Art Enthusiast", avatar: null },
+                    time: "2 days ago",
+                    content: "Visited the new modern art exhibition. Some truly thought-provoking pieces. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Highly recommend!",
+                    image: "https://via.placeholder.com/600x300/A5B4FC/312E81?text=Modern+Art", // indigo-300 bg, indigo-900 text
+                    likes: 120,
+                    comments: 22,
+                    shares: 5,
+                    isLiked: false
+                }
+            ];
+
+            // --- Render Posts ---
+            function createPostElement(post) {
+                const postEl = document.createElement('div');
+                postEl.classList.add('bg-white', 'rounded-lg', 'shadow');
+                postEl.dataset.postId = post.id;
+
+                const avatarPlaceholder = `<div class="w-10 h-10 bg-slate-300 rounded-full flex-shrink-0"></div>`;
+                const imageHTML = post.image ? `<div class="mt-3 -mx-0 sm:-mx-0 bg-slate-200"><img src="${post.image}" alt="Post image" class="w-full object-cover max-h-[500px]"></div>` : '';
+                
+                const likeButtonBaseClass = 'text-slate-600';
+                const likeButtonActiveClass = 'text-blue-600';
+                const likeButtonClasses = post.isLiked ? likeButtonActiveClass : likeButtonBaseClass;
+                const likeButtonIcon = post.isLiked ? 'fas' : 'far'; 
+
+                postEl.innerHTML = `
+                    <div class="p-4">
+                        <div class="flex items-center justify-between">
+                            <div class="flex items-center space-x-3">
+                                ${avatarPlaceholder}
+                                <div>
+                                    <p class="font-semibold text-slate-800 text-sm">${post.user.name}</p>
+                                    <p class="text-xs text-slate-500">${post.time} <i class="fas fa-globe-americas ml-1"></i></p>
+                                </div>
+                            </div>
+                            <button class="w-8 h-8 rounded-full hover:bg-slate-100 flex items-center justify-center text-slate-500" aria-label="Post options">
+                                <i class="fas fa-ellipsis-h"></i>
+                            </button>
+                        </div>
+                        <p class="mt-3 text-slate-700 text-sm leading-relaxed">${post.content.replace(/\n/g, '<br>')}</p>
+                    </div>
+                    ${imageHTML}
+                    <div class="px-4 pt-2 pb-1">
+                        <div class="flex justify-between items-center text-xs text-slate-500">
+                            <div class="flex items-center space-x-1">
+                                <div class="flex items-center">
+                                    <span class="flex items-center justify-center w-5 h-5 bg-blue-500 rounded-full text-white text-[10px] border-2 border-white"><i class="fas fa-thumbs-up"></i></span>
+                                    <!-- You can add more reaction icons here, overlapping slightly if desired -->
+                                </div>
+                                <span class="like-count">${post.likes}</span>
+                            </div>
+                            <div>
+                                <span class="comment-count">${post.comments} comments</span>
+                                <span class="ml-2 share-count">${post.shares} shares</span>
+                            </div>
+                        </div>
+                         <hr class="my-2 border-slate-200">
+                        <div class="flex justify-around">
+                            <button class="post-action-button flex items-center justify-center space-x-2 py-2 px-3 rounded-lg font-medium w-1/3 like-button ${likeButtonClasses}" aria-label="Like post">
+                                <i class="${likeButtonIcon} fa-thumbs-up text-lg"></i>
+                                <span class="text-sm">Like</span>
+                            </button>
+                            <button class="post-action-button flex items-center justify-center space-x-2 py-2 px-3 rounded-lg text-slate-600 font-medium w-1/3" aria-label="Comment on post">
+                                <i class="far fa-comment-alt text-lg"></i>
+                                <span class="text-sm">Comment</span>
+                            </button>
+                            <button class="post-action-button flex items-center justify-center space-x-2 py-2 px-3 rounded-lg text-slate-600 font-medium w-1/3" aria-label="Share post">
+                                <i class="fas fa-share text-lg transform scale-x-[-1]"></i> <!-- Mirrored share icon -->
+                                <span class="text-sm">Share</span>
+                            </button>
+                        </div>
+                    </div>
+                `;
+                return postEl;
+            }
+
+            function renderPosts() {
+                if (!newsFeedContainer) return;
+                newsFeedContainer.innerHTML = ''; 
+                postsData.forEach(post => {
+                    const postElement = createPostElement(post);
+                    newsFeedContainer.appendChild(postElement);
+                });
+            }
+            
+            function addPostToFeed(postData) {
+                const newPost = { ...postData, id: Date.now() }; 
+                postsData.unshift(newPost); 
+                
+                if (!newsFeedContainer) return;
+                const postElement = createPostElement(newPost);
+                newsFeedContainer.insertBefore(postElement, newsFeedContainer.firstChild);
+            }
+
+            if (newsFeedContainer) {
+                newsFeedContainer.addEventListener('click', (e) => {
+                    const likeButton = e.target.closest('.like-button');
+                    if (likeButton) {
+                        const postElement = likeButton.closest('[data-post-id]');
+                        const postId = parseInt(postElement.dataset.postId);
+                        const post = postsData.find(p => p.id === postId);
+
+                        if (post) {
+                            post.isLiked = !post.isLiked;
+                            post.likes += post.isLiked ? 1 : -1;
+
+                            const likeIcon = likeButton.querySelector('i');
+                            const likeCountEl = postElement.querySelector('.like-count');
+                            
+                            likeButton.classList.toggle('text-blue-600', post.isLiked);
+                            likeButton.classList.toggle('text-slate-600', !post.isLiked);
+                            likeIcon.classList.toggle('fas', post.isLiked); 
+                            likeIcon.classList.toggle('far', !post.isLiked); 
+                            
+                            if(likeCountEl) likeCountEl.textContent = post.likes;
+                        }
+                    }
+                });
+            }
+            
+            renderPosts();
+
+        }); // End DOMContentLoaded
+    </script>
+</body>
+</html>

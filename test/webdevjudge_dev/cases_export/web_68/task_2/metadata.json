@@ -1,0 +1,9 @@
+{
+  "web_id": "web_68",
+  "task_id": 2,
+  "task_type": "dynamic",
+  "instruction": "Task: Hover over a product item in the product showcase.\nExpected Result: An animated overlay displaying the product's name, a brief description, and pricing options (e.g., daily, weekly, monthly) appears over the hovered product.\n\nNote: The task is only considered successful if the expected result is achieved; otherwise, it is deemed infeasible.",
+  "max_steps": 15,
+  "expected": "An animated overlay displaying the product's name, a brief description, and pricing options (e.g., daily, weekly, monthly) appears over the hovered product.",
+  "label": 1
+}

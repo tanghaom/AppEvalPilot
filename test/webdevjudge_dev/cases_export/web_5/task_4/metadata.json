@@ -1,0 +1,9 @@
+{
+  "web_id": "web_5",
+  "task_id": 4,
+  "task_type": "dynamic",
+  "instruction": "Task: Click on any part of an inactive application window.\nExpected Result: The clicked window becomes the active window and is brought to the front of other windows (z-index update).\n\nNote: The task is only considered successful if the expected result is achieved; otherwise, it is deemed infeasible.",
+  "max_steps": 15,
+  "expected": "The clicked window becomes the active window and is brought to the front of other windows (z-index update).",
+  "label": 1
+}

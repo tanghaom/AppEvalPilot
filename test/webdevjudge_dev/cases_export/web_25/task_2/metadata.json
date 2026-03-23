@@ -1,0 +1,9 @@
+{
+  "web_id": "web_25",
+  "task_id": 2,
+  "task_type": "dynamic",
+  "instruction": "Task: Click a 'Start Game' or 'Start Level 1' button\nExpected Result: The initial grid configuration for the first level is displayed, and shapes within the grid become interactive.\n\nNote: The task is only considered successful if the expected result is achieved; otherwise, it is deemed infeasible.",
+  "max_steps": 15,
+  "expected": "The initial grid configuration for the first level is displayed, and shapes within the grid become interactive.",
+  "label": 0
+}

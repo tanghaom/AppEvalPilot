@@ -1,0 +1,9 @@
+{
+  "web_id": "web_79",
+  "task_id": 2,
+  "task_type": "dynamic",
+  "instruction": "Task: Click the 'Add Item' button.\nExpected Result: A new item appears in the list, displaying its name, previous price, an interactive price slider, and fields for current price and price difference.\n\nNote: The task is only considered successful if the expected result is achieved; otherwise, it is deemed infeasible.",
+  "max_steps": 15,
+  "expected": "A new item appears in the list, displaying its name, previous price, an interactive price slider, and fields for current price and price difference.",
+  "label": 1
+}

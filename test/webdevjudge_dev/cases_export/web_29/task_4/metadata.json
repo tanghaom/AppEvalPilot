@@ -1,0 +1,9 @@
+{
+  "web_id": "web_29",
+  "task_id": 4,
+  "task_type": "dynamic",
+  "instruction": "Task: On a property detail page, click the 'next' arrow of an image gallery.\nExpected Result: The next image of the property is displayed in the gallery.\n\nNote: The task is only considered successful if the expected result is achieved; otherwise, it is deemed infeasible.",
+  "max_steps": 15,
+  "expected": "The next image of the property is displayed in the gallery.",
+  "label": 0
+}

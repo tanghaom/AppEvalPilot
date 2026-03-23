@@ -1,0 +1,9 @@
+{
+  "web_id": "web_19",
+  "task_id": 4,
+  "task_type": "dynamic",
+  "instruction": "Task: Click on a (simulated) AI-generated suggestion (e.g., for grammar, style, or reformulation) presented to the user.\nExpected Result: The chosen suggestion is inserted or applied to the relevant text in the CodeMirror editor.\n\nNote: The task is only considered successful if the expected result is achieved; otherwise, it is deemed infeasible.",
+  "max_steps": 15,
+  "expected": "The chosen suggestion is inserted or applied to the relevant text in the CodeMirror editor.",
+  "label": 0
+}

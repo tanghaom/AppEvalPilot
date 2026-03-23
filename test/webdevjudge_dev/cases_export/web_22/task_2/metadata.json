@@ -1,0 +1,9 @@
+{
+  "web_id": "web_22",
+  "task_id": 2,
+  "task_type": "dynamic",
+  "instruction": "Task: From the Dashboard, click an 'Edit' button for an existing product feature, modify some of its details in the form (e.g., update feature status, change a planned date), and save.\nExpected Result: The changes to the feature are saved locally and the updated information is reflected for that feature on the Dashboard view.\n\nNote: The task is only considered successful if the expected result is achieved; otherwise, it is deemed infeasible.",
+  "max_steps": 15,
+  "expected": "The changes to the feature are saved locally and the updated information is reflected for that feature on the Dashboard view.",
+  "label": 1
+}

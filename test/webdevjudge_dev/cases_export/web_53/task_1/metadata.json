@@ -1,0 +1,9 @@
+{
+  "web_id": "web_53",
+  "task_id": 1,
+  "task_type": "dynamic",
+  "instruction": "Task: Select a region from a dropdown menu or tab.\nExpected Result: The leaderboard for the selected region is displayed, showing the top 100 performers for that region.\n\nNote: The task is only considered successful if the expected result is achieved; otherwise, it is deemed infeasible.",
+  "max_steps": 15,
+  "expected": "The leaderboard for the selected region is displayed, showing the top 100 performers for that region.",
+  "label": 1
+}

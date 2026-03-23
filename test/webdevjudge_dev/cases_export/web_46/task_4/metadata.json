@@ -1,0 +1,9 @@
+{
+  "web_id": "web_46",
+  "task_id": 4,
+  "task_type": "dynamic",
+  "instruction": "Task: Click on a player's name in a list of players.\nExpected Result: A dedicated section or modal appears, displaying detailed information for the selected player (e.g., simulated game history, current chip count if in a game, using locally stored data).\n\nNote: The task is only considered successful if the expected result is achieved; otherwise, it is deemed infeasible.",
+  "max_steps": 15,
+  "expected": "A dedicated section or modal appears, displaying detailed information for the selected player (e.g., simulated game history, current chip count if in a game, using locally stored data).",
+  "label": 0
+}

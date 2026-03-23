@@ -1,0 +1,9 @@
+{
+  "web_id": "web_2",
+  "task_id": 1,
+  "task_type": "dynamic",
+  "instruction": "Task: Click a button to start a new game session (locally simulated).\nExpected Result: The game board/interface is displayed, and player roles are internally assigned for the simulation.\n\nNote: The task is only considered successful if the expected result is achieved; otherwise, it is deemed infeasible.",
+  "max_steps": 15,
+  "expected": "The game board/interface is displayed, and player roles are internally assigned for the simulation.",
+  "label": 1
+}

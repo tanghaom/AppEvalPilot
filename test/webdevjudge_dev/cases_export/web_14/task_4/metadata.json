@@ -1,0 +1,9 @@
+{
+  "web_id": "web_14",
+  "task_id": 4,
+  "task_type": "dynamic",
+  "instruction": "Task: Click a 'Regenerate response' button associated with the last bot message\nExpected Result: The previous simulated bot response is replaced or a new simulated bot response is appended for the same user prompt.\n\nNote: The task is only considered successful if the expected result is achieved; otherwise, it is deemed infeasible.",
+  "max_steps": 15,
+  "expected": "The previous simulated bot response is replaced or a new simulated bot response is appended for the same user prompt.",
+  "label": 0
+}

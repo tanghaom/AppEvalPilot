@@ -1,0 +1,9 @@
+{
+  "web_id": "web_8",
+  "task_id": 5,
+  "task_type": "dynamic",
+  "instruction": "Task: Move the mouse cursor across the main 3D animated background area.\nExpected Result: The 3D background animation dynamically responds to the cursor's position or movement.\n\nNote: The task is only considered successful if the expected result is achieved; otherwise, it is deemed infeasible.",
+  "max_steps": 15,
+  "expected": "The 3D background animation dynamically responds to the cursor's position or movement.",
+  "label": 0
+}

@@ -1,0 +1,9 @@
+{
+  "web_id": "web_6",
+  "task_id": 2,
+  "task_type": "dynamic",
+  "instruction": "Task: Click the 'Like' button on a displayed post.\nExpected Result: The 'Like' button visually changes its state (e.g., color, icon) and a local like counter, if present, increments.\n\nNote: The task is only considered successful if the expected result is achieved; otherwise, it is deemed infeasible.",
+  "max_steps": 15,
+  "expected": "The 'Like' button visually changes its state (e.g., color, icon) and a local like counter, if present, increments.",
+  "label": 1
+}

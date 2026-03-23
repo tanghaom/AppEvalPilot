@@ -1,0 +1,9 @@
+{
+  "web_id": "web_36",
+  "task_id": 3,
+  "task_type": "dynamic",
+  "instruction": "Task: Click the 'Sign Up' button on the signup page.\nExpected Result: A client-side confirmation message (e.g., 'Sign up initiated locally') is displayed, or the view transitions to a mock dashboard/welcome area within the single page.\n\nNote: The task is only considered successful if the expected result is achieved; otherwise, it is deemed infeasible.",
+  "max_steps": 15,
+  "expected": "A client-side confirmation message (e.g., 'Sign up initiated locally') is displayed, or the view transitions to a mock dashboard/welcome area within the single page.",
+  "label": 0
+}

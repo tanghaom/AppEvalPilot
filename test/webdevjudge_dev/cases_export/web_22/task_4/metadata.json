@@ -1,0 +1,9 @@
+{
+  "web_id": "web_22",
+  "task_id": 4,
+  "task_type": "dynamic",
+  "instruction": "Task: On the Dashboard, click a 'View Details' action associated with a product feature in the list.\nExpected Result: A detailed view (e.g., a modal or a dedicated page section) appears, showing all attributes of the selected feature and its associated release candidates.\n\nNote: The task is only considered successful if the expected result is achieved; otherwise, it is deemed infeasible.",
+  "max_steps": 15,
+  "expected": "A detailed view (e.g., a modal or a dedicated page section) appears, showing all attributes of the selected feature and its associated release candidates.",
+  "label": 1
+}

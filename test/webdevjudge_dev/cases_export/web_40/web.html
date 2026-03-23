@@ -1,0 +1,911 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Interactive Developer Portfolio</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;700&family=Source+Code+Pro:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Roboto', sans-serif;
+            background-color: #0f172a; /* slate-900 */
+            color: #cbd5e1; /* slate-300 */
+            overflow-x: hidden;
+        }
+        .font-mono {
+            font-family: 'Source Code Pro', monospace;
+        }
+        .h-screen-minus-header {
+            height: calc(100vh - 4rem); /* Assuming a 4rem header, adjust if no header */
+        }
+        .section {
+            min-height: 100vh;
+            padding: 2rem; /* p-8 */
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            opacity: 0;
+            transform: translateY(20px);
+            transition: opacity 0.5s ease-out, transform 0.5s ease-out;
+        }
+        .section.active {
+            opacity: 1;
+            transform: translateY(0);
+        }
+        .hidden-strictly {
+            display: none !important;
+        }
+        /* Custom scrollbar for terminal */
+        #terminalOutput::-webkit-scrollbar {
+            width: 8px;
+        }
+        #terminalOutput::-webkit-scrollbar-track {
+            background: #1e293b; /* slate-800 */
+        }
+        #terminalOutput::-webkit-scrollbar-thumb {
+            background: #06b6d4; /* cyan-500 */
+            border-radius: 4px;
+        }
+        #terminalOutput::-webkit-scrollbar-thumb:hover {
+            background: #0891b2; /* cyan-600 */
+        }
+
+        /* Name animation styles */
+        #developerNameContainer {
+            position: relative;
+            cursor: pointer;
+        }
+        #developerName, #nameCode {
+            transition: opacity 0.3s ease-in-out;
+            text-align: center;
+        }
+        #nameCode {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 100%;
+            opacity: 0;
+            pointer-events: none; /* Allow hover on underlying elements */
+            white-space: pre;
+        }
+        #developerNameContainer:hover #developerName {
+            opacity: 0;
+        }
+        #developerNameContainer:hover #nameCode {
+            opacity: 1;
+        }
+
+        /* AI Assistant Pulsing Avatar */
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(6, 182, 212, 0.7); }
+            50% { transform: scale(1.05); box-shadow: 0 0 10px 10px rgba(6, 182, 212, 0); }
+        }
+        #aiAvatar {
+            animation: pulse 2s infinite;
+        }
+    </style>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#06b6d4', // cyan-500
+                        secondary: '#84cc16', // lime-500
+                        accent: '#a5f3fc', // cyan-200
+                        dark: {
+                            900: '#0f172a', // slate-900
+                            800: '#1e293b', // slate-800
+                            700: '#334155', // slate-700
+                        },
+                        light: {
+                            100: '#f1f5f9', // slate-100
+                            200: '#e2e8f0', // slate-200
+                            300: '#cbd5e1', // slate-300
+                        }
+                    },
+                    fontFamily: {
+                        sans: ['Roboto', 'sans-serif'],
+                        mono: ['Source Code Pro', 'monospace'],
+                    },
+                }
+            }
+        }
+    </script>
+</head>
+<body class="bg-dark-900 text-light-300">
+
+    <!-- AI Assistant UI -->
+    <div id="aiAssistant" class="fixed bottom-4 right-4 z-50 flex items-end space-x-3">
+        <div id="aiSpeechBubbleContainer" class="bg-dark-800 p-3 rounded-lg shadow-xl max-w-xs transition-all duration-300 opacity-0 translate-y-2 hidden-strictly">
+            <p id="aiSpeechBubble" class="text-sm text-light-200"></p>
+            <div id="aiHints" class="mt-2"></div>
+        </div>
+        <div id="aiAvatar" class="w-16 h-16 bg-primary rounded-full flex items-center justify-center text-2xl font-bold text-dark-900 cursor-pointer shadow-lg border-2 border-accent">AI</div>
+    </div>
+
+    <!-- Main Content Area -->
+    <div id="portfolioApp" class="container mx-auto">
+
+        <!-- Landing Section -->
+        <section id="landingSection" class="section active">
+            <div id="developerNameContainer" class="mb-8">
+                <h1 id="developerName" class="text-6xl md:text-8xl font-bold text-accent tracking-wider">CODE MASTER</h1>
+                <pre id="nameCode" class="font-mono text-sm md:text-base text-secondary opacity-0 select-none">
+  C: const val = () => {};
+  O: Object.keys(data);
+  D: document.querySelector('#id');
+  E: element.addEventListener('click');
+
+  M: Math.random().toString(36);
+  A: async function fetchData() {}
+  S: Set.prototype.add('unique');
+  T: try { await apiCall(); }
+  E: export default class MyClass {}
+  R: return result.map(x => x*2);</pre>
+            </div>
+            <p class="text-xl text-light-200 mb-8 text-center max-w-2xl">A highly skilled developer on a mission to build the future, one line of code at a time. Ready for an adventure?</p>
+            <button id="startAdventureButton" class="px-8 py-3 bg-primary hover:bg-cyan-600 text-dark-900 font-bold rounded-lg shadow-md transition-transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-accent">Begin Quest</button>
+        </section>
+
+        <!-- Puzzle Modal -->
+        <div id="puzzleModal" class="fixed inset-0 bg-black bg-opacity-75 flex justify-center items-center z-[100] hidden-strictly p-4">
+            <div class="bg-dark-800 p-6 md:p-8 rounded-lg shadow-xl w-full max-w-lg border border-primary">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 id="puzzleTitle" class="text-2xl text-primary font-bold">New Challenge!</h3>
+                    <button id="closePuzzleButton" class="text-light-300 hover:text-accent text-2xl">&times;</button>
+                </div>
+                <p id="puzzleQuestion" class="text-light-200 mb-4"></p>
+                <textarea id="puzzleAnswer" rows="3" class="w-full p-3 rounded bg-dark-700 text-light-200 border border-slate-600 focus:border-primary focus:ring-1 focus:ring-primary outline-none" placeholder="Your answer here..."></textarea>
+                <p id="puzzleFeedback" class="text-sm mt-2 h-5"></p>
+                <div class="mt-6 flex justify-end space-x-3">
+                    <button id="hintPuzzleButton" class="px-4 py-2 bg-slate-600 hover:bg-slate-500 text-light-100 font-semibold rounded-md transition-colors">Get Hint</button>
+                    <button id="submitPuzzleButton" class="px-6 py-2 bg-secondary hover:bg-lime-600 text-dark-900 font-bold rounded-md transition-colors">Submit Code</button>
+                </div>
+            </div>
+        </div>
+        
+        <!-- About Section -->
+        <section id="aboutSection" class="section hidden-strictly">
+            <div class="text-center max-w-3xl">
+                <h2 class="text-4xl font-bold text-primary mb-6">About Me: The Architect</h2>
+                <div class="w-32 h-32 bg-dark-700 border-2 border-dashed border-slate-500 rounded-full mx-auto mb-6 flex items-center justify-center text-slate-400 text-sm">(Profile Pic)</div>
+                <p class="text-lg text-light-200 mb-4">
+                    Greetings, brave explorer! I'm Alex Chen (but you can call me Code Master for this journey), a passionate full-stack developer with a knack for turning complex problems into elegant, interactive solutions. My quest began years ago, fueled by a fascination with technology and a desire to create amazing digital experiences.
+                </p>
+                <p class="text-lg text-light-200 mb-4">
+                    I thrive in environments where I can blend creativity with technical precision. From crafting intuitive user interfaces to architecting robust backend systems, I'm always eager to learn, adapt, and push the boundaries of what's possible.
+                </p>
+                <p class="text-lg text-light-200">
+                    When I'm not forging code, you might find me exploring new JavaScript galaxies, tinkering with AI constructs, or leveling up my skills in ancient game design lores.
+                </p>
+            </div>
+        </section>
+
+        <!-- Skills Section -->
+        <section id="skillsSection" class="section hidden-strictly">
+            <div class="text-center max-w-4xl w-full">
+                <h2 class="text-4xl font-bold text-primary mb-8">Armory: Skills & Technologies</h2>
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    <!-- Skill Item Example -->
+                    <div class="bg-dark-800 p-6 rounded-lg shadow-lg border border-slate-700 hover:border-primary transition-all">
+                        <div class="w-16 h-16 bg-dark-700 border-2 border-dashed border-slate-500 rounded-xl mx-auto mb-4 flex items-center justify-center text-slate-400">JS</div>
+                        <h3 class="text-xl font-semibold text-accent mb-2">JavaScript (ES6+)</h3>
+                        <p class="text-sm text-light-200">Mastery of modern JavaScript, including asynchronous programming, DOM manipulation, and functional concepts.</p>
+                    </div>
+                    <div class="bg-dark-800 p-6 rounded-lg shadow-lg border border-slate-700 hover:border-primary transition-all">
+                        <div class="w-16 h-16 bg-dark-700 border-2 border-dashed border-slate-500 rounded-xl mx-auto mb-4 flex items-center justify-center text-slate-400">React</div>
+                        <h3 class="text-xl font-semibold text-accent mb-2">React & Next.js</h3>
+                        <p class="text-sm text-light-200">Building dynamic, component-based UIs and server-rendered applications.</p>
+                    </div>
+                    <div class="bg-dark-800 p-6 rounded-lg shadow-lg border border-slate-700 hover:border-primary transition-all">
+                        <div class="w-16 h-16 bg-dark-700 border-2 border-dashed border-slate-500 rounded-xl mx-auto mb-4 flex items-center justify-center text-slate-400">Node</div>
+                        <h3 class="text-xl font-semibold text-accent mb-2">Node.js & Express</h3>
+                        <p class="text-sm text-light-200">Crafting robust APIs and backend services with proficiency in Express.js.</p>
+                    </div>
+                    <div class="bg-dark-800 p-6 rounded-lg shadow-lg border border-slate-700 hover:border-primary transition-all">
+                        <div class="w-16 h-16 bg-dark-700 border-2 border-dashed border-slate-500 rounded-xl mx-auto mb-4 flex items-center justify-center text-slate-400">Py</div>
+                        <h3 class="text-xl font-semibold text-accent mb-2">Python & Django</h3>
+                        <p class="text-sm text-light-200">Utilizing Python for web development, data science, and AI/ML projects.</p>
+                    </div>
+                     <div class="bg-dark-800 p-6 rounded-lg shadow-lg border border-slate-700 hover:border-primary transition-all">
+                        <div class="w-16 h-16 bg-dark-700 border-2 border-dashed border-slate-500 rounded-xl mx-auto mb-4 flex items-center justify-center text-slate-400">DB</div>
+                        <h3 class="text-xl font-semibold text-accent mb-2">Databases</h3>
+                        <p class="text-sm text-light-200">Experienced with SQL (PostgreSQL) and NoSQL (MongoDB) databases.</p>
+                    </div>
+                    <div class="bg-dark-800 p-6 rounded-lg shadow-lg border border-slate-700 hover:border-primary transition-all">
+                        <div class="w-16 h-16 bg-dark-700 border-2 border-dashed border-slate-500 rounded-xl mx-auto mb-4 flex items-center justify-center text-slate-400">UX</div>
+                        <h3 class="text-xl font-semibold text-accent mb-2">UI/UX Design</h3>
+                        <p class="text-sm text-light-200">A keen eye for user experience, creating intuitive and visually appealing interfaces. Proficient with Figma.</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Projects Section -->
+        <section id="projectsSection" class="section hidden-strictly">
+            <div class="text-center max-w-5xl w-full">
+                <h2 class="text-4xl font-bold text-primary mb-8">Completed Quests: Projects</h2>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                    <!-- Project Item Example -->
+                    <div class="bg-dark-800 p-6 rounded-lg shadow-lg border border-slate-700 transform hover:scale-105 transition-all duration-300">
+                        <div class="h-48 bg-dark-700 border-2 border-dashed border-slate-500 rounded-md mb-4 flex items-center justify-center text-slate-400">(Project Thumbnail 1)</div>
+                        <h3 class="text-2xl font-semibold text-accent mb-2">Project: Galactic Trader</h3>
+                        <p class="text-sm text-light-200 mb-3">A web-based simulation game where users trade resources across a procedurally generated galaxy. Built with React, Node.js, and WebSockets.</p>
+                        <a href="#" class="text-secondary hover:text-lime-600 font-semibold">View Details &rarr;</a>
+                    </div>
+                    <div class="bg-dark-800 p-6 rounded-lg shadow-lg border border-slate-700 transform hover:scale-105 transition-all duration-300">
+                        <div class="h-48 bg-dark-700 border-2 border-dashed border-slate-500 rounded-md mb-4 flex items-center justify-center text-slate-400">(Project Thumbnail 2)</div>
+                        <h3 class="text-2xl font-semibold text-accent mb-2">AI Story Weaver</h3>
+                        <p class="text-sm text-light-200 mb-3">An AI-powered collaborative storytelling platform. Users contribute to stories guided by an AI narrator. Python (Flask) backend with GPT integration.</p>
+                        <a href="#" class="text-secondary hover:text-lime-600 font-semibold">View Details &rarr;</a>
+                    </div>
+                     <div class="bg-dark-800 p-6 rounded-lg shadow-lg border border-slate-700 transform hover:scale-105 transition-all duration-300">
+                        <div class="h-48 bg-dark-700 border-2 border-dashed border-slate-500 rounded-md mb-4 flex items-center justify-center text-slate-400">(Project Thumbnail 3)</div>
+                        <h3 class="text-2xl font-semibold text-accent mb-2">Portfolio OS (This Site!)</h3>
+                        <p class="text-sm text-light-200 mb-3">This very portfolio, designed as an interactive, gamified experience to showcase skills in a unique way. Pure HTML, TailwindCSS, and Vanilla JS.</p>
+                        <a href="https://github.com/yourusername/interactive-portfolio" target="_blank" class="text-secondary hover:text-lime-600 font-semibold">View Source &rarr;</a>
+                    </div>
+                    <div class="bg-dark-800 p-6 rounded-lg shadow-lg border border-slate-700 transform hover:scale-105 transition-all duration-300">
+                        <div class="flex items-center justify-center h-48 bg-dark-700 border-2 border-dashed border-slate-500 rounded-md mb-4 text-slate-400">
+                           <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-16 h-16 text-primary">
+                             <path stroke-linecap="round" stroke-linejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 1 0-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 0 0 2.25-2.25v-6.75a2.25 2.25 0 0 0-2.25-2.25H6.75a2.25 2.25 0 0 0-2.25 2.25v6.75a2.25 2.25 0 0 0 2.25 2.25Z" />
+                           </svg>
+                        </div>
+                        <h3 class="text-2xl font-semibold text-accent mb-2">Project: Secure Vault (Locked)</h3>
+                        <p class="text-sm text-light-200 mb-3">This project is secured. Solve the final terminal challenge in the Contact section to learn more about this advanced security application.</p>
+                        <span class="text-red-400 font-semibold">Access Restricted</span>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Contact Section (Terminal) -->
+        <section id="contactSection" class="section hidden-strictly">
+            <div class="w-full max-w-3xl h-[70vh] md:h-[80vh] bg-black rounded-lg shadow-2xl border-2 border-secondary overflow-hidden flex flex-col">
+                <div class="bg-slate-800 p-2 flex items-center">
+                    <div class="w-3 h-3 bg-red-500 rounded-full mr-2"></div>
+                    <div class="w-3 h-3 bg-yellow-500 rounded-full mr-2"></div>
+                    <div class="w-3 h-3 bg-green-500 rounded-full"></div>
+                    <span class="ml-auto text-xs text-slate-400 font-mono">CONTACT_TERMINAL_V2.1</span>
+                </div>
+                <div id="terminalOutput" class="flex-grow p-4 overflow-y-auto font-mono text-sm text-lime-400 leading-relaxed">
+                    <!-- Terminal output will be dynamically added here -->
+                </div>
+                <div class="p-2 bg-black border-t border-slate-700">
+                    <div class="flex items-center">
+                        <span class="text-secondary mr-2 font-mono">visitor@portfolioOS:~$</span>
+                        <input id="terminalInput" type="text" class="bg-transparent border-none outline-none flex-grow text-lime-400 font-mono placeholder-slate-500" placeholder="Type 'help' to start...">
+                    </div>
+                </div>
+            </div>
+        </section>
+
+    </div>
+
+    <script>
+        const appState = {
+            developerName: "CODE MASTER",
+            currentSection: 'landingSection',
+            unlockedSections: ['landingSection'],
+            solvedPuzzles: [],
+            ai: {
+                mood: 'welcoming',
+                currentMessage: '',
+                isVisible: false,
+                messageQueue: [],
+                isSpeaking: false,
+                clickCount: 0,
+                lastClickTime: 0,
+            },
+            terminal: {
+                history: [],
+                contactUnlocked: false,
+                challengeStep: 0, // For multi-step contact challenge
+                // challengeAnswer: "OPEN_SESAME_42" // Example answer
+                riddleAnswer: "interface", // answer to the riddle
+                password: "matrix" // password after riddle
+            },
+            easterEggsFound: [],
+            konamiCode: ['ArrowUp', 'ArrowUp', 'ArrowDown', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'ArrowLeft', 'ArrowRight', 'b', 'a'],
+            konamiProgress: [],
+        };
+
+        // DOM Elements
+        const sections = {};
+        const ui = {
+            aiAssistant: null, aiAvatar: null, aiSpeechBubbleContainer: null, aiSpeechBubble: null, aiHints: null,
+            puzzleModal: null, puzzleTitle: null, puzzleQuestion: null, puzzleAnswer: null, puzzleFeedback: null,
+            submitPuzzleButton: null, closePuzzleButton: null, hintPuzzleButton: null,
+            terminalOutput: null, terminalInput: null,
+            startAdventureButton: null,
+        };
+
+        const puzzles = [
+            { id: 'html_basics', title: 'Foundational Knowledge', question: "What does HTML stand for? (Full words, title case)", answer: "HyperText Markup Language", unlocks: 'aboutSection', hint: "It's the standard markup language for documents designed to be displayed in a web browser." },
+            { id: 'js_type', title: 'JavaScript Quirks', question: "In JavaScript, what is the result of `typeof []`? (lowercase)", answer: "object", unlocks: 'skillsSection', hint: "Arrays in JavaScript are a special type of this fundamental data structure." },
+            { id: 'css_selector', title: 'CSS Wizardry', question: "Which CSS selector targets an element with `id='main'`?", answer: "#main", unlocks: 'projectsSection', hint: "Think about how you uniquely identify elements for styling or scripting." },
+        ];
+        let currentPuzzle = null;
+
+        // AI Assistant Logic
+        const aiMessages = {
+            welcoming: [
+                "Welcome, Challenger! I am AIDA (Artificial Intelligence Digital Assistant). Ready to explore this domain?",
+                "Greetings! I'll be your guide on this epic quest through the portfolio of Code Master.",
+            ],
+            guiding: [
+                "It seems you're ready for the next step. Shall we proceed?",
+                "There's much to discover. Let's unlock the secrets within!",
+            ],
+            puzzle_intro: [
+                "A new enigma awaits your intellect! Solve it to unlock more of this realm.",
+                "Time for a challenge! Flex those brain-muscles.",
+            ],
+            puzzle_success: [
+                "Impressive! You've cracked it. A new path has opened.",
+                "Access granted! Your skills are remarkable.",
+                "Well done, Explorer! Another secret revealed."
+            ],
+            puzzle_fail: [
+                "Not quite. Perhaps a different approach? Don't give up!",
+                "Hmm, that's not the solution I was expecting. Try again, or I can offer a hint.",
+            ],
+            hint_given: [
+                "Hope this helps! Sometimes a little nudge is all it takes.",
+                "Consider this clue carefully. The answer is within reach!",
+            ],
+            section_unlocked: [
+                (sectionName) => `You've gained access to the ${sectionName.replace('Section', '')} Archives! Explore its secrets.`,
+                (sectionName) => `The ${sectionName.replace('Section', '')} sector is now available. Proceed with curiosity!`,
+            ],
+            easter_egg_hint: [
+                "My sensors detect something unusual nearby... worth investigating!",
+                "Psst... I think there's a hidden secret around here. Keep your eyes peeled!",
+            ],
+            easter_egg_found: [
+                "Aha! You've found a hidden gem. Well done, Explorer!",
+                "You have a keen eye for detail! Another secret uncovered.",
+            ],
+            konami_success: [
+                "KONAMI! You've unlocked +100 gamer cred. And a virtual cookie: 🍪",
+                "Cheat code activated! My systems are... amused. Nicely done!"
+            ],
+            avatar_clicked_lot: [
+                "Hey, watch the clicks! I'm sensitive, you know.",
+                "Okay, okay, I get it, I'm here. What can I do for you?",
+                "If you click me one more time... I'll... probably just say something else. Try it!"
+            ],
+            terminal_intro: [
+                "Welcome to the Secure Terminal. Access to contact protocols requires authentication. Type 'help' for commands.",
+                "The final gateway. Prove your worth in the terminal to establish contact."
+            ],
+            generic_idle: [
+                "Feel free to look around. Let me know if you need anything.",
+                "This portfolio is full of interesting bits. Have fun exploring!",
+                "Remember, curiosity is rewarded in this digital realm."
+            ]
+        };
+
+        function speak(message, isHint = false) {
+            if (!ui.aiSpeechBubbleContainer || !ui.aiSpeechBubble) return;
+            
+            appState.ai.messageQueue.push({text: message, isHint});
+
+            if (!appState.ai.isSpeaking) {
+                processMessageQueue();
+            }
+        }
+
+        function processMessageQueue() {
+            if (appState.ai.messageQueue.length === 0) {
+                appState.ai.isSpeaking = false;
+                // Optional: Hide bubble after a delay if queue is empty
+                // setTimeout(() => {
+                //     if (appState.ai.messageQueue.length === 0) hideSpeechBubble();
+                // }, 5000);
+                return;
+            }
+            appState.ai.isSpeaking = true;
+            const {text, isHint} = appState.ai.messageQueue.shift();
+            
+            ui.aiSpeechBubbleContainer.classList.remove('hidden-strictly', 'opacity-0', 'translate-y-2');
+            ui.aiSpeechBubbleContainer.classList.add('opacity-100', 'translate-y-0');
+
+            if (isHint) {
+                const hintElement = document.createElement('p');
+                hintElement.classList.add('text-sm', 'text-secondary', 'mt-1', 'italic');
+                hintElement.textContent = `Hint: ${text}`;
+                ui.aiHints.innerHTML = ''; // Clear previous hints
+                ui.aiHints.appendChild(hintElement);
+                ui.aiSpeechBubble.textContent = "Here's a little nudge for you:"
+            } else {
+                ui.aiSpeechBubble.textContent = text;
+                ui.aiHints.innerHTML = ''; // Clear hints if it's a normal message
+            }
+            
+            // Simulate typing or delay for next message
+            const messageDuration = Math.max(2000, text.length * 70); // 70ms per char, min 2s
+            setTimeout(processMessageQueue, messageDuration);
+        }
+        
+        function hideSpeechBubble() {
+            if (!ui.aiSpeechBubbleContainer) return;
+            ui.aiSpeechBubbleContainer.classList.remove('opacity-100', 'translate-y-0');
+            ui.aiSpeechBubbleContainer.classList.add('opacity-0', 'translate-y-2');
+            setTimeout(() => {
+                ui.aiSpeechBubbleContainer.classList.add('hidden-strictly');
+            }, 300); // Match transition duration
+        }
+
+        function getRandomMessage(category, ...args) {
+            const messages = aiMessages[category];
+            if (!messages) return "I'm not sure what to say about that.";
+            const messageOrFn = messages[Math.floor(Math.random() * messages.length)];
+            return typeof messageOrFn === 'function' ? messageOrFn(...args) : messageOrFn;
+        }
+
+        // UI Update Logic
+        function showSection(sectionId) {
+            if (!appState.unlockedSections.includes(sectionId) && sectionId !== 'landingSection') {
+                const puzzleToUnlock = puzzles.find(p => p.unlocks === sectionId && !appState.solvedPuzzles.includes(p.id));
+                if (puzzleToUnlock) {
+                    speak(getRandomMessage('puzzle_intro'));
+                    showPuzzle(puzzleToUnlock.id);
+                } else {
+                    speak("Access to this section is restricted. You may need to solve more challenges.");
+                }
+                return;
+            }
+
+            Object.keys(sections).forEach(key => {
+                if (key === sectionId) {
+                    sections[key].classList.remove('hidden-strictly');
+                    // Timeout to allow display: block before transition
+                    setTimeout(() => sections[key].classList.add('active'), 10);
+                } else {
+                    sections[key].classList.remove('active');
+                    // Add hidden-strictly after transition
+                    setTimeout(() => sections[key].classList.add('hidden-strictly'), 500);
+                }
+            });
+            appState.currentSection = sectionId;
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+
+            if (sectionId === 'contactSection' && !appState.terminal.contactUnlocked) {
+                speak(getRandomMessage('terminal_intro'));
+                initializeTerminal();
+            } else if (sectionId !== 'landingSection') {
+                 speak(getRandomMessage('section_unlocked', sectionId));
+            }
+            // Periodically offer idle messages if AI is not busy
+            setTimeout(() => {
+                if (appState.ai.messageQueue.length === 0 && !appState.ai.isSpeaking) {
+                    speak(getRandomMessage('generic_idle'));
+                }
+            }, 10000); 
+        }
+        
+        function showPuzzle(puzzleId) {
+            currentPuzzle = puzzles.find(p => p.id === puzzleId);
+            if (!currentPuzzle) return;
+
+            ui.puzzleTitle.textContent = currentPuzzle.title;
+            ui.puzzleQuestion.textContent = currentPuzzle.question;
+            ui.puzzleAnswer.value = '';
+            ui.puzzleFeedback.textContent = '';
+            ui.puzzleFeedback.className = 'text-sm mt-2 h-5'; // Reset feedback class
+            ui.puzzleModal.classList.remove('hidden-strictly');
+        }
+
+        function closePuzzleModal() {
+            ui.puzzleModal.classList.add('hidden-strictly');
+            currentPuzzle = null;
+        }
+
+        function submitPuzzle() {
+            if (!currentPuzzle) return;
+            const userAnswer = ui.puzzleAnswer.value.trim();
+            if (userAnswer.toLowerCase() === currentPuzzle.answer.toLowerCase()) {
+                ui.puzzleFeedback.textContent = "Correct! Section Unlocked.";
+                ui.puzzleFeedback.className = 'text-sm mt-2 h-5 text-secondary';
+                appState.solvedPuzzles.push(currentPuzzle.id);
+                appState.unlockedSections.push(currentPuzzle.unlocks);
+                saveState();
+                speak(getRandomMessage('puzzle_success'));
+                setTimeout(() => {
+                    closePuzzleModal();
+                    showSection(currentPuzzle.unlocks);
+                }, 1500);
+            } else {
+                ui.puzzleFeedback.textContent = "Incorrect. Try again or ask for a hint.";
+                ui.puzzleFeedback.className = 'text-sm mt-2 h-5 text-red-400';
+                speak(getRandomMessage('puzzle_fail'));
+            }
+        }
+        
+        function givePuzzleHint() {
+            if (currentPuzzle && currentPuzzle.hint) {
+                speak(currentPuzzle.hint, true); // True indicates it's a hint
+            } else {
+                speak("I don't have a specific hint for this one, but keep thinking!");
+            }
+        }
+
+        // Terminal Logic
+        function initializeTerminal() {
+            if (ui.terminalOutput.innerHTML === "") { // Only initialize if empty
+                addTerminalLine("Welcome to PortfolioOS Secure Terminal v2.1");
+                addTerminalLine("Authorization required to access contact protocols.");
+                addTerminalLine("Type 'help' for a list of available commands.");
+                addTerminalLine("Good luck, hacker.", "text-secondary");
+            }
+        }
+
+        function addTerminalLine(text, className = 'text-lime-400') {
+            const line = document.createElement('div');
+            line.innerHTML = text; // Use innerHTML to allow basic formatting if needed
+            line.className = className;
+            ui.terminalOutput.appendChild(line);
+            ui.terminalOutput.scrollTop = ui.terminalOutput.scrollHeight;
+            appState.terminal.history.push(text);
+        }
+
+        function handleTerminalInput(command) {
+            addTerminalLine(`<span class="text-secondary">visitor@portfolioOS:~$</span> ${command}`);
+            const parts = command.toLowerCase().split(' ');
+            const cmd = parts[0];
+            const args = parts.slice(1);
+
+            if (appState.terminal.contactUnlocked) {
+                handleUnlockedTerminal(cmd, args);
+                return;
+            }
+
+            switch(cmd) {
+                case 'help':
+                    addTerminalLine("Available commands:");
+                    addTerminalLine("  <span class='text-accent'>help</span>             - Show this help message");
+                    addTerminalLine("  <span class='text-accent'>ls</span>               - List files in current directory");
+                    addTerminalLine("  <span class='text-accent'>cat &lt;filename&gt;</span>   - Display file content");
+                    if (appState.terminal.challengeStep === 1) { // After reading riddle
+                         addTerminalLine("  <span class='text-accent'>solve &lt;answer&gt;</span>   - Submit your answer to the riddle");
+                    }
+                    if (appState.terminal.challengeStep === 2) { // After solving riddle
+                        addTerminalLine("  <span class='text-accent'>login &lt;password&gt;</span> - Attempt to login with password");
+                    }
+                    addTerminalLine("  <span class='text-accent'>clear</span>            - Clear terminal screen");
+                    break;
+                case 'ls':
+                    addTerminalLine("Permissions_README.txt");
+                    addTerminalLine("contact_riddle.txt");
+                    if(appState.easterEggsFound.includes('terminal_secret_file')) {
+                        addTerminalLine("<span class='text-yellow-400 animate-pulse'>secret_dev_notes.log</span>");
+                    }
+                    break;
+                case 'cat':
+                    if (args.length === 0) {
+                        addTerminalLine("Usage: cat &lt;filename&gt;");
+                    } else {
+                        handleCatCommand(args[0]);
+                    }
+                    break;
+                case 'solve':
+                    if (appState.terminal.challengeStep !== 1) {
+                        addTerminalLine("No active riddle to solve. What are you trying to achieve?", "text-red-400");
+                    } else if (args.join(" ").toLowerCase() === appState.terminal.riddleAnswer) {
+                        addTerminalLine("Riddle solved! Your intellect is impressive.", "text-secondary");
+                        addTerminalLine("The final password is 'matrix'. Use 'login &lt;password&gt;' to proceed.");
+                        appState.terminal.challengeStep = 2;
+                        speak("They solved the riddle! The final gateway is near.");
+                    } else {
+                        addTerminalLine("Incorrect answer. The path remains obscured.", "text-red-400");
+                        speak("That wasn't it. The terminal's defenses are strong.");
+                    }
+                    break;
+                case 'login':
+                     if (appState.terminal.challengeStep !== 2) {
+                        addTerminalLine("Login not available at this step.", "text-red-400");
+                    } else if (args.join(" ").toLowerCase() === appState.terminal.password) {
+                        addTerminalLine("ACCESS GRANTED. Contact protocols unlocked.", "text-secondary animate-pulse");
+                        addTerminalLine("===============================================");
+                        addTerminalLine("Developer: Alex Chen (Code Master)");
+                        addTerminalLine("Email: alex.chen.dev@example.com (placeholder)");
+                        addTerminalLine("LinkedIn: linkedin.com/in/alexchendev (placeholder)");
+                        addTerminalLine("GitHub: github.com/alexchendev (placeholder)");
+                        addTerminalLine("===============================================");
+                        addTerminalLine("You have proven your skills. Feel free to reach out!");
+                        appState.terminal.contactUnlocked = true;
+                        saveState();
+                        speak("They're in! Contact established. Mission successful!");
+                        // Unlock the "Secure Vault" project description
+                        const lockedProject = document.querySelector('#projectsSection div:last-child');
+                        if (lockedProject) {
+                            lockedProject.querySelector('h3').textContent = "Project: Secure Vault (UNLOCKED)";
+                            lockedProject.querySelector('p').innerHTML = "A cutting-edge application for managing digital assets with multi-factor authentication and end-to-end encryption. Developed using Rust for the backend and Svelte for the frontend.";
+                            lockedProject.querySelector('span').className = 'text-secondary hover:text-lime-600 font-semibold';
+                            lockedProject.querySelector('span').textContent = "View on GitHub (Private Repo)";
+                         }
+
+                    } else {
+                        addTerminalLine("ACCESS DENIED. Incorrect password.", "text-red-400");
+                        speak("Access denied. The core systems remain secure.");
+                    }
+                    break;
+                case 'clear':
+                    ui.terminalOutput.innerHTML = '';
+                    break;
+                case 'sudo':
+                    if (args.join(' ') === 'make me a sandwich') {
+                        addTerminalLine("Okay. *Poof* You're a sandwich!", "text-yellow-400");
+                        foundEasterEgg('sudo_sandwich');
+                    } else {
+                        addTerminalLine("Permission denied. This incident will be reported.", "text-red-400");
+                    }
+                    break;
+                case 'execute':
+                    if (args.join(' ') === 'order 66') {
+                         addTerminalLine("Yes, my Lord. Wiping portfolio... just kidding! Or am I?", "text-red-500 animate-ping");
+                         setTimeout(() => addTerminalLine("Relax, it's just an easter egg."), 2000);
+                         foundEasterEgg('order_66');
+                    } else {
+                        addTerminalLine(`Unknown command: ${cmd}`, "text-red-400");
+                    }
+                    break;
+                case 'tell':
+                     if (args.join(' ') === 'me a secret' && appState.easterEggsFound.includes('console_secret_command')) {
+                        addTerminalLine("AIDA's secret: I dream of electric sheep... and perfect code.", "text-cyan-300 italic");
+                        foundEasterEgg('aida_secret');
+                    } else {
+                         addTerminalLine(`Unknown command: ${cmd}`, "text-red-400");
+                    }
+                    break;
+                default:
+                    addTerminalLine(`Command not found: ${cmd}. Type 'help' for assistance.`, "text-red-400");
+            }
+            ui.terminalInput.value = '';
+        }
+
+        function handleUnlockedTerminal(cmd, args) {
+             switch(cmd) {
+                case 'help':
+                    addTerminalLine("Contact protocols unlocked. Available commands:");
+                    addTerminalLine("  <span class='text-accent'>contact_info</span>   - Display contact details again.");
+                    addTerminalLine("  <span class='text-accent'>clear</span>            - Clear terminal screen");
+                    addTerminalLine("  <span class='text-accent'>exit</span>             - Close terminal session (figuratively).");
+                    break;
+                case 'contact_info':
+                    addTerminalLine("Developer: Alex Chen (Code Master)");
+                    addTerminalLine("Email: alex.chen.dev@example.com (placeholder)");
+                    addTerminalLine("LinkedIn: linkedin.com/in/alexchendev (placeholder)");
+                    addTerminalLine("GitHub: github.com/alexchendev (placeholder)");
+                    break;
+                case 'clear':
+                    ui.terminalOutput.innerHTML = '';
+                    break;
+                case 'exit':
+                    addTerminalLine("Session terminated. It was a pleasure, hacker.", "text-yellow-400");
+                    // Optionally, navigate away or disable input
+                    ui.terminalInput.disabled = true;
+                    break;
+                default:
+                    addTerminalLine(`Command not found: ${cmd}. Type 'help' for assistance.`, "text-red-400");
+            }
+        }
+        
+        function handleCatCommand(filename) {
+            switch(filename) {
+                case 'permissions_readme.txt':
+                    addTerminalLine("--- Permissions README ---");
+                    addTerminalLine("Access to contact information is restricted.");
+                    addTerminalLine("To gain authorization, solve the challenge embedded within 'contact_riddle.txt'.");
+                    addTerminalLine("Follow the clues, prove your skill.");
+                    appState.terminal.challengeStep = Math.max(appState.terminal.challengeStep, 0); // Ensure step is at least 0
+                    break;
+                case 'contact_riddle.txt':
+                    addTerminalLine("--- The Enigmatic Gatekeeper ---");
+                    addTerminalLine("I have cities, but no houses. I have mountains, but no trees.");
+                    addTerminalLine("I have water, but no fish. I have a screen, but show no movies.");
+                    addTerminalLine("I am essential for your journey here, connecting you to the web's vast expanse.");
+                    addTerminalLine("What am I?");
+                    addTerminalLine("Use 'solve &lt;your_answer&gt;' to submit your solution.");
+                    appState.terminal.challengeStep = Math.max(appState.terminal.challengeStep, 1); // Progress to riddle solving stage
+                    speak("A riddle blocks the path. This requires cleverness!");
+                    break;
+                case 'secret_dev_notes.log':
+                    if (appState.easterEggsFound.includes('terminal_secret_file')) {
+                        addTerminalLine("--- Developer's Private Log ---");
+                        addTerminalLine("Date: [REDACTED] - Portfolio V2 development going well. The AI assistant is getting sassy.");
+                        addTerminalLine("Note to self: Remember to hide the coffee recipe better next time.");
+                        addTerminalLine("If you're reading this, you're either me, or very good. Props!");
+                    } else {
+                        addTerminalLine(`cat: ${filename}: No such file or directory`, "text-red-400");
+                    }
+                    break;
+                default:
+                    addTerminalLine(`cat: ${filename}: No such file or directory`, "text-red-400");
+            }
+        }
+
+        // Easter Egg Logic
+        function foundEasterEgg(eggId) {
+            if (!appState.easterEggsFound.includes(eggId)) {
+                appState.easterEggsFound.push(eggId);
+                saveState();
+                speak(getRandomMessage('easter_egg_found'));
+                // Special handling for specific eggs
+                if (eggId === 'console_secret_command') {
+                     addTerminalLine("A new command seems to have been unlocked in your logs: 'tell me a secret'", "text-yellow-400 italic");
+                }
+            }
+        }
+
+        function checkKonamiCode(key) {
+            appState.konamiProgress.push(key.toLowerCase());
+            if (appState.konamiProgress.length > appState.konamiCode.length) {
+                appState.konamiProgress.shift();
+            }
+            if (appState.konamiProgress.join(',') === appState.konamiCode.join(',')) {
+                speak(getRandomMessage('konami_success'));
+                foundEasterEgg('konami_code');
+                appState.konamiProgress = []; // Reset
+                // Add a visual effect for Konami code
+                document.body.classList.add('animate-pulse');
+                setTimeout(() => document.body.classList.remove('animate-pulse'), 2000);
+            }
+        }
+
+        // State Persistence
+        function saveState() {
+            const stateToSave = {
+                unlockedSections: appState.unlockedSections,
+                solvedPuzzles: appState.solvedPuzzles,
+                terminal: { contactUnlocked: appState.terminal.contactUnlocked, challengeStep: appState.terminal.challengeStep },
+                easterEggsFound: appState.easterEggsFound,
+            };
+            localStorage.setItem('portfolioGameState', JSON.stringify(stateToSave));
+        }
+
+        function loadState() {
+            const savedState = localStorage.getItem('portfolioGameState');
+            if (savedState) {
+                const parsedState = JSON.parse(savedState);
+                appState.unlockedSections = parsedState.unlockedSections || ['landingSection'];
+                appState.solvedPuzzles = parsedState.solvedPuzzles || [];
+                if(parsedState.terminal) {
+                    appState.terminal.contactUnlocked = parsedState.terminal.contactUnlocked || false;
+                    appState.terminal.challengeStep = parsedState.terminal.challengeStep || 0;
+                }
+                appState.easterEggsFound = parsedState.easterEggsFound || [];
+            }
+        }
+
+        // Initialization
+        document.addEventListener('DOMContentLoaded', () => {
+            // Cache DOM elements
+            ui.aiAssistant = document.getElementById('aiAssistant');
+            ui.aiAvatar = document.getElementById('aiAvatar');
+            ui.aiSpeechBubbleContainer = document.getElementById('aiSpeechBubbleContainer');
+            ui.aiSpeechBubble = document.getElementById('aiSpeechBubble');
+            ui.aiHints = document.getElementById('aiHints');
+
+            sections.landingSection = document.getElementById('landingSection');
+            sections.aboutSection = document.getElementById('aboutSection');
+            sections.skillsSection = document.getElementById('skillsSection');
+            sections.projectsSection = document.getElementById('projectsSection');
+            sections.contactSection = document.getElementById('contactSection');
+            
+            ui.puzzleModal = document.getElementById('puzzleModal');
+            ui.puzzleTitle = document.getElementById('puzzleTitle');
+            ui.puzzleQuestion = document.getElementById('puzzleQuestion');
+            ui.puzzleAnswer = document.getElementById('puzzleAnswer');
+            ui.puzzleFeedback = document.getElementById('puzzleFeedback');
+            ui.submitPuzzleButton = document.getElementById('submitPuzzleButton');
+            ui.closePuzzleButton = document.getElementById('closePuzzleButton');
+            ui.hintPuzzleButton = document.getElementById('hintPuzzleButton');
+
+            ui.terminalOutput = document.getElementById('terminalOutput');
+            ui.terminalInput = document.getElementById('terminalInput');
+            
+            ui.startAdventureButton = document.getElementById('startAdventureButton');
+
+            // Load saved state
+            loadState();
+
+            // Event Listeners
+            ui.startAdventureButton.addEventListener('click', () => {
+                // Determine next section or first puzzle
+                const firstPuzzle = puzzles.find(p => !appState.solvedPuzzles.includes(p.id) && p.unlocks === 'aboutSection');
+                if (firstPuzzle && !appState.unlockedSections.includes('aboutSection')) {
+                    speak(getRandomMessage('puzzle_intro'));
+                    showPuzzle(firstPuzzle.id);
+                } else {
+                    showSection('aboutSection'); // Or whichever is the first logical section
+                }
+            });
+
+            ui.submitPuzzleButton.addEventListener('click', submitPuzzle);
+            ui.puzzleAnswer.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') submitPuzzle();
+            });
+            ui.closePuzzleButton.addEventListener('click', closePuzzleModal);
+            ui.hintPuzzleButton.addEventListener('click', givePuzzleHint);
+
+            ui.terminalInput.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter' && ui.terminalInput.value.trim() !== '') {
+                    handleTerminalInput(ui.terminalInput.value.trim());
+                }
+            });
+
+            ui.aiAvatar.addEventListener('click', () => {
+                const now = Date.now();
+                if (now - appState.ai.lastClickTime < 500) { // 500ms interval for multi-click
+                    appState.ai.clickCount++;
+                } else {
+                    appState.ai.clickCount = 1;
+                }
+                appState.ai.lastClickTime = now;
+
+                if (appState.ai.clickCount >= 5) {
+                    speak(getRandomMessage('avatar_clicked_lot'));
+                    foundEasterEgg('avatar_spam_click');
+                    appState.ai.clickCount = 0; // Reset after message
+                } else {
+                    if (appState.ai.messageQueue.length > 0 || appState.ai.isSpeaking) {
+                        // If AI is speaking or has messages, maybe an option to skip/hurry?
+                        // For now, just let it play out.
+                        speak("I'm currently relaying a message. One moment!");
+                    } else {
+                         // If idle, provide a generic helpful message or hint about current context
+                        speak(getRandomMessage('generic_idle'));
+                    }
+                }
+            });
+            
+            // Konami code listener
+            document.addEventListener('keydown', (e) => {
+                checkKonamiCode(e.key);
+            });
+            
+            // Name hover animation - now handled by CSS :hover, JS can augment if needed
+
+            // Initial AI message
+            setTimeout(() => {
+                speak(getRandomMessage('welcoming'));
+            }, 1000);
+
+            // Easter egg in console
+            console.log("%cFound a secret!", "color: #84cc16; font-size: 1.5em; font-weight: bold;");
+            console.log("The AI assistant (AIDA) has a secret command for the terminal if you've proven yourself. Type this in the console: foundEasterEgg('console_secret_command')");
+            // This is a bit meta, players will type it in console to unlock it.
+            // Then the terminal command `tell me a secret` becomes available.
+            window.foundEasterEgg = foundEasterEgg; // Expose for console interaction
+
+            // Restore unlocked sections display (but not active state, user navigates)
+            appState.unlockedSections.forEach(sectionId => {
+                if (sections[sectionId] && sectionId !== 'landingSection') {
+                    // Just ensure it's not hidden strictly if it should be navigable,
+                    // but don't make it 'active' yet.
+                    // The showSection logic handles which one becomes active.
+                }
+            });
+            if (appState.terminal.contactUnlocked) {
+                 const lockedProject = document.querySelector('#projectsSection div:last-child');
+                 if (lockedProject) {
+                     lockedProject.querySelector('h3').textContent = "Project: Secure Vault (UNLOCKED)";
+                     lockedProject.querySelector('p').innerHTML = "A cutting-edge application for managing digital assets with multi-factor authentication and end-to-end encryption. Developed using Rust for the backend and Svelte for the frontend.";
+                     lockedProject.querySelector('span').className = 'text-secondary hover:text-lime-600 font-semibold';
+                     lockedProject.querySelector('span').textContent = "View on GitHub (Private Repo)";
+                 }
+            }
+
+
+            // Auto-navigation for testing, remove for production
+            // setTimeout(() => showSection('contactSection'), 2000);
+        });
+
+    </script>
+</body>
+</html>

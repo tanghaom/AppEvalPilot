@@ -1,0 +1,498 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Tailwind Tetris</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    /* Custom styles for scrollbar if needed, but Tailwind generally handles this well */
+    body {
+      font-family: 'VT323', monospace; /* A retro-style monospace font */
+    }
+    /* Ensure canvas is sharp */
+    canvas {
+      image-rendering: -moz-crisp-edges;
+      image-rendering: -webkit-crisp-edges;
+      image-rendering: pixelated;
+      image-rendering: crisp-edges;
+    }
+    /* Add a nice pixelated font - we'll use a Google Font for this */
+    @import url('https://fonts.googleapis.com/css2?family=VT323&display=swap');
+  </style>
+</head>
+<body class="bg-slate-900 text-slate-100 flex flex-col items-center justify-center min-h-screen p-4 selection:bg-cyan-500 selection:text-slate-900">
+
+  <div id="game-container" class="w-full max-w-4xl">
+    <header class="mb-6 text-center">
+      <h1 class="text-5xl font-bold text-cyan-400 tracking-wide">TAILWIND TETRIS</h1>
+    </header>
+
+    <div class="flex flex-col lg:flex-row gap-6 lg:gap-8 items-start">
+      <!-- Game Area -->
+      <div class="flex-grow flex flex-col items-center w-full lg:w-auto">
+        <div id="canvas-container" class="p-1 bg-slate-950 rounded-lg shadow-2xl border-2 border-slate-700 relative">
+          <canvas width="320" height="640" id="game" class="rounded"></canvas>
+          <div id="gameOverScreen" class="absolute inset-0 bg-slate-900 bg-opacity-80 flex-col items-center justify-center text-center p-8 rounded-md hidden z-10">
+            <h2 class="text-5xl font-bold text-red-500 mb-4">GAME OVER!</h2>
+            <p class="text-2xl mb-2">Final Score: <span id="finalScore" class="font-bold text-yellow-400">0</span></p>
+            <p class="text-xl mb-6">Lines Cleared: <span id="finalLines" class="font-bold text-green-400">0</span></p>
+            <button id="playAgainButton" class="mt-4 bg-cyan-500 hover:bg-cyan-600 text-slate-900 font-bold py-3 px-8 rounded-lg text-xl transition-all duration-150 ease-in-out shadow-md hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-cyan-300">
+              Play Again
+            </button>
+          </div>
+           <div id="welcomeScreen" class="absolute inset-0 bg-slate-900 bg-opacity-80 flex flex-col items-center justify-center text-center p-8 rounded-md z-10">
+            <h2 class="text-4xl font-bold text-cyan-400 mb-6">Welcome to Tailwind Tetris!</h2>
+            <button id="startButton" class="bg-green-500 hover:bg-green-600 text-white font-bold py-3 px-8 rounded-lg text-xl transition-all duration-150 ease-in-out shadow-md hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-green-300">
+              Start Game
+            </button>
+            <p class="mt-8 text-slate-400 text-sm">Use Arrow Keys to Play</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Info Panel -->
+      <div class="w-full lg:w-72 space-y-4 shrink-0">
+        <div class="p-4 bg-slate-800 rounded-lg shadow-xl border border-slate-700">
+          <h3 class="text-lg font-semibold text-cyan-400 mb-2">SCORE</h3>
+          <p id="scoreDisplay" class="text-4xl font-bold">0</p>
+        </div>
+
+        <div class="p-4 bg-slate-800 rounded-lg shadow-xl border border-slate-700">
+          <h3 class="text-lg font-semibold text-cyan-400 mb-2">NEXT PIECE</h3>
+          <div class="flex justify-center items-center h-24">
+            <canvas id="nextPieceCanvas" width="100" height="100" class="bg-slate-900/50 rounded border border-slate-600"></canvas>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-2 gap-4">
+            <div class="p-4 bg-slate-800 rounded-lg shadow-xl border border-slate-700">
+            <h3 class="text-md font-semibold text-cyan-400 mb-1">LEVEL</h3>
+            <p id="levelDisplay" class="text-3xl font-bold">1</p>
+            </div>
+            <div class="p-4 bg-slate-800 rounded-lg shadow-xl border border-slate-700">
+            <h3 class="text-md font-semibold text-cyan-400 mb-1">LINES</h3>
+            <p id="linesDisplay" class="text-3xl font-bold">0</p>
+            </div>
+        </div>
+
+        <div class="p-4 bg-slate-800 rounded-lg shadow-xl border border-slate-700 space-y-3">
+            <button id="pauseResumeButton" class="w-full bg-yellow-500 hover:bg-yellow-600 text-slate-900 font-bold py-2 px-4 rounded-md transition-colors duration-150 ease-in-out shadow-sm hover:shadow-md focus:outline-none focus:ring-2 focus:ring-yellow-300" disabled>Pause</button>
+            <button id="restartButton" class="w-full bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-4 rounded-md transition-colors duration-150 ease-in-out shadow-sm hover:shadow-md focus:outline-none focus:ring-2 focus:ring-red-300" disabled>Restart</button>
+        </div>
+        
+        <div class="p-4 bg-slate-800 rounded-lg shadow-xl border border-slate-700">
+          <h3 class="text-lg font-semibold text-cyan-400 mb-2">CONTROLS</h3>
+          <ul class="space-y-1 text-sm text-slate-300">
+            <li><span class="font-semibold text-orange-400">←</span> : Move Left</li>
+            <li><span class="font-semibold text-orange-400">→</span> : Move Right</li>
+            <li><span class="font-semibold text-orange-400">↑</span> : Rotate</li>
+            <li><span class="font-semibold text-orange-400">↓</span> : Soft Drop</li>
+            <li><span class="font-semibold text-orange-400">SPACE</span> : Hard Drop (TODO)</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+     <footer class="mt-8 text-center text-sm text-slate-500">
+      <p>Enhanced by an Expert Frontend Engineer & UI/UX Designer.</p>
+    </footer>
+  </div>
+
+<script>
+const canvas = document.getElementById('game');
+const context = canvas.getContext('2d');
+const nextPieceCanvas = document.getElementById('nextPieceCanvas');
+const nextPieceContext = nextPieceCanvas.getContext('2d');
+
+const grid = 32; // Size of each cell on the main canvas
+const nextPieceCellSize = 20; // Size of each cell on the next piece canvas
+
+const tetrominoSequence = [];
+const playfield = [];
+
+// Populate the empty state for the playfield
+for (let row = -2; row < 20; row++) {
+  playfield[row] = [];
+  for (let col = 0; col < 10; col++) {
+    playfield[row][col] = 0;
+  }
+}
+
+const tetrominos = {
+  'I': { shape: [[0,0,0,0], [1,1,1,1], [0,0,0,0], [0,0,0,0]], color: 'cyan' },
+  'J': { shape: [[1,0,0], [1,1,1], [0,0,0]], color: 'blue' },
+  'L': { shape: [[0,0,1], [1,1,1], [0,0,0]], color: 'orange' },
+  'O': { shape: [[1,1], [1,1]], color: 'yellow' },
+  'S': { shape: [[0,1,1], [1,1,0], [0,0,0]], color: 'green' },
+  'Z': { shape: [[1,1,0], [0,1,1], [0,0,0]], color: 'red' },
+  'T': { shape: [[0,1,0], [1,1,1], [0,0,0]], color: 'purple' }
+};
+
+// Game State
+let gameState = {
+  score: 0,
+  level: 1,
+  lines: 0,
+  isPaused: false,
+  gameRunning: false, // True when game is active (not paused, not game over)
+  gameOver: false,
+  currentTetromino: null,
+  nextTetrominoForPreview: null,
+  fallSpeed: 35, // Initial fall speed (frames per drop)
+  baseFallSpeed: 35,
+  levelSpeedDecrease: 2.5, // Frames to decrease per level
+  linesPerLevel: 10,
+  scorePerLine: [0, 100, 300, 500, 800] // 0, 1, 2, 3, 4 lines
+};
+
+let rAF = null;
+let dropCounter = 0;
+
+// UI Elements
+const scoreDisplay = document.getElementById('scoreDisplay');
+const levelDisplay = document.getElementById('levelDisplay');
+const linesDisplay = document.getElementById('linesDisplay');
+const gameOverScreen = document.getElementById('gameOverScreen');
+const welcomeScreen = document.getElementById('welcomeScreen');
+const finalScoreDisplay = document.getElementById('finalScore');
+const finalLinesDisplay = document.getElementById('finalLines');
+const startButton = document.getElementById('startButton');
+const playAgainButton = document.getElementById('playAgainButton');
+const pauseResumeButton = document.getElementById('pauseResumeButton');
+const restartButton = document.getElementById('restartButton');
+
+// Utility Functions
+function getRandomInt(min, max) {
+  return Math.floor(Math.random() * (max - min + 1)) + min;
+}
+
+function generateSequence() {
+  const sequence = ['I', 'J', 'L', 'O', 'S', 'T', 'Z'];
+  while (sequence.length) {
+    const rand = getRandomInt(0, sequence.length - 1);
+    const name = sequence.splice(rand, 1)[0];
+    tetrominoSequence.push(name);
+  }
+}
+
+function fetchNewPiece() {
+  if (tetrominoSequence.length === 0) {
+    generateSequence();
+  }
+  const name = tetrominoSequence.pop();
+  const pieceData = tetrominos[name];
+  // Create a deep copy of the matrix for rotation
+  const matrix = pieceData.shape.map(row => [...row]);
+  return {
+    name: name,
+    matrix: matrix,
+    row: name === 'I' ? -1 : -2, // Initial row position
+    col: Math.floor(playfield[0].length / 2) - Math.ceil(matrix[0].length / 2), // Initial col position
+    color: pieceData.color
+  };
+}
+
+function advanceToNextTetromino() {
+    gameState.currentTetromino = gameState.nextTetrominoForPreview || fetchNewPiece();
+    // Ensure row/col are correctly set for the new active piece
+    gameState.currentTetromino.col = Math.floor(playfield[0].length / 2) - Math.ceil(gameState.currentTetromino.matrix[0].length / 2);
+    gameState.currentTetromino.row = gameState.currentTetromino.name === 'I' ? -1 : -2;
+
+    gameState.nextTetrominoForPreview = fetchNewPiece();
+    drawNextTetrominoPreview();
+}
+
+
+function rotate(matrix) {
+  const N = matrix.length - 1;
+  const result = matrix.map((row, i) =>
+    row.map((val, j) => matrix[N - j][i])
+  );
+  return result;
+}
+
+function isValidMove(matrix, cellRow, cellCol) {
+  for (let row = 0; row < matrix.length; row++) {
+    for (let col = 0; col < matrix[row].length; col++) {
+      if (matrix[row][col]) {
+        if (
+          cellCol + col < 0 ||
+          cellCol + col >= playfield[0].length ||
+          cellRow + row >= playfield.length ||
+          (playfield[cellRow + row] && playfield[cellRow + row][cellCol + col])
+        ) {
+          return false;
+        }
+      }
+    }
+  }
+  return true;
+}
+
+function placeTetromino() {
+  const piece = gameState.currentTetromino;
+  for (let row = 0; row < piece.matrix.length; row++) {
+    for (let col = 0; col < piece.matrix[row].length; col++) {
+      if (piece.matrix[row][col]) {
+        if (piece.row + row < 0) {
+          handleGameOver();
+          return;
+        }
+        playfield[piece.row + row][piece.col + col] = piece.name;
+      }
+    }
+  }
+
+  let linesClearedThisTurn = 0;
+  for (let row = playfield.length - 1; row >= 0;) {
+    if (playfield[row].every(cell => !!cell)) {
+      linesClearedThisTurn++;
+      for (let r = row; r >= 0; r--) {
+        for (let c = 0; c < playfield[r].length; c++) {
+          playfield[r][c] = playfield[r-1]?.[c] || 0;
+        }
+      }
+    } else {
+      row--;
+    }
+  }
+  
+  if (linesClearedThisTurn > 0) {
+    gameState.score += gameState.scorePerLine[linesClearedThisTurn] * gameState.level;
+    gameState.lines += linesClearedThisTurn;
+    if (gameState.lines >= gameState.linesPerLevel * gameState.level) {
+        gameState.level++;
+        gameState.fallSpeed = Math.max(5, gameState.baseFallSpeed - (gameState.level - 1) * gameState.levelSpeedDecrease);
+    }
+    updateGameInfoUI();
+  }
+
+  advanceToNextTetromino();
+  if (!isValidMove(gameState.currentTetromino.matrix, gameState.currentTetromino.row, gameState.currentTetromino.col)) {
+      handleGameOver();
+  }
+}
+
+function updateGameInfoUI() {
+  scoreDisplay.textContent = gameState.score;
+  levelDisplay.textContent = gameState.level;
+  linesDisplay.textContent = gameState.lines;
+}
+
+function drawNextTetrominoPreview() {
+  nextPieceContext.clearRect(0, 0, nextPieceCanvas.width, nextPieceCanvas.height);
+  const piece = gameState.nextTetrominoForPreview;
+  if (!piece) return;
+
+  nextPieceContext.fillStyle = piece.color;
+  
+  const matrix = piece.matrix;
+  const matrixSize = matrix.length; // Assumes square or near-square matrices
+  
+  // Calculate offsets to center the piece in the preview canvas
+  // Find actual dimensions of the piece content
+  let minR = matrixSize, maxR = -1, minC = matrixSize, maxC = -1;
+  for (let r = 0; r < matrixSize; r++) {
+    for (let c = 0; c < matrix[r].length; c++) {
+      if (matrix[r][c]) {
+        minR = Math.min(minR, r); maxR = Math.max(maxR, r);
+        minC = Math.min(minC, c); maxC = Math.max(maxC, c);
+      }
+    }
+  }
+  const pieceHeight = (maxR - minR + 1);
+  const pieceWidth = (maxC - minC + 1);
+
+  const offsetX = (nextPieceCanvas.width / nextPieceCellSize - pieceWidth) / 2;
+  const offsetY = (nextPieceCanvas.height / nextPieceCellSize - pieceHeight) / 2;
+
+  for (let row = 0; row < matrix.length; row++) {
+    for (let col = 0; col < matrix[row].length; col++) {
+      if (matrix[row][col]) {
+        nextPieceContext.fillRect(
+          (offsetX + col - minC) * nextPieceCellSize,
+          (offsetY + row - minR) * nextPieceCellSize,
+          nextPieceCellSize - 1, nextPieceCellSize - 1
+        );
+      }
+    }
+  }
+}
+
+function handleGameOver() {
+  cancelAnimationFrame(rAF);
+  gameState.gameOver = true;
+  gameState.gameRunning = false;
+  gameOverScreen.classList.remove('hidden');
+  gameOverScreen.classList.add('flex');
+  finalScoreDisplay.textContent = gameState.score;
+  finalLinesDisplay.textContent = gameState.lines;
+  pauseResumeButton.disabled = true;
+  restartButton.textContent = 'Restart'; // Keep Restart enabled
+}
+
+// Game Loop
+function loop() {
+  rAF = requestAnimationFrame(loop);
+  if (!gameState.gameRunning || gameState.isPaused || gameState.gameOver) {
+    return;
+  }
+
+  context.clearRect(0,0,canvas.width,canvas.height);
+
+  // Draw playfield
+  for (let row = 0; row < 20; row++) {
+    for (let col = 0; col < 10; col++) {
+      if (playfield[row][col]) {
+        const pieceName = playfield[row][col];
+        context.fillStyle = tetrominos[pieceName].color;
+        context.fillRect(col * grid, row * grid, grid-1, grid-1);
+      }
+    }
+  }
+
+  // Draw active tetromino
+  const piece = gameState.currentTetromino;
+  if (piece) {
+    dropCounter++;
+    if (dropCounter > gameState.fallSpeed) {
+      piece.row++;
+      dropCounter = 0;
+      if (!isValidMove(piece.matrix, piece.row, piece.col)) {
+        piece.row--;
+        placeTetromino();
+      }
+    }
+
+    context.fillStyle = piece.color;
+    for (let row = 0; row < piece.matrix.length; row++) {
+      for (let col = 0; col < piece.matrix[row].length; col++) {
+        if (piece.matrix[row][col]) {
+          context.fillRect((piece.col + col) * grid, (piece.row + row) * grid, grid-1, grid-1);
+        }
+      }
+    }
+  }
+}
+
+// Keyboard Controls
+document.addEventListener('keydown', function(e) {
+  if (!gameState.gameRunning || gameState.isPaused || gameState.gameOver) return;
+
+  const piece = gameState.currentTetromino;
+  if (!piece) return;
+
+  if (e.key === 'ArrowLeft') { // Left
+    const newCol = piece.col - 1;
+    if (isValidMove(piece.matrix, piece.row, newCol)) {
+      piece.col = newCol;
+    }
+  } else if (e.key === 'ArrowRight') { // Right
+    const newCol = piece.col + 1;
+    if (isValidMove(piece.matrix, piece.row, newCol)) {
+      piece.col = newCol;
+    }
+  } else if (e.key === 'ArrowUp') { // Rotate
+    const newMatrix = rotate(piece.matrix);
+    if (isValidMove(newMatrix, piece.row, piece.col)) {
+      piece.matrix = newMatrix;
+    }
+  } else if (e.key === 'ArrowDown') { // Soft drop
+    const newRow = piece.row + 1;
+    if (isValidMove(piece.matrix, newRow, piece.col)) {
+      piece.row = newRow;
+      dropCounter = 0; // Reset drop counter for smoother soft drop
+    } else {
+      // If it can't move down, place it (optional, or wait for auto-drop)
+      // placeTetromino(); 
+    }
+  } else if (e.key === ' ') { // Hard drop - TODO - for now just quick drop
+    e.preventDefault(); // Prevent page scroll
+    while(isValidMove(piece.matrix, piece.row + 1, piece.col)) {
+        piece.row++;
+    }
+    placeTetromino();
+  }
+});
+
+// Game Control Functions
+function initGame() {
+    // Reset playfield
+    for (let r = -2; r < 20; r++) {
+        playfield[r] = [];
+        for (let c = 0; c < 10; c++) {
+            playfield[r][c] = 0;
+        }
+    }
+    
+    tetrominoSequence.length = 0; // Clear sequence
+    generateSequence(); // Generate first sequence
+    
+    gameState.score = 0;
+    gameState.level = 1;
+    gameState.lines = 0;
+    gameState.isPaused = false;
+    gameState.gameOver = false;
+    gameState.fallSpeed = gameState.baseFallSpeed;
+    dropCounter = 0;
+
+    // Get first piece and next piece
+    gameState.nextTetrominoForPreview = fetchNewPiece(); // This becomes the first preview
+    advanceToNextTetromino(); // This moves preview to current, and fetches a new preview
+
+    updateGameInfoUI();
+    drawNextTetrominoPreview(); // Ensure preview is drawn
+
+    gameOverScreen.classList.add('hidden');
+    gameOverScreen.classList.remove('flex');
+    welcomeScreen.classList.add('hidden');
+}
+
+
+function startGame() {
+  initGame();
+  gameState.gameRunning = true;
+  gameState.isPaused = false;
+  
+  pauseResumeButton.disabled = false;
+  pauseResumeButton.textContent = 'Pause';
+  restartButton.disabled = false;
+  
+  if(rAF) cancelAnimationFrame(rAF); // Clear any existing animation frame
+  rAF = requestAnimationFrame(loop);
+}
+
+function togglePauseResume() {
+  if (!gameState.gameRunning && !gameState.gameOver) return; // Can't pause if not running (e.g. on welcome screen)
+
+  gameState.isPaused = !gameState.isPaused;
+  if (gameState.isPaused) {
+    pauseResumeButton.textContent = 'Resume';
+    // The loop itself handles not updating when paused
+  } else {
+    pauseResumeButton.textContent = 'Pause';
+    // Ensure loop continues if it was stopped by pause
+    if (!rAF && !gameState.gameOver) { // Check rAF to avoid multiple loops if already running
+       // The main loop's requestAnimationFrame will keep it going if !isPaused
+    }
+  }
+}
+
+
+startButton.addEventListener('click', startGame);
+playAgainButton.addEventListener('click', startGame);
+pauseResumeButton.addEventListener('click', togglePauseResume);
+restartButton.addEventListener('click', () => {
+    if (gameState.gameRunning || gameState.gameOver) { // Allow restart if game was active or ended
+        if(rAF) cancelAnimationFrame(rAF);
+        startGame();
+    }
+});
+
+// Initial UI setup
+updateGameInfoUI(); // Show initial 0s
+// The game loop is not started until "Start Game" is pressed.
+// Welcome screen is shown by default CSS.
+</script>
+</body>
+</html>

@@ -1,0 +1,9 @@
+{
+  "web_id": "web_2",
+  "task_id": 2,
+  "task_type": "dynamic",
+  "instruction": "Task: Click on interactive elements representing tasks or locations on the game map.\nExpected Result: Visual feedback indicates task progress or completion, or movement to a new location.\n\nNote: The task is only considered successful if the expected result is achieved; otherwise, it is deemed infeasible.",
+  "max_steps": 15,
+  "expected": "Visual feedback indicates task progress or completion, or movement to a new location.",
+  "label": 0
+}

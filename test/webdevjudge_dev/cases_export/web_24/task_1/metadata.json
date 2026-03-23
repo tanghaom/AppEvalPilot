@@ -1,0 +1,9 @@
+{
+  "web_id": "web_24",
+  "task_id": 1,
+  "task_type": "dynamic",
+  "instruction": "Task: Click the 'Market' tab or navigation item.\nExpected Result: The 'Market' view is displayed, showing a list of cryptocurrencies with their mock prices and other relevant data.\n\nNote: The task is only considered successful if the expected result is achieved; otherwise, it is deemed infeasible.",
+  "max_steps": 15,
+  "expected": "The 'Market' view is displayed, showing a list of cryptocurrencies with their mock prices and other relevant data.",
+  "label": 0
+}

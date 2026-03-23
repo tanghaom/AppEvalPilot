@@ -1,0 +1,9 @@
+{
+  "web_id": "web_94",
+  "task_id": 4,
+  "task_type": "dynamic",
+  "instruction": "Task: Click a 'Mark as Favorite' icon or button associated with a specific law.\nExpected Result: The law is visually indicated as a favorite (e.g., icon changes appearance) and its favorite status is saved locally for the session or persistently using localStorage.\n\nNote: The task is only considered successful if the expected result is achieved; otherwise, it is deemed infeasible.",
+  "max_steps": 15,
+  "expected": "The law is visually indicated as a favorite (e.g., icon changes appearance) and its favorite status is saved locally for the session or persistently using localStorage.",
+  "label": 0
+}

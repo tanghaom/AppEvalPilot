@@ -1,0 +1,9 @@
+{
+  "web_id": "web_78",
+  "task_id": 4,
+  "task_type": "dynamic",
+  "instruction": "Task: Select a protocol from the dropdown in the 'Neural Core' card (e.g., 'Summarize the selected element data.').\nExpected Result: The selected protocol is displayed in the dropdown, and this choice is recorded for AI processing.\n\nNote: The task is only considered successful if the expected result is achieved; otherwise, it is deemed infeasible.",
+  "max_steps": 15,
+  "expected": "The selected protocol is displayed in the dropdown, and this choice is recorded for AI processing.",
+  "label": 0
+}

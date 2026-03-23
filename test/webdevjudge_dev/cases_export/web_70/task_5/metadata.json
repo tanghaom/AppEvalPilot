@@ -1,0 +1,9 @@
+{
+  "web_id": "web_70",
+  "task_id": 5,
+  "task_type": "dynamic",
+  "instruction": "Task: Input data into various fields of the adoption application form (e.g., text input for 'Name', select dropdown for 'Living Situation').\nExpected Result: User input is accepted and visibly entered into the respective form fields; selected options are reflected.\n\nNote: The task is only considered successful if the expected result is achieved; otherwise, it is deemed infeasible.",
+  "max_steps": 15,
+  "expected": "User input is accepted and visibly entered into the respective form fields; selected options are reflected.",
+  "label": 1
+}

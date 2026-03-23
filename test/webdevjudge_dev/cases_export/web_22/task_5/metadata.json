@@ -1,0 +1,9 @@
+{
+  "web_id": "web_22",
+  "task_id": 5,
+  "task_type": "dynamic",
+  "instruction": "Task: In the 'Add/Modify Product Feature' form, click an 'Add Release Candidate' button to dynamically add input fields for a new release candidate, then fill in its details.\nExpected Result: A new set of input fields for a release candidate (description, ID, date, status) appears within the feature form, allowing the user to define an additional release candidate for the feature being created or edited.\n\nNote: The task is only considered successful if the expected result is achieved; otherwise, it is deemed infeasible.",
+  "max_steps": 15,
+  "expected": "A new set of input fields for a release candidate (description, ID, date, status) appears within the feature form, allowing the user to define an additional release candidate for the feature being created or edited.",
+  "label": 0
+}

@@ -1,0 +1,9 @@
+{
+  "web_id": "web_77",
+  "task_id": 5,
+  "task_type": "dynamic",
+  "instruction": "Task: On a Question Review page, for a multiple-choice question, click a radio button next to an answer choice.\nExpected Result: The clicked radio button becomes selected, marking it as the correct answer, and any previously selected correct answer for that question becomes deselected.\n\nNote: The task is only considered successful if the expected result is achieved; otherwise, it is deemed infeasible.",
+  "max_steps": 15,
+  "expected": "The clicked radio button becomes selected, marking it as the correct answer, and any previously selected correct answer for that question becomes deselected.",
+  "label": 0
+}

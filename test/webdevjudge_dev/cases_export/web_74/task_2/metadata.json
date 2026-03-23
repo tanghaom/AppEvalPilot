@@ -1,0 +1,9 @@
+{
+  "web_id": "web_74",
+  "task_id": 2,
+  "task_type": "dynamic",
+  "instruction": "Task: Perform a swipe gesture (e.g., Swipe Up) on the game grid.\nExpected Result: Tiles slide/merge in the swipe direction as per 2048 rules. A new tile appears. Score updates. If the swipe is invalid (but game not over), grid is unchanged.\n\nNote: The task is only considered successful if the expected result is achieved; otherwise, it is deemed infeasible.",
+  "max_steps": 15,
+  "expected": "Tiles slide/merge in the swipe direction as per 2048 rules. A new tile appears. Score updates. If the swipe is invalid (but game not over), grid is unchanged.",
+  "label": 0
+}

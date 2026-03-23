@@ -1,0 +1,9 @@
+{
+  "web_id": "web_66",
+  "task_id": 5,
+  "task_type": "dynamic",
+  "instruction": "Task: Arrange falling tetrominoes to complete one or more horizontal lines.\nExpected Result: The completed horizontal line(s) disappear from the playfield, and any blocks positioned above the cleared line(s) shift down accordingly.\n\nNote: The task is only considered successful if the expected result is achieved; otherwise, it is deemed infeasible.",
+  "max_steps": 15,
+  "expected": "The completed horizontal line(s) disappear from the playfield, and any blocks positioned above the cleared line(s) shift down accordingly.",
+  "label": 1
+}

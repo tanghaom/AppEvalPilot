@@ -1,0 +1,9 @@
+{
+  "web_id": "web_40",
+  "task_id": 1,
+  "task_type": "dynamic",
+  "instruction": "Task: Hover the mouse cursor over the developer's name on the landing page.\nExpected Result: The developer's name animates and transforms into a visual representation of source code.\n\nNote: The task is only considered successful if the expected result is achieved; otherwise, it is deemed infeasible.",
+  "max_steps": 15,
+  "expected": "The developer's name animates and transforms into a visual representation of source code.",
+  "label": 1
+}

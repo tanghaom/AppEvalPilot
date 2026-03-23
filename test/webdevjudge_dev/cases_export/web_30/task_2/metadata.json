@@ -1,0 +1,9 @@
+{
+  "web_id": "web_30",
+  "task_id": 2,
+  "task_type": "dynamic",
+  "instruction": "Task: Click on a file name in a simulated file explorer panel.\nExpected Result: The editor pane's content updates to display the content associated with the clicked file name.\n\nNote: The task is only considered successful if the expected result is achieved; otherwise, it is deemed infeasible.",
+  "max_steps": 15,
+  "expected": "The editor pane's content updates to display the content associated with the clicked file name.",
+  "label": 0
+}

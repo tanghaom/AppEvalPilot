@@ -1,0 +1,355 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hacker News Clone</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Custom scrollbar for a cleaner look (optional) */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #f1f1f1;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #cbd5e1; /* slate-300 */
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8; /* slate-500 */
+        }
+        .hn-link {
+            @apply text-neutral-700 hover:underline;
+        }
+    </style>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        'hn-orange': '#FF6600',
+                        'hn-bg': '#F6F6EF',
+                        'hn-text-light': '#828282',
+                    },
+                    fontFamily: {
+                        verdana: ['Verdana', 'sans-serif'], // Hacker News uses Verdana
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+<body class="bg-hn-bg text-neutral-800 font-verdana text-sm">
+
+    <div id="app-container" class="max-w-4xl mx-auto">
+
+        <header class="bg-hn-orange p-2 shadow">
+            <nav class="flex items-center space-x-2">
+                <a href="#" id="logo-link" class="flex items-center">
+                    <div class="bg-white border border-black w-7 h-7 flex items-center justify-center font-bold text-hn-orange text-lg leading-none">Y</div>
+                </a>
+                <a href="#" id="nav-title" class="text-black font-bold text-base hidden sm:inline-block hover:text-white">Hacker News</a>
+                <div class="space-x-1 text-sm">
+                    <a href="#" id="nav-new" class="nav-link text-black hover:text-white">new</a>
+                    <span class="text-black">|</span>
+                    <a href="#" id="nav-submit" class="nav-link text-black hover:text-white">submit</a>
+                </div>
+                <div class="ml-auto">
+                    <span class="text-black text-sm cursor-pointer hover:text-white">login</span>
+                </div>
+            </nav>
+        </header>
+
+        <main class="p-3">
+            <!-- Post Submission Form View -->
+            <section id="submit-view" class="hidden bg-stone-50 p-4 sm:p-6 rounded-md shadow-sm border border-stone-200">
+                <h2 class="text-lg sm:text-xl font-semibold mb-4 text-neutral-700">Submit a New Post</h2>
+                <form id="submit-post-form" class="space-y-4">
+                    <div>
+                        <label for="title" class="block text-sm font-medium text-neutral-600 mb-1">Title:</label>
+                        <input type="text" id="title" name="title" required maxlength="100" class="mt-1 block w-full px-3 py-2 border border-stone-300 rounded-md shadow-sm focus:outline-none focus:ring-hn-orange focus:border-hn-orange sm:text-sm">
+                    </div>
+                    <div>
+                        <label for="url" class="block text-sm font-medium text-neutral-600 mb-1">URL:</label>
+                        <input type="url" id="url" name="url" required class="mt-1 block w-full px-3 py-2 border border-stone-300 rounded-md shadow-sm focus:outline-none focus:ring-hn-orange focus:border-hn-orange sm:text-sm">
+                        <p class="text-xs text-hn-text-light mt-1">Please provide a valid URL (e.g., https://example.com).</p>
+                    </div>
+                    <div>
+                        <label for="author" class="block text-sm font-medium text-neutral-600 mb-1">Author:</label>
+                        <input type="text" id="author" name="author" required maxlength="50" class="mt-1 block w-full px-3 py-2 border border-stone-300 rounded-md shadow-sm focus:outline-none focus:ring-hn-orange focus:border-hn-orange sm:text-sm">
+                    </div>
+                    <button type="submit" class="px-4 py-2 bg-hn-orange text-white rounded-md hover:bg-orange-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-hn-orange text-sm font-medium">Submit Post</button>
+                </form>
+            </section>
+
+            <!-- Post List View -->
+            <section id="list-view">
+                <ol id="post-list" class="space-y-0.5">
+                    <!-- Posts will be injected here by JS -->
+                    <!-- Placeholder for loading state -->
+                    <li id="loading-indicator" class="p-4 text-center text-neutral-500 hidden">Loading posts...</li>
+                </ol>
+                <div class="mt-4">
+                    <button id="load-more" class="text-hn-orange hover:underline text-sm">More</button>
+                </div>
+            </section>
+        </main>
+
+        <footer class="text-center p-6 text-hn-text-light text-xs border-t-2 border-hn-orange mt-8 space-y-2">
+            <div class="flex justify-center space-x-2 sm:space-x-4">
+                <a href="#" class="hn-link">Guidelines</a>
+                <a href="#" class="hn-link">FAQ</a>
+                <a href="#" class="hn-link">Lists</a>
+                <a href="#" class="hn-link">API</a>
+                <a href="#" class="hn-link">Security</a>
+                <a href="#" class="hn-link">Legal</a>
+                <a href="#" class="hn-link">Apply to YC</a>
+                <a href="#" class="hn-link">Contact</a>
+            </div>
+            <div class="mt-2">
+                <form class="inline-flex items-center space-x-2">
+                    <label for="search" class="text-hn-text-light">Search:</label>
+                    <input type="text" id="search" name="search" class="px-2 py-1 border border-stone-300 rounded-sm focus:outline-none focus:ring-1 focus:ring-hn-orange focus:border-hn-orange text-xs w-40">
+                </form>
+            </div>
+        </footer>
+    </div>
+
+    <script>
+        const HackerNewsApp = (() => {
+            // --- STATE ---
+            let state = {
+                posts: [],
+                currentView: 'list', // 'list' or 'submit'
+                isLoading: false,
+                postsPerPage: 30,
+                currentPage: 1,
+            };
+
+            // --- DOM ELEMENTS ---
+            const appContainer = document.getElementById('app-container');
+            const listView = document.getElementById('list-view');
+            const submitView = document.getElementById('submit-view');
+            const postListElement = document.getElementById('post-list');
+            const submitForm = document.getElementById('submit-post-form');
+            const loadMoreButton = document.getElementById('load-more');
+            const loadingIndicator = document.getElementById('loading-indicator');
+            
+            const navNew = document.getElementById('nav-new');
+            const navSubmit = document.getElementById('nav-submit');
+            const logoLink = document.getElementById('logo-link');
+            const navTitle = document.getElementById('nav-title');
+
+
+            // --- UTILITY FUNCTIONS ---
+            const getDomainFromUrl = (urlString) => {
+                if (!urlString) return '';
+                try {
+                    const url = new URL(urlString);
+                    return url.hostname.replace(/^www\./, '');
+                } catch (e) {
+                    console.warn("Invalid URL for domain extraction:", urlString);
+                    return 'invalid.url';
+                }
+            };
+
+            const timeAgo = (timestamp) => {
+                const now = new Date();
+                const seconds = Math.round((now - new Date(timestamp)) / 1000);
+                const minutes = Math.round(seconds / 60);
+                const hours = Math.round(minutes / 60);
+                const days = Math.round(hours / 24);
+                const weeks = Math.round(days / 7);
+                const months = Math.round(days / 30);
+                const years = Math.round(days / 365);
+
+                if (seconds < 5) return 'just now';
+                if (seconds < 60) return `${seconds} seconds ago`;
+                if (minutes < 60) return `${minutes} minute${minutes === 1 ? '' : 's'} ago`;
+                if (hours < 24) return `${hours} hour${hours === 1 ? '' : 's'} ago`;
+                if (days < 7) return `${days} day${days === 1 ? '' : 's'} ago`;
+                if (weeks < 5) return `${weeks} week${weeks === 1 ? '' : 's'} ago`;
+                if (months < 12) return `${months} month${months === 1 ? '' : 's'} ago`;
+                return `${years} year${years === 1 ? '' : 's'} ago`;
+            };
+            
+            const generateId = () => `post_${new Date().getTime()}_${Math.random().toString(36).substr(2, 9)}`;
+
+            // --- LOCALSTORAGE ---
+            const saveState = () => {
+                try {
+                    localStorage.setItem('hackerNewsCloneState', JSON.stringify({ posts: state.posts }));
+                } catch (e) {
+                    console.error("Error saving state to localStorage:", e);
+                }
+            };
+
+            const loadState = () => {
+                try {
+                    const storedState = localStorage.getItem('hackerNewsCloneState');
+                    if (storedState) {
+                        const parsedState = JSON.parse(storedState);
+                        state.posts = parsedState.posts || [];
+                        // Sort posts by creation date, newest first
+                        state.posts.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+                    } else {
+                        // Initialize with some sample data if localStorage is empty
+                        state.posts = [
+                            { id: generateId(), title: 'Tailwind CSS: The Good, The Bad, and The Ugly', url: 'https://tailwindcss.com/', author: 'dev_user', createdAt: new Date(Date.now() - 3600000 * 2).toISOString(), points: 152, commentsCount: 42 },
+                            { id: generateId(), title: 'Understanding Vanilla JavaScript for Modern Web Development', url: 'https://developer.mozilla.org/en-US/docs/Web/JavaScript', author: 'js_guru', createdAt: new Date(Date.now() - 3600000 * 5).toISOString(), points: 205, commentsCount: 89 },
+                            { id: generateId(), title: 'The Importance of UI/UX in Frontend Engineering', url: 'https://www.nngroup.com/articles/', author: 'ux_expert', createdAt: new Date(Date.now() - 3600000 * 28).toISOString(), points: 98, commentsCount: 15 },
+                        ];
+                        saveState();
+                    }
+                } catch (e) {
+                    console.error("Error loading state from localStorage:", e);
+                    state.posts = []; // Fallback to empty posts
+                }
+            };
+
+            // --- RENDER FUNCTIONS ---
+            const renderPostItem = (post, index) => {
+                const overallIndex = (state.currentPage - 1) * state.postsPerPage + index + 1;
+                const domain = getDomainFromUrl(post.url);
+
+                return `
+                    <li class="flex items-start space-x-1.5 py-1 group">
+                        <span class="text-hn-text-light w-5 text-right pt-0.5">${overallIndex}.</span>
+                        <div class="pt-0.5"> <!-- Placeholder for upvote triangle -->
+                           <svg width="10" height="10" viewBox="0 0 10 10" class="fill-current text-neutral-400 group-hover:fill-hn-orange cursor-pointer" style="margin-top:2px;">
+                                <path d="M5 0L0 7H10Z" />
+                            </svg>
+                        </div>
+                        <div class="flex-grow">
+                            <a href="${post.url}" target="_blank" rel="noopener noreferrer" class="text-neutral-800 hover:underline visited:text-neutral-600">${post.title}</a>
+                            ${domain ? `<span class="text-hn-text-light text-xs ml-1">(${domain})</span>` : ''}
+                            <div class="text-xs text-hn-text-light mt-0.5">
+                                ${post.points ? `<span>${post.points} points by</span>` : '<span>by</span>'}
+                                <a href="#" class="hn-link ml-1">${post.author}</a>
+                                <span class="mx-1">|</span>
+                                <a href="#" class="hn-link">${timeAgo(post.createdAt)}</a>
+                                <span class="mx-1">|</span>
+                                <a href="#" class="hn-link">hide</a>
+                                <span class="mx-1">|</span>
+                                <a href="#" class="hn-link">${post.commentsCount || 0} comments</a>
+                            </div>
+                        </div>
+                    </li>
+                `;
+            };
+
+            const renderListView = () => {
+                listView.classList.remove('hidden');
+                submitView.classList.add('hidden');
+                loadingIndicator.classList.remove('hidden');
+                postListElement.innerHTML = ''; // Clear previous posts
+
+                // Simulate API delay for loading feel
+                setTimeout(() => {
+                    const postsToDisplay = state.posts.slice(0, state.currentPage * state.postsPerPage);
+                    
+                    if (postsToDisplay.length === 0) {
+                        postListElement.innerHTML = '<li class="p-4 text-center text-neutral-500">No posts yet. Be the first to submit!</li>';
+                    } else {
+                        postListElement.innerHTML = postsToDisplay.map((post, index) => renderPostItem(post, index)).join('');
+                    }
+
+                    loadingIndicator.classList.add('hidden');
+                    
+                    // Show/hide "More" button
+                    if (postsToDisplay.length >= state.posts.length) {
+                        loadMoreButton.classList.add('hidden');
+                    } else {
+                        loadMoreButton.classList.remove('hidden');
+                    }
+                }, 200); // Small delay to show loading indicator
+            };
+
+            const renderSubmitView = () => {
+                listView.classList.add('hidden');
+                submitView.classList.remove('hidden');
+                submitForm.reset(); // Clear form fields
+                submitForm.elements.title.focus();
+            };
+
+            const render = () => {
+                state.isLoading = true; // Could be used for more complex loading states
+                if (state.currentView === 'list') {
+                    renderListView();
+                } else if (state.currentView === 'submit') {
+                    renderSubmitView();
+                }
+                state.isLoading = false;
+            };
+
+            // --- EVENT HANDLERS ---
+            const handleNavClick = (viewName) => {
+                state.currentView = viewName;
+                // Reset current page to 1 when navigating to 'new' from other views or from logo
+                if (viewName === 'list') {
+                    state.currentPage = 1; 
+                }
+                render();
+            };
+
+            const handleSubmitForm = (event) => {
+                event.preventDefault();
+                const title = submitForm.elements.title.value.trim();
+                const url = submitForm.elements.url.value.trim();
+                const author = submitForm.elements.author.value.trim();
+
+                if (title && url && author) {
+                    const newPost = {
+                        id: generateId(),
+                        title,
+                        url,
+                        author,
+                        createdAt: new Date().toISOString(),
+                        points: 1, // New posts start with 1 point (from the author)
+                        commentsCount: 0
+                    };
+                    state.posts.unshift(newPost); // Add to the beginning to show newest first
+                    saveState();
+                    state.currentView = 'list';
+                    state.currentPage = 1; // Go back to the first page to see the new post
+                    render();
+                    submitForm.reset();
+                } else {
+                    alert("Please fill in all fields.");
+                }
+            };
+
+            const handleLoadMore = () => {
+                if (!state.isLoading) {
+                    state.currentPage++;
+                    renderListView(); // Re-render to show more items
+                }
+            };
+
+            // --- INITIALIZATION ---
+            const init = () => {
+                loadState(); // Load posts from localStorage or samples
+
+                // Setup event listeners
+                logoLink.addEventListener('click', (e) => { e.preventDefault(); handleNavClick('list'); });
+                navTitle.addEventListener('click', (e) => { e.preventDefault(); handleNavClick('list'); });
+                navNew.addEventListener('click', (e) => { e.preventDefault(); handleNavClick('list'); });
+                navSubmit.addEventListener('click', (e) => { e.preventDefault(); handleNavClick('submit'); });
+                submitForm.addEventListener('submit', handleSubmitForm);
+                loadMoreButton.addEventListener('click', handleLoadMore);
+
+                render(); // Initial render
+            };
+
+            return {
+                init // Expose init function
+            };
+        })();
+
+        document.addEventListener('DOMContentLoaded', HackerNewsApp.init);
+    </script>
+</body>
+</html>

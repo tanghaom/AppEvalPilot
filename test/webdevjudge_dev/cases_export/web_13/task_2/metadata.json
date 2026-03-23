@@ -1,0 +1,9 @@
+{
+  "web_id": "web_13",
+  "task_id": 2,
+  "task_type": "dynamic",
+  "instruction": "Task: Adjust the vehicle movement speed using a provided UI control (e.g., a slider or input field)\nExpected Result: The visual speed of all vehicles moving along the assembly line updates according to the new setting.\n\nNote: The task is only considered successful if the expected result is achieved; otherwise, it is deemed infeasible.",
+  "max_steps": 15,
+  "expected": "The visual speed of all vehicles moving along the assembly line updates according to the new setting.",
+  "label": 1
+}

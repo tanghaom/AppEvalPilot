@@ -1,0 +1,9 @@
+{
+  "web_id": "web_87",
+  "task_id": 5,
+  "task_type": "dynamic",
+  "instruction": "Task: Select a version from the displayed (mock) version history and click a 'Restore this Version' button.\nExpected Result: The current content of the code editor is replaced with the content of the selected (mock) historical version.\n\nNote: The task is only considered successful if the expected result is achieved; otherwise, it is deemed infeasible.",
+  "max_steps": 15,
+  "expected": "The current content of the code editor is replaced with the content of the selected (mock) historical version.",
+  "label": 1
+}

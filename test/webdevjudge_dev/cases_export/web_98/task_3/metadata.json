@@ -1,0 +1,9 @@
+{
+  "web_id": "web_98",
+  "task_id": 3,
+  "task_type": "dynamic",
+  "instruction": "Task: In the sidebar's 'Collections' list, click the designated right half of a specific collection item.\nExpected Result: The main display area updates to show placeholder content or details specific to the clicked collection. The 'Decks' list in the sidebar remains unchanged by this action.\n\nNote: The task is only considered successful if the expected result is achieved; otherwise, it is deemed infeasible.",
+  "max_steps": 15,
+  "expected": "The main display area updates to show placeholder content or details specific to the clicked collection. The 'Decks' list in the sidebar remains unchanged by this action.",
+  "label": 1
+}

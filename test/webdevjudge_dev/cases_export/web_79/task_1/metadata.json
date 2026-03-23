@@ -1,0 +1,9 @@
+{
+  "web_id": "web_79",
+  "task_id": 1,
+  "task_type": "dynamic",
+  "instruction": "Task: Enter an item name into the 'New Item Name' input field and a number into the 'Previous Price' input field.\nExpected Result: The respective input fields display the entered values, preparing for item submission.\n\nNote: The task is only considered successful if the expected result is achieved; otherwise, it is deemed infeasible.",
+  "max_steps": 15,
+  "expected": "The respective input fields display the entered values, preparing for item submission.",
+  "label": 1
+}

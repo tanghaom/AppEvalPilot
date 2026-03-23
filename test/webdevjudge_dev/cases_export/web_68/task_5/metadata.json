@@ -1,0 +1,9 @@
+{
+  "web_id": "web_68",
+  "task_id": 5,
+  "task_type": "dynamic",
+  "instruction": "Task: Click the 'Unlock Now' or 'Gain Access' CTA on the Product Detail Page section.\nExpected Result: A modal or section appears simulating the start of a checkout process or confirming the item is ready for 'unlocking' (e.g., displaying 'Proceed to Secure Checkout' or a similar message).\n\nNote: The task is only considered successful if the expected result is achieved; otherwise, it is deemed infeasible.",
+  "max_steps": 15,
+  "expected": "A modal or section appears simulating the start of a checkout process or confirming the item is ready for 'unlocking' (e.g., displaying 'Proceed to Secure Checkout' or a similar message).",
+  "label": 1
+}

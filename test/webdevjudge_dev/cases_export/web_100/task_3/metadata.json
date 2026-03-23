@@ -1,0 +1,9 @@
+{
+  "web_id": "web_100",
+  "task_id": 3,
+  "task_type": "dynamic",
+  "instruction": "Task: Click a tab (e.g., 'Tab 2') in the segmented control.\nExpected Result: The clicked tab label's text color changes to the primary color. The `segmented-control__color` indicator animates to position itself under the selected tab. The corresponding underlying radio input (e.g., `#tab-2`) becomes checked.\n\nNote: The task is only considered successful if the expected result is achieved; otherwise, it is deemed infeasible.",
+  "max_steps": 15,
+  "expected": "The clicked tab label's text color changes to the primary color. The `segmented-control__color` indicator animates to position itself under the selected tab. The corresponding underlying radio input (e.g., `#tab-2`) becomes checked.",
+  "label": 1
+}

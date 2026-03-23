@@ -1,0 +1,9 @@
+{
+  "web_id": "web_3",
+  "task_id": 5,
+  "task_type": "dynamic",
+  "instruction": "Task: Select a filter option within a chosen category (e.g., filter displayed assets by a specific criterion).\nExpected Result: The list of items in the main content area is refined based on the selected filter option.\n\nNote: The task is only considered successful if the expected result is achieved; otherwise, it is deemed infeasible.",
+  "max_steps": 15,
+  "expected": "The list of items in the main content area is refined based on the selected filter option.",
+  "label": 0
+}

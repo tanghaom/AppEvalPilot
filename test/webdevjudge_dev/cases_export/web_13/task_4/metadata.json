@@ -1,0 +1,9 @@
+{
+  "web_id": "web_13",
+  "task_id": 4,
+  "task_type": "dynamic",
+  "instruction": "Task: Configure the time interval (X seconds) for new vehicles to appear on the assembly line using a provided UI control (e.g., an input field)\nExpected Result: New vehicles begin to appear on the assembly line at the newly configured time interval.\n\nNote: The task is only considered successful if the expected result is achieved; otherwise, it is deemed infeasible.",
+  "max_steps": 15,
+  "expected": "New vehicles begin to appear on the assembly line at the newly configured time interval.",
+  "label": 1
+}

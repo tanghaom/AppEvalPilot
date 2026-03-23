@@ -1,0 +1,329 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>YouTube Mobile Clone</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Custom scrollbar for chip bar (optional, for cleaner look) */
+        #chip-bar::-webkit-scrollbar {
+            display: none;
+        }
+        #chip-bar {
+            -ms-overflow-style: none;  /* IE and Edge */
+            scrollbar-width: none;  /* Firefox */
+        }
+        /* Ensure body takes full height and no default margin */
+        html, body {
+            height: 100%;
+            margin: 0;
+            padding: 0;
+            overflow: hidden; /* Prevent body scroll when app container is h-screen */
+        }
+        #app-container {
+            overscroll-behavior-y: contain; /* Prevent pull-to-refresh or overscroll effects on the container */
+        }
+        .truncate-2-lines {
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+    </style>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        'yt-black': '#0F0F0F', // Main background
+                        'yt-charcoal': '#272727', // Surface, cards, inactive chip bg
+                        'yt-medium-gray': '#AAAAAA', // Secondary text
+                        'yt-light-gray': '#F1F1F1', // Primary text, icons
+                        'yt-red': '#FF0000',
+                        'yt-chip-active-bg': '#FFFFFF',
+                        'yt-chip-active-text': '#0F0F0F',
+                        'yt-chip-inactive-bg': 'rgba(255, 255, 255, 0.1)', // More subtle than charcoal
+                        'yt-chip-inactive-text': '#F1F1F1',
+                        'yt-border': '#3F3F3F', // zinc-700 for borders
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+<body class="bg-yt-black text-yt-light-gray font-sans antialiased">
+
+    <div id="app-container" class="max-w-lg mx-auto h-screen flex flex-col bg-yt-black overflow-hidden">
+        <!-- Header -->
+        <header id="header" class="px-4 h-14 flex items-center justify-between shrink-0 sticky top-0 bg-yt-black z-20">
+            <!-- Content will be injected by JS -->
+        </header>
+
+        <!-- Navigation Tabs (Chip Bar) -->
+        <nav id="chip-bar-container" class="h-12 shrink-0 sticky top-14 bg-yt-black z-20 border-b border-yt-border">
+            <!-- Content will be injected by JS -->
+        </nav>
+
+        <!-- Main Content Area (Video Feed) -->
+        <main id="video-feed" class="flex-grow overflow-y-auto pb-4">
+            <!-- Content will be injected by JS -->
+        </main>
+
+        <!-- Bottom Navigation Bar -->
+        <footer id="bottom-nav" class="h-16 px-2 sm:px-4 shrink-0 flex items-center justify-around border-t border-yt-border bg-yt-black sticky bottom-0 z-20">
+            <!-- Content will be injected by JS -->
+        </footer>
+    </div>
+
+    <script>
+        // --- STATE ---
+        let activeChipId = 'all';
+        let activeBottomNavId = 'Home';
+
+        // --- DATA ---
+        const chipCategories = [
+            { id: 'explore', name: 'Explore', icon: 'compass-hero' },
+            { id: 'all', name: 'All' },
+            { id: 'gaming', name: 'Gaming' },
+            { id: 'music', name: 'Music' },
+            { id: 'live', name: 'Live' },
+            { id: 'comedy', name: 'Comedy' },
+            { id: 'asmr', name: 'ASMR' },
+            { id: 'programming', name: 'Programming' },
+            { id: 'gadgets', name: 'Gadgets' },
+            { id: 'news', name: 'News' },
+            { id: 'trailers', name: 'Trailers' },
+            { id: 'cooking', name: 'Cooking' },
+        ];
+
+        const bottomNavItems = [
+            { id: 'Home', label: 'Home', iconDefault: 'home-outline', iconActive: 'home-solid' },
+            { id: 'Shorts', label: 'Shorts', iconDefault: 'shorts-outline', iconActive: 'shorts-solid' },
+            { id: 'Create', label: '', iconDefault: 'plus-circle-outline', iconActive: 'plus-circle-solid', special: true },
+            { id: 'Subscriptions', label: 'Subscriptions', iconDefault: 'subscriptions-outline', iconActive: 'subscriptions-solid' },
+            { id: 'You', label: 'You', iconDefault: 'user-circle-outline', iconActive: 'user-circle-solid' },
+        ];
+
+        const videos = [
+            {
+                id: 1, thumbnailUrl: null, duration: '12:35',
+                channelAvatarUrl: null, title: 'The Future of Web Development is Here and It\'s Amazing',
+                channelName: 'DevWorld', views: '2.1M', uploadDate: '1 week ago'
+            },
+            {
+                id: 2, thumbnailUrl: null, duration: '8:17',
+                channelAvatarUrl: null, title: 'Amazing Drone Shots of Norway Fjords with Cinematic Music',
+                channelName: 'Nature Explorer', views: '875K', uploadDate: '3 days ago'
+            },
+            {
+                id: 3, thumbnailUrl: null, duration: '25:02',
+                channelAvatarUrl: null, title: 'Cooking Masterclass: Perfect Pasta Carbonara From Scratch',
+                channelName: 'Chef Giovanni', views: '5.5M', uploadDate: '2 months ago'
+            },
+            {
+                id: 4, thumbnailUrl: null, duration: '5:59',
+                channelAvatarUrl: null, title: 'Unboxing the Latest Smartphone - Is it Worth It in 2023?',
+                channelName: 'TechReviewer', views: '312K', uploadDate: '18 hours ago'
+            },
+            {
+                id: 5, thumbnailUrl: null, duration: '1:15:30',
+                channelAvatarUrl: null, title: 'Live Q&A: Ask Me Anything About Space Exploration & The Universe',
+                channelName: 'AstroGeek Live', views: '45K', uploadDate: 'Live'
+            },
+             {
+                id: 6, thumbnailUrl: null, duration: '15:00',
+                channelAvatarUrl: null, title: 'Tailwind CSS Crash Course for Beginners - Build a Portfolio',
+                channelName: 'Frontend Masters', views: '1.8M', uploadDate: '6 months ago'
+            },
+            {
+                id: 7, thumbnailUrl: null, duration: '9:42',
+                channelAvatarUrl: null, title: 'Hidden Gems in Southeast Asia Travel Guide You Must See',
+                channelName: 'Wanderlust', views: '620K', uploadDate: '4 weeks ago'
+            }
+        ];
+
+        // --- ICON HELPER ---
+        function getIconSVG(name, classes = "w-6 h-6", type = '') {
+            const iconClasses = `${classes} ${type === 'bottomNav' && name !== 'Create' && name !== 'plus-circle-outline' && name !== 'plus-circle-solid' ? 'mb-0.5' : ''}`;
+            const svgs = {
+                'youtube-logo': `<svg class="${iconClasses} text-yt-red" viewBox="0 0 28 20" fill="currentColor" xmlns="http://www.w3.org/2000/svg"><path d="M27.3459 3.09277C27.0232 1.87505 26.0532 0.905086 24.8354 0.582345C22.6644 0 14 0 14 0C14 0 5.33556 0 3.16462 0.582345C1.94683 0.905086 0.976819 1.87505 0.654089 3.09277C0 5.26371 0 9.84615 0 9.84615C0 9.84615 0 14.4286 0.654089 16.6395C0.976819 17.8573 1.94683 18.7873 3.16462 19.1099C5.33556 19.6923 14 19.6923 14 19.6923C14 19.6923 22.6644 19.6923 24.8354 19.1099C26.0532 18.7873 27.0232 17.8573 27.3459 16.6395C28 14.4286 28 9.84615 28 9.84615C28 9.84615 28 5.26371 27.3459 3.09277Z"/><path d="M11.1999 14.0768V5.61536L18.4882 9.84611L11.1999 14.0768Z" fill="white"/></svg>`,
+                'cast': `<svg xmlns="http://www.w3.org/2000/svg" class="${iconClasses}" viewBox="0 0 24 24" fill="currentColor"><path d="M1 18v3h3c0-1.66-1.34-3-3-3zm0-4v2c2.76 0 5 2.24 5 5h2c0-3.87-3.13-7-7-7zm0-4v2c4.97 0 9 4.03 9 9h2c0-6.08-4.93-11-11-11zm20-4H3c-1.1 0-2 .9-2 2v3h2V5h18v14h-7v2h7c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2z"/></svg>`,
+                'bell': `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="${iconClasses}"><path stroke-linecap="round" stroke-linejoin="round" d="M14.857 17.082a23.848 23.848 0 005.454-1.31A8.967 8.967 0 0118 9.75v-.7V9A6 6 0 006 9v.75a8.967 8.967 0 01-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 01-5.714 0m5.714 0a3 3 0 11-5.714 0" /></svg>`,
+                'search': `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="${iconClasses}"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" /></svg>`,
+                'user-avatar-placeholder': `<div class="bg-yt-medium-gray rounded-full flex items-center justify-center ${classes.replace('w-6 h-6', 'w-7 h-7 sm:w-8 sm:h-8')}"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="black" class="w-5 h-5"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z" /></svg></div>`,
+                'compass-hero': `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="${iconClasses}"><path stroke-linecap="round" stroke-linejoin="round" d="M12 21a9 9 0 100-18 9 9 0 000 18z" /><path stroke-linecap="round" stroke-linejoin="round" d="M12 3.75L12 7.5M12 16.5L12 20.25M4.125 12L7.875 12M16.125 12L19.875 12M6.5625 6.5625L9.375 9.375M14.625 14.625L17.4375 17.4375M6.5625 17.4375L9.375 14.625M14.625 9.375L17.4375 6.5625" /></svg>`,
+                'home-outline': `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="${iconClasses}"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 12l8.954-8.955c.44-.439 1.152-.439 1.591 0L21.75 12M4.5 9.75v10.125c0 .621.504 1.125 1.125 1.125H9.75v-4.875c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21h4.125c.621 0 1.125-.504 1.125-1.125V9.75M8.25 21h7.5" /></svg>`,
+                'home-solid': `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="${iconClasses}"><path d="M11.47 3.84a.75.75 0 011.06 0l8.69 8.69a.75.75 0 101.06-1.06l-8.689-8.69a2.25 2.25 0 00-3.182 0l-8.69 8.69a.75.75 0 001.061 1.06l8.69-8.69z" /><path d="M12 5.432l8.159 8.159c.03.03.06.058.091.086v6.198c0 1.035-.84 1.875-1.875 1.875H15a.75.75 0 01-.75-.75v-4.5a.75.75 0 00-.75-.75h-3a.75.75 0 00-.75.75V21a.75.75 0 01-.75.75H5.625a1.875 1.875 0 01-1.875-1.875v-6.198a2.29 2.29 0 00.091-.086L12 5.43z" /></svg>`,
+                'shorts-outline': `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="${iconClasses}"><path stroke-linecap="round" stroke-linejoin="round" d="M3.75 13.5l10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75z" /></svg>`,
+                'shorts-solid': `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="${iconClasses}"><path d="M3.75 13.5l10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75z" /></svg>`,
+                'plus-circle-outline': `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="${iconClasses}"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v6m3-3H9m12 0a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>`,
+                'plus-circle-solid': `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="${iconClasses}"><path fill-rule="evenodd" d="M12 2.25c-5.385 0-9.75 4.365-9.75 9.75s4.365 9.75 9.75 9.75 9.75-4.365 9.75-9.75S17.385 2.25 12 2.25zM12.75 9a.75.75 0 00-1.5 0v2.25H9a.75.75 0 000 1.5h2.25V15a.75.75 0 001.5 0v-2.25H15a.75.75 0 000-1.5h-2.25V9z" clip-rule="evenodd" /></svg>`,
+                'subscriptions-outline': `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="${iconClasses}"><path stroke-linecap="round" stroke-linejoin="round" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /><path stroke-linecap="round" stroke-linejoin="round" d="M15.91 11.672a.375.375 0 010 .656l-5.603 3.113a.375.375 0 01-.557-.328V8.887c0-.286.307-.466.557-.327l5.603 3.112z" /></svg>`,
+                'subscriptions-solid': `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="${iconClasses}"><path fill-rule="evenodd" d="M2.25 12c0-5.385 4.365-9.75 9.75-9.75s9.75 4.365 9.75 9.75-4.365 9.75-9.75 9.75S2.25 17.385 2.25 12zm14.024-.983a1.125 1.125 0 010 1.966l-5.603 3.113A1.125 1.125 0 019 15.113V8.887c0-.857.921-1.4 1.624-.983l5.603 3.113z" clip-rule="evenodd" /></svg>`,
+                'user-circle-outline': `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="${iconClasses}"><path stroke-linecap="round" stroke-linejoin="round" d="M17.982 18.725A7.488 7.488 0 0012 15.75a7.488 7.488 0 00-5.982 2.975m11.963 0a9 9 0 10-11.963 0m11.963 0A8.966 8.966 0 0112 21a8.966 8.966 0 01-5.982-2.275M15 9.75a3 3 0 11-6 0 3 3 0 016 0z" /></svg>`,
+                'user-circle-solid': `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="${iconClasses}"><path fill-rule="evenodd" d="M18.685 19.097A9.723 9.723 0 0021.75 12c0-5.385-4.365-9.75-9.75-9.75S2.25 6.615 2.25 12a9.723 9.723 0 003.065 7.097A9.716 9.716 0 0012 21.75a9.716 9.716 0 006.685-2.653zm-12.54-1.285A7.486 7.486 0 0112 15a7.486 7.486 0 015.855 2.812A8.224 8.224 0 0112 20.25a8.224 8.224 0 01-5.855-2.438zM15.75 9a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0z" clip-rule="evenodd" /></svg>`,
+                'ellipsis-vertical': `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="${iconClasses}"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6.75a.75.75 0 110-1.5.75.75 0 010 1.5zM12 12.75a.75.75 0 110-1.5.75.75 0 010 1.5zM12 18.75a.75.75 0 110-1.5.75.75 0 010 1.5z" /></svg>`,
+            };
+            return svgs[name] || `<div class="${iconClasses} bg-yt-red flex items-center justify-center text-xs text-yt-black">?</div>`;
+        }
+
+        // --- RENDER FUNCTIONS ---
+
+        function renderHeader() {
+            const headerEl = document.getElementById('header');
+            headerEl.innerHTML = `
+                <div class="flex items-center space-x-1">
+                    ${getIconSVG('youtube-logo', 'h-6 w-auto')}
+                    <span class="text-xl font-bold tracking-tighter text-yt-light-gray">YouTube</span>
+                </div>
+                <div class="flex items-center space-x-2 sm:space-x-4">
+                    <button aria-label="Cast to device" class="p-1.5 rounded-full hover:bg-yt-charcoal">${getIconSVG('cast', 'w-5 h-5 sm:w-6 sm:h-6')}</button>
+                    <button aria-label="Notifications" class="p-1.5 rounded-full hover:bg-yt-charcoal relative">
+                        ${getIconSVG('bell', 'w-5 h-5 sm:w-6 sm:h-6')}
+                        <span class="absolute top-1.5 right-1.5 w-1.5 h-1.5 sm:w-2 sm:h-2 bg-yt-red rounded-full border border-yt-black"></span>
+                    </button>
+                    <button aria-label="Search" class="p-1.5 rounded-full hover:bg-yt-charcoal">${getIconSVG('search', 'w-5 h-5 sm:w-6 sm:h-6')}</button>
+                    <button aria-label="User profile" class="rounded-full hover:opacity-80">${getIconSVG('user-avatar-placeholder', 'w-7 h-7 sm:w-8 sm:h-8')}</button>
+                </div>
+            `;
+        }
+
+        function renderChipBar() {
+            const chipBarContainerEl = document.getElementById('chip-bar-container');
+            const chipsHTML = chipCategories.map(chip => {
+                const isActive = chip.id === activeChipId;
+                let content;
+                let chipClasses = "chip-button whitespace-nowrap px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ";
+                if (chip.icon) { // For the "Explore" chip
+                    content = `<div class="flex items-center space-x-1.5">
+                                 ${getIconSVG(chip.icon, 'w-5 h-5')}
+                                 <span>${chip.name}</span>
+                               </div>`;
+                    chipClasses += isActive ? 'bg-yt-chip-active-bg text-yt-chip-active-text' : 'bg-yt-charcoal text-yt-chip-inactive-text hover:bg-opacity-80 hover:bg-neutral-600';
+                } else {
+                    content = chip.name;
+                    chipClasses += isActive ? 'bg-yt-chip-active-bg text-yt-chip-active-text' : 'bg-yt-chip-inactive-bg text-yt-chip-inactive-text hover:bg-opacity-20 hover:bg-white';
+                }
+                return `
+                    <button
+                        data-chip-id="${chip.id}"
+                        class="${chipClasses}"
+                    >
+                        ${content}
+                    </button>
+                `;
+            }).join('');
+
+            chipBarContainerEl.innerHTML = `
+                <div id="chip-bar" class="px-4 py-2 flex space-x-2 overflow-x-auto">
+                    ${chipsHTML}
+                </div>
+            `;
+
+            document.querySelectorAll('.chip-button').forEach(button => {
+                button.addEventListener('click', () => {
+                    activeChipId = button.dataset.chipId;
+                    renderChipBar();
+                    console.log("Active chip:", activeChipId);
+                    // Simulate content filtering:
+                    document.getElementById('video-feed').innerHTML = `<div class="p-8 text-center text-yt-light-gray">Content for ${activeChipId} (Not Implemented)</div>`;
+                    setTimeout(() => renderVideoFeed(), 300); // Show placeholder then reload main feed
+                });
+            });
+        }
+
+        function renderVideoFeed() {
+            const feedEl = document.getElementById('video-feed');
+            if (!feedEl) return;
+
+            const videosHTML = videos.map(video => `
+                <div class="bg-yt-black cursor-pointer group video-item mb-1" aria-label="Video: ${video.title}">
+                    <div class="w-full aspect-video bg-yt-charcoal relative group-hover:opacity-95 transition-opacity">
+                        <div class="bg-neutral-800 w-full h-full flex items-center justify-center text-neutral-600">
+                            <svg class="w-16 h-16" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                        </div>
+                        <span class="absolute bottom-1.5 right-1.5 bg-black/80 text-yt-light-gray text-xs px-1.5 py-0.5 rounded-sm font-medium">${video.duration}</span>
+                    </div>
+                    <div class="py-3 px-3 flex space-x-3">
+                        <div class="shrink-0">
+                            <div class="w-9 h-9 bg-neutral-800 rounded-full flex items-center justify-center text-neutral-600">
+                                <svg class="w-5 h-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z" /></svg>
+                            </div>
+                        </div>
+                        <div class="flex-grow overflow-hidden min-w-0">
+                            <h3 class="text-sm sm:text-base font-medium text-yt-light-gray leading-snug mb-0.5 truncate-2-lines group-hover:text-white">${video.title}</h3>
+                            <p class="text-xs text-yt-medium-gray flex items-center flex-wrap">
+                                <span class="truncate">${video.channelName}</span>
+                                <span class="mx-1">•</span>
+                                <span>${video.views}</span>
+                                <span class="mx-1">•</span>
+                                <span>${video.uploadDate}</span>
+                            </p>
+                        </div>
+                        <div class="shrink-0 ml-auto">
+                            <button aria-label="Video options" class="text-yt-medium-gray hover:text-yt-light-gray p-1 -mr-1">
+                                ${getIconSVG('ellipsis-vertical', 'w-5 h-5')}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+            feedEl.innerHTML = videosHTML;
+        }
+
+        function renderBottomNav() {
+            const navEl = document.getElementById('bottom-nav');
+            const itemsHTML = bottomNavItems.map(item => {
+                const isActive = item.id === activeBottomNavId;
+                const iconName = isActive ? item.iconActive : item.iconDefault;
+                const textColor = isActive ? 'text-yt-light-gray' : 'text-yt-medium-gray';
+                let iconSize = 'w-6 h-6';
+                if (item.special) { 
+                    iconSize = 'w-8 h-8'; // Larger icon for Create
+                }
+
+                return `
+                    <button
+                        data-nav-id="${item.id}"
+                        aria-label="${item.label || item.id}"
+                        class="bottom-nav-button flex flex-col items-center justify-center flex-1 py-1 focus:outline-none transition-colors ${textColor} hover:text-yt-light-gray"
+                    >
+                        ${getIconSVG(iconName, iconSize, 'bottomNav')}
+                        ${item.label ? `<span class="text-xs mt-0.5 ${isActive ? 'font-semibold' : 'font-normal'}">${item.label}</span>` : ''}
+                    </button>
+                `;
+            }).join('');
+            navEl.innerHTML = itemsHTML;
+
+            document.querySelectorAll('.bottom-nav-button').forEach(button => {
+                button.addEventListener('click', () => {
+                    activeBottomNavId = button.dataset.navId;
+                    renderBottomNav();
+                    console.log("Active bottom nav:", activeBottomNavId);
+                    
+                    const feedEl = document.getElementById('video-feed');
+                    if (activeBottomNavId === 'Home') {
+                        renderVideoFeed();
+                    } else {
+                        feedEl.innerHTML = `<div class="p-8 text-center text-yt-light-gray">Content for ${activeBottomNavId} (Not Implemented)</div>`;
+                    }
+                });
+            });
+        }
+
+
+        // --- INITIALIZATION ---
+        function initApp() {
+            renderHeader();
+            renderChipBar();
+            renderVideoFeed();
+            renderBottomNav();
+        }
+
+        document.addEventListener('DOMContentLoaded', initApp);
+
+    </script>
+</body>
+</html>

@@ -1,0 +1,9 @@
+{
+  "web_id": "web_2",
+  "task_id": 4,
+  "task_type": "dynamic",
+  "instruction": "Task: Click on a player's avatar/name to cast a vote during a meeting.\nExpected Result: The vote is visually confirmed, and after a simulated voting period, the outcome (e.g., player ejected) is displayed.\n\nNote: The task is only considered successful if the expected result is achieved; otherwise, it is deemed infeasible.",
+  "max_steps": 15,
+  "expected": "The vote is visually confirmed, and after a simulated voting period, the outcome (e.g., player ejected) is displayed.",
+  "label": 1
+}

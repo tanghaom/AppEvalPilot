@@ -1,0 +1,9 @@
+{
+  "web_id": "web_84",
+  "task_id": 5,
+  "task_type": "dynamic",
+  "instruction": "Task: After performing a schematic modification action (e.g., placing a component via Task 1, or drawing a wire via Task 2), press the 'u' key.\nExpected Result: The most recent significant schematic modification action is reversed. For instance, if a component was just placed, it is removed. If a wire was drawn, it is removed. The schematic visually updates to its state before that action.\n\nNote: The task is only considered successful if the expected result is achieved; otherwise, it is deemed infeasible.",
+  "max_steps": 15,
+  "expected": "The most recent significant schematic modification action is reversed. For instance, if a component was just placed, it is removed. If a wire was drawn, it is removed. The schematic visually updates to its state before that action.",
+  "label": 1
+}

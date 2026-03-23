@@ -1,0 +1,9 @@
+{
+  "web_id": "web_55",
+  "task_id": 5,
+  "task_type": "dynamic",
+  "instruction": "Task: Enter values for destination and weight/volume into the shipping calculator fields and trigger the calculation.\nExpected Result: An estimated shipping cost is calculated and displayed on the page based on the provided inputs.\n\nNote: The task is only considered successful if the expected result is achieved; otherwise, it is deemed infeasible.",
+  "max_steps": 15,
+  "expected": "An estimated shipping cost is calculated and displayed on the page based on the provided inputs.",
+  "label": 1
+}

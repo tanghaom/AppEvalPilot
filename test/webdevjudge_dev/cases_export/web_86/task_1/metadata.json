@@ -1,0 +1,9 @@
+{
+  "web_id": "web_86",
+  "task_id": 1,
+  "task_type": "dynamic",
+  "instruction": "Task: Type text into the 'Darija (Árabe Marroquí)' textarea and click the 'Traducir al Español' button.\nExpected Result: The 'Español' output textarea displays the (simulated) Spanish translation, which should be well-formatted. Both the original Darija text and its Spanish translation appear as a new entry in the 'Historial de Traducciones', ensuring text in the history is well-formatted and easy to read, possibly with entry animations. The button shows a brief loading state during (simulated) processing.\n\nNote: The task is only considered successful if the expected result is achieved; otherwise, it is deemed infeasible.",
+  "max_steps": 15,
+  "expected": "The 'Español' output textarea displays the (simulated) Spanish translation, which should be well-formatted. Both the original Darija text and its Spanish translation appear as a new entry in the 'Historial de Traducciones', ensuring text in the history is well-formatted and easy to read, possibly with entry animations. The button shows a brief loading state during (simulated) processing.",
+  "label": 0
+}

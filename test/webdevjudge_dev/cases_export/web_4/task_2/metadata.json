@@ -1,0 +1,9 @@
+{
+  "web_id": "web_4",
+  "task_id": 2,
+  "task_type": "dynamic",
+  "instruction": "Task: Click a 'Kanban View' tab or button to change the layout.\nExpected Result: The display changes to show tasks organized in a Kanban board format (e.g., columns like 'To Do', 'In Progress', 'Done').\n\nNote: The task is only considered successful if the expected result is achieved; otherwise, it is deemed infeasible.",
+  "max_steps": 15,
+  "expected": "The display changes to show tasks organized in a Kanban board format (e.g., columns like 'To Do', 'In Progress', 'Done').",
+  "label": 1
+}

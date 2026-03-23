@@ -1,0 +1,596 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tailwind Tetris</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        canvas {
+            image-rendering: -moz-crisp-edges;
+            image-rendering: -webkit-crisp-edges;
+            image-rendering: pixelated;
+            image-rendering: crisp-edges;
+            display: block; /* Canvas etrafındaki ekstra boşluğu kaldırır */
+        }
+        .info-panel canvas { /* Sonraki parça alanı için özel boyutlandırma */
+            width: 100%;
+            height: auto;
+            aspect-ratio: 1 / 1;
+        }
+    </style>
+</head>
+<body class="bg-slate-900 text-slate-100 flex flex-col items-center justify-center min-h-screen p-4 antialiased">
+
+    <div class="game-wrapper flex flex-col lg:flex-row gap-6 items-start max-w-4xl w-full">
+        <!-- Oyun Tahtası Alanı -->
+        <div class="bg-slate-800 p-1.5 rounded-lg shadow-2xl order-2 lg:order-1 mx-auto">
+            <canvas id="tetrisCanvas"></canvas>
+        </div>
+
+        <!-- Bilgi Paneli -->
+        <div class="info-panel w-full lg:w-60 space-y-4 p-5 bg-slate-800 rounded-lg shadow-xl order-1 lg:order-2 mx-auto lg:mx-0">
+            <div>
+                <h2 class="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1.5">SONRAKİ</h2>
+                <div class="bg-slate-900 p-1 rounded-md flex items-center justify-center">
+                    <canvas id="nextPieceCanvas"></canvas>
+                </div>
+            </div>
+            
+            <div class="grid grid-cols-2 gap-3">
+                <div>
+                    <h3 class="text-xs font-semibold text-slate-400 uppercase tracking-wider">SKOR</h3>
+                    <p id="score" class="text-2xl font-bold text-cyan-400">0</p>
+                </div>
+                <div>
+                    <h3 class="text-xs font-semibold text-slate-400 uppercase tracking-wider">SEVİYE</h3>
+                    <p id="level" class="text-2xl font-bold text-cyan-400">1</p>
+                </div>
+            </div>
+             <div>
+                <h3 class="text-xs font-semibold text-slate-400 uppercase tracking-wider">SATIRLAR</h3>
+                <p id="lines" class="text-2xl font-bold text-cyan-400">0</p>
+            </div>
+
+            <div id="gameStatusContainer" class="pt-2">
+                 <button id="startButton" class="w-full bg-cyan-600 hover:bg-cyan-700 text-white font-bold py-2.5 px-4 rounded-md transition-colors duration-150 ease-in-out focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:ring-opacity-50 text-sm">
+                    Oyuna Başla
+                </button>
+                <div id="gameOverMessage" class="hidden text-center p-3 bg-red-500/20 border border-red-700 rounded-md mt-2">
+                    <h2 class="text-xl font-bold mb-1 text-red-400">Oyun Bitti!</h2>
+                    <p id="finalScore" class="mb-2 text-sm">Skorunuz: 0</p>
+                </div>
+                 <div id="pauseMessage" class="hidden text-center p-3 bg-yellow-500/20 border border-yellow-700 rounded-md mt-2">
+                    <h2 class="text-xl font-bold mb-2 text-yellow-400">Duraklatıldı</h2>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="mt-6 text-center text-slate-400 text-xs max-w-md">
+        <p class="font-semibold mb-1">Kontroller:</p>
+        <p>Sol/Sağ Oklar: Parçayı Hareket Ettir</p>
+        <p>Yukarı Ok: Parçayı Döndür</p>
+        <p>Aşağı Ok: Yumuşak Düşüş</p>
+        <p>Boşluk Tuşu: Sert Düşüş</p>
+        <p>P: Duraklat/Devam Et</p>
+    </div>
+
+<script>
+    // Sabitler
+    const BOARD_WIDTH = 10;
+    const BOARD_HEIGHT = 20;
+    const BLOCK_SIZE = 28; 
+    const NEXT_AREA_BLOCK_SIZE_CANVAS_INTERNAL = 20; // Sonraki parça canvas'ının içsel blok boyutu
+
+    // Renkleri ve şekilleriyle Tetromino'lar
+    const PIECES = {
+        'I': {
+            color: '#22d3ee', // Cyan
+            rotations: [
+                [[0,0,0,0], [1,1,1,1], [0,0,0,0], [0,0,0,0]],
+                [[0,1,0,0], [0,1,0,0], [0,1,0,0], [0,1,0,0]],
+                [[0,0,0,0], [0,0,0,0], [1,1,1,1], [0,0,0,0]],
+                [[0,0,1,0], [0,0,1,0], [0,0,1,0], [0,0,1,0]]
+            ]
+        },
+        'L': {
+            color: '#f97316', // Orange
+            rotations: [
+                [[0,1,0], [0,1,0], [0,1,1]],
+                [[0,0,0], [1,1,1], [1,0,0]],
+                [[1,1,0], [0,1,0], [0,1,0]],
+                [[0,0,1], [1,1,1], [0,0,0]]
+            ]
+        },
+        'J': {
+            color: '#3b82f6', // Blue
+            rotations: [
+                [[0,1,0], [0,1,0], [1,1,0]],
+                [[1,0,0], [1,1,1], [0,0,0]],
+                [[0,1,1], [0,1,0], [0,1,0]],
+                [[0,0,0], [1,1,1], [0,0,1]]
+            ]
+        },
+        'O': {
+            color: '#facc15', // Yellow
+            rotations: [ // O parçasının tek bir etkili dönüşü vardır
+                [[1,1], [1,1]]
+            ]
+        },
+        'S': {
+            color: '#22c55e', // Green
+            rotations: [
+                [[0,1,1], [1,1,0], [0,0,0]],
+                [[0,1,0], [0,1,1], [0,0,1]],
+                [[0,0,0], [0,1,1], [1,1,0]],
+                [[1,0,0], [1,1,0], [0,1,0]]
+            ]
+        },
+        'T': {
+            color: '#a855f7', // Purple
+            rotations: [
+                [[0,1,0], [1,1,1], [0,0,0]],
+                [[0,1,0], [0,1,1], [0,1,0]],
+                [[0,0,0], [1,1,1], [0,1,0]],
+                [[0,1,0], [1,1,0], [0,1,0]]
+            ]
+        },
+        'Z': {
+            color: '#ef4444', // Red
+            rotations: [
+                [[1,1,0], [0,1,1], [0,0,0]],
+                [[0,0,1], [0,1,1], [0,1,0]],
+                [[0,0,0], [1,1,0], [0,1,1]],
+                [[0,1,0], [1,1,0], [1,0,0]]
+            ]
+        }
+    };
+    const PIECE_KEYS = Object.keys(PIECES);
+
+    // Oyun durumu değişkenleri
+    let canvas, ctx;
+    let nextCanvas, nextCtx;
+    let board;
+    let currentPiece, nextPiece;
+    let score, level, lines;
+    let isGameOver, isPaused;
+    let gameLoopId;
+
+    let lastTime = 0;
+    let dropCounter = 0;
+    let dropInterval = 1000; // Seviye 1 için ms
+
+    // UI Elemanları
+    const scoreEl = document.getElementById('score');
+    const levelEl = document.getElementById('level');
+    const linesEl = document.getElementById('lines');
+    const startButton = document.getElementById('startButton');
+    const gameOverMessageEl = document.getElementById('gameOverMessage');
+    const finalScoreEl = document.getElementById('finalScore');
+    const pauseMessageEl = document.getElementById('pauseMessage');
+    
+    function hexToRgba(hex, alpha = 1) {
+        const bigint = parseInt(hex.slice(1), 16);
+        const r = (bigint >> 16) & 255;
+        const g = (bigint >> 8) & 255;
+        const b = bigint & 255;
+        return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+    }
+
+    function init() {
+        canvas = document.getElementById('tetrisCanvas');
+        ctx = canvas.getContext('2d');
+        canvas.width = BOARD_WIDTH * BLOCK_SIZE;
+        canvas.height = BOARD_HEIGHT * BLOCK_SIZE;
+        // ctx.scale(BLOCK_SIZE, BLOCK_SIZE) canvas'ın kendisine uygulanmalı, context'e değil.
+        // Ancak context'e scale uygulamak daha yaygın. Burada canvas boyutunu ayarlayıp context'i 1:1 kullanacağız.
+        // Çizim fonksiyonlarında BLOCK_SIZE ile çarpacağız. Ya da scale kullanacağız. Scale daha temiz.
+        ctx.scale(BLOCK_SIZE, BLOCK_SIZE);
+
+
+        nextCanvas = document.getElementById('nextPieceCanvas');
+        nextCtx = nextCanvas.getContext('2d');
+        const nextCanvasDim = 4 * NEXT_AREA_BLOCK_SIZE_CANVAS_INTERNAL; // Max parça boyutu 4 bloktur
+        nextCanvas.width = nextCanvasDim;
+        nextCanvas.height = nextCanvasDim;
+        nextCtx.scale(NEXT_AREA_BLOCK_SIZE_CANVAS_INTERNAL, NEXT_AREA_BLOCK_SIZE_CANVAS_INTERNAL);
+        
+        resetGame();
+        updateUI(); 
+        
+        startButton.addEventListener('click', handleStartButtonClick);
+        document.addEventListener('keydown', handleKeyPress);
+    }
+
+    function handleStartButtonClick() {
+        if (isGameOver) {
+            resetGame(); // Oyun bittiyse sıfırla
+            startGameFlow();
+        } else if (isPaused) {
+            togglePause(); // Duraklatıldıysa devam et
+        } else { // Oyun hiç başlamadıysa
+            startGameFlow();
+        }
+    }
+    
+    function startGameFlow() {
+        isPaused = false;
+        isGameOver = false;
+        startButton.textContent = 'Duraklat'; // Başladıktan sonra buton "Duraklat" olur
+        startButton.classList.remove('bg-cyan-600', 'hover:bg-cyan-700');
+        startButton.classList.add('bg-orange-500', 'hover:bg-orange-600');
+        gameOverMessageEl.classList.add('hidden');
+        pauseMessageEl.classList.add('hidden');
+        
+        lastTime = performance.now();
+        if (gameLoopId) cancelAnimationFrame(gameLoopId);
+        gameLoop();
+    }
+
+    function resetGame() {
+        board = createBoard(BOARD_WIDTH, BOARD_HEIGHT);
+        score = 0;
+        level = 1;
+        lines = 0;
+        isGameOver = false;
+        isPaused = true; // Oyun başlangıçta duraklatılmış sayılır
+        dropInterval = 1000;
+        
+        gameOverMessageEl.classList.add('hidden');
+        pauseMessageEl.classList.add('hidden');
+        startButton.textContent = 'Oyuna Başla';
+        startButton.classList.remove('bg-orange-500', 'hover:bg-orange-600', 'bg-green-500', 'hover:bg-green-600');
+        startButton.classList.add('bg-cyan-600', 'hover:bg-cyan-700');
+        startButton.disabled = false;
+
+        nextPiece = getRandomPiece();
+        spawnNewPiece(); 
+    }
+
+    function createBoard(width, height) {
+        return Array.from({ length: height }, () => Array(width).fill(0));
+    }
+
+    function getRandomPiece() {
+        const type = PIECE_KEYS[Math.floor(Math.random() * PIECE_KEYS.length)];
+        const pieceData = PIECES[type];
+        return {
+            type: type,
+            shape: pieceData.rotations[0],
+            rotations: pieceData.rotations,
+            color: pieceData.color,
+            x: 0, y: 0,
+            rotationIndex: 0
+        };
+    }
+
+    function spawnNewPiece() {
+        currentPiece = nextPiece;
+        nextPiece = getRandomPiece();
+        
+        currentPiece.x = Math.floor(BOARD_WIDTH / 2) - Math.floor(currentPiece.shape[0].length / 2);
+        currentPiece.y = 0;
+
+        if (!isValidMove(currentPiece, 0, 0)) {
+            isGameOver = true;
+            triggerGameOver();
+        }
+        drawNextPiece();
+    }
+    
+    function triggerGameOver() {
+        isGameOver = true;
+        isPaused = true; 
+        if (gameLoopId) cancelAnimationFrame(gameLoopId);
+        
+        finalScoreEl.textContent = `Skorunuz: ${score}`;
+        gameOverMessageEl.classList.remove('hidden');
+        startButton.textContent = 'Tekrar Oyna';
+        startButton.classList.remove('bg-orange-500', 'hover:bg-orange-600', 'bg-green-500', 'hover:bg-green-600');
+        startButton.classList.add('bg-cyan-600', 'hover:bg-cyan-700');
+        startButton.disabled = false;
+        pauseMessageEl.classList.add('hidden');
+    }
+
+    function togglePause() {
+        if (isGameOver) return;
+        isPaused = !isPaused;
+        if (isPaused) {
+            pauseMessageEl.classList.remove('hidden');
+            startButton.textContent = 'Devam Et';
+            startButton.classList.remove('bg-orange-500', 'hover:bg-orange-600');
+            startButton.classList.add('bg-green-500', 'hover:bg-green-600');
+            if (gameLoopId) cancelAnimationFrame(gameLoopId);
+        } else {
+            pauseMessageEl.classList.add('hidden');
+            startButton.textContent = 'Duraklat';
+            startButton.classList.remove('bg-green-500', 'hover:bg-green-600');
+            startButton.classList.add('bg-orange-500', 'hover:bg-orange-600');
+            lastTime = performance.now();
+            gameLoop();
+        }
+        updateUI();
+    }
+
+    function draw() {
+        ctx.fillStyle = '#0f172a'; // slate-900 (Tahta arkaplanı)
+        ctx.fillRect(0, 0, BOARD_WIDTH, BOARD_HEIGHT); // scale olduğu için BOARD_WIDTH/HEIGHT
+
+        ctx.strokeStyle = '#1e293b'; // slate-800 (Grid çizgileri)
+        ctx.lineWidth = 0.05; 
+        for (let r = 0; r < BOARD_HEIGHT; r++) {
+            ctx.beginPath(); ctx.moveTo(0, r); ctx.lineTo(BOARD_WIDTH, r); ctx.stroke();
+        }
+        for (let c = 0; c < BOARD_WIDTH; c++) {
+            ctx.beginPath(); ctx.moveTo(c, 0); ctx.lineTo(c, BOARD_HEIGHT); ctx.stroke();
+        }
+
+        drawBoard();
+        if (currentPiece && !isPaused) drawGhostPiece();
+        if (currentPiece) drawPiece(currentPiece, ctx);
+    }
+
+    function drawBoard() {
+        for (let r = 0; r < BOARD_HEIGHT; r++) {
+            for (let c = 0; c < BOARD_WIDTH; c++) {
+                if (board[r][c] !== 0) {
+                    drawBlock(ctx, c, r, board[r][c]);
+                }
+            }
+        }
+    }
+    
+    function drawPiece(piece, context) {
+        const shape = piece.shape;
+        shape.forEach((row, y) => {
+            row.forEach((value, x) => {
+                if (value) {
+                    drawBlock(context, piece.x + x, piece.y + y, piece.color);
+                }
+            });
+        });
+    }
+
+    function drawBlock(context, x, y, color) {
+        context.fillStyle = color;
+        context.fillRect(x, y, 1, 1);
+        context.strokeStyle = 'rgba(0,0,0,0.2)';
+        context.lineWidth = 0.08;
+        context.strokeRect(x, y, 1, 1);
+    }
+
+    function drawNextPiece() {
+        nextCtx.fillStyle = '#0f172a';
+        nextCtx.fillRect(0, 0, 4, 4); // scale olduğu için 4x4 alan
+
+        if (nextPiece) {
+            const shape = nextPiece.shape;
+            const shapeHeight = shape.length;
+            const shapeWidth = shape[0].length;
+            
+            const offsetX = (4 - shapeWidth) / 2;
+            const offsetY = (4 - shapeHeight) / 2;
+
+            shape.forEach((row, y) => {
+                row.forEach((value, x) => {
+                    if (value) {
+                        drawBlock(nextCtx, x + offsetX, y + offsetY, nextPiece.color);
+                    }
+                });
+            });
+        }
+    }
+    
+    function drawGhostPiece() {
+        if (!currentPiece || isPaused || isGameOver) return;
+
+        let ghostYOffset = 0;
+        while (isValidMove(currentPiece, 0, ghostYOffset + 1)) {
+            ghostYOffset++;
+        }
+        const finalGhostY = currentPiece.y + ghostYOffset;
+
+        const ghostColor = hexToRgba(currentPiece.color, 0.25);
+        ctx.fillStyle = ghostColor;
+        currentPiece.shape.forEach((row, r) => {
+            row.forEach((value, c) => {
+                if (value) {
+                     // Hayalet parça için kenarlık çizme
+                    ctx.fillRect(currentPiece.x + c, finalGhostY + r, 1, 1);
+                }
+            });
+        });
+    }
+
+    function movePieceDown() {
+        if (isPaused || isGameOver) return false;
+
+        if (isValidMove(currentPiece, 0, 1)) {
+            currentPiece.y++;
+            dropCounter = 0; 
+            // updateUI(); // Her düşüşte UI güncellemek yerine döngüde yap
+            return true;
+        } else {
+            lockPiece();
+            clearLinesAndUpdate();
+            spawnNewPiece(); 
+            if (isGameOver) return false;
+            // updateUI(); // Zaten döngüde güncelleniyor
+            return false;
+        }
+    }
+
+    function movePieceLeft() {
+        if (isPaused || isGameOver) return;
+        if (isValidMove(currentPiece, -1, 0)) currentPiece.x--;
+    }
+
+    function movePieceRight() {
+        if (isPaused || isGameOver) return;
+        if (isValidMove(currentPiece, 1, 0)) currentPiece.x++;
+    }
+    
+    function rotatePiece() {
+        if (isPaused || isGameOver) return;
+        const originalRotationIndex = currentPiece.rotationIndex;
+        const originalX = currentPiece.x;
+        currentPiece.rotationIndex = (currentPiece.rotationIndex + 1) % currentPiece.rotations.length;
+        currentPiece.shape = currentPiece.rotations[currentPiece.rotationIndex];
+
+        if (!isValidMove(currentPiece, 0, 0)) {
+            // Basit duvar vuruşları
+            let kickOffset = 0;
+            if (isValidMove(currentPiece, 1, 0)) kickOffset = 1;
+            else if (isValidMove(currentPiece, -1, 0)) kickOffset = -1;
+            else if (currentPiece.type === 'I' && isValidMove(currentPiece, 2, 0)) kickOffset = 2;
+            else if (currentPiece.type === 'I' && isValidMove(currentPiece, -2, 0)) kickOffset = -2;
+            
+            if (kickOffset !== 0) {
+                currentPiece.x += kickOffset;
+            } else { // Geri al
+                currentPiece.rotationIndex = originalRotationIndex;
+                currentPiece.shape = currentPiece.rotations[currentPiece.rotationIndex];
+                currentPiece.x = originalX;
+            }
+        }
+    }
+
+    function hardDrop() {
+        if (isPaused || isGameOver) return;
+        let dropDistance = 0;
+        while (isValidMove(currentPiece, 0, 1)) {
+            currentPiece.y++;
+            dropDistance++;
+        }
+        score += dropDistance * 2; 
+        lockPiece();
+        clearLinesAndUpdate();
+        spawnNewPiece();
+    }
+
+    function isValidMove(piece, offsetX, offsetY) {
+        const shapeToTest = piece.shape; 
+        for (let r = 0; r < shapeToTest.length; r++) {
+            for (let c = 0; c < shapeToTest[r].length; c++) {
+                if (shapeToTest[r][c]) {
+                    const newX = piece.x + c + offsetX;
+                    const newY = piece.y + r + offsetY;
+
+                    if (newX < 0 || newX >= BOARD_WIDTH || newY >= BOARD_HEIGHT) return false;
+                    if (newY >= 0 && board[newY] && board[newY][newX] !== 0) return false;
+                }
+            }
+        }
+        return true;
+    }
+
+    function lockPiece() {
+        currentPiece.shape.forEach((row, y) => {
+            row.forEach((value, x) => {
+                if (value) {
+                    const boardX = currentPiece.x + x;
+                    const boardY = currentPiece.y + y;
+                    if (boardY >= 0 && boardY < BOARD_HEIGHT && boardX >=0 && boardX < BOARD_WIDTH) {
+                         board[boardY][boardX] = currentPiece.color;
+                    }
+                }
+            });
+        });
+    }
+    
+    function clearLinesAndUpdate() {
+        let linesClearedThisTurn = 0;
+        for (let r = BOARD_HEIGHT - 1; r >= 0; ) {
+            if (board[r].every(cell => cell !== 0)) {
+                linesClearedThisTurn++;
+                board.splice(r, 1);
+                board.unshift(Array(BOARD_WIDTH).fill(0));
+            } else {
+                r--; 
+            }
+        }
+
+        if (linesClearedThisTurn > 0) {
+            lines += linesClearedThisTurn;
+            const linePoints = [0, 40, 100, 300, 1200];
+            score += linePoints[linesClearedThisTurn] * level;
+            
+            const newLevel = Math.floor(lines / 10) + 1;
+            if (newLevel > level) {
+                level = newLevel;
+                dropInterval = Math.max(100, 1000 - (level - 1) * 75);
+            }
+        }
+    }
+
+    function updateUI() {
+        scoreEl.textContent = score;
+        levelEl.textContent = level;
+        linesEl.textContent = lines;
+    }
+
+    function handleKeyPress(event) {
+        if (isGameOver && event.key !== 'Enter' && event.key !== 'r' && event.key !== 'R') { 
+             // Belki Enter/R ile yeniden başlatmaya izin verilebilir
+            return;
+        }
+
+        if (event.key.toLowerCase() === 'p') {
+            if (!isGameOver && currentPiece) togglePause(); // Oyun başlamışsa duraklat
+            return;
+        }
+        
+        // Oyun başlamadıysa veya duraklatıldıysa veya bittiyse hareketleri engelle
+        if (!currentPiece || isPaused || isGameOver) return;
+
+
+        let moved = false;
+        switch (event.key) {
+            case 'ArrowLeft': movePieceLeft(); moved = true; break;
+            case 'ArrowRight': movePieceRight(); moved = true; break;
+            case 'ArrowDown': 
+                if(movePieceDown()) score += 1; 
+                moved = true; 
+                break;
+            case 'ArrowUp': rotatePiece(); moved = true; break;
+            case ' ': 
+                event.preventDefault(); 
+                hardDrop(); 
+                moved = true; 
+                break;
+        }
+        // if (moved && !isPaused && !isGameOver) draw(); // Hareket sonrası anında çizim
+    }
+    
+    function gameLoop(timestamp) {
+        if (isGameOver) {
+            triggerGameOver();
+            return;
+        }
+        if (!isPaused) {
+            const deltaTime = timestamp - lastTime;
+            lastTime = timestamp;
+            dropCounter += deltaTime;
+
+            if (dropCounter > dropInterval) {
+                movePieceDown();
+                dropCounter = 0;
+            }
+        }
+        
+        draw(); 
+        updateUI();
+
+        if (!isGameOver) {
+            gameLoopId = requestAnimationFrame(gameLoop);
+        }
+    }
+
+    document.addEventListener('DOMContentLoaded', init);
+</script>
+</body>
+</html>

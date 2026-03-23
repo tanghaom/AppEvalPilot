@@ -1,0 +1,9 @@
+{
+  "web_id": "web_46",
+  "task_id": 2,
+  "task_type": "dynamic",
+  "instruction": "Task: Input details (e.g., event name, type like 'Tournament' or 'Cash Game', buy-in amount, blind structure) into a 'New Event' form and click the 'Save Event' button.\nExpected Result: The new event's name and type are added to a visible list of events on the page, and the input fields in the form are cleared.\n\nNote: The task is only considered successful if the expected result is achieved; otherwise, it is deemed infeasible.",
+  "max_steps": 15,
+  "expected": "The new event's name and type are added to a visible list of events on the page, and the input fields in the form are cleared.",
+  "label": 1
+}

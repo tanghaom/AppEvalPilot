@@ -1,0 +1,9 @@
+{
+  "web_id": "web_103",
+  "task_id": 4,
+  "task_type": "dynamic",
+  "instruction": "Task: Click a 'Clear' button.\nExpected Result: The content of the input and output text areas is cleared.\n\nNote: The task is only considered successful if the expected result is achieved; otherwise, it is deemed infeasible.",
+  "max_steps": 15,
+  "expected": "The content of the input and output text areas is cleared.",
+  "label": 0
+}

@@ -1,0 +1,9 @@
+{
+  "web_id": "web_92",
+  "task_id": 3,
+  "task_type": "dynamic",
+  "instruction": "Task: Click a 'Save Invoice' or 'Finalize Invoice' button for the currently drafted invoice.\nExpected Result: The current invoice (with client and line items) is added to a (simulated) list of invoices displayed on the page, and the invoice form is cleared/reset.\n\nNote: The task is only considered successful if the expected result is achieved; otherwise, it is deemed infeasible.",
+  "max_steps": 15,
+  "expected": "The current invoice (with client and line items) is added to a (simulated) list of invoices displayed on the page, and the invoice form is cleared/reset.",
+  "label": 0
+}

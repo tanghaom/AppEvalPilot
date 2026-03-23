@@ -1,0 +1,9 @@
+{
+  "web_id": "web_41",
+  "task_id": 5,
+  "task_type": "dynamic",
+  "instruction": "Task: On an 'Attraction Detail View' (e.g., for 'Angkor Wat'), click the 'Add to My Itinerary' button.\nExpected Result: The attraction ('Angkor Wat') is visually marked as added to 'My Itinerary' (e.g., button text changes, an icon updates, or a confirmation message appears), and the item is added to a locally managed list.\n\nNote: The task is only considered successful if the expected result is achieved; otherwise, it is deemed infeasible.",
+  "max_steps": 15,
+  "expected": "The attraction ('Angkor Wat') is visually marked as added to 'My Itinerary' (e.g., button text changes, an icon updates, or a confirmation message appears), and the item is added to a locally managed list.",
+  "label": 0
+}

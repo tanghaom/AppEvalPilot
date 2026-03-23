@@ -1,0 +1,9 @@
+{
+  "web_id": "web_71",
+  "task_id": 3,
+  "task_type": "dynamic",
+  "instruction": "Task: Click an 'Add to Cart' button associated with a product.\nExpected Result: The product is added to a client-side shopping cart, and visual feedback (e.g., cart item count updating, confirmation message) is provided.\n\nNote: The task is only considered successful if the expected result is achieved; otherwise, it is deemed infeasible.",
+  "max_steps": 15,
+  "expected": "The product is added to a client-side shopping cart, and visual feedback (e.g., cart item count updating, confirmation message) is provided.",
+  "label": 0
+}

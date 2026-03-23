@@ -1,0 +1,458 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Codificador / Decodificador de Mensajes</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Custom scrollbar for webkit browsers */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #1e293b; /* slate-800 */
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #475569; /* slate-600 */
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #64748b; /* slate-500 */
+        }
+        body {
+            font-family: 'Inter', sans-serif; /* A common sans-serif font available on Tailwind Play */
+        }
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+    </style>
+    <script>
+        tailwind.config = {
+            darkMode: 'class', // or 'media' if you prefer
+            theme: {
+                extend: {
+                    colors: {
+                        // Consonant context colors (15 + 1 default)
+                        'ctx-nA': 'var(--color-ctx-nA, #F87171)', // red-400
+                        'ctx-nE': 'var(--color-ctx-nE, #FB923C)', // orange-400
+                        'ctx-nI': 'var(--color-ctx-nI, #FACC15)', // amber-400
+                        'ctx-nO': 'var(--color-ctx-nO, #FDE047)', // yellow-400
+                        'ctx-nU': 'var(--color-ctx-nU, #A3E635)', // lime-400
+
+                        'ctx-sA': 'var(--color-ctx-sA, #4ADE80)', // green-400
+                        'ctx-sE': 'var(--color-ctx-sE, #34D399)', // emerald-400
+                        'ctx-sI': 'var(--color-ctx-sI, #2DD4BF)', // teal-400
+                        'ctx-sO': 'var(--color-ctx-sO, #22D3EE)', // cyan-400
+                        'ctx-sU': 'var(--color-ctx-sU, #38BDF8)', // sky-400
+
+                        'ctx-pA': 'var(--color-ctx-pA, #60A5FA)', // blue-400
+                        'ctx-pE': 'var(--color-ctx-pE, #818CF8)', // indigo-400
+                        'ctx-pI': 'var(--color-ctx-pI, #A78BFA)', // violet-400
+                        'ctx-pO': 'var(--color-ctx-pO, #C084FC)', // purple-400
+                        'ctx-pU': 'var(--color-ctx-pU, #E879F9)', // fuchsia-400
+                        
+                        'ctx-df': 'var(--color-ctx-df, #94A3B8)', // slate-400 (default consonant)
+
+                        // Standalone vowel colors (5)
+                        'vw-A': 'var(--color-vw-A, #FDA4AF)', // rose-300
+                        'vw-E': 'var(--color-vw-E, #FDBA74)', // orange-300
+                        'vw-I': 'var(--color-vw-I, #FCD34D)', // amber-300
+                        'vw-O': 'var(--color-vw-O, #FDE68A)', // yellow-300
+                        'vw-U': 'var(--color-vw-U, #BEF264)', // lime-300
+
+                        // Number colors (10 digits + 1 end-of-number + 1 separator)
+                        'd-0': 'var(--color-d-0, #F472B6)', // pink-400
+                        'd-1': 'var(--color-d-1, #EC4899)', // rose-400
+                        'd-2': 'var(--color-d-2, #EF4444)', // red-500
+                        'd-3': 'var(--color-d-3, #F97316)', // orange-500
+                        'd-4': 'var(--color-d-4, #F59E0B)', // amber-500
+                        'd-5': 'var(--color-d-5, #EAB308)', // yellow-500
+                        'd-6': 'var(--color-d-6, #84CC16)', // lime-500
+                        'd-7': 'var(--color-d-7, #22C55E)', // green-500
+                        'd-8': 'var(--color-d-8, #10B981)', // emerald-500
+                        'd-9': 'var(--color-d-9, #14B8A6)', // teal-500
+                        'd-end': 'var(--color-d-end, #0EA5E9)', // sky-500 (end of number)
+                        'd-sep': 'var(--color-d-sep, #06B6D4)', // cyan-500 (separator)
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+<body class="bg-slate-900 text-slate-100 min-h-screen flex flex-col items-center p-4 sm:p-8 selection:bg-cyan-500 selection:text-white">
+
+    <div class="w-full max-w-4xl">
+        <header class="mb-8 text-center">
+            <h1 class="text-4xl font-bold text-cyan-400">CRIPTEX</h1>
+            <p class="text-slate-400 mt-2">Herramienta para codificar y decodificar mensajes según un método específico.</p>
+        </header>
+
+        <main class="space-y-8">
+            <!-- Encoder Section -->
+            <section id="encoder" class="bg-slate-800 p-6 rounded-xl shadow-2xl">
+                <h2 class="text-2xl font-semibold mb-4 text-sky-400 border-b border-slate-700 pb-2">Codificador</h2>
+                <div class="space-y-4">
+                    <div>
+                        <label for="inputText" class="block text-sm font-medium text-slate-300 mb-1">Texto a codificar:</label>
+                        <textarea id="inputText" rows="4" class="w-full p-3 bg-slate-700 border border-slate-600 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500 outline-none placeholder-slate-500" placeholder="Escribe tu mensaje aquí..."></textarea>
+                    </div>
+                    <button id="encodeButton" class="w-full sm:w-auto px-6 py-2.5 bg-cyan-600 hover:bg-cyan-700 text-white font-semibold rounded-lg shadow-md transition duration-150 ease-in-out focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:ring-opacity-75">
+                        Codificar Mensaje
+                    </button>
+                    <div>
+                        <label class="block text-sm font-medium text-slate-300 mb-1">Visualización Codificada:</label>
+                        <div id="encodedVisualOutput" class="min-h-[4rem] p-3 bg-slate-700 border border-slate-600 rounded-lg text-lg font-mono break-all">
+                            <!-- Visual output will appear here -->
+                        </div>
+                    </div>
+                    <div>
+                        <label for="encodedCodeOutput" class="block text-sm font-medium text-slate-300 mb-1">Código para Compartir:</label>
+                        <textarea id="encodedCodeOutput" rows="3" readonly class="w-full p-3 bg-slate-700 border border-slate-600 rounded-lg font-mono focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500 outline-none placeholder-slate-500" placeholder="El código para compartir aparecerá aquí..."></textarea>
+                         <button id="copyCodeButton" class="mt-2 px-4 py-2 bg-sky-600 hover:bg-sky-700 text-white font-medium text-sm rounded-lg shadow-sm transition duration-150 ease-in-out focus:outline-none focus:ring-2 focus:ring-sky-500 focus:ring-opacity-75">
+                            Copiar Código
+                        </button>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Decoder Section -->
+            <section id="decoder" class="bg-slate-800 p-6 rounded-xl shadow-2xl">
+                <h2 class="text-2xl font-semibold mb-4 text-teal-400 border-b border-slate-700 pb-2">Decodificador</h2>
+                <div class="space-y-4">
+                    <div>
+                        <label for="inputCode" class="block text-sm font-medium text-slate-300 mb-1">Código a decodificar:</label>
+                        <textarea id="inputCode" rows="3" class="w-full p-3 bg-slate-700 border border-slate-600 rounded-lg font-mono focus:ring-2 focus:ring-teal-500 focus:border-teal-500 outline-none placeholder-slate-500" placeholder="Pega el código aquí..."></textarea>
+                    </div>
+                    <button id="decodeButton" class="w-full sm:w-auto px-6 py-2.5 bg-teal-600 hover:bg-teal-700 text-white font-semibold rounded-lg shadow-md transition duration-150 ease-in-out focus:outline-none focus:ring-2 focus:ring-teal-500 focus:ring-opacity-75">
+                        Decodificar Mensaje
+                    </button>
+                    <div>
+                        <label for="decodedTextOutput" class="block text-sm font-medium text-slate-300 mb-1">Texto Decodificado:</label>
+                        <textarea id="decodedTextOutput" rows="4" readonly class="w-full p-3 bg-slate-700 border border-slate-600 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500 outline-none placeholder-slate-500" placeholder="El mensaje decodificado aparecerá aquí..."></textarea>
+                    </div>
+                </div>
+            </section>
+        </main>
+
+        <footer class="mt-12 text-center text-sm text-slate-500">
+            <p>&copy; 2024 Criptex. Diseñado por un experto en UI/UX y Frontend.</p>
+        </footer>
+    </div>
+
+<script>
+    const VOWELS = ['A', 'E', 'I', 'O', 'U'];
+    const ACCENT_MAP = {
+        'Á': 'A', 'À': 'A', 'Ä': 'A', 'Â': 'A', 'Ã': 'A',
+        'É': 'E', 'È': 'E', 'Ë': 'E', 'Ê': 'E',
+        'Í': 'I', 'Ì': 'I', 'Ï': 'I', 'Î': 'I',
+        'Ó': 'O', 'Ò': 'O', 'Ö': 'O', 'Ô': 'O', 'Õ': 'O',
+        'Ú': 'U', 'Ù': 'U', 'Ü': 'U', 'Û': 'U',
+    };
+
+    function normalizeChar(char) {
+        const upperChar = char.toUpperCase();
+        return ACCENT_MAP[upperChar] || upperChar;
+    }
+
+    function isVowel(char) {
+        return VOWELS.includes(normalizeChar(char));
+    }
+
+    function isConsonant(char) {
+        const normalized = normalizeChar(char);
+        return /^[A-Z]$/.test(normalized) && !VOWELS.includes(normalized);
+    }
+
+    function isDigit(char) {
+        return /^[0-9]$/.test(char);
+    }
+    
+    function getColorClass(modifier, char) {
+        // Consonant contexts
+        if (modifier.startsWith('s')) return `text-ctx-${modifier}`; // sA, sE, ...
+        if (modifier.startsWith('n')) return `text-ctx-${modifier}`; // nA, nE, ...
+        if (modifier.startsWith('p')) return `text-ctx-${modifier}`; // pA, pE, ...
+        if (modifier === 'df') return 'text-ctx-df';
+        // Standalone vowels
+        if (modifier === 'vw') return `text-vw-${char}`; // A, E, ...
+        // Numbers
+        if (modifier.startsWith('d')) return `text-d-${char}`; // 0, 1, ... (char is the digit)
+        if (modifier === 'end') return 'text-d-end';
+        if (modifier === 'sep') return 'text-d-sep';
+        return 'text-slate-300'; // Default fallback
+    }
+
+
+    document.addEventListener('DOMContentLoaded', () => {
+        const inputText = document.getElementById('inputText');
+        const encodeButton = document.getElementById('encodeButton');
+        const encodedVisualOutput = document.getElementById('encodedVisualOutput');
+        const encodedCodeOutput = document.getElementById('encodedCodeOutput');
+        const copyCodeButton = document.getElementById('copyCodeButton');
+
+        const inputCode = document.getElementById('inputCode');
+        const decodeButton = document.getElementById('decodeButton');
+        const decodedTextOutput = document.getElementById('decodedTextOutput');
+
+        encodeButton.addEventListener('click', () => {
+            const text = inputText.value;
+            const { visualHtml, code } = encode(text);
+            encodedVisualOutput.innerHTML = visualHtml;
+            encodedCodeOutput.value = code;
+        });
+        
+        copyCodeButton.addEventListener('click', () => {
+            encodedCodeOutput.select();
+            document.execCommand('copy');
+            // Simple feedback
+            const originalText = copyCodeButton.textContent;
+            copyCodeButton.textContent = '¡Copiado!';
+            copyCodeButton.classList.add('bg-green-500', 'hover:bg-green-600');
+            setTimeout(() => {
+                copyCodeButton.textContent = originalText;
+                copyCodeButton.classList.remove('bg-green-500', 'hover:bg-green-600');
+            }, 1500);
+        });
+
+        decodeButton.addEventListener('click', () => {
+            const code = inputCode.value;
+            decodedTextOutput.value = decode(code);
+        });
+
+        function encode(text) {
+            let processedText = '';
+            for (let char of text) { // Normalize accents first globally
+                processedText += normalizeChar(char);
+            }
+            
+            const segments = processedText.split(/(\s+)/); // Split by spaces, keeping spaces
+            let encodedTokens = [];
+            let visualSpans = [];
+
+            for (const segment of segments) {
+                if (segment.trim() === '') { // It's a space segment
+                    encodedTokens.push(' ');
+                    visualSpans.push('<span>&nbsp;</span>'); // Add a non-breaking space for visual representation
+                    continue;
+                }
+
+                // Attempt to process as a number first
+                if (/^[0-9.,]+$/.test(segment)) {
+                    let currentNumberSegment = segment;
+                    for (let j = 0; j < currentNumberSegment.length; j++) {
+                        const numChar = currentNumberSegment[j];
+                        let token = '', charToDisplay = numChar, colorClass = '';
+
+                        if (isDigit(numChar)) {
+                            const isLastDigitOfSegment = (j === currentNumberSegment.length - 1);
+                            // Check if this digit is followed by a space in the original structure or end of input
+                            // This requires looking ahead in the 'segments' array or simplifying the rule to end of current numeric segment.
+                            // For simplicity: if it's the last digit of this identified number segment.
+                            // A more robust check would involve peeking at the *next* segment in the `segments` array.
+                            // For now, let's assume "end of number" means end of current numeric block if followed by space/EOL.
+                            // The current segmentation splits by space, so if this is the last char of a segment not followed by another digit segment.
+                            
+                            // Simplified: if it's the last char of the number segment AND the overall segment wasn't followed by another immediate number segment
+                            // This part is tricky. Let's check if this is the last char of the number string *and* what follows this segment is a space or nothing.
+                            let isEndOfNumber = (j === currentNumberSegment.length - 1); 
+                            // Find current segment's index
+                            let currentSegmentIndex = segments.indexOf(segment);
+                            if (isEndOfNumber && (currentSegmentIndex === segments.length - 1 || segments[currentSegmentIndex + 1].trim() === '')) {
+                                token = `${numChar}end`;
+                                colorClass = getColorClass('end', numChar);
+                            } else {
+                                token = `${numChar}d${numChar}`;
+                                colorClass = getColorClass('d' + numChar, numChar);
+                            }
+                        } else if (numChar === '.' || numChar === ',') {
+                            token = `${numChar}sep`;
+                            colorClass = getColorClass('sep', numChar);
+                        }
+                        if (token) {
+                             encodedTokens.push(token);
+                             visualSpans.push(`<span class="${colorClass}">${charToDisplay}</span>`);
+                        }
+                    }
+                } else { // Process as a word (sequence of letters)
+                    let word = segment;
+                    let usedVowelIndices = new Set();
+                    
+                    for (let i = 0; i < word.length; i++) {
+                        const char = word[i];
+                        let token = '', charToDisplay = char, colorClass = '';
+
+                        if (isConsonant(char)) {
+                            const nextChar = word[i+1];
+                            const afterNextChar = word[i+2];
+                            const prevChar = word[i-1];
+
+                            if (nextChar && isVowel(nextChar) && afterNextChar && afterNextChar === ' ') { // Rule: Next Vowel + Space. Space check here is tricky with pre-segmentation. Assuming space means end of word here.
+                                // This rule is hard because ' ' is already a segment delimiter.
+                                // Let's reinterpret "tras la vocal hay un espacio en blanco" as "vowel is last char of word"
+                                if (i + 1 === word.length - 1 && isVowel(nextChar)) { // C V EOW
+                                   token = `${char}s${normalizeChar(nextChar)}`;
+                                   usedVowelIndices.add(i+1);
+                                   colorClass = getColorClass('s' + normalizeChar(nextChar), char);
+                                } else if (nextChar && isVowel(nextChar)) { // Rule: Next Vowel
+                                   token = `${char}n${normalizeChar(nextChar)}`;
+                                   usedVowelIndices.add(i+1);
+                                   colorClass = getColorClass('n' + normalizeChar(nextChar), char);
+                                } else if (prevChar && isVowel(prevChar) && !usedVowelIndices.has(i-1)) { // Rule: Prev Vowel
+                                   token = `${char}p${normalizeChar(prevChar)}`;
+                                   usedVowelIndices.add(i-1);
+                                   colorClass = getColorClass('p' + normalizeChar(prevChar), char);
+                                } else { // Rule: Default Consonant
+                                   token = `${char}df`;
+                                   colorClass = getColorClass('df', char);
+                                }
+                            } else if (nextChar && isVowel(nextChar)) { // Rule: Next Vowel
+                                token = `${char}n${normalizeChar(nextChar)}`;
+                                usedVowelIndices.add(i+1);
+                                colorClass = getColorClass('n' + normalizeChar(nextChar), char);
+                            } else if (prevChar && isVowel(prevChar) && !usedVowelIndices.has(i-1)) { // Rule: Prev Vowel
+                                token = `${char}p${normalizeChar(prevChar)}`;
+                                usedVowelIndices.add(i-1);
+                                colorClass = getColorClass('p' + normalizeChar(prevChar), char);
+                            } else { // Rule: Default Consonant
+                                token = `${char}df`;
+                                colorClass = getColorClass('df', char);
+                            }
+                        } else if (isVowel(char)) {
+                            if (!usedVowelIndices.has(i)) {
+                                token = `${char}vw`;
+                                // usedVowelIndices.add(i); // Not strictly needed to add here as it's consumed now
+                                colorClass = getColorClass('vw', char);
+                            } else {
+                                // Vowel was used, skip it in output
+                                continue;
+                            }
+                        } else { // Non-alphanumeric, non-space, non-punctuation, keep as is? Or ignore? For now, let's assume input is letters, numbers, spaces.
+                            token = `${char}XX`; // Unknown char type, special marker if needed
+                            charToDisplay = char;
+                            colorClass = 'text-red-200'; // Error/unknown color
+                        }
+                        if (token) {
+                             encodedTokens.push(token);
+                             visualSpans.push(`<span class="${colorClass}">${charToDisplay}</span>`);
+                        }
+                    }
+                }
+            }
+            // Join tokens for code output. If a token was ' ', map it to actual space. Otherwise join with space.
+            let finalCode = "";
+            for(let i=0; i < encodedTokens.length; i++) {
+                if (encodedTokens[i] === ' ') {
+                    if (i > 0 && encodedTokens[i-1] !== ' ') finalCode += ' '; // Add one space if previous wasn't space
+                } else {
+                    finalCode += encodedTokens[i];
+                    if (i < encodedTokens.length - 1 && encodedTokens[i+1] !== ' ') {
+                         // Check if next token is not a space itself. If it's not, and current is not a space, add a space.
+                         // This logic might be too simple for complex spacing. The goal is one space between code words.
+                         // The current segmentation puts spaces as their own tokens.
+                         // Better: Filter out empty strings from split, then join with single space.
+                    }
+                }
+            }
+            // Simpler way to join tokens for code:
+            // Filter out space tokens, then join actual code tokens with space.
+            // The current `encodedTokens` list has actual space characters for original spaces.
+            // So, `finalCode = encodedTokens.join('')` might be what's needed if spaces are actual ' ' tokens.
+            // Let's reconstruct carefully.
+            finalCode = encodedTokens.reduce((acc, token, idx) => {
+                if (token === ' ') { // If it's a space marker from segmentation
+                    if (idx > 0 && acc[acc.length-1] !== ' ') { // Add only one space
+                        return acc + ' ';
+                    }
+                    return acc;
+                }
+                // If it's an actual code token
+                let prefix = '';
+                if (idx > 0 && encodedTokens[idx-1] !== ' ' && acc[acc.length-1] !== ' ') {
+                   // If previous token was not a space marker and current output doesn't end with space
+                   // This logic is tricky. It should be: if the original was "A B", code is "Acode Bcode".
+                   // The current segments[] handles this: "A", " ", "B".
+                   // The loop already iterates on segments. So just joining encodedTokens should work if they are correctly formed per segment.
+                   // The current encodedTokens are pushed one by one.
+                }
+                return acc + token + (encodedTokens[idx+1] && encodedTokens[idx+1] !== ' ' ? '' : '');
+            }, '');
+            
+            // Let's refine final code construction
+            let finalCodeParts = [];
+            let currentWord = [];
+            for(const token of encodedTokens) {
+                if (token === ' ') {
+                    if (currentWord.length > 0) {
+                        finalCodeParts.push(currentWord.join(''));
+                        currentWord = [];
+                    }
+                    finalCodeParts.push(' '); // Add the space itself
+                } else {
+                    currentWord.push(token);
+                }
+            }
+            if (currentWord.length > 0) {
+                finalCodeParts.push(currentWord.join(''));
+            }
+            
+            finalCode = finalCodeParts.join('').replace(/\s+/g, ' ').trim(); // Replace multiple spaces with one, and trim ends.
+
+            return { visualHtml: visualSpans.join(''), code: finalCode };
+        }
+
+        function decode(code) {
+            const tokens = code.trim().split(/\s+/);
+            let decodedText = "";
+
+            for (const token of tokens) {
+                if (!token) continue;
+
+                const char = token[0];
+                const modifierPart = token.substring(1); // e.g. nA, sA, pA, df, vw, d0, end, sep
+                
+                let mainVal = char; // For most cases, char is the primary letter/digit
+                let mod = modifierPart;
+
+                if (isDigit(char) && modifierPart.startsWith('d') && modifierPart.length > 1) { // e.g. 1d1, 2d2
+                    mod = 'd' + char; // Modifier is d0, d1, etc. Char is the digit itself.
+                } else if (isDigit(char) && modifierPart === 'end') { // e.g. 3end
+                     mod = 'end'; // Modifier is 'end'. Char is the digit.
+                } else if ((char === '.' || char === ',') && modifierPart === 'sep') { // e.g. .sep
+                     mod = 'sep'; // Modifier is 'sep'. Char is . or ,
+                }
+                // For consonant modifiers like nA, sA, pA, df: char is consonant, modifier is nA, etc.
+                // For vowel modifier vw: char is vowel, modifier is vw.
+
+                if (mod.startsWith('s')) { // e.g. CsA -> C A SPACE
+                    decodedText += mainVal + mod[1] + ' ';
+                } else if (mod.startsWith('n')) { // e.g. CnA -> C A
+                    decodedText += mainVal + mod[1];
+                } else if (mod.startsWith('p')) { // e.g. CpA -> A C
+                    decodedText += mod[1] + mainVal;
+                } else if (mod === 'df') { // Cdf -> C
+                    decodedText += mainVal;
+                } else if (mod === 'vw') { // Avw -> A
+                    decodedText += mainVal;
+                } else if (mod.startsWith('d') && isDigit(mainVal)) { // e.g. 1d1 -> 1
+                    decodedText += mainVal;
+                } else if (mod === 'end' && isDigit(mainVal)) { // e.g. 3end -> 3
+                    decodedText += mainVal;
+                } else if (mod === 'sep' && (mainVal === '.' || mainVal === ',')) { // .sep -> .
+                    decodedText += mainVal;
+                } else {
+                    // Unknown token, append as is or with error marker
+                    decodedText += `[${token}]`; 
+                }
+            }
+            // Remove trailing space that might come from 's' modifier if it's the last token
+            if (decodedText.endsWith(' ')) {
+                decodedText = decodedText.slice(0, -1);
+            }
+            return decodedText;
+        }
+    });
+
+</script>
+
+</body>
+</html>

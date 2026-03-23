@@ -1,0 +1,9 @@
+{
+  "web_id": "web_59",
+  "task_id": 4,
+  "task_type": "dynamic",
+  "instruction": "Task: Press the up arrow key (or a designated rotate key like 'X' or 'Z') to rotate the falling tetromino\nExpected Result: The active tetromino rotates 90 degrees clockwise, provided the new orientation is valid (all its constituent blocks are in unoccupied spaces and within game boundaries, potentially after applying wall/floor kicks).\n\nNote: The task is only considered successful if the expected result is achieved; otherwise, it is deemed infeasible.",
+  "max_steps": 15,
+  "expected": "The active tetromino rotates 90 degrees clockwise, provided the new orientation is valid (all its constituent blocks are in unoccupied spaces and within game boundaries, potentially after applying wall/floor kicks).",
+  "label": 1
+}

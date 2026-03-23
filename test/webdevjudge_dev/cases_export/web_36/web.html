@@ -1,0 +1,431 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Project Plan & Tech Stack</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Custom scrollbar for a polished look (optional) */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #e2e8f0; /* slate-200 */
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #64748b; /* slate-500 */
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #475569; /* slate-600 */
+        }
+
+        /* Styles for accordion content transition */
+        .accordion-content {
+            transition: max-height 0.4s ease-in-out, opacity 0.3s ease-in-out, padding 0.3s ease-in-out;
+            overflow: hidden;
+            max-height: 0;
+            opacity: 0;
+            padding-top: 0;
+            padding-bottom: 0;
+        }
+        .accordion-content.open {
+            max-height: 2000px; /* Sufficiently large value for content height */
+            opacity: 1;
+            padding-top: 0.5rem; /* Corresponds to pt-2 */
+            padding-bottom: 1rem; /* Corresponds to pb-4 */
+        }
+        
+        /* Custom list bullet style for nested lists */
+        .list-custom-bullet > li::before {
+            content: "- ";
+            margin-right: 0.25rem;
+        }
+    </style>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        sky: {
+                            50: '#f0f9ff',
+                            100: '#e0f2fe',
+                            200: '#bae6fd',
+                            300: '#7dd3fc',
+                            400: '#38bdf8',
+                            500: '#0ea5e9',
+                            600: '#0284c7',
+                            700: '#0369a1',
+                            800: '#075985',
+                            900: '#0c4a6e',
+                        },
+                        slate: {
+                            50: '#f8fafc',
+                            100: '#f1f5f9',
+                            200: '#e2e8f0',
+                            300: '#cbd5e1',
+                            400: '#94a3b8',
+                            500: '#64748b',
+                            600: '#475569',
+                            700: '#334155',
+                            800: '#1e293b',
+                            900: '#0f172a',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+<body class="bg-slate-100 text-slate-700 font-sans antialiased">
+
+    <!-- Header -->
+    <header class="bg-sky-700 text-white shadow-lg sticky top-0 z-50">
+        <div class="container mx-auto max-w-7xl py-4 px-4 md:px-8 flex justify-between items-center">
+            <div>
+                <h1 class="text-2xl md:text-3xl font-bold">Marketing Campaign Platform</h1>
+                <p class="text-sm text-sky-200">Tech Stack & Development Roadmap</p>
+            </div>
+             <div class="bg-sky-600 border-2 border-dashed border-sky-400 rounded-xl w-12 h-12 md:w-16 md:h-16 flex items-center justify-center">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6 md:w-8 md:h-8 text-sky-100">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M9 17.25v1.007a3 3 0 0 1-.375.364L4.5 21.75M9 17.25v-8.25M15 17.25v1.007a3 3 0 0 0 .375.364l4.125 2.122M15 17.25v-8.25m-6-3.75H9.75l.75.75.75-.75H15m-6 3.75H9.75m5.25 0H15M4.125 4.5h15.75c.621 0 1.125.504 1.125 1.125V16.5c0 .621-.504 1.125-1.125 1.125H4.125A1.125 1.125 0 0 1 3 16.5V5.625c0-.621.504-1.125 1.125-1.125Z" />
+                </svg>                          
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="container mx-auto max-w-7xl p-4 md:p-8">
+        <div class="grid md:grid-cols-2 gap-8">
+
+            <!-- Tech Stack Section -->
+            <section id="tech-stack" class="bg-white rounded-xl shadow-2xl overflow-hidden">
+                <div class="bg-slate-800 text-white p-6">
+                    <h2 class="text-2xl font-bold">Tech Stack</h2>
+                </div>
+                <div class="p-6 space-y-8">
+                    <!-- Front-End -->
+                    <div>
+                        <div class="flex items-center space-x-4 mb-4">
+                            <div class="bg-slate-200 border-2 border-dashed border-slate-400 rounded-xl w-16 h-16 flex-shrink-0 flex items-center justify-center">
+                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-8 h-8 text-sky-600">
+                                  <path stroke-linecap="round" stroke-linejoin="round" d="M6.75 7.5l3 2.25-3 2.25m4.5 0h3m-9 8.25h13.5A2.25 2.25 0 0 0 21 18V6a2.25 2.25 0 0 0-2.25-2.25H5.25A2.25 2.25 0 0 0 3 6v12a2.25 2.25 0 0 0 2.25 2.25Z" />
+                                </svg>
+                            </div>
+                            <h3 class="text-xl font-semibold text-sky-700">Front-End</h3>
+                        </div>
+                        <div class="space-y-3 ml-4 pl-2 border-l-2 border-sky-200">
+                            <div><span class="font-medium text-slate-800">Framework:</span> <span class="text-slate-600">React (or Next.js)</span></div>
+                            <div><span class="font-medium text-slate-800">State Management:</span> <span class="text-slate-600">Redux Toolkit or Zustand</span></div>
+                            <div><span class="font-medium text-slate-800">UI Library:</span> <span class="text-slate-600">Material-UI or Tailwind CSS</span></div>
+                            <div><span class="font-medium text-slate-800">Charts & Analytics:</span> <span class="text-slate-600">Chart.js or D3.js</span></div>
+                            <div><span class="font-medium text-slate-800">Testing:</span> <span class="text-slate-600">Jest & React Testing Library</span></div>
+                        </div>
+                    </div>
+
+                    <!-- Back-End -->
+                    <div>
+                        <div class="flex items-center space-x-4 mb-4">
+                            <div class="bg-slate-200 border-2 border-dashed border-slate-400 rounded-xl w-16 h-16 flex-shrink-0 flex items-center justify-center">
+                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-8 h-8 text-sky-600">
+                                  <path stroke-linecap="round" stroke-linejoin="round" d="M17.25 6.75 22.5 12l-5.25 5.25m-10.5 0L1.5 12l5.25-5.25m7.5-3-4.5 16.5" />
+                                </svg>
+                            </div>
+                            <h3 class="text-xl font-semibold text-sky-700">Back-End</h3>
+                        </div>
+                        <div class="space-y-3 ml-4 pl-2 border-l-2 border-sky-200">
+                            <div><span class="font-medium text-slate-800">Framework:</span> <span class="text-slate-600">Node.js with Express</span></div>
+                            <div><span class="font-medium text-slate-800">Language:</span> <span class="text-slate-600">TypeScript</span></div>
+                            <div><span class="font-medium text-slate-800">Authentication:</span> <span class="text-slate-600">Auth0</span></div>
+                            <div><span class="font-medium text-slate-800">Real-Time Updates:</span> <span class="text-slate-600">WebSocket (Socket.io)</span></div>
+                            <div><span class="font-medium text-slate-800">Job Queue/Processing:</span> <span class="text-slate-600">Bull.js with Redis</span></div>
+                        </div>
+                    </div>
+
+                    <!-- Database -->
+                    <div>
+                        <div class="flex items-center space-x-4 mb-4">
+                           <div class="bg-slate-200 border-2 border-dashed border-slate-400 rounded-xl w-16 h-16 flex-shrink-0 flex items-center justify-center">
+                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-8 h-8 text-sky-600">
+                                  <path stroke-linecap="round" stroke-linejoin="round" d="M20.25 6.375c0 2.278-3.694 4.125-8.25 4.125S3.75 8.653 3.75 6.375m16.5 0c0-2.278-3.694-4.125-8.25-4.125S3.75 4.097 3.75 6.375m16.5 0v11.25c0 2.278-3.694 4.125-8.25 4.125s-8.25-1.847-8.25-4.125V6.375m16.5 0v3.75m-16.5-3.75v3.75m16.5 0v3.75C20.25 16.153 16.556 18 12 18s-8.25-1.847-8.25-4.125v-3.75m16.5 0c0 2.278-3.694 4.125-8.25 4.125s-8.25-1.847-8.25-4.125" />
+                                </svg>
+                            </div>
+                            <h3 class="text-xl font-semibold text-sky-700">Database</h3>
+                        </div>
+                        <div class="space-y-3 ml-4 pl-2 border-l-2 border-sky-200">
+                            <div><span class="font-medium text-slate-800">Relational:</span> <span class="text-slate-600">PostgreSQL</span></div>
+                            <div><span class="font-medium text-slate-800">NoSQL:</span> <span class="text-slate-600">MongoDB</span></div>
+                            <div><span class="font-medium text-slate-800">Caching:</span> <span class="text-slate-600">Redis</span></div>
+                            <div><span class="font-medium text-slate-800">Search:</span> <span class="text-slate-600">Elasticsearch</span></div>
+                        </div>
+                    </div>
+                    
+                    <!-- Cloud Infrastructure -->
+                    <div>
+                        <div class="flex items-center space-x-4 mb-4">
+                            <div class="bg-slate-200 border-2 border-dashed border-slate-400 rounded-xl w-16 h-16 flex-shrink-0 flex items-center justify-center">
+                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-8 h-8 text-sky-600">
+                                  <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 15a4.5 4.5 0 0 0 4.5 4.5H18a3.75 3.75 0 0 0 1.332-7.257 3 3 0 0 0-2.086-5.432c0-1.186-.97-2.158-2.175-2.158a2.25 2.25 0 0 0-2.226 1.646A3.75 3.75 0 0 0 9.75 6a3.75 3.75 0 0 0-1.32 7.273A4.5 4.5 0 0 0 2.25 15Z" />
+                                </svg>
+                            </div>
+                            <h3 class="text-xl font-semibold text-sky-700">Cloud Infrastructure</h3>
+                        </div>
+                        <div class="space-y-3 ml-4 pl-2 border-l-2 border-sky-200">
+                            <div><span class="font-medium text-slate-800">Hosting:</span> <span class="text-slate-600">AWS (EC2, S3, RDS, DynamoDB)</span></div>
+                            <div><span class="font-medium text-slate-800">CI/CD:</span> <span class="text-slate-600">GitHub Actions or GitLab CI/CD</span></div>
+                            <div><span class="font-medium text-slate-800">Monitoring:</span> <span class="text-slate-600">Datadog or New Relic</span></div>
+                            <div><span class="font-medium text-slate-800">Containerization:</span> <span class="text-slate-600">Docker and Kubernetes</span></div>
+                        </div>
+                    </div>
+
+                    <!-- Third-Party Tools -->
+                    <div>
+                        <div class="flex items-center space-x-4 mb-4">
+                            <div class="bg-slate-200 border-2 border-dashed border-slate-400 rounded-xl w-16 h-16 flex-shrink-0 flex items-center justify-center">
+                               <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-8 h-8 text-sky-600">
+                                  <path stroke-linecap="round" stroke-linejoin="round" d="M10.5 6h9.75M10.5 6a1.5 1.5 0 1 1-3 0m3 0a1.5 1.5 0 1 0-3 0M3.75 6H7.5m3 12h9.75m-9.75 0a1.5 1.5 0 0 1-3 0m3 0a1.5 1.5 0 0 0-3 0m-3.75 0H7.5m9-6h3.75m-3.75 0a1.5 1.5 0 0 1-3 0m3 0a1.5 1.5 0 0 0-3 0m-9.75 0h9.75" />
+                                </svg>
+                            </div>
+                            <h3 class="text-xl font-semibold text-sky-700">Third-Party Tools</h3>
+                        </div>
+                        <div class="space-y-3 ml-4 pl-2 border-l-2 border-sky-200">
+                            <div><span class="font-medium text-slate-800">Email & Notification:</span> <span class="text-slate-600">Twilio SendGrid, Firebase</span></div>
+                            <div><span class="font-medium text-slate-800">Payment:</span> <span class="text-slate-600">Stripe</span></div>
+                            <div><span class="font-medium text-slate-800">Analytics:</span> <span class="text-slate-600">Google Analytics & Mixpanel</span></div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Development Plan Section -->
+            <section id="dev-plan" class="bg-white rounded-xl shadow-2xl overflow-hidden">
+                <div class="bg-slate-800 text-white p-6">
+                    <h2 class="text-2xl font-bold">Development Plan</h2>
+                </div>
+                <div class="p-6 space-y-3">
+                    <!-- Phase 1 -->
+                    <div class="border border-slate-200 rounded-lg overflow-hidden shadow-sm">
+                        <button class="w-full flex justify-between items-center p-4 bg-slate-50 hover:bg-slate-100 focus:outline-none transition-colors duration-150" onclick="toggleAccordion(this)">
+                            <span class="text-lg font-medium text-slate-800">1. Initial Setup</span>
+                            <svg class="accordion-icon w-5 h-5 text-slate-500 transform transition-transform duration-300" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+                        </button>
+                        <div class="px-4 accordion-content bg-white">
+                            <ul class="list-disc list-inside space-y-2 text-slate-600">
+                                <li>Set Up Repositories: Git/GitHub for version control and CI/CD.</li>
+                                <li>Environment Setup:
+                                    <ul class="list-custom-bullet list-inside ml-5 mt-1 space-y-1 text-sm text-slate-500">
+                                        <li>Use Docker for containerization.</li>
+                                        <li>Create <code>.env</code> for managing environment variables securely.</li>
+                                    </ul>
+                                </li>
+                                <li>Authentication Module: Implement Auth0 for secure user authentication.</li>
+                            </ul>
+                        </div>
+                    </div>
+
+                    <!-- Phase 2 -->
+                    <div class="border border-slate-200 rounded-lg overflow-hidden shadow-sm">
+                        <button class="w-full flex justify-between items-center p-4 bg-slate-50 hover:bg-slate-100 focus:outline-none transition-colors duration-150" onclick="toggleAccordion(this)">
+                            <span class="text-lg font-medium text-slate-800">2. Build Front-End</span>
+                            <svg class="accordion-icon w-5 h-5 text-slate-500 transform transition-transform duration-300" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+                        </button>
+                        <div class="px-4 accordion-content bg-white">
+                            <ol class="list-decimal list-inside space-y-2 text-slate-600">
+                                <li>Set Up React:
+                                    <ul class="list-custom-bullet list-inside ml-5 mt-1 space-y-1 text-sm text-slate-500">
+                                        <li>Scaffold project using Create React App or Next.js.</li>
+                                        <li>Configure Material-UI or Tailwind CSS.</li>
+                                    </ul>
+                                </li>
+                                <li>Build Landing Pages:
+                                    <ul class="list-custom-bullet list-inside ml-5 mt-1 space-y-1 text-sm text-slate-500">
+                                        <li>Create signup/login pages.</li>
+                                        <li>Integrate 14-day free trial workflows.</li>
+                                    </ul>
+                                </li>
+                                <li>Dashboard:
+                                    <ul class="list-custom-bullet list-inside ml-5 mt-1 space-y-1 text-sm text-slate-500">
+                                        <li>Build Campaign Hub with real-time performance dashboard.</li>
+                                        <li>Use Chart.js for KPI widgets.</li>
+                                    </ul>
+                                </li>
+                                <li>Campaign Calendar:
+                                    <ul class="list-custom-bullet list-inside ml-5 mt-1 space-y-1 text-sm text-slate-500">
+                                        <li>Create calendar component with conflict detection.</li>
+                                        <li>Implement drag-and-drop (e.g., `react-beautiful-dnd`).</li>
+                                    </ul>
+                                </li>
+                            </ol>
+                        </div>
+                    </div>
+
+                    <!-- Phase 3 -->
+                    <div class="border border-slate-200 rounded-lg overflow-hidden shadow-sm">
+                        <button class="w-full flex justify-between items-center p-4 bg-slate-50 hover:bg-slate-100 focus:outline-none transition-colors duration-150" onclick="toggleAccordion(this)">
+                            <span class="text-lg font-medium text-slate-800">3. Build Back-End</span>
+                            <svg class="accordion-icon w-5 h-5 text-slate-500 transform transition-transform duration-300" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+                        </button>
+                        <div class="px-4 accordion-content bg-white">
+                            <ol class="list-decimal list-inside space-y-2 text-slate-600">
+                                <li>API Design:
+                                    <ul class="list-custom-bullet list-inside ml-5 mt-1 space-y-1 text-sm text-slate-500">
+                                        <li>Use RESTful conventions or GraphQL.</li>
+                                        <li>Define endpoints for campaigns, users, analytics, integrations.</li>
+                                    </ul>
+                                </li>
+                                <li>Authentication:
+                                    <ul class="list-custom-bullet list-inside ml-5 mt-1 space-y-1 text-sm text-slate-500">
+                                        <li>Set up user management with Auth0, including RBAC.</li>
+                                    </ul>
+                                </li>
+                                <li>Data Models:
+                                    <ul class="list-custom-bullet list-inside ml-5 mt-1 space-y-1 text-sm text-slate-500">
+                                        <li>Design PostgreSQL schemas for campaigns, users, channels.</li>
+                                        <li>Use MongoDB for dynamic campaign assets.</li>
+                                    </ul>
+                                </li>
+                                <li>Workflow Automation:
+                                    <ul class="list-custom-bullet list-inside ml-5 mt-1 space-y-1 text-sm text-slate-500">
+                                        <li>Implement custom automation rules with Node.js and Bull.js.</li>
+                                    </ul>
+                                </li>
+                                <li>Platform Integration:
+                                    <ul class="list-custom-bullet list-inside ml-5 mt-1 space-y-1 text-sm text-slate-500">
+                                        <li>Add API integrations for Facebook, Google, etc., using SDKs.</li>
+                                        <li>Set up webhooks for real-time updates.</li>
+                                    </ul>
+                                </li>
+                            </ol>
+                        </div>
+                    </div>
+
+                    <!-- Phase 4 -->
+                    <div class="border border-slate-200 rounded-lg overflow-hidden shadow-sm">
+                        <button class="w-full flex justify-between items-center p-4 bg-slate-50 hover:bg-slate-100 focus:outline-none transition-colors duration-150" onclick="toggleAccordion(this)">
+                            <span class="text-lg font-medium text-slate-800">4. Add Advanced Features</span>
+                            <svg class="accordion-icon w-5 h-5 text-slate-500 transform transition-transform duration-300" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+                        </button>
+                        <div class="px-4 accordion-content bg-white">
+                           <ol class="list-decimal list-inside space-y-2 text-slate-600">
+                                <li>Real-Time Features:
+                                    <ul class="list-custom-bullet list-inside ml-5 mt-1 space-y-1 text-sm text-slate-500">
+                                        <li>Use Socket.io for live updates on campaign performance.</li>
+                                        <li>Integrate push notifications using Firebase.</li>
+                                    </ul>
+                                </li>
+                                <li>Dynamic Budget Optimization:
+                                    <ul class="list-custom-bullet list-inside ml-5 mt-1 space-y-1 text-sm text-slate-500">
+                                        <li>Build ML models (Python: scikit-learn/TensorFlow).</li>
+                                        <li>Deploy models as REST APIs (Flask/FastAPI).</li>
+                                    </ul>
+                                </li>
+                                <li>Analytics:
+                                    <ul class="list-custom-bullet list-inside ml-5 mt-1 space-y-1 text-sm text-slate-500">
+                                        <li>Set up Elasticsearch and Kibana for dashboards.</li>
+                                        <li>Add multi-touch attribution modeling.</li>
+                                    </ul>
+                                </li>
+                            </ol>
+                        </div>
+                    </div>
+
+                    <!-- Phase 5 -->
+                     <div class="border border-slate-200 rounded-lg overflow-hidden shadow-sm">
+                        <button class="w-full flex justify-between items-center p-4 bg-slate-50 hover:bg-slate-100 focus:outline-none transition-colors duration-150" onclick="toggleAccordion(this)">
+                            <span class="text-lg font-medium text-slate-800">5. Testing & Deployment</span>
+                            <svg class="accordion-icon w-5 h-5 text-slate-500 transform transition-transform duration-300" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+                        </button>
+                        <div class="px-4 accordion-content bg-white">
+                            <ol class="list-decimal list-inside space-y-2 text-slate-600">
+                                <li>Testing:
+                                    <ul class="list-custom-bullet list-inside ml-5 mt-1 space-y-1 text-sm text-slate-500">
+                                        <li>Unit testing: Jest (frontend), Mocha/Chai (backend).</li>
+                                        <li>Integration testing: Postman or Newman.</li>
+                                        <li>End-to-end testing: Cypress.</li>
+                                    </ul>
+                                </li>
+                                <li>CI/CD Pipeline:
+                                    <ul class="list-custom-bullet list-inside ml-5 mt-1 space-y-1 text-sm text-slate-500">
+                                        <li>Automate with GitHub Actions.</li>
+                                    </ul>
+                                </li>
+                                <li>Deploy:
+                                    <ul class="list-custom-bullet list-inside ml-5 mt-1 space-y-1 text-sm text-slate-500">
+                                        <li>AWS for hosting (EC2/S3) and database (RDS).</li>
+                                        <li>Configure load balancer.</li>
+                                    </ul>
+                                </li>
+                            </ol>
+                        </div>
+                    </div>
+
+                    <!-- Phase 6 -->
+                    <div class="border border-slate-200 rounded-lg overflow-hidden shadow-sm">
+                        <button class="w-full flex justify-between items-center p-4 bg-slate-50 hover:bg-slate-100 focus:outline-none transition-colors duration-150" onclick="toggleAccordion(this)">
+                            <span class="text-lg font-medium text-slate-800">6. Launch & Iterate</span>
+                            <svg class="accordion-icon w-5 h-5 text-slate-500 transform transition-transform duration-300" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+                        </button>
+                        <div class="px-4 accordion-content bg-white">
+                            <ul class="list-disc list-inside space-y-2 text-slate-600">
+                                <li>Gather user feedback (Mixpanel, Google Analytics).</li>
+                                <li>Prioritize new features based on user needs.</li>
+                                <li>Continuously monitor system health (Datadog).</li>
+                            </ul>
+                        </div>
+                    </div>
+
+                </div>
+            </section>
+        </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="text-center p-6 text-sm text-slate-500 mt-12 border-t border-slate-200">
+        &copy; 2024 Project Overview. All rights reserved.
+    </footer>
+
+    <script>
+        function toggleAccordion(buttonElement) {
+            const content = buttonElement.nextElementSibling;
+            const icon = buttonElement.querySelector('.accordion-icon');
+
+            // Optional: Close other open accordions in the same parent container
+            // const parentContainer = buttonElement.parentElement.parentElement;
+            // if (parentContainer) {
+            //     const allAccordionContents = parentContainer.querySelectorAll('.accordion-content.open');
+            //     allAccordionContents.forEach(openContent => {
+            //         if (openContent !== content) {
+            //             openContent.classList.remove('open');
+            //             const otherIcon = openContent.previousElementSibling.querySelector('.accordion-icon');
+            //             if (otherIcon) {
+            //                 otherIcon.style.transform = 'rotate(0deg)';
+            //             }
+            //         }
+            //     });
+            // }
+            
+            if (content.classList.contains('open')) {
+                content.classList.remove('open');
+                if (icon) icon.style.transform = 'rotate(0deg)';
+            } else {
+                content.classList.add('open');
+                if (icon) icon.style.transform = 'rotate(180deg)';
+            }
+        }
+
+        // Automatically open the first accordion item in Development Plan on page load
+        document.addEventListener('DOMContentLoaded', () => {
+            const firstAccordionButton = document.querySelector('#dev-plan .border button');
+            if (firstAccordionButton) {
+                // A small delay to ensure styles are applied and transition is visible
+                setTimeout(() => {
+                     toggleAccordion(firstAccordionButton);
+                }, 100);
+            }
+        });
+    </script>
+
+</body>
+</html>

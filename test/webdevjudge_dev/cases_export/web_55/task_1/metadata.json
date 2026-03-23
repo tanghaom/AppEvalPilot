@@ -1,0 +1,9 @@
+{
+  "web_id": "web_55",
+  "task_id": 1,
+  "task_type": "dynamic",
+  "instruction": "Task: Select a filter option (e.g., 'lentils') from the product filtering controls.\nExpected Result: The product catalog display updates to show only products matching the selected filter (e.g., only lentils).\n\nNote: The task is only considered successful if the expected result is achieved; otherwise, it is deemed infeasible.",
+  "max_steps": 15,
+  "expected": "The product catalog display updates to show only products matching the selected filter (e.g., only lentils).",
+  "label": 0
+}

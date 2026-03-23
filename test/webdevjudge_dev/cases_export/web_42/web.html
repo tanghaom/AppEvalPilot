@@ -1,0 +1,443 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>InstaClone</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Grand+Hotel&display=swap" rel="stylesheet">
+    <style>
+        /* For custom scrollbars, if desired (optional) */
+        ::-webkit-scrollbar {
+            width: 0px; /* For Chrome, Safari, and Opera */
+            height: 0px;
+        }
+        /* Hide scrollbar for IE, Edge and Firefox */
+        body {
+            -ms-overflow-style: none;  /* IE and Edge */
+            scrollbar-width: none;  /* Firefox */
+        }
+        .font-grand-hotel {
+            font-family: 'Grand Hotel', cursive;
+        }
+        .story-gradient-ring {
+            padding: 2px; /* Adjust padding to control border thickness */
+            background: linear-gradient(to right top, #f9ce34, #ee2a7b, #6228d7); /* Instagram gradient */
+        }
+        .story-gradient-ring-seen {
+            padding: 2px;
+            background: #dbdbdb; /* Tailwind gray-300 */
+        }
+    </style>
+</head>
+<body class="bg-zinc-100 flex justify-center items-center min-h-screen">
+
+    <div id="app-container" class="w-full max-w-md h-screen bg-white flex flex-col shadow-2xl overflow-hidden">
+
+        <!-- Top Header (Contextual) -->
+        <div id="top-header" class="h-14 border-b border-zinc-200 px-4 flex items-center justify-between shrink-0">
+            <!-- Content dynamically inserted by JS -->
+        </div>
+
+        <!-- Main Content Area (Scrollable) -->
+        <main id="main-content" class="flex-grow overflow-y-auto">
+            <!-- Content dynamically inserted by JS -->
+        </main>
+
+        <!-- Bottom Navigation Bar -->
+        <nav id="bottom-nav" class="h-14 border-t border-zinc-200 flex items-center justify-around shrink-0 bg-white">
+            <!-- Icons dynamically inserted by JS -->
+        </nav>
+    </div>
+
+    <script>
+        const ICONS = {
+            home: `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor" class="w-7 h-7"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 12l8.954-8.955c.44-.439 1.152-.439 1.591 0L21.75 12M4.5 9.75v10.125c0 .621.504 1.125 1.125 1.125H9.75v-4.875c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21h4.125c.621 0 1.125-.504 1.125-1.125V9.75M8.25 21h7.5" /></svg>`,
+            homeSolid: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-7 h-7"><path d="M11.47 3.84a.75.75 0 011.06 0l8.69 8.69a.75.75 0 101.06-1.06l-8.689-8.69a2.25 2.25 0 00-3.182 0l-8.69 8.69a.75.75 0 001.061 1.06l8.69-8.69z" /><path d="M12 5.432l8.159 8.159c.03.03.06.058.091.086v6.198c0 1.035-.84 1.875-1.875 1.875H15a.75.75 0 01-.75-.75v-4.5a.75.75 0 00-.75-.75h-3a.75.75 0 00-.75.75V21a.75.75 0 01-.75.75H5.625a1.875 1.875 0 01-1.875-1.875v-6.198a2.29 2.29 0 00.091-.086L12 5.43z" /></svg>`,
+            explore: `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor" class="w-7 h-7"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" /></svg>`,
+            exploreSolid: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-7 h-7"><path fill-rule="evenodd" d="M10.5 3.75a6.75 6.75 0 100 13.5 6.75 6.75 0 000-13.5zM2.25 10.5a8.25 8.25 0 1114.59 5.28l4.69 4.69a.75.75 0 11-1.06 1.06l-4.69-4.69A8.25 8.25 0 012.25 10.5z" clip-rule="evenodd" /></svg>`,
+            add: `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor" class="w-7 h-7"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v6m3-3H9m12 0a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>`,
+            reels: `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor" class="w-7 h-7"><path stroke-linecap="round" stroke-linejoin="round" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /><path stroke-linecap="round" stroke-linejoin="round" d="M15.91 11.672a.375.375 0 010 .656l-5.603 3.113a.375.375 0 01-.557-.328V8.887c0-.286.307-.466.557-.327l5.603 3.112z" /></svg>`,
+            reelsSolid: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-7 h-7"><path fill-rule="evenodd" d="M2.25 12c0-5.385 4.365-9.75 9.75-9.75s9.75 4.365 9.75 9.75-4.365 9.75-9.75 9.75S2.25 17.385 2.25 12zm14.024-.983a1.125 1.125 0 010 1.966l-5.603 3.113A1.125 1.125 0 019 15.113V8.887c0-.857.921-1.4 1.671-.983l5.603 3.113z" clip-rule="evenodd" /></svg>`,
+            heartOutline: `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-7 h-7"><path stroke-linecap="round" stroke-linejoin="round" d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12z" /></svg>`,
+            heartSolid: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-7 h-7 text-red-500"><path d="M11.645 20.91l-.007-.003-.022-.012a15.247 15.247 0 01-.383-.218 25.18 25.18 0 01-4.244-3.17C4.688 15.36 2.25 12.174 2.25 8.25 2.25 5.322 4.714 3 7.688 3A5.5 5.5 0 0112 5.052 5.5 5.5 0 0116.313 3c2.973 0 5.437 2.322 5.437 5.25 0 3.925-2.438 7.111-4.739 9.256a25.175 25.175 0 01-4.244 3.17 15.247 15.247 0 01-.383.218l-.022.012-.007.004-.004.001a.752.752 0 01-.704 0l-.003-.001z" /></svg>`,
+            dm: `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-7 h-7"><path stroke-linecap="round" stroke-linejoin="round" d="M6 12L3.269 3.126A59.768 59.768 0 0121.485 12 59.77 59.77 0 013.27 20.876L5.999 12zm0 0h7.5" /></svg>`,
+            comment: `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-7 h-7"><path stroke-linecap="round" stroke-linejoin="round" d="M12 20.25c4.97 0 9-3.694 9-8.25s-4.03-8.25-9-8.25S3 7.006 3 11.25c0 4.48 3.49 8.168 8.06 8.245l.94.005c.69.004 1.314-.123 1.88-.355l2.143-.857a.75.75 0 01.92.171l1.135 1.134c.34.341.81.529 1.3.529H21" /></svg>`,
+            share: `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-7 h-7"><path stroke-linecap="round" stroke-linejoin="round" d="M6 12L3.269 3.126A59.768 59.768 0 0121.485 12 59.77 59.77 0 013.27 20.876L5.999 12zm0 0h7.5" /></svg>`, // Same as DM for now
+            bookmarkOutline: `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-7 h-7"><path stroke-linecap="round" stroke-linejoin="round" d="M17.593 3.322c1.1.128 1.907 1.077 1.907 2.185V21L12 17.25 4.5 21V5.507c0-1.108.806-2.057 1.907-2.185a48.507 48.507 0 0111.186 0z" /></svg>`,
+            bookmarkSolid: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-7 h-7"><path fill-rule="evenodd" d="M6.32 2.577a49.255 49.255 0 0111.36 0c1.497.174 2.57 1.46 2.57 2.93V21a.75.75 0 01-1.085.67L12 18.089l-7.165 3.583A.75.75 0 013.75 21V5.507c0-1.47 1.073-2.756 2.57-2.93z" clip-rule="evenodd" /></svg>`,
+            ellipsis: `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6"><path stroke-linecap="round" stroke-linejoin="round" d="M6.75 12a.75.75 0 11-1.5 0 .75.75 0 011.5 0zM12.75 12a.75.75 0 11-1.5 0 .75.75 0 011.5 0zM18.75 12a.75.75 0 11-1.5 0 .75.75 0 011.5 0z" /></svg>`,
+            grid: `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6"><path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6A2.25 2.25 0 016 3.75h2.25A2.25 2.25 0 0110.5 6v2.25a2.25 2.25 0 01-2.25 2.25H6a2.25 2.25 0 01-2.25-2.25V6zM3.75 15.75A2.25 2.25 0 016 13.5h2.25a2.25 2.25 0 012.25 2.25V18a2.25 2.25 0 01-2.25 2.25H6a2.25 2.25 0 01-2.25-2.25v-2.25zM13.5 6a2.25 2.25 0 012.25-2.25H18A2.25 2.25 0 0120.25 6v2.25A2.25 2.25 0 0118 10.5h-2.25A2.25 2.25 0 0113.5 8.25V6zM13.5 15.75a2.25 2.25 0 012.25-2.25H18a2.25 2.25 0 012.25 2.25V18A2.25 2.25 0 0118 20.25h-2.25A2.25 2.25 0 0113.5 18v-2.25z" /></svg>`,
+            gridSolid: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-6 h-6"><path fill-rule="evenodd" d="M1.5 6.375c0-1.036.84-1.875 1.875-1.875h17.25c1.035 0 1.875.84 1.875 1.875v11.25c0 1.035-.84 1.875-1.875 1.875H3.375A1.875 1.875 0 011.5 17.625V6.375zM3 6.375A.375.375 0 013.375 6h17.25a.375.375 0 01.375.375v1.875H3V6.375zm0 3.75h18V17.25a.375.375 0 01-.375.375H3.375a.375.375 0 01-.375-.375V10.125zm0-1.5V6.375V3.75c0-1.036.84-1.875 1.875-1.875h17.25C23.16 1.875 24 2.715 24 3.75v16.5c0 1.035-.84 1.875-1.875 1.875H3.375A1.875 1.875 0 011.5 20.25V10.125V8.625zM11.25 1.5A.75.75 0 0112 2.25v20.25a.75.75 0 01-1.5 0V2.25a.75.75 0 01.75-.75zm-3.75.75a.75.75 0 00-1.5 0v20.25a.75.75 0 001.5 0V2.25zm7.5 0a.75.75 0 00-1.5 0v20.25a.75.75 0 001.5 0V2.25z" clip-rule="evenodd" /></svg>`, // This isn't the right grid, using the outline one for solid state too.
+            tag: `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z" /></svg>`,
+        };
+
+        let appState = {
+            currentPage: 'home', // 'home', 'explore', 'add', 'reels', 'profile'
+            users: {
+                "user_jane": { username: "adventure.jane", avatar: "https://i.pravatar.cc/150?u=adventure.jane", name: "Jane Doe", bio: "Exploring the world, one photo at a time 🌍✈️\nLover of mountains and sunsets.", postsCount: 120, followersCount: "1.2M", followingCount: 300 },
+                "john_travels": { username: "john_travels", avatar: "https://i.pravatar.cc/150?u=john_travels", name: "John Smith", bio: "Wanderlust and city dust. Capturing life's moments.", postsCount: 250, followersCount: "875K", followingCount: 450 },
+                "foodie_gal": { username: "foodie_gal", avatar: "https://i.pravatar.cc/150?u=foodie_gal", name: "Alice Foodie", bio: "Delicious bites and culinary delights! 🍕🍰", postsCount: 500, followersCount: "2.5M", followingCount: 100 },
+                "creative_soul": { username: "creative_soul", avatar: "https://i.pravatar.cc/150?u=creative_soul", name: "Bob Artista", bio: "Art, design, and everything in between. ✨", postsCount: 180, followersCount: "500K", followingCount: 220 },
+                "marketer_mike": { username: "marketer_mike", avatar: "https://i.pravatar.cc/150?u=marketer_mike", name: "Mike Johnson", bio: "Digital Marketer | Growth Hacker | Tech Enthusiast", postsCount: 90, followersCount: "10K", followingCount: 500 },
+                "lisa_reads": { username: "lisa_reads", avatar: "https://i.pravatar.cc/150?u=lisa_reads", name: "Lisa Bookworm", bio: "Lost in pages and stories. 📚\n#booklover #reader", postsCount: 320, followersCount: "50K", followingCount: 150 },
+            },
+            stories: [
+                { userId: "john_travels", image: "https://source.unsplash.com/random/150x150?sig=1&person,travel", viewed: false },
+                { userId: "foodie_gal", image: "https://source.unsplash.com/random/150x150?sig=2&person,food", viewed: false },
+                { userId: "creative_soul", image: "https://source.unsplash.com/random/150x150?sig=3&person,art", viewed: true },
+                { userId: "user_jane", image: "https://source.unsplash.com/random/150x150?sig=4&person,nature", viewed: false },
+                { userId: "marketer_mike", image: "https://source.unsplash.com/random/150x150?sig=5&person,city", viewed: false },
+                { userId: "lisa_reads", image: "https://source.unsplash.com/random/150x150?sig=6&person,book", viewed: true },
+                { userId: "john_travels", image: "https://source.unsplash.com/random/150x150?sig=7&person,hiking", viewed: false },
+                { userId: "foodie_gal", image: "https://source.unsplash.com/random/150x150?sig=8&person,sweets", viewed: true },
+            ],
+            posts: [
+                {
+                    id: 'post1', userId: 'user_jane',
+                    image: 'https://upload.wikimedia.org/wikipedia/commons/thumb/c/c0/Villarrica_Volcano_and_Town_Pucon_Chile_DSC00351.jpg/1024px-Villarrica_Volcano_and_Town_Pucon_Chile_DSC00351.jpg',
+                    caption: 'The majestic Villarrica Volcano overlooking Pucón, Chile. What a breathtaking sight! #Volcano #Chile #TravelPhotography #Adventure',
+                    location: 'Pucón, Chile', likes: 1234, isLiked: false, isBookmarked: false, commentsCount: 87, timestamp: '2 HOURS AGO'
+                },
+                {
+                    id: 'post2', userId: 'john_travels',
+                    image: 'https://upload.wikimedia.org/wikipedia/commons/thumb/e/e1/Frankfurt_Am_Main-Roemerberg_Ostzeile_Panorama_20090528.jpg/1024px-Frankfurt_Am_Main-Roemerberg_Ostzeile_Panorama_20090528.jpg',
+                    caption: 'Exploring the historic Römerberg in Frankfurt. The architecture is stunning! #Frankfurt #Germany #Cityscape #Travel',
+                    location: 'Frankfurt, Germany', likes: 876, isLiked: true, isBookmarked: true, commentsCount: 45, timestamp: '5 HOURS AGO'
+                },
+                {
+                    id: 'post3', userId: 'foodie_gal',
+                    image: 'https://upload.wikimedia.org/wikipedia/commons/thumb/a/a3/Eq_it-na_pizza-margherita_sep2005_sml.jpg/800px-Eq_it-na_pizza-margherita_sep2005_sml.jpg',
+                    caption: 'Classic Margherita pizza. Sometimes simplicity is the best! 🍕😋 #Pizza #Foodie #ItalianFood #Margherita',
+                    location: 'Naples, Italy', likes: 2450, isLiked: false, isBookmarked: false, commentsCount: 150, timestamp: 'YESTERDAY'
+                },
+                {
+                    id: 'post4', userId: 'creative_soul',
+                    image: 'https://upload.wikimedia.org/wikipedia/commons/thumb/8/8c/Polignano_a_Mare_-_Spiaggia_Lama_Monachile_AGRICULTURE_du_Monde.jpg/800px-Polignano_a_Mare_-_Spiaggia_Lama_Monachile_AGRICULTURE_du_Monde.jpg',
+                    caption: 'Found this beautiful hidden beach in Polignano a Mare. The colors are just incredible. #Italy #BeachLife #Travel #HiddenGem',
+                    location: 'Polignano a Mare, Italy', likes: 1500, isLiked: false, isBookmarked: false, commentsCount: 99, timestamp: '3 DAYS AGO'
+                },
+                {
+                    id: 'post5', userId: 'user_jane',
+                    image: 'https://upload.wikimedia.org/wikipedia/commons/thumb/7/7d/Komyutan_Kussharo_lake01s3200.jpg/1024px-Komyutan_Kussharo_lake01s3200.jpg',
+                    caption: 'Graceful swans on Lake Kussharo, Japan. A serene moment in nature. 🦢 #Japan #Wildlife #NatureLovers #Swans',
+                    location: 'Lake Kussharo, Japan', likes: 980, isLiked: true, isBookmarked: false, commentsCount: 62, timestamp: '4 DAYS AGO'
+                }
+            ],
+            currentUserProfileId: 'user_jane', // The user whose profile we are viewing
+            loggedInUserId: 'user_jane' // The user who is logged in
+        };
+
+        const topHeaderEl = document.getElementById('top-header');
+        const mainContentEl = document.getElementById('main-content');
+        const bottomNavEl = document.getElementById('bottom-nav');
+
+        function getUser(userId) {
+            return appState.users[userId] || { username: 'unknown', avatar: '', name: 'Unknown User' };
+        }
+
+        function navigateTo(page, profileUserId = null) {
+            appState.currentPage = page;
+            if (page === 'profile' && profileUserId) {
+                appState.currentUserProfileId = profileUserId;
+            }
+            renderApp();
+        }
+        
+        function toggleLike(postId) {
+            const post = appState.posts.find(p => p.id === postId);
+            if (post) {
+                post.isLiked = !post.isLiked;
+                post.likes += post.isLiked ? 1 : -1;
+                renderApp(); // Re-render to update UI
+            }
+        }
+
+        function toggleBookmark(postId) {
+            const post = appState.posts.find(p => p.id === postId);
+            if (post) {
+                post.isBookmarked = !post.isBookmarked;
+                renderApp(); // Re-render to update UI
+            }
+        }
+
+        function renderTopHeader() {
+            let content = '';
+            if (appState.currentPage === 'home') {
+                content = `
+                    <div class="font-grand-hotel text-3xl text-zinc-900">Instagram</div>
+                    <div class="flex items-center space-x-4">
+                        <button>${ICONS.heartOutline}</button>
+                        <button>${ICONS.dm}</button>
+                    </div>
+                `;
+            } else if (appState.currentPage === 'explore') {
+                content = `
+                    <input type="search" placeholder="Search" class="bg-zinc-100 text-zinc-800 placeholder-zinc-400 rounded-lg px-3 py-2 w-full focus:outline-none focus:ring-1 focus:ring-zinc-300">
+                `;
+            } else if (appState.currentPage === 'profile') {
+                const user = getUser(appState.currentUserProfileId);
+                content = `
+                    <div class="font-semibold text-lg text-zinc-900">${user.username}</div>
+                    <div class="flex items-center space-x-4">
+                         <button>${ICONS.add}</button> <!-- Placeholder for create menu -->
+                    </div>
+                `;
+            } else {
+                 content = `<div class="font-semibold text-lg text-zinc-900">${appState.currentPage.charAt(0).toUpperCase() + appState.currentPage.slice(1)}</div>`;
+            }
+            topHeaderEl.innerHTML = content;
+        }
+
+        function renderBottomNav() {
+            const loggedInUser = getUser(appState.loggedInUserId);
+            const navItems = [
+                { name: 'home', icon: ICONS.home, activeIcon: ICONS.homeSolid },
+                { name: 'explore', icon: ICONS.explore, activeIcon: ICONS.exploreSolid },
+                { name: 'add', icon: ICONS.add, activeIcon: ICONS.add }, // No separate active state for add
+                { name: 'reels', icon: ICONS.reels, activeIcon: ICONS.reelsSolid },
+                { name: 'profile', isAvatar: true, avatar: loggedInUser.avatar }
+            ];
+
+            bottomNavEl.innerHTML = navItems.map(item => {
+                const isActive = appState.currentPage === item.name;
+                if (item.isAvatar) {
+                    return `
+                        <button data-page="profile" data-profile-id="${appState.loggedInUserId}" class="p-1 rounded-full ${isActive ? 'ring-2 ring-offset-1 ring-zinc-800' : ''}">
+                            <img src="${item.avatar}" alt="Profile" class="w-7 h-7 rounded-full object-cover">
+                        </button>
+                    `;
+                }
+                return `
+                    <button data-page="${item.name}" class="text-zinc-800">
+                        ${isActive ? item.activeIcon : item.icon}
+                    </button>
+                `;
+            }).join('');
+
+            bottomNavEl.querySelectorAll('button').forEach(button => {
+                button.addEventListener('click', () => {
+                    const page = button.dataset.page;
+                    const profileId = button.dataset.profileId;
+                    navigateTo(page, profileId);
+                });
+            });
+        }
+
+        function renderStories() {
+            const storiesHtml = appState.stories.map(story => {
+                const user = getUser(story.userId);
+                const ringClass = story.viewed ? 'story-gradient-ring-seen' : 'story-gradient-ring';
+                return `
+                    <div class="flex-shrink-0 w-20 text-center">
+                        <div class="${ringClass} rounded-full inline-block">
+                            <div class="bg-white p-0.5 rounded-full">
+                               <img src="${user.avatar}" alt="${user.username}" class="w-16 h-16 rounded-full object-cover">
+                            </div>
+                        </div>
+                        <p class="text-xs text-zinc-700 mt-1 truncate">${user.username}</p>
+                    </div>
+                `;
+            }).join('');
+
+            return `
+                <div class="h-28 border-b border-zinc-200 flex items-center px-2 space-x-3 overflow-x-auto">
+                    ${storiesHtml}
+                </div>
+            `;
+        }
+        
+        function renderPost(post) {
+            const user = getUser(post.userId);
+            return `
+                <div class="border-b border-zinc-200">
+                    <!-- Post Header -->
+                    <div class="flex items-center p-3">
+                        <img src="${user.avatar}" alt="${user.username}" class="w-8 h-8 rounded-full object-cover mr-3">
+                        <div>
+                            <p class="font-semibold text-sm text-zinc-900">${user.username}</p>
+                            ${post.location ? `<p class="text-xs text-zinc-500">${post.location}</p>` : ''}
+                        </div>
+                        <button class="ml-auto text-zinc-700">${ICONS.ellipsis}</button>
+                    </div>
+
+                    <!-- Post Image -->
+                    <div class="aspect-square bg-zinc-100">
+                        <img src="${post.image}" alt="Post by ${user.username}" class="w-full h-full object-cover">
+                    </div>
+
+                    <!-- Post Actions -->
+                    <div class="flex items-center p-3 space-x-4">
+                        <button data-post-id="${post.id}" class="action-like text-zinc-800">
+                            ${post.isLiked ? ICONS.heartSolid : ICONS.heartOutline}
+                        </button>
+                        <button class="text-zinc-800">${ICONS.comment}</button>
+                        <button class="text-zinc-800">${ICONS.share}</button>
+                        <button data-post-id="${post.id}" class="action-bookmark ml-auto text-zinc-800">
+                            ${post.isBookmarked ? ICONS.bookmarkSolid : ICONS.bookmarkOutline}
+                        </button>
+                    </div>
+
+                    <!-- Likes & Caption -->
+                    <div class="px-3 pb-1">
+                        <p class="font-semibold text-sm text-zinc-900">${post.likes.toLocaleString()} likes</p>
+                        <p class="text-sm mt-1 text-zinc-900">
+                            <span class="font-semibold cursor-pointer" onclick="navigateTo('profile', '${post.userId}')">${user.username}</span>
+                            ${post.caption.length > 100 ? post.caption.substring(0, 100) + '... <span class="text-zinc-500">more</span>' : post.caption}
+                        </p>
+                        ${post.commentsCount > 0 ? `<p class="text-sm text-zinc-500 mt-1">View all ${post.commentsCount} comments</p>` : ''}
+                        <p class="text-xs text-zinc-400 uppercase mt-2">${post.timestamp}</p>
+                    </div>
+                    
+                    <!-- Add Comment Input -->
+                    <div class="px-3 py-2 border-t border-zinc-100 flex items-center">
+                        <img src="${getUser(appState.loggedInUserId).avatar}" alt="My Avatar" class="w-6 h-6 rounded-full object-cover mr-2">
+                        <input type="text" placeholder="Add a comment..." class="text-sm w-full focus:outline-none placeholder-zinc-400">
+                    </div>
+                </div>
+            `;
+        }
+
+        function renderHomePage() {
+            const storiesSection = renderStories();
+            const postsFeed = appState.posts.map(renderPost).join('');
+            mainContentEl.innerHTML = `
+                <div>
+                    ${storiesSection}
+                    ${postsFeed}
+                </div>
+            `;
+            
+            mainContentEl.querySelectorAll('.action-like').forEach(button => {
+                button.addEventListener('click', () => toggleLike(button.dataset.postId));
+            });
+            mainContentEl.querySelectorAll('.action-bookmark').forEach(button => {
+                button.addEventListener('click', () => toggleBookmark(button.dataset.postId));
+            });
+        }
+
+        function renderExplorePage() {
+            const explorePosts = appState.posts.slice().sort(() => 0.5 - Math.random()); // Shuffle for variety
+            const gridHtml = explorePosts.map(post => `
+                <div class="aspect-square bg-zinc-200">
+                    <img src="${post.image}" alt="Explore post" class="w-full h-full object-cover">
+                </div>
+            `).join('');
+
+            mainContentEl.innerHTML = `
+                <div class="p-0.5">
+                    <div class="grid grid-cols-3 gap-0.5">
+                        ${gridHtml}
+                    </div>
+                </div>
+            `;
+        }
+
+        function renderProfilePage() {
+            const user = getUser(appState.currentUserProfileId);
+            const userPosts = appState.posts.filter(post => post.userId === appState.currentUserProfileId);
+
+            const postsGridHtml = userPosts.map(post => `
+                <div class="aspect-square bg-zinc-200">
+                    <img src="${post.image}" alt="Post by ${user.username}" class="w-full h-full object-cover">
+                </div>
+            `).join('');
+
+            mainContentEl.innerHTML = `
+                <div class="p-4">
+                    <!-- Profile Header -->
+                    <div class="flex items-center mb-4">
+                        <img src="${user.avatar}" alt="${user.username}" class="w-20 h-20 md:w-24 md:h-24 rounded-full object-cover mr-6">
+                        <div class="flex-grow space-y-3">
+                            <div class="flex items-center justify-around text-center">
+                                <div>
+                                    <p class="font-bold text-lg text-zinc-900">${user.postsCount}</p>
+                                    <p class="text-sm text-zinc-600">Posts</p>
+                                </div>
+                                <div>
+                                    <p class="font-bold text-lg text-zinc-900">${user.followersCount}</p>
+                                    <p class="text-sm text-zinc-600">Followers</p>
+                                </div>
+                                <div>
+                                    <p class="font-bold text-lg text-zinc-900">${user.followingCount}</p>
+                                    <p class="text-sm text-zinc-600">Following</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- User Info -->
+                    <div>
+                        <p class="font-semibold text-zinc-900">${user.name}</p>
+                        <p class="text-sm text-zinc-700 whitespace-pre-line">${user.bio}</p>
+                        <!-- <a href="#" class="text-sm text-blue-500 font-semibold">website.com</a> -->
+                    </div>
+                     <!-- Action Buttons -->
+                    <div class="flex space-x-2 mt-4">
+                        <button class="flex-1 bg-zinc-200 text-zinc-800 font-semibold py-1.5 rounded-md text-sm">Edit Profile</button>
+                        <button class="flex-1 bg-zinc-200 text-zinc-800 font-semibold py-1.5 rounded-md text-sm">Share Profile</button>
+                    </div>
+                </div>
+
+                <!-- Story Highlights (Placeholder) -->
+                <div class="px-4 py-2 border-t border-b border-zinc-200">
+                    <p class="text-sm text-zinc-500">Story Highlights (coming soon)</p>
+                </div>
+                
+                <!-- Tab Navigation -->
+                <div class="flex justify-around border-b border-zinc-200">
+                    <button class="flex-1 py-3 border-t-2 border-zinc-800 text-zinc-800">${ICONS.grid}</button>
+                    <button class="flex-1 py-3 text-zinc-400">${ICONS.reels}</button>
+                    <button class="flex-1 py-3 text-zinc-400">${ICONS.tag}</button>
+                </div>
+
+                <!-- Posts Grid -->
+                <div class="grid grid-cols-3 gap-0.5">
+                    ${postsGridHtml.length > 0 ? postsGridHtml : '<p class="col-span-3 text-center text-zinc-500 py-10">No posts yet.</p>'}
+                </div>
+            `;
+        }
+        
+        function renderPlaceholderPage(pageName) {
+             mainContentEl.innerHTML = `
+                <div class="flex flex-col items-center justify-center h-full p-8 text-center">
+                    <div class="text-5xl mb-4">🚧</div>
+                    <h2 class="text-2xl font-semibold text-zinc-800 mb-2">${pageName.charAt(0).toUpperCase() + pageName.slice(1)}</h2>
+                    <p class="text-zinc-600">This page is under construction. Check back soon!</p>
+                </div>
+            `;
+        }
+
+        function renderApp() {
+            renderTopHeader();
+            renderBottomNav();
+
+            // Scroll to top of content area on page change
+            mainContentEl.scrollTop = 0;
+
+            switch (appState.currentPage) {
+                case 'home':
+                    renderHomePage();
+                    break;
+                case 'explore':
+                    renderExplorePage();
+                    break;
+                case 'profile':
+                    renderProfilePage();
+                    break;
+                case 'add':
+                case 'reels':
+                case 'shop': // Assuming shop might be a page eventually
+                     renderPlaceholderPage(appState.currentPage);
+                    break;
+                default:
+                    mainContentEl.innerHTML = `<p class="p-4 text-zinc-700">Page not found</p>`;
+            }
+        }
+
+        // Initial Render
+        document.addEventListener('DOMContentLoaded', renderApp);
+
+    </script>
+
+</body>
+</html>

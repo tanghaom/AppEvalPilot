@@ -1,0 +1,9 @@
+{
+  "web_id": "web_84",
+  "task_id": 4,
+  "task_type": "dynamic",
+  "instruction": "Task: Position the mouse cursor over the schematic canvas area and rotate the mouse scroll wheel forward (typically away from the user) and backward (typically towards the user).\nExpected Result: The canvas view smoothly zooms in (content appears larger, view focuses on cursor position) when the scroll wheel is rotated forward, and zooms out (content appears smaller, view widens from cursor position) when rotated backward.\n\nNote: The task is only considered successful if the expected result is achieved; otherwise, it is deemed infeasible.",
+  "max_steps": 15,
+  "expected": "The canvas view smoothly zooms in (content appears larger, view focuses on cursor position) when the scroll wheel is rotated forward, and zooms out (content appears smaller, view widens from cursor position) when rotated backward.",
+  "label": 1
+}

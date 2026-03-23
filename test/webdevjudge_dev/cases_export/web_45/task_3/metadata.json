@@ -1,0 +1,9 @@
+{
+  "web_id": "web_45",
+  "task_id": 3,
+  "task_type": "dynamic",
+  "instruction": "Task: Navigate to the leaderboard display.\nExpected Result: The LLM leaderboard, with rankings from (simulated) evaluations, is shown.\n\nNote: The task is only considered successful if the expected result is achieved; otherwise, it is deemed infeasible.",
+  "max_steps": 15,
+  "expected": "The LLM leaderboard, with rankings from (simulated) evaluations, is shown.",
+  "label": 1
+}

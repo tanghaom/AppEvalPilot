@@ -1,0 +1,9 @@
+{
+  "web_id": "web_4",
+  "task_id": 4,
+  "task_type": "dynamic",
+  "instruction": "Task: Click a 'Delete' button or icon associated with a specific task in any view.\nExpected Result: The selected task is removed from the display and the local task list.\n\nNote: The task is only considered successful if the expected result is achieved; otherwise, it is deemed infeasible.",
+  "max_steps": 15,
+  "expected": "The selected task is removed from the display and the local task list.",
+  "label": 1
+}

@@ -1,0 +1,9 @@
+{
+  "web_id": "web_36",
+  "task_id": 2,
+  "task_type": "dynamic",
+  "instruction": "Task: Click on a specific date in the Campaign Calendar component.\nExpected Result: The selected date is visually highlighted, and a mock detail panel for that date appears on the client side.\n\nNote: The task is only considered successful if the expected result is achieved; otherwise, it is deemed infeasible.",
+  "max_steps": 15,
+  "expected": "The selected date is visually highlighted, and a mock detail panel for that date appears on the client side.",
+  "label": 0
+}

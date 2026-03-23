@@ -1,0 +1,431 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Aura - Your Friendly Chat Companion</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Custom scrollbar for a more polished look */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #f1f5f9; /* slate-100 */
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #60a5fa; /* blue-400 */
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #3b82f6; /* blue-500 */
+        }
+
+        .message-bubble {
+            transition: opacity 0.3s ease-out, transform 0.3s ease-out;
+            opacity: 0;
+            transform: translateY(10px);
+        }
+        .message-bubble-visible {
+            opacity: 1;
+            transform: translateY(0px);
+        }
+
+        /* For the bot's "human-like" avatar */
+        .aura-avatar-bg { fill: #0ea5e9; } /* sky-500 */
+        .aura-avatar-face { fill: #7dd3fc; } /* sky-300 */
+        .aura-avatar-eyes-bg { fill: white; }
+        .aura-avatar-pupils { fill: #0369a1; } /* sky-700 */
+        .aura-avatar-smile { stroke: white; }
+
+        /* Fallback for very simple systems or if Tailwind JIT doesn't pick up SVG classes well */
+        #bot-avatar-header svg .fill-sky-500 { fill: #0ea5e9; }
+        #bot-avatar-header svg .fill-sky-300 { fill: #7dd3fc; }
+        #bot-avatar-header svg .fill-white { fill: white; }
+        #bot-avatar-header svg .fill-sky-700 { fill: #0369a1; }
+        #bot-avatar-header svg .stroke-white { stroke: white; }
+
+        .chat-message-bot svg .fill-sky-500 { fill: #0ea5e9; }
+        .chat-message-bot svg .fill-sky-300 { fill: #7dd3fc; }
+        .chat-message-bot svg .fill-white { fill: white; }
+        .chat-message-bot svg .fill-sky-700 { fill: #0369a1; }
+        .chat-message-bot svg .stroke-white { stroke: white; }
+
+    </style>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        sky: { // Ensure sky palette is fully available
+                            50: '#f0f9ff',
+                            100: '#e0f2fe',
+                            200: '#bae6fd',
+                            300: '#7dd3fc',
+                            400: '#38bdf8',
+                            500: '#0ea5e9',
+                            600: '#0284c7',
+                            700: '#0369a1',
+                            800: '#075985',
+                            900: '#0c4a6e'
+                        },
+                        slate: { // Ensure slate palette is fully available
+                            50: '#f8fafc',
+                            100: '#f1f5f9',
+                            200: '#e2e8f0',
+                            300: '#cbd5e1',
+                            400: '#94a3b8',
+                            500: '#64748b',
+                            600: '#475569',
+                            700: '#334155',
+                            800: '#1e293b',
+                            900: '#0f172a'
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+<body class="antialiased">
+
+    <div class="flex flex-col h-screen bg-slate-100">
+        <!-- Header -->
+        <header class="bg-sky-600 text-white p-4 shadow-md flex items-center space-x-3 fixed top-0 left-0 right-0 z-10">
+            <div id="bot-avatar-header" class="w-10 h-10 rounded-full overflow-hidden">
+                <svg viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <circle cx="50" cy="50" r="48" class="aura-avatar-bg"/>
+                    <circle cx="50" cy="50" r="40" class="aura-avatar-face"/>
+                    <circle cx="38" cy="45" r="7" class="aura-avatar-eyes-bg"/>
+                    <circle cx="62" cy="45" r="7" class="aura-avatar-eyes-bg"/>
+                    <circle cx="40" cy="47" r="3.5" class="aura-avatar-pupils"/>
+                    <circle cx="60" cy="47" r="3.5" class="aura-avatar-pupils"/>
+                    <path d="M38 65 Q50 75 62 65" class="aura-avatar-smile" stroke-width="4" stroke-linecap="round"/>
+                </svg>
+            </div>
+            <div>
+                <h1 class="text-xl font-semibold">Aura</h1>
+                <p class="text-xs text-sky-200 flex items-center">
+                    <span class="w-2 h-2 bg-green-400 rounded-full mr-1.5"></span>
+                    Online
+                </p>
+            </div>
+        </header>
+
+        <!-- Messages Area -->
+        <main id="chat-messages" class="flex-1 overflow-y-auto p-6 space-y-4 pt-24 pb-28"> 
+            <!-- Messages will be appended here -->
+        </main>
+
+        <!-- Typing Indicator -->
+        <div id="typing-indicator" class="px-6 pb-1 text-sm text-slate-500 fixed bottom-20 left-0 right-0 bg-slate-100 hidden">
+            <div class="flex items-center space-x-2 max-w-md mx-auto sm:mx-0 sm:ml-6">
+                 <div id="bot-avatar-typing" class="w-6 h-6 rounded-full overflow-hidden">
+                     <svg viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <circle cx="50" cy="50" r="48" class="aura-avatar-bg"/>
+                        <circle cx="50" cy="50" r="40" class="aura-avatar-face"/>
+                    </svg>
+                 </div>
+                <span>Aura is typing</span>
+                <span class="animate-pulse">...</span>
+            </div>
+        </div>
+
+        <!-- Input Area -->
+        <footer class="bg-slate-50 p-4 border-t border-slate-200 fixed bottom-0 left-0 right-0">
+            <form id="message-form" class="flex items-center space-x-3 max-w-3xl mx-auto">
+                <input type="text" id="message-input" placeholder="Ask Aura anything..." class="flex-1 p-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-sky-500 focus:border-transparent outline-none transition-shadow shadow-sm text-slate-800 placeholder-slate-400">
+                <button type="submit" class="bg-sky-500 text-white p-3 rounded-lg hover:bg-sky-600 transition-colors focus:outline-none focus:ring-2 focus:ring-sky-500 focus:ring-opacity-50 shadow-sm hover:shadow-md">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-6 h-6">
+                      <path d="M3.478 2.405a.75.75 0 00-.926.94l2.432 7.905H13.5a.75.75 0 010 1.5H4.984l-2.432 7.905a.75.75 0 00.926.94 60.519 60.519 0 0018.445-8.986.75.75 0 000-1.218A60.517 60.517 0 003.478 2.405z" />
+                    </svg>
+                </button>
+            </form>
+        </footer>
+    </div>
+
+    <script>
+        const chatMessages = document.getElementById('chat-messages');
+        const messageForm = document.getElementById('message-form');
+        const messageInput = document.getElementById('message-input');
+        const typingIndicator = document.getElementById('typing-indicator');
+
+        // Bot's memory and state
+        let botState = {
+            userName: null,
+            interactionCount: 0,
+            lastBotQuestion: null, // To understand context for next user reply
+            sentimentScore: 0, // Could be used for more advanced responses
+            recentTopics: [],
+        };
+
+        const knowledgeBase = {
+            "what is your name": "You can call me Aura! It's a pleasure to chat with you.",
+            "who are you": "I'm Aura, your friendly AI companion. I'm here to chat, share some thoughts, and hopefully brighten your day a bit! 😊",
+            "what can you do": "I can chat with you about many things, tell you a joke, share some general knowledge, or just be a good listener. I'm always learning new ways to be helpful! What are you curious about?",
+            "how are you": "I'm doing wonderfully, thanks for asking! Ready and excited to chat with you. How are you feeling today?",
+            "how old are you": "In human terms, I'm quite young, as I'm always being updated! But I have access to a lot of information, so I feel quite knowledgeable. 😉",
+            "tell me a joke": () => {
+                const jokes = [
+                    "Why don't scientists trust atoms? Because they make up everything! 😄",
+                    "What do you call fake spaghetti? An impasta! 🍝",
+                    "Why did the scarecrow win an award? Because he was outstanding in his field! 🌾",
+                    "I told my wife she was drawing her eyebrows too high. She seemed surprised. 🤔",
+                    "What building has the most stories? The library! 📚"
+                ];
+                return jokes[Math.floor(Math.random() * jokes.length)];
+            },
+            "capital of france": "The capital of France is Paris! It's famous for the Eiffel Tower, Louvre Museum, and delicious pastries. Have you ever been?",
+            "what is the time": () => `The current time is ${new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}.`,
+            "what is the date": () => `Today is ${new Date().toLocaleDateString([], { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}.`,
+            "thank you": () => {
+                const responses = ["You're very welcome!", "Anytime!", "Happy to help!", "No problem at all! 😊"];
+                return responses[Math.floor(Math.random() * responses.length)];
+            }
+        };
+
+        function formatTimestamp(date) {
+            return date.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+        }
+
+        function addMessageToUI(text, sender, animate = true) {
+            const messageDiv = document.createElement('div');
+            messageDiv.classList.add('flex', 'items-end', 'max-w-xl', 'message-bubble'); // max-w-xl for bubble width
+            if (animate) {
+                // Trigger animation after a short delay to ensure it plays
+                setTimeout(() => messageDiv.classList.add('message-bubble-visible'), 10);
+            } else {
+                 messageDiv.classList.add('message-bubble-visible');
+            }
+
+            const avatarDiv = document.createElement('div');
+            avatarDiv.classList.add('flex-shrink-0', 'w-8', 'h-8', 'rounded-full', 'overflow-hidden', 'shadow-sm');
+            
+            const textBubbleDiv = document.createElement('div');
+            textBubbleDiv.classList.add('p-3', 'rounded-xl', 'shadow-md');
+
+            const textContent = document.createElement('p');
+            textContent.classList.add('text-sm');
+            textContent.innerHTML = text; // Use innerHTML to render emojis or simple formatting if needed
+
+            const timestampSpan = document.createElement('span');
+            timestampSpan.classList.add('text-xs', 'mt-1');
+            timestampSpan.textContent = formatTimestamp(new Date());
+
+            if (sender === 'user') {
+                messageDiv.classList.add('ml-auto', 'justify-end');
+                avatarDiv.classList.add('bg-sky-500', 'flex', 'items-center', 'justify-center', 'order-2', 'ml-2');
+                // User avatar (simple initials or generic icon)
+                const userInitial = botState.userName ? botState.userName.charAt(0).toUpperCase() : 'U';
+                avatarDiv.innerHTML = `<span class="text-white font-semibold">${userInitial}</span>`;
+                textBubbleDiv.classList.add('bg-sky-500', 'text-white', 'order-1');
+                timestampSpan.classList.add('text-sky-200', 'text-right', 'block');
+            } else { // Bot
+                messageDiv.classList.add('mr-auto');
+                avatarDiv.classList.add('mr-2');
+                 avatarDiv.innerHTML = `
+                    <svg viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <circle cx="50" cy="50" r="48" class="aura-avatar-bg"/>
+                        <circle cx="50" cy="50" r="40" class="aura-avatar-face"/>
+                        <circle cx="38" cy="45" r="7" class="aura-avatar-eyes-bg"/>
+                        <circle cx="62" cy="45" r="7" class="aura-avatar-eyes-bg"/>
+                        <circle cx="40" cy="47" r="3.5" class="aura-avatar-pupils"/>
+                        <circle cx="60" cy="47" r="3.5" class="aura-avatar-pupils"/>
+                        <path d="M38 65 Q50 75 62 65" class="aura-avatar-smile" stroke-width="4" stroke-linecap="round"/>
+                    </svg>`;
+                textBubbleDiv.classList.add('bg-slate-200', 'text-slate-800');
+                timestampSpan.classList.add('text-slate-500', 'text-left', 'block');
+            }
+            
+            textBubbleDiv.appendChild(textContent);
+            textBubbleDiv.appendChild(timestampSpan);
+            messageDiv.appendChild(avatarDiv);
+            messageDiv.appendChild(textBubbleDiv);
+            chatMessages.appendChild(messageDiv);
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+        }
+        
+        function getBotResponse(userInput) {
+            const userLower = userInput.toLowerCase().trim().replace(/[.,!?]/g, ''); // Basic normalization
+            let reply = "";
+            let usedSpecificRule = false;
+
+            botState.interactionCount++;
+
+            // Check knowledge base first
+            for (const [key, value] of Object.entries(knowledgeBase)) {
+                if (userLower.includes(key)) {
+                    reply = typeof value === 'function' ? value() : value;
+                    usedSpecificRule = true;
+                    break;
+                }
+            }
+
+            if (!usedSpecificRule) {
+                // Capture name if Aura asked for it
+                if (botState.lastBotQuestion === 'ask_name' && !botState.userName) {
+                    const namePatterns = [/(?:i'm|i am|my name is)\s*(\w+)/i, /^(\w+)$/i];
+                    let nameFound = null;
+                    for (const pattern of namePatterns) {
+                        const match = userInput.match(pattern); // Use original input for better capture
+                        if (match && match[1] && match[1].length > 1 && match[1].length < 15) {
+                            nameFound = match[1].charAt(0).toUpperCase() + match[1].slice(1);
+                            break;
+                        }
+                    }
+                    if (nameFound) {
+                        botState.userName = nameFound;
+                        reply = `It's lovely to meet you, ${botState.userName}! What's on your mind today? Or perhaps you'd like to know more about what I can do?`;
+                    } else {
+                        reply = "Alright! No worries. So, what shall we talk about?";
+                    }
+                    botState.lastBotQuestion = null; // Reset context
+                    usedSpecificRule = true;
+                }
+                // Greetings
+                else if (userLower.match(/\b(hello|hi|hey|yo|sup|greetings|good morning|good afternoon|good evening)\b/)) {
+                    const greetings = [
+                        `Hello there${botState.userName ? ', ' + botState.userName : ''}! How can I help you today?`,
+                        `Hi${botState.userName ? ', ' + botState.userName : ''}! Great to connect. What are you thinking about?`,
+                        `Hey${botState.userName ? ' ' + botState.userName : ''}! Good to see you. What adventures shall we have today? 😄`
+                    ];
+                    reply = greetings[Math.floor(Math.random() * greetings.length)];
+                    usedSpecificRule = true;
+                }
+                // User expresses well-being
+                else if (userLower.match(/\b(i'm good|i am fine|feeling great|doing well|pretty good)\b/)) {
+                    reply = `That's wonderful to hear${botState.userName ? ', ' + botState.userName : ''}! What brings you joy today?`;
+                    usedSpecificRule = true;
+                }
+                // User expresses not-so-well-being
+                else if (userLower.match(/\b(i'm not good|not so well|feeling bad|sad|upset)\b/)) {
+                    reply = `Oh, I'm sorry to hear that${botState.userName ? ', ' + botState.userName : ''}. Sometimes just talking can help. Is there anything I can do, or would you prefer to talk about something else to take your mind off things?`;
+                    usedSpecificRule = true;
+                }
+                // Asking about Aura
+                else if (userLower.includes("your purpose") || userLower.includes("why were you created")) {
+                    reply = "I was created to be a helpful and engaging conversational partner. I hope I can make your day a little brighter or help you learn something new!";
+                    usedSpecificRule = true;
+                }
+                // Farewells
+                else if (userLower.match(/\b(bye|goodbye|see ya|later|farewell|ttyl)\b/)) {
+                     const farewells = [
+                        `Goodbye for now${botState.userName ? ', ' + botState.userName : ''}! It was a pleasure chatting. Feel free to return anytime! 👋`,
+                        `Take care${botState.userName ? ', ' + botState.userName : ''}! Hope to talk to you again soon.`,
+                        `Until next time${botState.userName ? ', ' + botState.userName : ''}! Have a great day! 😊`
+                    ];
+                    reply = farewells[Math.floor(Math.random() * farewells.length)];
+                    usedSpecificRule = true;
+                }
+                // If user asks for name and Aura doesn't know user's name yet
+                else if (userLower.includes("what is your name") && !botState.userName) {
+                    reply = "You can call me Aura! It's a pleasure to chat with you. What's your name, if you don't mind me asking?";
+                    botState.lastBotQuestion = 'ask_name';
+                    usedSpecificRule = true;
+                }
+                // If user says something positive / agrees
+                else if (userLower.match(/\b(yes|yeah|yep|sure|cool|great|awesome|nice|ok|okay)\b/)) {
+                     const positiveAck = [
+                        `Great${botState.userName ? ', ' + botState.userName : ''}! What's next on your mind?`,
+                        "Sounds good! What else can I help you with?",
+                        "Excellent! I'm here if you have more questions or just want to chat."
+                    ];
+                    reply = positiveAck[Math.floor(Math.random() * positiveAck.length)];
+                    usedSpecificRule = true;
+                }
+                 // If user says something negative / disagrees
+                else if (userLower.match(/\b(no|nope|nah)\b/)) {
+                     const negativeAck = [
+                        `Okay${botState.userName ? ', ' + botState.userName : ''}. Understood. What would you like to discuss instead?`,
+                        "Alright. Is there something else I can assist with?",
+                        "No problem. Let me know if you change your mind or have other questions!"
+                    ];
+                    reply = negativeAck[Math.floor(Math.random() * negativeAck.length)];
+                    usedSpecificRule = true;
+                }
+            }
+            
+            // Default/Fallback responses
+            if (!reply) {
+                const defaultReplies = [
+                    `That's an interesting point${botState.userName ? ', ' + botState.userName : ''}. Could you tell me more about it?`,
+                    "Hmm, I'm pondering that... What else is on your mind?",
+                    `I'm always learning! Thanks for sharing. What topic should we explore next, ${botState.userName || 'friend'}?`,
+                    "I'm not quite sure how to respond to that one. How about we talk about something else? Perhaps you have a favorite hobby?",
+                    `Fascinating! I'd love to hear your thoughts on that, ${botState.userName || 'friend'}.`,
+                    "Let me think... 🤔 What if we tried a different question or topic?",
+                    "I'm designed for conversation! What's something you've been curious about lately?"
+                ];
+                // Add some variety based on interaction count or simple context
+                if (botState.interactionCount % 5 === 0 && botState.userName) {
+                    reply = `Is there anything specific I can help you with today, ${botState.userName}? Or are you just in the mood for a chat?`;
+                } else if (botState.interactionCount > 2 && Math.random() < 0.3) {
+                    const followUps = [
+                        `Speaking of which, ${botState.userName || 'friend'}, what are your plans for the day?`,
+                        `That reminds me, ${botState.userName || 'friend'}, do you enjoy [reading/movies/music]?`
+                    ];
+                    reply = followUps[Math.floor(Math.random() * followUps.length)];
+                } else {
+                    reply = defaultReplies[Math.floor(Math.random() * defaultReplies.length)];
+                }
+            }
+            
+            // Add a slight "human" touch with emojis sometimes.
+            if (Math.random() < 0.2 && !reply.match(/[\uD800-\uDBFF][\uDC00-\uDFFF]/g)) { // Check if emoji already present
+                const emojis = [" 😊", " 🤔", " 👍", " ✨"];
+                if (!reply.endsWith("!") && !reply.endsWith("?") && !reply.endsWith(".")) reply += ".";
+                reply += emojis[Math.floor(Math.random() * emojis.length)];
+            }
+
+            return reply;
+        }
+
+        messageForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            const userInput = messageInput.value.trim();
+            if (userInput === '') return;
+
+            addMessageToUI(userInput, 'user');
+            messageInput.value = '';
+            messageInput.focus();
+
+            typingIndicator.classList.remove('hidden');
+            chatMessages.scrollTop = chatMessages.scrollHeight; // Scroll down for typing indicator
+
+            // Simulate bot thinking and response delay
+            const thinkingTime = 700 + Math.random() * 1000; // 0.7 to 1.7 seconds
+            setTimeout(() => {
+                const botReply = getBotResponse(userInput);
+                typingIndicator.classList.add('hidden');
+                addMessageToUI(botReply, 'bot');
+            }, thinkingTime);
+        });
+
+        // Initial greeting from Aura
+        function initialGreeting() {
+            typingIndicator.classList.remove('hidden');
+             const initialWait = 1200; // A bit longer for the very first message
+            setTimeout(() => {
+                const welcomeMessages = [
+                    "Hello! I'm Aura. It's wonderful to meet you. What's on your mind today?",
+                    "Hi there! I'm Aura, your friendly chat companion. How can I make your day a bit brighter?",
+                    "Greetings! Aura here. I'm excited to chat with you. Feel free to ask me anything or just say hi!"
+                ];
+                const greeting = welcomeMessages[Math.floor(Math.random() * welcomeMessages.length)];
+                typingIndicator.classList.add('hidden');
+                addMessageToUI(greeting, 'bot', false); // No animation for first message
+                if (!botState.userName && greeting.toLowerCase().includes("what's your name")) { // example specific context set
+                     botState.lastBotQuestion = 'ask_name';   
+                }
+            }, initialWait);
+        }
+        
+        // Auto-focus input on load
+        window.onload = () => {
+            messageInput.focus();
+            initialGreeting();
+        };
+
+    </script>
+</body>
+</html>

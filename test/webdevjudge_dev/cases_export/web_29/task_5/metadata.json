@@ -1,0 +1,9 @@
+{
+  "web_id": "web_29",
+  "task_id": 5,
+  "task_type": "dynamic",
+  "instruction": "Task: Enter text into the 'Name' and 'Email' fields of an inquiry form on a property detail page.\nExpected Result: The entered text appears in the 'Name' and 'Email' input fields, and the form remains on the page (no submission).\n\nNote: The task is only considered successful if the expected result is achieved; otherwise, it is deemed infeasible.",
+  "max_steps": 15,
+  "expected": "The entered text appears in the 'Name' and 'Email' input fields, and the form remains on the page (no submission).",
+  "label": 0
+}

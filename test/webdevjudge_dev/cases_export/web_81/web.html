@@ -1,0 +1,623 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pixel Heroes: Monster Siege</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif; /* A good sans-serif font */
+        }
+        /* Custom scrollbar for action log */
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 8px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: #1e293b; /* slate-800 */
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: #475569; /* slate-600 */
+            border-radius: 4px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+            background: #64748b; /* slate-500 */
+        }
+        .ability-button.on-cooldown {
+            filter: grayscale(80%);
+            cursor: not-allowed;
+        }
+        .ability-button.on-cooldown .cooldown-text {
+            display: block;
+        }
+        .targeting-cursor {
+            cursor: crosshair;
+        }
+        .monster-targetable:hover {
+            outline: 3px solid #0ea5e9; /* sky-500 */
+            transform: scale(1.05);
+            transition: transform 0.1s ease-in-out, outline 0.1s ease-in-out;
+        }
+        @keyframes floatDamage {
+            0% { transform: translateY(0) scale(1); opacity: 1; }
+            100% { transform: translateY(-60px) scale(1.5); opacity: 0; }
+        }
+        .damage-number {
+            position: absolute;
+            font-size: 1.5rem;
+            font-weight: bold;
+            animation: floatDamage 1s ease-out forwards;
+            pointer-events: none;
+            text-shadow: 0 0 5px black;
+        }
+        /* Simple character visuals */
+        .hero-avatar, .monster-avatar {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: flex-end;
+            position: relative;
+        }
+        .head { width: 50%; height: 30%; border-radius: 50% 50% 20% 20%; position: relative; top: -5%; }
+        .body { width: 70%; height: 60%; border-radius: 30% 30% 10% 10%; }
+        .eye { width: 15%; height: 15%; background-color: #fff; border-radius: 50%; position: absolute; top: 30%; }
+        .left-eye { left: 25%; }
+        .right-eye { right: 25%; }
+        .pupil { width: 50%; height: 50%; background-color: #000; border-radius: 50%; position: absolute; top: 25%; left: 25%;}
+
+        .warrior-head { background-color: #f8c291; } /* Skin tone */
+        .warrior-body { background-color: #3b82f6; } /* Blue armor */
+        .mage-head { background-color: #f8c291; }
+        .mage-body { background-color: #8b5cf6; } /* Purple robe */
+        .hunter-head { background-color: #f8c291; }
+        .hunter-body { background-color: #10b981; } /* Green tunic */
+
+        .monster-visual .head { background-color: #7f1d1d; /* dark red */ border-radius: 20%; }
+        .monster-visual .body { background-color: #b91c1c; /* red */ border-radius: 20%; }
+        .monster-visual .eye { background-color: #fef08a; /* yellow */ }
+    </style>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=Press+Start+2P&display=swap" rel="stylesheet">
+</head>
+<body class="bg-slate-900 text-slate-200 flex items-center justify-center min-h-screen p-4" style="font-family: 'Inter', sans-serif;">
+
+    <div id="game-container" class="w-full max-w-5xl mx-auto">
+
+        <!-- Hero Selection Screen -->
+        <div id="hero-selection-screen" class="text-center">
+            <h1 class="text-5xl font-bold mb-4 text-sky-400" style="font-family: 'Press Start 2P', cursive;">Pixel Heroes</h1>
+            <p class="text-xl text-slate-400 mb-12">Choose Your Hero</p>
+            <div class="grid md:grid-cols-3 gap-8">
+                <!-- Warrior Card -->
+                <div class="bg-slate-800 p-6 rounded-xl shadow-xl border-2 border-slate-700 hover:border-sky-500 transition-all cursor-pointer" onclick="game.selectHero('WARRIOR')">
+                    <div class="hero-avatar w-24 h-32 mx-auto mb-4">
+                        <div class="head warrior-head"><div class="eye left-eye"><div class="pupil"></div></div><div class="eye right-eye"><div class="pupil"></div></div></div>
+                        <div class="body warrior-body"></div>
+                    </div>
+                    <h2 class="text-2xl font-semibold text-sky-500 mb-2">Warrior</h2>
+                    <p class="text-sm text-slate-400">A stalwart defender, excels in melee combat with high survivability.</p>
+                </div>
+                <!-- Hunter Card -->
+                <div class="bg-slate-800 p-6 rounded-xl shadow-xl border-2 border-slate-700 hover:border-emerald-500 transition-all cursor-pointer" onclick="game.selectHero('HUNTER')">
+                    <div class="hero-avatar w-24 h-32 mx-auto mb-4">
+                        <div class="head hunter-head"><div class="eye left-eye"><div class="pupil"></div></div><div class="eye right-eye"><div class="pupil"></div></div></div>
+                        <div class="body hunter-body"></div>
+                    </div>
+                    <h2 class="text-2xl font-semibold text-emerald-500 mb-2">Hunter</h2>
+                    <p class="text-sm text-slate-400">A master of ranged attacks, dealing precise damage from afar.</p>
+                </div>
+                <!-- Mage Card -->
+                <div class="bg-slate-800 p-6 rounded-xl shadow-xl border-2 border-slate-700 hover:border-purple-500 transition-all cursor-pointer" onclick="game.selectHero('MAGE')">
+                    <div class="hero-avatar w-24 h-32 mx-auto mb-4">
+                        <div class="head mage-head"><div class="eye left-eye"><div class="pupil"></div></div><div class="eye right-eye"><div class="pupil"></div></div></div>
+                        <div class="body mage-body"></div>
+                    </div>
+                    <h2 class="text-2xl font-semibold text-purple-500 mb-2">Mage</h2>
+                    <p class="text-sm text-slate-400">Commands powerful elemental magic, capable of devastating multiple foes.</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Game Screen -->
+        <div id="game-screen" class="hidden">
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <!-- Left Panel: Hero Info & Abilities -->
+                <div class="md:col-span-1 bg-slate-800 p-6 rounded-xl shadow-xl border-2 border-slate-700 flex flex-col space-y-4">
+                    <div id="hero-panel" class="text-center">
+                        <!-- Hero visual and stats will be rendered here by JS -->
+                    </div>
+                    <div id="hero-abilities" class="space-y-3">
+                        <!-- Abilities will be rendered here by JS -->
+                    </div>
+                </div>
+
+                <!-- Center Panel: Monsters -->
+                <div class="md:col-span-2 bg-slate-800 p-6 rounded-xl shadow-xl border-2 border-slate-700">
+                    <h2 class="text-2xl font-semibold text-center mb-2 text-red-500">Monsters - Wave <span id="wave-number">1</span></h2>
+                    <div id="monsters-area" class="flex flex-wrap justify-center items-end gap-4 min-h-[200px] relative">
+                        <!-- Monsters will be rendered here by JS -->
+                    </div>
+                     <p id="targeting-indicator" class="text-center text-sky-400 mt-4 h-6"></p>
+                </div>
+            </div>
+
+            <!-- Bottom Panel: Action Log -->
+            <div class="mt-6 bg-slate-800 p-4 rounded-xl shadow-xl border-2 border-slate-700">
+                <h3 class="text-lg font-semibold mb-2 text-slate-400">Action Log</h3>
+                <div id="action-log" class="h-40 overflow-y-auto custom-scrollbar text-sm space-y-1">
+                    <!-- Log messages will be appended here -->
+                </div>
+            </div>
+        </div>
+
+        <!-- Game Over Screen -->
+        <div id="game-over-screen" class="hidden text-center">
+            <h1 id="game-over-title" class="text-6xl font-bold mb-8 text-red-500" style="font-family: 'Press Start 2P', cursive;">GAME OVER</h1>
+            <p id="game-over-message" class="text-xl text-slate-300 mb-8">The hero has fallen. The monsters prevail...</p>
+            <button onclick="game.restartGame()" class="bg-sky-500 hover:bg-sky-600 text-white font-semibold py-3 px-8 rounded-lg text-lg shadow-md transition-colors">
+                Restart Game
+            </button>
+        </div>
+    </div>
+
+    <script>
+        const HERO_CLASSES_DATA = {
+            WARRIOR: {
+                name: "Warrior",
+                baseHp: 150,
+                hpPerLevel: 25,
+                baseDamageMultiplier: 1.0,
+                damageMultiplierPerLevel: 0.1,
+                visual: { headClass: 'warrior-head', bodyClass: 'warrior-body' },
+                abilities: [
+                    { id: "slash", name: "Slash", baseDamage: 25, cooldown: 0, currentCooldown: 0, targetType: 'single', description: "A quick slash (25 Dmg).", icon: "⚔️" },
+                    { id: "shieldBash", name: "Shield Bash", baseDamage: 15, cooldown: 3, currentCooldown: 0, targetType: 'single', description: "Bash an enemy (15 Dmg). CD: 3", icon: "🛡️" },
+                    { id: "whirlwind", name: "Whirlwind", baseDamage: 18, cooldown: 4, currentCooldown: 0, targetType: 'all', description: "Attack all enemies (18 Dmg). CD: 4", icon: "🌪️" }
+                ]
+            },
+            HUNTER: {
+                name: "Hunter",
+                baseHp: 100,
+                hpPerLevel: 15,
+                baseDamageMultiplier: 1.1,
+                damageMultiplierPerLevel: 0.15,
+                visual: { headClass: 'hunter-head', bodyClass: 'hunter-body' },
+                abilities: [
+                    { id: "aimedShot", name: "Aimed Shot", baseDamage: 35, cooldown: 1, currentCooldown: 0, targetType: 'single', description: "Powerful shot (35 Dmg). CD: 1", icon: "🎯" },
+                    { id: "multiShot", name: "Multi-Shot", baseDamage: 15, cooldown: 3, currentCooldown: 0, targetType: 'all', description: "Fire at all enemies (15 Dmg). CD: 3", icon: "🏹" },
+                    { id: "rapidFire", name: "Rapid Fire", baseDamage: 12, cooldown: 4, currentCooldown: 0, targetType: 'single', hits: 3, description: "3 quick shots (12 Dmg x3). CD: 4", icon: "💥" }
+                ]
+            },
+            MAGE: {
+                name: "Mage",
+                baseHp: 80,
+                hpPerLevel: 10,
+                baseDamageMultiplier: 1.2,
+                damageMultiplierPerLevel: 0.2,
+                visual: { headClass: 'mage-head', bodyClass: 'mage-body' },
+                abilities: [
+                    { id: "fireball", name: "Fireball", baseDamage: 30, cooldown: 0, currentCooldown: 0, targetType: 'single', description: "Hurl a fiery bolt (30 Dmg).", icon: "🔥" },
+                    { id: "chainLightning", name: "Chain Lightning", baseDamage: 20, cooldown: 3, currentCooldown: 0, targetType: 'all', description: "Lightning hits all (20 Dmg). CD: 3", icon: "⚡" },
+                    { id: "arcaneBlast", name: "Arcane Blast", baseDamage: 50, cooldown: 5, currentCooldown: 0, targetType: 'single', description: "Massive arcane energy (50 Dmg). CD: 5", icon: "✨" }
+                ]
+            }
+        };
+
+        const MONSTER_TYPES_DATA = [
+            { id: "goblin", name: "Goblin Grunt", baseHp: 40, baseAttack: 8, xpValue: 10, visual: { headClass: 'bg-green-700', bodyClass: 'bg-green-600', eyeClass: 'bg-yellow-300' } },
+            { id: "orc", name: "Orc Raider", baseHp: 70, baseAttack: 12, xpValue: 25, visual: { headClass: 'bg-lime-700', bodyClass: 'bg-lime-600', eyeClass: 'bg-red-300' } },
+            { id: "troll", name: "Cave Troll", baseHp: 120, baseAttack: 18, xpValue: 50, visual: { headClass: 'bg-stone-600', bodyClass: 'bg-stone-500', eyeClass: 'bg-orange-300' } },
+            { id: "bossMiniDragon", name: "Young Dragon", baseHp: 250, baseAttack: 25, xpValue: 150, visual: { headClass: 'bg-red-800', bodyClass: 'bg-red-700', eyeClass: 'bg-orange-400', scale: 1.2 } }
+        ];
+
+        const game = {
+            state: 'CLASS_SELECTION', // CLASS_SELECTION, BATTLE, GAME_OVER
+            hero: null,
+            monsters: [],
+            currentWave: 1,
+            selectedAbility: null,
+            isTargeting: false,
+            actionLog: [],
+            playerTurn: true,
+
+            elements: {
+                heroSelectionScreen: document.getElementById('hero-selection-screen'),
+                gameScreen: document.getElementById('game-screen'),
+                gameOverScreen: document.getElementById('game-over-screen'),
+                heroPanel: document.getElementById('hero-panel'),
+                heroAbilities: document.getElementById('hero-abilities'),
+                monstersArea: document.getElementById('monsters-area'),
+                actionLog: document.getElementById('action-log'),
+                waveNumber: document.getElementById('wave-number'),
+                targetingIndicator: document.getElementById('targeting-indicator'),
+                gameOverTitle: document.getElementById('game-over-title'),
+                gameOverMessage: document.getElementById('game-over-message'),
+            },
+
+            init() {
+                this.render();
+            },
+
+            selectHero(classKey) {
+                const classData = HERO_CLASSES_DATA[classKey];
+                this.hero = {
+                    ...classData,
+                    level: 1,
+                    xp: 0,
+                    xpToNextLevel: 100,
+                    currentHp: classData.baseHp,
+                    maxHp: classData.baseHp,
+                    damageMultiplier: classData.baseDamageMultiplier,
+                    abilities: JSON.parse(JSON.stringify(classData.abilities)) // Deep copy abilities
+                };
+                this.state = 'BATTLE';
+                this.currentWave = 1;
+                this.actionLog = [];
+                this.logEvent(`Hero ${this.hero.name} chosen! The adventure begins!`, 'text-sky-400');
+                this.spawnMonsters();
+                this.render();
+            },
+
+            spawnMonsters() {
+                this.monsters = [];
+                const numMonsters = Math.min(1 + this.currentWave, 4); // Increase monsters per wave, max 4
+                this.logEvent(`Wave ${this.currentWave} begins!`, 'text-yellow-400 font-bold');
+
+                for (let i = 0; i < numMonsters; i++) {
+                    let monsterData;
+                    if (this.currentWave % 5 === 0 && i === 0) { // Boss every 5 waves
+                        monsterData = JSON.parse(JSON.stringify(MONSTER_TYPES_DATA.find(m => m.id === 'bossMiniDragon')));
+                    } else {
+                        const monsterPool = MONSTER_TYPES_DATA.filter(m => m.id !== 'bossMiniDragon');
+                        monsterData = JSON.parse(JSON.stringify(monsterPool[Math.floor(Math.random() * monsterPool.length)]));
+                    }
+                    
+                    const scaleFactor = 1 + (this.currentWave * 0.1);
+                    monsterData.maxHp = Math.floor(monsterData.baseHp * scaleFactor);
+                    monsterData.currentHp = monsterData.maxHp;
+                    monsterData.attack = Math.floor(monsterData.baseAttack * scaleFactor);
+                    monsterData.id = `monster-${Date.now()}-${i}`; // Unique ID for each monster instance
+                    this.monsters.push(monsterData);
+                }
+                this.playerTurn = true; // Player always starts the wave
+            },
+            
+            renderHero() {
+                if (!this.hero) return;
+                const hpPercentage = (this.hero.currentHp / this.hero.maxHp) * 100;
+                const xpPercentage = (this.hero.xp / this.hero.xpToNextLevel) * 100;
+                this.elements.heroPanel.innerHTML = `
+                    <div class="hero-avatar w-24 h-32 mx-auto mb-2 ${this.hero.visual.headClass.includes('warrior') ? 'border-sky-500' : this.hero.visual.headClass.includes('hunter') ? 'border-emerald-500' : 'border-purple-500'} border-2 rounded-md p-1">
+                        <div class="head ${this.hero.visual.headClass}"><div class="eye left-eye"><div class="pupil"></div></div><div class="eye right-eye"><div class="pupil"></div></div></div>
+                        <div class="body ${this.hero.visual.bodyClass}"></div>
+                    </div>
+                    <h2 class="text-2xl font-semibold ${this.hero.visual.headClass.includes('warrior') ? 'text-sky-500' : this.hero.visual.headClass.includes('hunter') ? 'text-emerald-500' : 'text-purple-500'}">${this.hero.name} - Lvl ${this.hero.level}</h2>
+                    <div class="my-2">
+                        <div class="text-xs text-left text-slate-400">HP: ${this.hero.currentHp} / ${this.hero.maxHp}</div>
+                        <div class="bg-slate-700 rounded-full h-4 overflow-hidden border border-slate-600">
+                            <div class="bg-green-500 h-full transition-all duration-300 ease-out" style="width: ${hpPercentage}%"></div>
+                        </div>
+                    </div>
+                    <div class="my-2">
+                        <div class="text-xs text-left text-slate-400">XP: ${this.hero.xp} / ${this.hero.xpToNextLevel}</div>
+                        <div class="bg-slate-700 rounded-full h-4 overflow-hidden border border-slate-600">
+                            <div class="bg-yellow-500 h-full transition-all duration-300 ease-out" style="width: ${xpPercentage}%"></div>
+                        </div>
+                    </div>
+                `;
+            },
+
+            renderAbilities() {
+                if (!this.hero) return;
+                this.elements.heroAbilities.innerHTML = this.hero.abilities.map((ability, index) => `
+                    <button 
+                        onclick="game.handleAbilityClick(${index})" 
+                        class="ability-button w-full bg-indigo-600 hover:bg-indigo-700 text-white font-medium py-3 px-4 rounded-lg shadow-md transition-colors flex items-center justify-between ${ability.currentCooldown > 0 ? 'on-cooldown opacity-50' : ''}"
+                        ${ability.currentCooldown > 0 || !this.playerTurn ? 'disabled' : ''}
+                    >
+                        <span class="flex items-center"><span class="text-xl mr-2">${ability.icon}</span> ${ability.name}</span>
+                        ${ability.currentCooldown > 0 ? `<span class="cooldown-text text-xs bg-slate-900 px-2 py-1 rounded-full">${ability.currentCooldown} turn(s)</span>` : `<span class="text-xs text-slate-300">${ability.targetType === 'all' ? 'All Enemies' : 'Single Target'}</span>`}
+                    </button>
+                    <p class="text-xs text-slate-400 px-1">${ability.description}</p>
+                `).join('');
+            },
+
+            renderMonsters() {
+                this.elements.monstersArea.innerHTML = this.monsters.map((monster, index) => {
+                    const hpPercentage = (monster.currentHp / monster.maxHp) * 100;
+                    const isTargetable = this.isTargeting && this.selectedAbility && this.selectedAbility.targetType === 'single';
+                    const scale = monster.visual.scale || 1;
+                    return `
+                        <div 
+                            id="${monster.id}"
+                            class="monster-card text-center p-3 bg-slate-700/50 rounded-lg border border-slate-600 relative transition-all duration-150 ${isTargetable ? 'monster-targetable targeting-cursor' : ''}" 
+                            style="width: calc(120px * ${scale});"
+                            onclick="game.handleMonsterClick(${index})"
+                        >
+                            <div class="monster-avatar monster-visual w-16 h-20 mx-auto mb-1" style="transform: scale(${scale});">
+                                <div class="head ${monster.visual.headClass}"><div class="eye left-eye" style="background-color: ${monster.visual.eyeClass};"><div class="pupil"></div></div><div class="eye right-eye" style="background-color: ${monster.visual.eyeClass};"><div class="pupil"></div></div></div>
+                                <div class="body ${monster.visual.bodyClass}"></div>
+                            </div>
+                            <p class="text-sm font-semibold truncate" style="color: ${monster.visual.bodyClass.includes('red') ? '#f87171' : monster.visual.bodyClass.includes('lime') ? '#a3e635' : '#f59e0b'};">${monster.name}</p>
+                            <p class="text-xs text-slate-300">HP: ${monster.currentHp}/${monster.maxHp}</p>
+                            <div class="bg-slate-600 rounded-full h-2.5 mt-1 overflow-hidden border border-slate-500">
+                                <div class="bg-red-500 h-full" style="width: ${hpPercentage}%"></div>
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+                this.elements.waveNumber.textContent = this.currentWave;
+                this.elements.targetingIndicator.textContent = this.isTargeting ? `Targeting with ${this.selectedAbility.name}. Select a monster.` : "";
+
+                if (this.isTargeting) {
+                    document.body.classList.add('targeting-cursor');
+                } else {
+                    document.body.classList.remove('targeting-cursor');
+                }
+            },
+
+            logEvent(message, classes = 'text-slate-300') {
+                this.actionLog.unshift({ message, classes });
+                if (this.actionLog.length > 50) this.actionLog.pop(); // Keep log size manageable
+                
+                this.elements.actionLog.innerHTML = this.actionLog.map(log => 
+                    `<p class="${log.classes}">${new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}: ${log.message}</p>`
+                ).join('');
+            },
+            
+            showDamageNumber(amount, targetElement, isCrit = false) {
+                const damageEl = document.createElement('div');
+                damageEl.textContent = amount;
+                damageEl.className = 'damage-number';
+                damageEl.style.color = isCrit ? '#facc15' : '#ef4444'; // yellow-400 for crit, red-500 for normal
+                if (isCrit) damageEl.textContent += "!";
+                
+                const rect = targetElement.getBoundingClientRect();
+                const gameRect = this.elements.monstersArea.getBoundingClientRect(); // Use monstersArea as reference for positioning
+                
+                // Position above the center of the target element
+                damageEl.style.left = `${rect.left - gameRect.left + rect.width / 2 - 15}px`; // Adjust for centering
+                damageEl.style.top = `${rect.top - gameRect.top - 30}px`; // Start above
+                
+                this.elements.monstersArea.appendChild(damageEl);
+                setTimeout(() => damageEl.remove(), 1000);
+            },
+
+            handleAbilityClick(abilityIndex) {
+                if (!this.playerTurn) return;
+                const ability = this.hero.abilities[abilityIndex];
+                if (ability.currentCooldown > 0) {
+                    this.logEvent(`Ability ${ability.name} is on cooldown for ${ability.currentCooldown} more turn(s).`, 'text-orange-400');
+                    return;
+                }
+
+                if (ability.targetType === 'single') {
+                    if (this.isTargeting && this.selectedAbility === ability) {
+                        // Cancel targeting if clicking the same ability again
+                        this.isTargeting = false;
+                        this.selectedAbility = null;
+                        this.logEvent('Targeting cancelled.', 'text-slate-400');
+                    } else {
+                        this.isTargeting = true;
+                        this.selectedAbility = ability;
+                        this.logEvent(`Selected ${ability.name}. Choose a target.`, 'text-sky-400');
+                    }
+                } else { // 'all' target type
+                    this.isTargeting = false;
+                    this.selectedAbility = null;
+                    this.playerAttack(ability);
+                }
+                this.render();
+            },
+
+            handleMonsterClick(monsterIndex) {
+                if (!this.playerTurn || !this.isTargeting || !this.selectedAbility || this.selectedAbility.targetType !== 'single') {
+                    // If not targeting or ability is not single-target, or it's not player's turn, do nothing or cancel targeting
+                    if (this.isTargeting) {
+                        this.isTargeting = false;
+                        this.selectedAbility = null;
+                        this.logEvent('Targeting cancelled.', 'text-slate-400');
+                        this.render();
+                    }
+                    return;
+                }
+                
+                const monster = this.monsters[monsterIndex];
+                if (monster && monster.currentHp > 0) {
+                    this.playerAttack(this.selectedAbility, monsterIndex);
+                    this.isTargeting = false;
+                    this.selectedAbility = null;
+                }
+            },
+
+            playerAttack(ability, targetMonsterIndex = null) {
+                if (!this.playerTurn) return;
+
+                let totalDamage = Math.floor(ability.baseDamage * this.hero.damageMultiplier);
+                
+                // Apply ability specific logic
+                if (ability.targetType === 'single') {
+                    if (targetMonsterIndex === null || !this.monsters[targetMonsterIndex]) return; // Should not happen if logic is correct
+                    const monster = this.monsters[targetMonsterIndex];
+                    
+                    if (ability.hits && ability.hits > 1) { // Multi-hit ability
+                        let accumulatedDamage = 0;
+                        for (let i = 0; i < ability.hits; i++) {
+                            let hitDamage = Math.floor(ability.baseDamage * this.hero.damageMultiplier);
+                            // Small variance per hit
+                            hitDamage = Math.floor(hitDamage * (Math.random() * 0.2 + 0.9)); // 90%-110%
+                            this.applyDamageToMonster(monster, hitDamage);
+                            accumulatedDamage += hitDamage;
+                            if (monster.currentHp <= 0) break; // Stop if monster dies mid-hits
+                        }
+                        this.logEvent(`${this.hero.name} uses ${ability.name} on ${monster.name} for ${accumulatedDamage} total damage (${ability.hits} hits).`, 'text-green-400');
+                    } else {
+                        this.applyDamageToMonster(monster, totalDamage);
+                        this.logEvent(`${this.hero.name} uses ${ability.name} on ${monster.name} for ${totalDamage} damage.`, 'text-green-400');
+                    }
+
+                } else if (ability.targetType === 'all') {
+                    this.logEvent(`${this.hero.name} uses ${ability.name}, hitting all enemies for ${totalDamage} damage each.`, 'text-green-400');
+                    this.monsters.forEach(monster => {
+                        if (monster.currentHp > 0) {
+                            this.applyDamageToMonster(monster, totalDamage);
+                        }
+                    });
+                }
+
+                ability.currentCooldown = ability.cooldown;
+                this.playerTurn = false;
+                this.cleanupDeadMonsters();
+                this.render();
+
+                if (this.monsters.length === 0) {
+                    this.endPlayerTurnPhase(true); // Wave cleared
+                } else {
+                    this.endPlayerTurnPhase(false); // Monsters remain
+                }
+            },
+            
+            endPlayerTurnPhase(waveCleared) {
+                if (waveCleared) {
+                    this.logEvent(`Wave ${this.currentWave} cleared!`, 'text-yellow-500 font-bold');
+                    this.currentWave++;
+                    this.spawnMonsters();
+                    // Cooldowns tick down after player turn, before next wave starts or monsters act
+                    this.tickCooldowns(); 
+                    this.playerTurn = true; // Player starts new wave
+                    this.render();
+                } else {
+                    // Monsters' turn only if player didn't clear wave and game is not over
+                    if (this.state === 'BATTLE') {
+                         // Cooldowns tick down after player turn
+                        this.tickCooldowns();
+                        this.render(); // Update cooldown display before monster turn
+                        setTimeout(() => this.monstersTurn(), 1000); // Delay for monster turn
+                    }
+                }
+            },
+
+            applyDamageToMonster(monster, damage) {
+                monster.currentHp = Math.max(0, monster.currentHp - damage);
+                const monsterElement = document.getElementById(monster.id);
+                if (monsterElement) this.showDamageNumber(damage, monsterElement.querySelector('.monster-avatar'));
+                
+                if (monster.currentHp <= 0) {
+                    this.logEvent(`${monster.name} has been defeated!`, 'text-red-400');
+                    this.gainXP(monster.xpValue);
+                }
+            },
+
+            cleanupDeadMonsters() {
+                this.monsters = this.monsters.filter(m => m.currentHp > 0);
+            },
+
+            gainXP(amount) {
+                this.hero.xp += amount;
+                this.logEvent(`${this.hero.name} gained ${amount} XP.`, 'text-yellow-400');
+                while (this.hero.xp >= this.hero.xpToNextLevel) {
+                    this.levelUp();
+                }
+            },
+
+            levelUp() {
+                this.hero.level++;
+                this.hero.xp -= this.hero.xpToNextLevel;
+                this.hero.xpToNextLevel = Math.floor(100 * Math.pow(this.hero.level, 1.5));
+                
+                const classData = HERO_CLASSES_DATA[this.hero.name.toUpperCase()];
+                this.hero.maxHp += classData.hpPerLevel;
+                this.hero.currentHp = this.hero.maxHp; // Full heal on level up
+                this.hero.damageMultiplier += classData.damageMultiplierPerLevel;
+
+                this.logEvent(`${this.hero.name} reached Level ${this.hero.level}! Stats increased! HP fully restored!`, 'text-yellow-300 font-bold text-lg');
+            },
+
+            monstersTurn() {
+                if (this.state !== 'BATTLE' || this.monsters.length === 0) return;
+                this.logEvent("Monsters are attacking!", 'text-red-500 font-bold');
+                
+                this.monsters.forEach(monster => {
+                    if (monster.currentHp > 0 && this.hero.currentHp > 0) {
+                        // Simple attack logic: monster attacks hero
+                        const damage = monster.attack;
+                        this.hero.currentHp = Math.max(0, this.hero.currentHp - damage);
+                        this.logEvent(`${monster.name} attacks ${this.hero.name} for ${damage} damage.`, 'text-red-400');
+                        
+                        const heroElement = this.elements.heroPanel.querySelector('.hero-avatar');
+                        if (heroElement) this.showDamageNumber(damage, heroElement);
+
+                        if (this.hero.currentHp <= 0) {
+                            this.gameOver(false); // Player defeated
+                            return; // Stop further monster attacks if hero dies
+                        }
+                    }
+                });
+                this.playerTurn = true; // Player's turn again
+                this.render(); // Update UI after monster attacks & for player turn
+            },
+
+            tickCooldowns() {
+                this.hero.abilities.forEach(ability => {
+                    if (ability.currentCooldown > 0) {
+                        ability.currentCooldown--;
+                    }
+                });
+            },
+
+            gameOver(isWin) { // isWin currently not used, could be for a final boss
+                this.state = 'GAME_OVER';
+                if (this.hero.currentHp <= 0) {
+                    this.elements.gameOverTitle.textContent = "GAME OVER";
+                    this.elements.gameOverTitle.className = "text-6xl font-bold mb-8 text-red-500";
+                    this.elements.gameOverMessage.textContent = `The valiant ${this.hero.name} has fallen on Wave ${this.currentWave}. The monsters prevail...`;
+                    this.logEvent("Hero has been defeated. Game Over.", 'text-red-600 font-bold text-xl');
+                } else {
+                    // Future win condition
+                    this.elements.gameOverTitle.textContent = "VICTORY!";
+                    this.elements.gameOverTitle.className = "text-6xl font-bold mb-8 text-green-500";
+                    this.elements.gameOverMessage.textContent = `Congratulations! ${this.hero.name} cleared all challenges!`;
+                }
+                this.render();
+            },
+            
+            restartGame() {
+                this.state = 'CLASS_SELECTION';
+                this.hero = null;
+                this.monsters = [];
+                this.currentWave = 1;
+                this.selectedAbility = null;
+                this.isTargeting = false;
+                this.actionLog = [];
+                this.playerTurn = true;
+                this.elements.targetingIndicator.textContent = "";
+                document.body.classList.remove('targeting-cursor');
+                this.init();
+            },
+
+            render() {
+                // Hide all screens initially
+                this.elements.heroSelectionScreen.classList.add('hidden');
+                this.elements.gameScreen.classList.add('hidden');
+                this.elements.gameOverScreen.classList.add('hidden');
+
+                // Show current screen
+                if (this.state === 'CLASS_SELECTION') {
+                    this.elements.heroSelectionScreen.classList.remove('hidden');
+                } else if (this.state === 'BATTLE') {
+                    this.elements.gameScreen.classList.remove('hidden');
+                    this.renderHero();
+                    this.renderAbilities();
+                    this.renderMonsters();
+                } else if (this.state === 'GAME_OVER') {
+                    this.elements.gameOverScreen.classList.remove('hidden');
+                }
+            }
+        };
+
+        // Initialize the game when the script loads
+        game.init();
+    </script>
+</body>
+</html>

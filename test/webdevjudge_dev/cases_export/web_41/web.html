@@ -1,0 +1,784 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ExploreSiemReap</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/heroicons/2.0.18/24/outline/academic-cap.svg" rel="preload" as="image">
+    <style>
+        /* Custom scrollbar for webkit browsers */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #f1f1f1;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #fb923c; /* orange-400 */
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #f97316; /* orange-500 */
+        }
+        /* Basic styles for active states or specific elements */
+        .nav-item-active {
+            color: #f97316; /* orange-500 */
+        }
+        .tab-active {
+            border-bottom-color: #f97316; /* orange-500 */
+            color: #f97316;
+        }
+        /* For simple carousel */
+        .carousel-item {
+            display: none;
+        }
+        .carousel-item.active {
+            display: block;
+        }
+    </style>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: {
+                            DEFAULT: '#f97316', // orange-500
+                            light: '#fb923c',   // orange-400
+                            dark: '#ea580c',    // orange-600
+                        },
+                        secondary: {
+                            DEFAULT: '#facc15', // yellow-400
+                            light: '#fde047',   // yellow-300
+                            dark: '#eab308',    // yellow-500
+                        },
+                        accent: {
+                            DEFAULT: '#14b8a6', // teal-500
+                            light: '#2dd4bf',   // teal-400
+                            dark: '#0d9488',    // teal-600
+                        },
+                        neutral: {
+                            light: '#f8fafc', // slate-50
+                            DEFAULT: '#64748b', // slate-500
+                            dark: '#1e293b',  // slate-800
+                        }
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                        display: ['"Playfair Display"', 'serif'], // Example for traditional touch, if needed
+                    },
+                }
+            }
+        }
+    </script>
+</head>
+<body class="bg-neutral-light font-sans antialiased">
+
+    <div id="app" class="max-w-screen-lg mx-auto min-h-screen flex flex-col">
+
+        <!-- Header -->
+        <header class="bg-white shadow-md sticky top-0 z-50">
+            <div class="container mx-auto px-4 py-3 flex items-center justify-between">
+                <div class="flex items-center space-x-2">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-8 h-8 text-primary">
+                        <path d="M12.75 12.75a.75.75 0 1 1-1.5 0 .75.75 0 0 1 1.5 0ZM7.5 15.75a.75.75 0 1 0 0-1.5.75.75 0 0 0 0 1.5ZM5.25 17.25a.75.75 0 1 1-1.5 0 .75.75 0 0 1 1.5 0ZM9.75 15.75a.75.75 0 1 0 0-1.5.75.75 0 0 0 0 1.5ZM10.5 17.25a.75.75 0 1 1-1.5 0 .75.75 0 0 1 1.5 0ZM12 15.75a.75.75 0 1 0 0-1.5.75.75 0 0 0 0 1.5ZM12.75 17.25a.75.75 0 1 1-1.5 0 .75.75 0 0 1 1.5 0ZM13.5 15.75a.75.75 0 1 0 0-1.5.75.75 0 0 0 0 1.5ZM15 17.25a.75.75 0 1 1-1.5 0 .75.75 0 0 1 1.5 0ZM16.5 15.75a.75.75 0 1 0 0-1.5.75.75 0 0 0 0 1.5ZM7.5 12.75a.75.75 0 1 0 0-1.5.75.75 0 0 0 0 1.5ZM9.75 12.75a.75.75 0 1 0 0-1.5.75.75 0 0 0 0 1.5ZM13.5 12.75a.75.75 0 1 0 0-1.5.75.75 0 0 0 0 1.5ZM16.5 12.75a.75.75 0 1 0 0-1.5.75.75 0 0 0 0 1.5ZM12 3.75a.75.75 0 1 0-1.5 0V2.25a.75.75 0 0 1 1.5 0v1.5ZM6.44 7.054a.75.75 0 1 0-1.06-1.06l-1.061 1.06a.75.75 0 0 0 1.06 1.06l1.06-1.061ZM3.75 12a.75.75 0 1 0 0 1.5H2.25a.75.75 0 0 1 0-1.5h1.5ZM7.054 18.622a.75.75 0 1 0-1.06 1.06L7.055 20.74a.75.75 0 0 0 1.06-1.06l-1.06-1.06ZM12 20.25a.75.75 0 1 0 1.5 0V21.75a.75.75 0 0 1-1.5 0v-1.5ZM16.95 18.622a.75.75 0 1 0 1.06 1.06l1.06-1.06a.75.75 0 1 0-1.06-1.06l-1.06 1.06ZM20.25 12a.75.75 0 1 0 0-1.5H21.75a.75.75 0 0 1 0 1.5h-1.5ZM18.622 7.054a.75.75 0 1 0 1.06-1.06l-1.06-1.061a.75.75 0 1 0-1.06 1.06l1.06 1.061Z" />
+                    </svg>
+                    <span class="text-xl font-bold text-neutral-dark">ExploreSiemReap</span>
+                </div>
+                <div class="flex-grow max-w-md mx-4 hidden sm:block">
+                    <div class="relative">
+                        <input type="search" placeholder="Search attractions, activities..." class="w-full py-2 px-4 pr-10 rounded-full border border-gray-300 focus:outline-none focus:ring-2 focus:ring-primary-light focus:border-transparent text-sm">
+                        <div class="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5 text-gray-400">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z" />
+                            </svg>
+                        </div>
+                    </div>
+                </div>
+                <div class="flex items-center">
+                    <button id="profileBtn" class="p-2 rounded-full hover:bg-gray-100 focus:outline-none">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-7 h-7 text-neutral-dark">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M17.982 18.725A7.488 7.488 0 0 0 12 15.75a7.488 7.488 0 0 0-5.982 2.975m11.963 0a9 9 0 1 0-11.963 0m11.963 0A8.966 8.966 0 0 1 12 21a8.966 8.966 0 0 1-5.982-2.275M15 9.75a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
+                        </svg>
+                    </button>
+                </div>
+            </div>
+             <!-- Mobile Search Bar - shown on small screens when header search is hidden -->
+            <div class="sm:hidden px-4 pb-3">
+                <div class="relative">
+                    <input type="search" placeholder="Search..." class="w-full py-2 px-4 pr-10 rounded-full border border-gray-300 focus:outline-none focus:ring-2 focus:ring-primary-light focus:border-transparent text-sm">
+                    <div class="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5 text-gray-400">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z" />
+                        </svg>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <!-- Main Content Area -->
+        <main class="flex-grow pb-20"> <!-- pb-20 for bottom nav space -->
+            
+            <!-- Home Screen -->
+            <section id="homeScreen" class="screen p-4 space-y-6">
+                <!-- Hero Section -->
+                <div class="relative rounded-xl overflow-hidden shadow-lg h-64 sm:h-80 md:h-96">
+                    <div id="carousel" class="w-full h-full">
+                        <!-- Carousel Items (Generated by JS) -->
+                    </div>
+                    <div class="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent"></div>
+                    <div class="absolute bottom-0 left-0 p-6 w-full">
+                        <h1 class="text-3xl sm:text-4xl font-bold text-white mb-4 leading-tight font-display">Discover Siem Reap's Wonders</h1>
+                        <button id="getStartedBtn" class="bg-primary text-white py-2 px-6 rounded-lg font-semibold hover:bg-primary-dark transition duration-300 shadow-md">
+                            Get Started
+                        </button>
+                    </div>
+                    <div id="carousel-indicators" class="absolute bottom-4 right-4 flex space-x-2">
+                        <!-- Indicators will be added by JS -->
+                    </div>
+                </div>
+
+                <!-- Featured Categories -->
+                <section>
+                    <h2 class="text-xl font-semibold text-neutral-dark mb-3">Categories</h2>
+                    <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3">
+                        <!-- Category items -->
+                        <button data-screen="activities" class="nav-link-category flex flex-col items-center p-3 bg-white rounded-lg shadow hover:shadow-md transition-shadow">
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-10 h-10 text-accent mb-1">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M6.75 7.5l3 2.25-3 2.25m4.5 0h3m-9 8.25h13.5A2.25 2.25 0 0021 18V6a2.25 2.25 0 00-2.25-2.25H5.25A2.25 2.25 0 003 6v12a2.25 2.25 0 002.25 2.25z" />
+                            </svg>
+                            <span class="text-sm font-medium text-neutral-dark">Activities</span>
+                        </button>
+                        <button data-screen="attractions" class="nav-link-category flex flex-col items-center p-3 bg-white rounded-lg shadow hover:shadow-md transition-shadow">
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-10 h-10 text-accent mb-1">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M15 10.5a3 3 0 11-6 0 3 3 0 016 0z" />
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1115 0z" />
+                            </svg>
+                            <span class="text-sm font-medium text-neutral-dark">Attractions</span>
+                        </button>
+                        <button data-screen="accommodation" class="nav-link-category flex flex-col items-center p-3 bg-white rounded-lg shadow hover:shadow-md transition-shadow">
+                           <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-10 h-10 text-accent mb-1">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 21h19.5m-18-18v18m10.5-18v18m6-13.5V21M6.75 6.75h.75m-.75 3h.75m-.75 3h.75m3-6h.75m-.75 3h.75m-.75 3h.75M6.75 21v-3.375c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21M3 3h12m-.75 4.5H21m-3.75 3.75h.008v.008h-.008v-.008zm0 3h.008v.008h-.008v-.008zm0 3h.008v.008h-.008v-.008z" />
+                            </svg>
+                            <span class="text-sm font-medium text-neutral-dark">Accommodation</span>
+                        </button>
+                         <button data-screen="restaurants" class="nav-link-category flex flex-col items-center p-3 bg-white rounded-lg shadow hover:shadow-md transition-shadow">
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-10 h-10 text-accent mb-1">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M10.125 2.25h-4.5c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125v-9M10.125 2.25h.375a9 9 0 019 9v.375M10.125 2.25A3.375 3.375 0 0113.5 5.625v1.5c0 .621.504 1.125 1.125 1.125h1.5a3.375 3.375 0 013.375 3.375M9 15l2.25 2.25L15 12" />
+                            </svg>
+                            <span class="text-sm font-medium text-neutral-dark">Restaurants</span>
+                        </button>
+                        <button data-screen="localExperiences" class="nav-link-category flex flex-col items-center p-3 bg-white rounded-lg shadow hover:shadow-md transition-shadow">
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-10 h-10 text-accent mb-1">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M18 18.72a9.094 9.094 0 003.741-.479 3 3 0 00-4.682-2.72m.247-3.03c-.526-.976-1.646-1.693-2.942-1.693-1.296 0-2.416.717-2.942 1.693m0 3.03c.16.293.335.55.526.782m1.916-2.323a1.125 1.125 0 011.298 1.148M13.5 8.25c0-1.01.376-1.934 1-2.625M13.5 8.25V6M3.75 17.25A2.25 2.25 0 016 15h12a2.25 2.25 0 012.25 2.25m-15-4.5h15m-15-4.5h15m-15-4.5h15M3.75 6.75A2.25 2.25 0 016 4.5h12a2.25 2.25 0 012.25 2.25" />
+                            </svg>
+                            <span class="text-sm font-medium text-neutral-dark">Local Experiences</span>
+                        </button>
+                    </div>
+                </section>
+
+                <!-- Featured Activities -->
+                <section>
+                    <h2 class="text-xl font-semibold text-neutral-dark mb-3">Featured Activities</h2>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4" id="featuredActivitiesContainer">
+                        <!-- Activity cards will be inserted here by JS -->
+                    </div>
+                </section>
+
+                <!-- News and Events -->
+                <section>
+                    <h2 class="text-xl font-semibold text-neutral-dark mb-3">News & Events</h2>
+                    <div class="space-y-3" id="newsEventsContainer">
+                         <!-- News items will be inserted here by JS -->
+                    </div>
+                </section>
+            </section>
+
+            <!-- Activities Screen -->
+            <section id="activitiesScreen" class="screen p-4 space-y-6 hidden">
+                <h1 class="text-2xl font-bold text-neutral-dark">Activities in Siem Reap</h1>
+                <!-- Filter Options -->
+                <div class="bg-white p-4 rounded-lg shadow space-y-3">
+                    <h3 class="text-lg font-semibold">Filter Activities</h3>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
+                        <select class="p-2 border rounded-md text-sm focus:ring-primary-light focus:border-primary-light">
+                            <option>Type (Adventure, Culture...)</option>
+                        </select>
+                        <select class="p-2 border rounded-md text-sm focus:ring-primary-light focus:border-primary-light">
+                            <option>Price Range</option>
+                        </select>
+                        <select class="p-2 border rounded-md text-sm focus:ring-primary-light focus:border-primary-light">
+                            <option>Duration</option>
+                        </select>
+                        <select class="p-2 border rounded-md text-sm focus:ring-primary-light focus:border-primary-light">
+                            <option>Rating</option>
+                        </select>
+                    </div>
+                </div>
+                <!-- Activity Listings -->
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4" id="allActivitiesContainer">
+                    <!-- All activity cards will be inserted here by JS -->
+                </div>
+            </section>
+            
+            <!-- Attractions Screen -->
+            <section id="attractionsScreen" class="screen p-4 space-y-6 hidden">
+                <h1 class="text-2xl font-bold text-neutral-dark">Attractions in Siem Reap</h1>
+                <!-- Map View Placeholder -->
+                <div class="bg-white p-4 rounded-lg shadow">
+                    <h3 class="text-lg font-semibold mb-2">Map View</h3>
+                    <div class="bg-gray-200 border-2 border-dashed rounded-xl w-full h-64 flex items-center justify-center text-gray-500">
+                        Interactive Map Placeholder
+                    </div>
+                    <div class="mt-2 flex space-x-2">
+                        <button class="px-3 py-1 text-sm bg-primary-light text-white rounded-full">Temples</button>
+                        <button class="px-3 py-1 text-sm bg-gray-200 rounded-full">Museums</button>
+                        <button class="px-3 py-1 text-sm bg-gray-200 rounded-full">Nature</button>
+                    </div>
+                </div>
+                <!-- Attraction Listings -->
+                 <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4" id="allAttractionsContainer">
+                    <!-- All attraction cards will be inserted here by JS -->
+                </div>
+            </section>
+
+            <!-- Accommodation Screen -->
+            <section id="accommodationScreen" class="screen p-4 space-y-6 hidden">
+                <h1 class="text-2xl font-bold text-neutral-dark">Find Accommodation</h1>
+                 <!-- Search/Filter Bar -->
+                <div class="bg-white p-4 rounded-lg shadow space-y-3">
+                    <input type="text" placeholder="Search hotels, guesthouses..." class="w-full p-2 border rounded-md focus:ring-primary-light focus:border-primary-light">
+                    <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
+                        <select class="p-2 border rounded-md text-sm focus:ring-primary-light focus:border-primary-light">
+                            <option>Price Range</option>
+                        </select>
+                        <select class="p-2 border rounded-md text-sm focus:ring-primary-light focus:border-primary-light">
+                            <option>Star Rating</option>
+                        </select>
+                        <select class="p-2 border rounded-md text-sm focus:ring-primary-light focus:border-primary-light">
+                            <option>Amenities (Pool, Wi-Fi...)</option>
+                        </select>
+                        <button class="p-2 bg-primary text-white rounded-md hover:bg-primary-dark">Search</button>
+                    </div>
+                </div>
+                <!-- Accommodation Listings -->
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4" id="allAccommodationsContainer">
+                    <!-- Accommodation cards will be inserted here by JS -->
+                </div>
+            </section>
+
+            <!-- Restaurants Screen -->
+            <section id="restaurantsScreen" class="screen p-4 space-y-6 hidden">
+                 <h1 class="text-2xl font-bold text-neutral-dark">Discover Restaurants</h1>
+                 <!-- Search/Filter Bar -->
+                <div class="bg-white p-4 rounded-lg shadow space-y-3">
+                    <input type="text" placeholder="Search restaurants by name, cuisine..." class="w-full p-2 border rounded-md focus:ring-primary-light focus:border-primary-light">
+                    <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
+                        <select class="p-2 border rounded-md text-sm focus:ring-primary-light focus:border-primary-light">
+                            <option>Cuisine Type</option>
+                        </select>
+                        <select class="p-2 border rounded-md text-sm focus:ring-primary-light focus:border-primary-light">
+                            <option>Price Range</option>
+                        </select>
+                        <select class="p-2 border rounded-md text-sm focus:ring-primary-light focus:border-primary-light">
+                            <option>Rating</option>
+                        </select>
+                         <select class="p-2 border rounded-md text-sm focus:ring-primary-light focus:border-primary-light">
+                            <option>Dietary (Vegetarian, Vegan)</option>
+                        </select>
+                    </div>
+                </div>
+                <!-- Restaurant Listings -->
+                 <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4" id="allRestaurantsContainer">
+                    <!-- Restaurant cards will be inserted here by JS -->
+                </div>
+            </section>
+            
+            <!-- Local Experiences Screen -->
+            <section id="localExperiencesScreen" class="screen p-4 space-y-6 hidden">
+                <h1 class="text-2xl font-bold text-neutral-dark">Unique Local Experiences</h1>
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4" id="allLocalExperiencesContainer">
+                     <!-- Local experience cards will be inserted by JS -->
+                </div>
+            </section>
+
+            <!-- My Itinerary Screen -->
+            <section id="myItineraryScreen" class="screen p-4 space-y-6 hidden">
+                <h1 class="text-2xl font-bold text-neutral-dark">My Itinerary</h1>
+                <div class="bg-white p-4 rounded-lg shadow">
+                    <p class="text-neutral-DEFAULT">Your planned activities and attractions will appear here. Add items from attraction or activity details.</p>
+                    <div class="mt-4 space-y-3">
+                        <div class="flex items-center justify-between p-3 border rounded-md">
+                            <div>
+                                <h4 class="font-semibold">Angkor Wat Sunrise Tour</h4>
+                                <p class="text-sm text-gray-500">Tomorrow, 5:00 AM</p>
+                            </div>
+                            <button class="text-red-500 hover:text-red-700">
+                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5">
+                                  <path stroke-linecap="round" stroke-linejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12.56 0c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" />
+                                </svg>
+                            </button>
+                        </div>
+                        <!-- More itinerary items -->
+                    </div>
+                    <div class="mt-4 bg-gray-200 border-2 border-dashed rounded-xl w-full h-48 flex items-center justify-center text-gray-500">
+                        Itinerary Map Placeholder
+                    </div>
+                </div>
+            </section>
+
+             <!-- Profile Screen -->
+            <section id="profileScreen" class="screen p-4 space-y-6 hidden">
+                <h1 class="text-2xl font-bold text-neutral-dark">My Profile</h1>
+                <div class="bg-white p-6 rounded-lg shadow">
+                    <div class="flex items-center space-x-4 mb-6">
+                         <div class="w-20 h-20 rounded-full bg-gray-200 border-2 border-dashed flex items-center justify-center text-gray-400 text-3xl">
+                             U
+                         </div>
+                         <div>
+                             <h2 class="text-xl font-semibold">User Name</h2>
+                             <p class="text-neutral-DEFAULT">user@example.com</p>
+                             <p class="text-sm text-primary">Points: 1250</p>
+                         </div>
+                    </div>
+                    
+                    <div class="space-y-3">
+                        <button class="w-full text-left p-3 bg-gray-50 rounded-md hover:bg-gray-100">Booking History</button>
+                        <button class="w-full text-left p-3 bg-gray-50 rounded-md hover:bg-gray-100">Wishlist</button>
+                        <button class="w-full text-left p-3 bg-gray-50 rounded-md hover:bg-gray-100">Edit Profile</button>
+                        <button class="w-full text-left p-3 bg-gray-50 rounded-md hover:bg-gray-100">Settings</button>
+                        <button class="w-full text-left p-3 bg-red-50 text-red-600 rounded-md hover:bg-red-100">Logout</button>
+                    </div>
+                </div>
+
+                <div class="bg-white p-4 rounded-lg shadow mt-6">
+                    <h3 class="text-lg font-semibold mb-2">App Settings</h3>
+                    <div class="space-y-2">
+                        <div class="flex justify-between items-center">
+                            <span>Language: English</span>
+                            <button class="text-sm text-primary hover:underline">Change</button>
+                        </div>
+                        <div class="flex justify-between items-center">
+                            <span>Currency: USD</span>
+                            <button class="text-sm text-primary hover:underline">Change</button>
+                        </div>
+                        <div class="flex justify-between items-center">
+                            <span>Notifications</span>
+                            <label class="relative inline-flex items-center cursor-pointer">
+                              <input type="checkbox" value="" class="sr-only peer" checked>
+                              <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary-light rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"></div>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+        </main>
+
+        <!-- Bottom Navigation -->
+        <nav class="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 shadow-t-lg flex justify-around items-center py-2 z-50 max-w-screen-lg mx-auto">
+            <button data-screen="home" class="nav-item flex flex-col items-center text-neutral-DEFAULT hover:text-primary transition-colors p-2 nav-item-active">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="m2.25 12 8.954-8.955c.44-.439 1.152-.439 1.591 0L21.75 12M4.5 9.75v10.125c0 .621.504 1.125 1.125 1.125H9.75v-4.875c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21h4.125c.621 0 1.125-.504 1.125-1.125V9.75M8.25 21h7.5" />
+                </svg>
+                <span class="text-xs">Home</span>
+            </button>
+            <button data-screen="activities" class="nav-item flex flex-col items-center text-neutral-DEFAULT hover:text-primary transition-colors p-2">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6">
+                     <path stroke-linecap="round" stroke-linejoin="round" d="M6.75 7.5l3 2.25-3 2.25m4.5 0h3m-9 8.25h13.5A2.25 2.25 0 0021 18V6a2.25 2.25 0 00-2.25-2.25H5.25A2.25 2.25 0 003 6v12a2.25 2.25 0 002.25 2.25z" />
+                </svg>
+                <span class="text-xs">Activities</span>
+            </button>
+            <button data-screen="attractions" class="nav-item flex flex-col items-center text-neutral-DEFAULT hover:text-primary transition-colors p-2">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M15 10.5a3 3 0 11-6 0 3 3 0 016 0z" />
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1115 0z" />
+                </svg>
+                <span class="text-xs">Attractions</span>
+            </button>
+            <button data-screen="myItinerary" class="nav-item flex flex-col items-center text-neutral-DEFAULT hover:text-primary transition-colors p-2">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M9 12h3.75M9 15h3.75M9 18h3.75m3 .75H18a2.25 2.25 0 002.25-2.25V6.108c0-1.135-.845-2.098-1.976-2.192a48.424 48.424 0 00-1.123-.08m-5.801 0c-.065.21-.1.433-.1.664 0 .414.336.75.75.75h4.5a.75.75 0 00.75-.75 2.25 2.25 0 00-.1-.664m-5.8 0A2.251 2.251 0 0113.5 2.25H15c1.012 0 1.867.668 2.15 1.586m-5.8 0c-.376.023-.75.05-1.124.08C9.095 4.01 8.25 4.973 8.25 6.108V8.25m0 0H4.875c-.621 0-1.125.504-1.125 1.125v11.25c0 .621.504 1.125 1.125 1.125h9.75c.621 0 1.125-.504 1.125-1.125V9.375c0-.621-.504-1.125-1.125-1.125H8.25zM6.75 12h.008v.008H6.75V12zm0 3h.008v.008H6.75V15zm0 3h.008v.008H6.75V18z" />
+                </svg>
+                <span class="text-xs">Itinerary</span>
+            </button>
+            <button data-screen="profile" class="nav-item flex flex-col items-center text-neutral-DEFAULT hover:text-primary transition-colors p-2">
+                 <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M17.982 18.725A7.488 7.488 0 0 0 12 15.75a7.488 7.488 0 0 0-5.982 2.975m11.963 0a9 9 0 1 0-11.963 0m11.963 0A8.966 8.966 0 0 1 12 21a8.966 8.966 0 0 1-5.982-2.275M15 9.75a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
+                </svg>
+                <span class="text-xs">Profile</span>
+            </button>
+        </nav>
+
+        <!-- Detail Modal (Generic for now) -->
+        <div id="detailModal" class="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm flex items-center justify-center p-4 z-[100] hidden">
+            <div class="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+                <div class="flex justify-between items-center p-4 border-b">
+                    <h2 id="modalTitle" class="text-xl font-semibold">Item Details</h2>
+                    <button id="closeModalBtn" class="p-2 hover:bg-gray-100 rounded-full">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                    </button>
+                </div>
+                <div id="modalBody" class="p-6 space-y-4">
+                    <!-- Content will be injected here -->
+                    <p>Loading details...</p>
+                </div>
+                <div class="p-4 border-t flex justify-end space-x-2">
+                    <button id="modalActionBtn" class="bg-primary text-white py-2 px-4 rounded-lg hover:bg-primary-dark">Book Now</button>
+                    <button id="modalSecondaryBtn" class="bg-gray-200 text-neutral-dark py-2 px-4 rounded-lg hover:bg-gray-300">Add to Wishlist</button>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        const AppState = {
+            currentScreen: 'home',
+            carouselImages: [
+                { src: 'angkor_wat.jpg', alt: 'Angkor Wat', title: 'Angkor Wat Sunrise' },
+                { src: 'tonle_sap.jpg', alt: 'Tonlé Sap Lake', title: 'Floating Village Life' },
+                { src: 'pub_street.jpg', alt: 'Pub Street', title: 'Vibrant Pub Street' },
+            ],
+            featuredActivities: [
+                { id: 1, name: 'Angkor Wat Sunrise Tour', description: 'Witness the majestic sunrise over Angkor Wat.', image: 'placeholder', price: '$25', rating: 4.8 },
+                { id: 2, name: 'Bicycle Countryside Tour', description: 'Explore rural Siem Reap by bike.', image: 'placeholder', price: '$30', rating: 4.5 },
+                { id: 3, name: 'Khmer Cooking Class', description: 'Learn to cook authentic Khmer dishes.', image: 'placeholder', price: '$35', rating: 4.7 },
+            ],
+            allActivities: [ // Same as featured for now, can be expanded
+                { id: 1, name: 'Angkor Wat Sunrise Tour', description: 'Witness the majestic sunrise over Angkor Wat.', image: 'placeholder', price: '$25', rating: 4.8, type: 'Culture', duration: 'Half Day', fullDescription: 'Join us for an unforgettable experience as the sun rises over the iconic Angkor Wat temple complex. This tour includes hotel pickup, an English-speaking guide, and bottled water. Excludes temple pass and breakfast.' },
+                { id: 2, name: 'Bicycle Countryside Tour', description: 'Explore rural Siem Reap by bike.', image: 'placeholder', price: '$30', rating: 4.5, type: 'Adventure', duration: 'Full Day', fullDescription: 'Cycle through scenic rice paddies, local villages, and interact with friendly locals. This tour includes a mountain bike, helmet, guide, lunch, and water. A moderate fitness level is recommended.' },
+                { id: 3, name: 'Khmer Cooking Class', description: 'Learn to cook authentic Khmer dishes.', image: 'placeholder', price: '$35', rating: 4.7, type: 'Culture', duration: '3 Hours', fullDescription: 'Discover the secrets of Khmer cuisine with a hands-on cooking class. Visit a local market, prepare a 3-course meal, and enjoy your creations. Recipe book included.' },
+                { id: 4, name: 'Phare, The Cambodian Circus', description: 'Energetic and inspiring circus show.', image: 'placeholder', price: '$18', rating: 4.9, type: 'Entertainment', duration: '1.5 Hours', fullDescription: 'Experience Phare, a unique Cambodian circus that blends theatre, music, dance, and modern circus arts to tell uniquely Cambodian stories; historical, folk and modern. The performers are graduates of Phare Ponleu Selpak\'s vocational training centre in Battambang.' },
+            ],
+            allAttractions: [
+                { id: 1, name: 'Angkor Wat', description: 'The largest religious monument in the world.', image: 'placeholder', rating: 4.9, distance: '5 km', category: 'Temple', history: 'Built in the 12th century by King Suryavarman II.', hours: '5:00 AM - 5:30 PM', fee: '$37 (Angkor Pass)' },
+                { id: 2, name: 'Bayon Temple', description: 'Known for its many smiling faces.', image: 'placeholder', rating: 4.8, distance: '7 km', category: 'Temple', history: 'Built in the late 12th or early 13th century by King Jayavarman VII.', hours: '7:30 AM - 5:30 PM', fee: 'Included in Angkor Pass' },
+                { id: 3, name: 'Ta Prohm (Tomb Raider Temple)', description: 'Famous for trees growing out of ruins.', image: 'placeholder', rating: 4.7, distance: '8 km', category: 'Temple', history: 'Built in the late 12th and early 13th centuries, originally called Rajavihara.', hours: '7:30 AM - 5:30 PM', fee: 'Included in Angkor Pass' },
+                { id: 4, name: 'Cambodia Landmine Museum', description: 'Educational museum about landmines.', image: 'placeholder', rating: 4.6, distance: '25 km', category: 'Museum', history: 'Founded by ex-child soldier Aki Ra, who disarmed landmines.', hours: '7:30 AM - 5:30 PM', fee: '$5' },
+            ],
+            allAccommodations: [
+                { id: 1, name: 'Luxury Palace Hotel', image: 'placeholder', rating: 4.9, price: '$250/night', amenities: ['Pool', 'Wi-Fi', 'Spa', 'Breakfast'] },
+                { id: 2, name: 'Cozy Guesthouse Siem Reap', image: 'placeholder', rating: 4.5, price: '$40/night', amenities: ['Wi-Fi', 'Fan', 'Shared Kitchen'] },
+                { id: 3, name: 'Riverside Homestay', image: 'placeholder', rating: 4.7, price: '$25/night', amenities: ['Wi-Fi', 'Local Breakfast', 'Garden'] },
+            ],
+            allRestaurants: [
+                { id: 1, name: 'Malis Restaurant', image: 'placeholder', rating: 4.8, cuisine: 'Khmer Fine Dining', price: '$$$', dietary: [] },
+                { id: 2, name: 'Haven', image: 'placeholder', rating: 4.7, cuisine: 'International, Khmer', price: '$$', dietary: ['Vegetarian Options'] },
+                { id: 3, name: 'Peace Cafe', image: 'placeholder', rating: 4.5, cuisine: 'Vegetarian, Vegan', price: '$', dietary: ['Vegetarian', 'Vegan'] },
+            ],
+            allLocalExperiences: [
+                { id: 1, name: 'Village Homestay & Tour', description: 'Experience authentic rural life.', image: 'placeholder', price: '$50/day', rating: 4.9 },
+                { id: 2, name: 'Artisans Angkor Silk Farm', description: 'Learn about silk production.', image: 'placeholder', price: 'Free Entry (Tours available)', rating: 4.6 },
+                { id: 3, name: 'Street Food Evening Tour', description: 'Taste the best local street food.', image: 'placeholder', price: '$20', rating: 4.8 },
+            ],
+            newsEvents: [
+                { title: 'Angkor Sankranta Festival Returns!', date: 'April 10, 2024', summary: 'Celebrations for Khmer New Year are back with cultural performances and games.'},
+                { title: 'New Exhibition at National Museum', date: 'April 5, 2024', summary: 'Discover ancient artifacts in the new "Golden Age of Angkor" exhibit.'},
+            ],
+            currentCarouselIndex: 0,
+        };
+
+        // --- Navigation ---
+        const navItems = document.querySelectorAll('.nav-item');
+        const screens = document.querySelectorAll('.screen');
+        const categoryNavLinks = document.querySelectorAll('.nav-link-category');
+
+        function navigateTo(screenName) {
+            screens.forEach(screen => {
+                screen.classList.add('hidden');
+                if (screen.id === screenName + 'Screen') {
+                    screen.classList.remove('hidden');
+                    window.scrollTo(0, 0); // Scroll to top of new screen
+                }
+            });
+            navItems.forEach(item => {
+                item.classList.remove('nav-item-active');
+                if (item.dataset.screen === screenName) {
+                    item.classList.add('nav-item-active');
+                }
+            });
+            AppState.currentScreen = screenName;
+        }
+
+        navItems.forEach(item => {
+            item.addEventListener('click', () => navigateTo(item.dataset.screen));
+        });
+        categoryNavLinks.forEach(item => {
+            item.addEventListener('click', () => navigateTo(item.dataset.screen));
+        });
+        
+        document.getElementById('getStartedBtn').addEventListener('click', () => navigateTo('activities'));
+        document.getElementById('profileBtn').addEventListener('click', () => navigateTo('profile'));
+
+
+        // --- Carousel ---
+        const carouselContainer = document.getElementById('carousel');
+        const carouselIndicatorsContainer = document.getElementById('carousel-indicators');
+        
+        function renderCarousel() {
+            carouselContainer.innerHTML = '';
+            carouselIndicatorsContainer.innerHTML = '';
+            AppState.carouselImages.forEach((img, index) => {
+                const item = document.createElement('div');
+                item.className = 'carousel-item absolute inset-0 w-full h-full transition-opacity duration-1000 ease-in-out';
+                if (index === AppState.currentCarouselIndex) item.classList.add('active');
+                
+                // Using a colored div as placeholder for image
+                const colors = ['bg-orange-300', 'bg-yellow-300', 'bg-teal-300'];
+                item.innerHTML = `
+                    <div class="w-full h-full ${colors[index % colors.length]} flex items-center justify-center">
+                         <span class="text-2xl text-white font-bold p-4 bg-black/30 rounded">${img.title}</span>
+                    </div>`;
+                carouselContainer.appendChild(item);
+
+                const indicator = document.createElement('button');
+                indicator.className = `w-3 h-3 rounded-full ${index === AppState.currentCarouselIndex ? 'bg-white' : 'bg-white/50'}`;
+                indicator.addEventListener('click', () => {
+                    AppState.currentCarouselIndex = index;
+                    renderCarousel();
+                });
+                carouselIndicatorsContainer.appendChild(indicator);
+            });
+        }
+
+        function nextCarouselItem() {
+            AppState.currentCarouselIndex = (AppState.currentCarouselIndex + 1) % AppState.carouselImages.length;
+            renderCarousel();
+        }
+        setInterval(nextCarouselItem, 5000); // Auto-cycle carousel
+
+        // --- Dynamic Content Rendering ---
+        function createPlaceholderImage(size = 'w-full h-32') { // Adjusted default size
+            return `<div class="bg-gray-200 border-2 border-dashed rounded-xl ${size} object-cover"></div>`;
+        }
+
+        function createCard(item, type) {
+            const card = document.createElement('div');
+            card.className = 'bg-white rounded-lg shadow-md overflow-hidden flex flex-col';
+            let content = `
+                ${item.image === 'placeholder' ? createPlaceholderImage('w-full h-40') : `<img src="${item.image}" alt="${item.name}" class="w-full h-40 object-cover">`}
+                <div class="p-4 flex-grow flex flex-col">
+                    <h3 class="text-lg font-semibold text-neutral-dark mb-1">${item.name}</h3>
+            `;
+            if (item.description) content += `<p class="text-sm text-neutral-DEFAULT mb-2 flex-grow">${item.description}</p>`;
+            if (item.price) content += `<p class="text-md font-semibold text-primary mb-1">${item.price}</p>`;
+            if (item.rating) content += `<p class="text-sm text-secondary-dark mb-3">Rating: ${item.rating} ★</p>`;
+            if (item.cuisine) content += `<p class="text-sm text-neutral-DEFAULT mb-1">Cuisine: ${item.cuisine}</p>`;
+            if (item.distance) content += `<p class="text-sm text-neutral-DEFAULT mb-1">Distance: ${item.distance}</p>`;
+            
+            content += `</div><div class="p-4 border-t mt-auto">`; // mt-auto for buttons at bottom
+            
+            if (type === 'activity' || type === 'experience') {
+                content += `
+                    <button class="w-full bg-primary text-white py-2 px-4 rounded-md text-sm font-medium hover:bg-primary-dark transition duration-300 view-details-btn" data-id="${item.id}" data-type="${type}">View Details</button>
+                    <button class="w-full mt-2 bg-gray-100 text-neutral-dark py-2 px-4 rounded-md text-sm font-medium hover:bg-gray-200 transition duration-300 add-wishlist-btn" data-id="${item.id}" data-type="${type}">Add to Wishlist</button>
+                `;
+            } else if (type === 'attraction') {
+                content += `
+                    <button class="w-full bg-accent text-white py-2 px-4 rounded-md text-sm font-medium hover:bg-accent-dark transition duration-300 view-details-btn" data-id="${item.id}" data-type="${type}">Learn More</button>
+                    <button class="w-full mt-2 bg-gray-100 text-neutral-dark py-2 px-4 rounded-md text-sm font-medium hover:bg-gray-200 transition duration-300 add-itinerary-btn" data-id="${item.id}" data-type="${type}">Add to Itinerary</button>
+                `;
+            } else if (type === 'accommodation') {
+                 content += `
+                    <button class="w-full bg-primary text-white py-2 px-4 rounded-md text-sm font-medium hover:bg-primary-dark transition duration-300 view-details-btn" data-id="${item.id}" data-type="${type}">View Details & Book</button>
+                `;
+            } else if (type === 'restaurant') {
+                 content += `
+                    <button class="w-full bg-primary text-white py-2 px-4 rounded-md text-sm font-medium hover:bg-primary-dark transition duration-300 view-details-btn" data-id="${item.id}" data-type="${type}">View Menu & Reserve</button>
+                `;
+            }
+            content += `</div>`;
+            card.innerHTML = content;
+            return card;
+        }
+
+        function populateFeaturedActivities() {
+            const container = document.getElementById('featuredActivitiesContainer');
+            container.innerHTML = '';
+            AppState.featuredActivities.forEach(activity => {
+                container.appendChild(createCard(activity, 'activity'));
+            });
+        }
+        
+        function populateAllActivities() {
+            const container = document.getElementById('allActivitiesContainer');
+            container.innerHTML = '';
+            AppState.allActivities.forEach(activity => {
+                container.appendChild(createCard(activity, 'activity'));
+            });
+        }
+
+        function populateAllAttractions() {
+            const container = document.getElementById('allAttractionsContainer');
+            container.innerHTML = '';
+            AppState.allAttractions.forEach(attraction => {
+                container.appendChild(createCard(attraction, 'attraction'));
+            });
+        }
+        
+        function populateAllAccommodations() {
+            const container = document.getElementById('allAccommodationsContainer');
+            container.innerHTML = '';
+            AppState.allAccommodations.forEach(item => {
+                container.appendChild(createCard(item, 'accommodation'));
+            });
+        }
+
+        function populateAllRestaurants() {
+            const container = document.getElementById('allRestaurantsContainer');
+            container.innerHTML = '';
+            AppState.allRestaurants.forEach(item => {
+                container.appendChild(createCard(item, 'restaurant'));
+            });
+        }
+        
+        function populateLocalExperiences() {
+            const container = document.getElementById('allLocalExperiencesContainer');
+            container.innerHTML = '';
+            AppState.allLocalExperiences.forEach(item => {
+                container.appendChild(createCard(item, 'experience'));
+            });
+        }
+
+
+        function populateNewsEvents() {
+            const container = document.getElementById('newsEventsContainer');
+            container.innerHTML = '';
+            AppState.newsEvents.forEach(event => {
+                const eventEl = document.createElement('div');
+                eventEl.className = 'bg-white p-3 rounded-lg shadow hover:shadow-md transition-shadow';
+                eventEl.innerHTML = `
+                    <h4 class="font-semibold text-neutral-dark">${event.title}</h4>
+                    <p class="text-xs text-gray-500 mb-1">${event.date}</p>
+                    <p class="text-sm text-neutral-DEFAULT">${event.summary}</p>
+                `;
+                container.appendChild(eventEl);
+            });
+        }
+        
+        // --- Modal Logic ---
+        const detailModal = document.getElementById('detailModal');
+        const closeModalBtn = document.getElementById('closeModalBtn');
+        const modalTitle = document.getElementById('modalTitle');
+        const modalBody = document.getElementById('modalBody');
+        const modalActionBtn = document.getElementById('modalActionBtn');
+        const modalSecondaryBtn = document.getElementById('modalSecondaryBtn');
+
+        function openDetailModal(itemId, itemType) {
+            let itemData;
+            let actionText = "Book Now";
+            let secondaryActionText = "Add to Wishlist";
+
+            switch(itemType) {
+                case 'activity':
+                    itemData = AppState.allActivities.find(i => i.id == itemId);
+                    break;
+                case 'attraction':
+                    itemData = AppState.allAttractions.find(i => i.id == itemId);
+                    actionText = "Get Directions";
+                    secondaryActionText = "Add to Itinerary";
+                    break;
+                case 'accommodation':
+                    itemData = AppState.allAccommodations.find(i => i.id == itemId);
+                    actionText = "Book on Booking.com";
+                    secondaryActionText = "View Photos";
+                    break;
+                case 'restaurant':
+                    itemData = AppState.allRestaurants.find(i => i.id == itemId);
+                    actionText = "Make Reservation";
+                    secondaryActionText = "View Menu";
+                    break;
+                 case 'experience':
+                    itemData = AppState.allLocalExperiences.find(i => i.id == itemId);
+                    break;
+                default:
+                    console.error('Unknown item type for modal:', itemType);
+                    return;
+            }
+
+            if (!itemData) {
+                console.error('Item not found for modal:', itemId, itemType);
+                return;
+            }
+
+            modalTitle.textContent = itemData.name;
+            let bodyContent = `
+                <div class="w-full h-48 sm:h-64 ${itemData.image === 'placeholder' ? 'bg-gray-200 border-2 border-dashed rounded-xl' : ''} mb-4">
+                    ${itemData.image === 'placeholder' ? '' : `<img src="${itemData.image}" alt="${itemData.name}" class="w-full h-full object-cover rounded-lg">`}
+                </div>
+                <p class="text-neutral-DEFAULT">${itemData.fullDescription || itemData.description}</p>
+            `;
+            if (itemData.price) bodyContent += `<p><strong>Price:</strong> ${itemData.price}</p>`;
+            if (itemData.rating) bodyContent += `<p><strong>Rating:</strong> ${itemData.rating} ★</p>`;
+            if (itemData.duration) bodyContent += `<p><strong>Duration:</strong> ${itemData.duration}</p>`;
+            if (itemData.hours) bodyContent += `<p><strong>Opening Hours:</strong> ${itemData.hours}</p>`;
+            if (itemData.fee) bodyContent += `<p><strong>Entry Fee:</strong> ${itemData.fee}</p>`;
+            if (itemData.history) bodyContent += `<p><strong>History:</strong> ${itemData.history}</p>`;
+            if (itemData.cuisine) bodyContent += `<p><strong>Cuisine:</strong> ${itemData.cuisine}</p>`;
+            if (itemData.amenities) bodyContent += `<p><strong>Amenities:</strong> ${itemData.amenities.join(', ')}</p>`;
+            
+            bodyContent += `<h4 class="font-semibold mt-4 mb-2">Reviews</h4> <p class="text-sm text-gray-500">No reviews yet. Be the first to review!</p>`; // Placeholder
+
+            modalBody.innerHTML = bodyContent;
+            modalActionBtn.textContent = actionText;
+            modalSecondaryBtn.textContent = secondaryActionText;
+            
+            modalActionBtn.onclick = () => alert(`${actionText} for ${itemData.name}`);
+            modalSecondaryBtn.onclick = () => alert(`${secondaryActionText} for ${itemData.name}`);
+
+            detailModal.classList.remove('hidden');
+        }
+
+        closeModalBtn.addEventListener('click', () => detailModal.classList.add('hidden'));
+        // Close modal on escape key
+        window.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape' && !detailModal.classList.contains('hidden')) {
+                detailModal.classList.add('hidden');
+            }
+        });
+        // Close modal on backdrop click
+        detailModal.addEventListener('click', (e) => {
+            if (e.target === detailModal) {
+                detailModal.classList.add('hidden');
+            }
+        });
+
+
+        // Event delegation for dynamically created buttons
+        document.addEventListener('click', function(event) {
+            const target = event.target.closest('button');
+            if (!target) return;
+
+            if (target.classList.contains('view-details-btn')) {
+                const itemId = target.dataset.id;
+                const itemType = target.dataset.type;
+                openDetailModal(itemId, itemType);
+            } else if (target.classList.contains('add-wishlist-btn')) {
+                alert(`Added ${target.dataset.id} (${target.dataset.type}) to wishlist! (Not implemented)`);
+            } else if (target.classList.contains('add-itinerary-btn')) {
+                alert(`Added ${target.dataset.id} (${target.dataset.type}) to itinerary! (Not implemented)`);
+            }
+        });
+
+        // --- Initial Load ---
+        function initializeApp() {
+            renderCarousel();
+            populateFeaturedActivities();
+            populateNewsEvents();
+            populateAllActivities();
+            populateAllAttractions();
+            populateAllAccommodations();
+            populateAllRestaurants();
+            populateLocalExperiences();
+            navigateTo('home'); // Start on home screen
+        }
+
+        document.addEventListener('DOMContentLoaded', initializeApp);
+
+    </script>
+
+</body>
+</html>

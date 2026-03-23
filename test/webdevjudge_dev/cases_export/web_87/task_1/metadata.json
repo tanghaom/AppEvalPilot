@@ -1,0 +1,9 @@
+{
+  "web_id": "web_87",
+  "task_id": 1,
+  "task_type": "dynamic",
+  "instruction": "Task: Type text into the code editor area.\nExpected Result: The typed text is displayed in the editor, and (mock) syntax highlighting for the current language is applied to the new text.\n\nNote: The task is only considered successful if the expected result is achieved; otherwise, it is deemed infeasible.",
+  "max_steps": 15,
+  "expected": "The typed text is displayed in the editor, and (mock) syntax highlighting for the current language is applied to the new text.",
+  "label": 1
+}

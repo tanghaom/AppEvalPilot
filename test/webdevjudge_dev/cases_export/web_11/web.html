@@ -1,0 +1,951 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CalendyClone - Your Scheduling Automation</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/heroicons/2.0.18/24/outline/heroicons.min.css" rel="stylesheet">
+    <style>
+        /* Custom scrollbar for webkit browsers */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #f1f5f9; /* slate-100 */
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #64748b; /* slate-500 */
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #475569; /* slate-600 */
+        }
+        /* Basic styles for modals */
+        .modal {
+            display: none; /* Hidden by default */
+            position: fixed;
+            z-index: 100;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            overflow: auto;
+            background-color: rgba(0,0,0,0.5);
+            align-items: center;
+            justify-content: center;
+        }
+        .modal.flex { display: flex; } /* To show modal */
+
+        .modal-content {
+            background-color: #fff;
+            margin: auto;
+            padding: 1.5rem; /* p-6 */
+            border-radius: 0.5rem; /* rounded-lg */
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05); /* shadow-xl */
+            width: 90%;
+            max-width: 32rem; /* max-w-lg */
+        }
+        /* For simpler icon rendering */
+        .icon {
+            width: 1.25rem; /* w-5 */
+            height: 1.25rem; /* h-5 */
+            display: inline-block;
+            vertical-align: middle;
+        }
+    </style>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: {
+                            DEFAULT: '#4f46e5', // indigo-600
+                            hover: '#4338ca', // indigo-700
+                            light: '#e0e7ff', // indigo-100
+                            text: '#3730a3', // indigo-800
+                        },
+                        secondary: {
+                            DEFAULT: '#0ea5e9', // sky-500
+                            hover: '#0284c7', // sky-600
+                        },
+                        neutral: {
+                            light: '#f8fafc', // slate-50
+                            DEFAULT: '#f1f5f9', // slate-100
+                            medium: '#e2e8f0', // slate-200
+                            dark: '#cbd5e1', // slate-300
+                            text: '#334155', // slate-700
+                            textLight: '#64748b', // slate-500
+                        },
+                        success: {
+                            DEFAULT: '#22c55e', // green-500
+                            light: '#dcfce7', // green-100
+                            text: '#166534', // green-800
+                        },
+                        danger: {
+                            DEFAULT: '#ef4444', // red-500
+                            light: '#fee2e2', // red-100
+                            text: '#991b1b', // red-800
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+<body class="bg-neutral-DEFAULT text-neutral-text antialiased">
+    <div id="app" class="flex h-screen overflow-hidden">
+        <!-- Sidebar -->
+        <aside id="sidebar" class="w-64 bg-white border-r border-neutral-dark p-6 space-y-6 transition-all duration-300 ease-in-out">
+            <div class="text-2xl font-bold text-primary-DEFAULT">CalendyClone</div>
+            <nav id="mainNav" class="space-y-2">
+                <!-- Nav items will be populated by JS -->
+            </nav>
+            <div class="mt-auto pt-6 border-t border-neutral-dark">
+                <div class="flex items-center space-x-3">
+                    <div class="bg-neutral-medium border-2 border-dashed rounded-full w-10 h-10"></div>
+                    <div>
+                        <p class="font-semibold text-sm">User Name</p>
+                        <p class="text-xs text-neutral-textLight">user@example.com</p>
+                    </div>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <main id="mainContent" class="flex-1 overflow-y-auto p-8">
+            <!-- Content will be populated by JS -->
+        </main>
+    </div>
+
+    <!-- Modals Container -->
+    <div id="modalContainer">
+        <!-- Create/Edit Event Type Modal -->
+        <div id="eventTypeModal" class="modal">
+            <div class="modal-content">
+                <h3 id="eventTypeModalTitle" class="text-xl font-semibold mb-4">Create New Event Type</h3>
+                <form id="eventTypeForm">
+                    <input type="hidden" id="eventTypeIdInput">
+                    <div class="mb-4">
+                        <label for="eventName" class="block text-sm font-medium text-neutral-text mb-1">Event Name</label>
+                        <input type="text" id="eventName" name="eventName" required class="w-full p-2 border border-neutral-dark rounded-md focus:ring-primary-DEFAULT focus:border-primary-DEFAULT" placeholder="e.g., 30 Minute Meeting">
+                    </div>
+                    <div class="mb-4">
+                        <label for="eventDuration" class="block text-sm font-medium text-neutral-text mb-1">Duration (minutes)</label>
+                        <select id="eventDuration" name="eventDuration" class="w-full p-2 border border-neutral-dark rounded-md focus:ring-primary-DEFAULT focus:border-primary-DEFAULT">
+                            <option value="15">15 minutes</option>
+                            <option value="30">30 minutes</option>
+                            <option value="45">45 minutes</option>
+                            <option value="60">60 minutes</option>
+                            <option value="90">90 minutes</option>
+                        </select>
+                    </div>
+                    <div class="mb-4">
+                        <label for="eventDescription" class="block text-sm font-medium text-neutral-text mb-1">Description (optional)</label>
+                        <textarea id="eventDescription" name="eventDescription" rows="3" class="w-full p-2 border border-neutral-dark rounded-md focus:ring-primary-DEFAULT focus:border-primary-DEFAULT" placeholder="Brief details about the event"></textarea>
+                    </div>
+                    <div class="mb-4">
+                        <label for="eventLocation" class="block text-sm font-medium text-neutral-text mb-1">Location (optional)</label>
+                        <input type="text" id="eventLocation" name="eventLocation" class="w-full p-2 border border-neutral-dark rounded-md focus:ring-primary-DEFAULT focus:border-primary-DEFAULT" placeholder="e.g., Zoom, Google Meet, Phone call">
+                    </div>
+                    <div class="mb-6">
+                        <label for="eventColor" class="block text-sm font-medium text-neutral-text mb-1">Event Color</label>
+                        <select id="eventColor" name="eventColor" class="w-full p-2 border border-neutral-dark rounded-md focus:ring-primary-DEFAULT focus:border-primary-DEFAULT">
+                            <option value="bg-blue-500">Blue</option>
+                            <option value="bg-green-500">Green</option>
+                            <option value="bg-yellow-500">Yellow</option>
+                            <option value="bg-purple-500">Purple</option>
+                            <option value="bg-pink-500">Pink</option>
+                        </select>
+                    </div>
+                    <div class="flex justify-end space-x-3">
+                        <button type="button" onclick="closeModal('eventTypeModal')" class="px-4 py-2 text-sm font-medium text-neutral-text bg-neutral-medium rounded-md hover:bg-neutral-dark">Cancel</button>
+                        <button type="submit" class="px-4 py-2 text-sm font-medium text-white bg-primary-DEFAULT rounded-md hover:bg-primary-hover">Save Event Type</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Copy Link Modal -->
+        <div id="copyLinkModal" class="modal">
+            <div class="modal-content">
+                <h3 class="text-xl font-semibold mb-4">Copy Booking Link</h3>
+                <p class="text-sm text-neutral-textLight mb-2">Share this link with others to book this event:</p>
+                <input type="text" id="bookingLinkInput" readonly class="w-full p-2 border border-neutral-dark rounded-md bg-neutral-light mb-4">
+                <div class="flex justify-end space-x-3">
+                    <button type="button" onclick="closeModal('copyLinkModal')" class="px-4 py-2 text-sm font-medium text-neutral-text bg-neutral-medium rounded-md hover:bg-neutral-dark">Close</button>
+                    <button type="button" onclick="copyToClipboard()" class="px-4 py-2 text-sm font-medium text-white bg-primary-DEFAULT rounded-md hover:bg-primary-hover">Copy to Clipboard</button>
+                </div>
+                 <p id="copyFeedback" class="text-sm text-success-DEFAULT mt-2"></p>
+            </div>
+        </div>
+
+        <!-- Confirm Booking Modal -->
+         <div id="confirmBookingModal" class="modal">
+            <div class="modal-content max-w-md">
+                <div class="flex justify-center mb-4">
+                    <svg class="w-16 h-16 text-success-DEFAULT" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                </div>
+                <h3 class="text-xl font-semibold text-center mb-2">Booking Confirmed!</h3>
+                <p id="bookingConfirmationDetails" class="text-sm text-neutral-textLight text-center mb-6"></p>
+                <div class="flex justify-center">
+                    <button type="button" onclick="closeModal('confirmBookingModal'); navigateTo('scheduledEvents');" class="px-6 py-2 text-sm font-medium text-white bg-primary-DEFAULT rounded-md hover:bg-primary-hover">View My Bookings</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // --- ICONS --- (Heroicons outline)
+        const ICONS = {
+            dashboard: `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="icon"><path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6A2.25 2.25 0 016 3.75h2.25A2.25 2.25 0 0110.5 6v2.25a2.25 2.25 0 01-2.25 2.25H6a2.25 2.25 0 01-2.25-2.25V6zM3.75 15.75A2.25 2.25 0 016 13.5h2.25a2.25 2.25 0 012.25 2.25V18a2.25 2.25 0 01-2.25 2.25H6A2.25 2.25 0 013.75 18v-2.25zM13.5 6a2.25 2.25 0 012.25-2.25H18A2.25 2.25 0 0120.25 6v2.25A2.25 2.25 0 0118 10.5h-2.25A2.25 2.25 0 0113.5 8.25V6zM13.5 15.75a2.25 2.25 0 012.25-2.25H18a2.25 2.25 0 012.25 2.25V18A2.25 2.25 0 0118 20.25h-2.25A2.25 2.25 0 0113.5 18v-2.25z" /></svg>`,
+            eventTypes: `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="icon"><path stroke-linecap="round" stroke-linejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5A2.25 2.25 0 0121 11.25v7.5m-9-3.75h.008v.008H12v-.008zM12 15h.008v.008H12V15zm0 2.25h.008v.008H12v-.008zM9.75 15h.008v.008H9.75V15zm0 2.25h.008v.008H9.75v-.008zM7.5 15h.008v.008H7.5V15zm0 2.25h.008v.008H7.5v-.008zm6.75-4.5h.008v.008h-.008v-.008zm0 2.25h.008v.008h-.008V15zm0 2.25h.008v.008h-.008v-.008zm2.25-4.5h.008v.008H16.5v-.008zm0 2.25h.008v.008H16.5V15z" /></svg>`,
+            scheduledEvents: `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="icon"><path stroke-linecap="round" stroke-linejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5A2.25 2.25 0 0121 11.25v7.5M12 12.75a.75.75 0 110-1.5.75.75 0 010 1.5z" /><path stroke-linecap="round" stroke-linejoin="round" d="M12 8.25v2.25M12 15v.75M7.5 8.25v5.25m9-5.25v5.25M3 12h18" /></svg>`,
+            integrations: `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="icon"><path stroke-linecap="round" stroke-linejoin="round" d="M13.19 8.688a4.5 4.5 0 011.242 7.244l-4.5 4.5a4.5 4.5 0 01-6.364-6.364l1.757-1.757m13.35-.622l1.757-1.757a4.5 4.5 0 00-6.364-6.364l-4.5 4.5a4.5 4.5 0 001.242 7.244" /></svg>`,
+            getApps: `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="icon"><path stroke-linecap="round" stroke-linejoin="round" d="M9 17.25v1.007a3 3 0 01-.879 2.122L7.5 21h9l-.621-.621A3 3 0 0115 18.257V17.25m6-12V15a2.25 2.25 0 01-2.25 2.25H5.25A2.25 2.25 0 013 15V5.25m18 0A2.25 2.25 0 0018.75 3H5.25A2.25 2.25 0 003 5.25m18 0V12a2.25 2.25 0 01-2.25 2.25H5.25A2.25 2.25 0 013 12V5.25" /></svg>`,
+            settings: `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="icon"><path stroke-linecap="round" stroke-linejoin="round" d="M9.594 3.94c.09-.542.56-.94 1.11-.94h2.593c.55 0 1.02.398 1.11.94l.213 1.281c.063.374.313.686.646.87.074.04.147.083.22.127.324.196.72.257 1.075.124l1.217-.456a1.125 1.125 0 011.37.49l1.296 2.247a1.125 1.125 0 01-.26 1.431l-1.003.827c-.293.24-.438.613-.431.992a6.759 6.759 0 010 .255c-.007.378.138.75.43.99l1.005.828c.424.35.534.954.26 1.43l-1.298 2.247a1.125 1.125 0 01-1.369.491l-1.217-.456c-.355-.133-.75-.072-1.076.124a6.57 6.57 0 01-.22.128c-.333.183-.582.495-.646.869l-.213 1.28c-.09.543-.56.941-1.11.941h-2.594c-.55 0-1.02-.398-1.11-.94l-.213-1.281c-.062-.374-.312-.686-.645-.87a6.52 6.52 0 01-.22-.127c-.325-.196-.72-.257-1.076-.124l-1.217.456a1.125 1.125 0 01-1.369-.49l-1.297-2.247a1.125 1.125 0 01.26-1.431l1.004-.827c.292-.24.437-.613.43-.992a6.932 6.932 0 010-.255c.007-.378-.138-.75-.43-.99l-1.004-.828a1.125 1.125 0 01-.26-1.43l1.297-2.247a1.125 1.125 0 011.37-.491l1.216.456c.356.133.751.072 1.076-.124.072-.044.146-.087.22-.128.332-.183.582-.495.644-.869l.214-1.28z" /><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>`,
+            plus: `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="icon"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" /></svg>`,
+            copy: `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="icon"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 17.25v3.375c0 .621-.504 1.125-1.125 1.125h-9.75a1.125 1.125 0 01-1.125-1.125V7.875c0-.621.504-1.125 1.125-1.125H6.75a9.06 9.06 0 011.5.124m7.5 10.376h3.375c.621 0 1.125-.504 1.125-1.125V11.25c0-4.46-3.243-8.161-7.5-8.876a9.06 9.06 0 00-1.5-.124H9.375c-.621 0-1.125.504-1.125 1.125V17.25m0-10.5h2.25m-2.25 4.5h2.25m0-4.5H12m0 4.5H12m0 3.375H12m2.25-7.5H12m2.25 0H12M9 11.25H6.75M9 15H6.75M9 18.75H6.75m9.75-12h3.375c.621 0 1.125.504 1.125 1.125V15c0 .621-.504 1.125-1.125 1.125h-3.375M15.75 9H18M15.75 12H18M15.75 15H18M15.75 18H18m-4.5-12H9M11.25 9h2.25" /></svg>`,
+            edit: `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="icon"><path stroke-linecap="round" stroke-linejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0115.75 21H5.25A2.25 2.25 0 013 18.75V8.25A2.25 2.25 0 015.25 6H10" /></svg>`,
+            trash: `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="icon"><path stroke-linecap="round" stroke-linejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12.56 0c.34-.059.68-.111 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" /></svg>`,
+            link: `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="icon"><path stroke-linecap="round" stroke-linejoin="round" d="M13.19 8.688a4.5 4.5 0 011.242 7.244l-4.5 4.5a4.5 4.5 0 01-6.364-6.364l1.757-1.757m13.35-.622l1.757-1.757a4.5 4.5 0 00-6.364-6.364l-4.5 4.5a4.5 4.5 0 001.242 7.244" /></svg>`,
+            outlook: `<svg xmlns="http://www.w3.org/2000/svg" class="icon" viewBox="0 0 24 24" fill="currentColor"><path d="M20.49 2H3.51A1.51 1.51 0 002 3.51v16.98A1.51 1.51 0 003.51 22h16.98A1.51 1.51 0 0022 20.49V3.51A1.51 1.51 0 0020.49 2zM8.6 12.86l-4.15 3.2V7.94zm.81 1L12 15.79l2.59-1.93 4.15 3.2V7.94l-4.15 3.2L12 8.21l-2.59 1.93zM15.4 12.86L19.55 16.06V7.94z"></path></svg>`, // A simple representation
+            todo: `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="icon"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>`, // Checkmark circle
+            windows: `<svg class="icon" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg"><path d="M3 11.25h7.75V3H3v8.25zm0 9.75h7.75V12.75H3v8.25zM12.25 3v8.25H21V3h-8.75zm0 18v-8.25H21V21h-8.75z"/></svg>`,
+            apple: `<svg class="icon" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg"><path d="M18.72 14.76c-.67 2.02-2.65 3.48-4.81 3.48-1.06 0-1.78-.4-2.75-.4s-1.7.4-2.79.4c-2.23 0-4.37-1.53-5.06-3.67-.06-.19.47-1.02.47-1.02.04-.09.1-.17.17-.24 1.29-.96 2.03-2.45 2.03-4.06 0-1.93-1.05-3.48-2.62-4.45-.3-.19-.49-.51-.49-.86 0-.03.01-.06.01-.09.07-.9.72-1.73 1.25-2.16.38-.3.83-.47 1.33-.48.66 0 1.63.28 2.48.8.38.23.73.49 1.03.78.46.46.81 1.11.81 1.11s.43-.66.89-1.08c.35-.31.76-.57 1.19-.75.79-.33 1.7-.52 2.56-.52.04 0 .08 0 .12.01-.09.53-.24 1.04-.46 1.52-.68 1.46-.21 3.38.99 4.47.91.82 1.32 2.07 1.04 3.26-.08.33-.2.64-.34.93zM14.65 6.01c.77-.92 1.23-2.17.99-3.36-.9.1-1.94.66-2.69 1.57-.69.84-1.22 2.06-1.01 3.22.97-.05 2-.52 2.71-1.43z"/></svg>`,
+            linux: `<svg class="icon" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm-1-13h2v2h-2zm0 3h2v2h-2zm0 3h2v2h-2zm-3-3h2v2H8zm0 3h2v2H8zm6-3h2v2h-2zm0 3h2v2h-2z"/></svg>`, // Generic Tux-like penguin
+            android: `<svg class="icon" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg"><path d="M19.88 4.12a2 2 0 00-1.38-.52H5.5a2 2 0 00-1.38.52L2 6.62V17a2 2 0 002 2h16a2 2 0 002-2V6.62l-2.12-2.5zM8 5h8v1H8V5zm8 12H8v-1.5c0-.83.67-1.5 1.5-1.5h5c.83 0 1.5.67 1.5 1.5V17zm-1.5-5a.5.5 0 110-1 .5.5 0 010 1zm-5 0a.5.5 0 110-1 .5.5 0 010 1zM6 8h12v6H6V8z"/></svg>`
+        };
+
+        let state = {
+            currentView: 'dashboard',
+            eventTypes: [
+                { id: 'evt1', name: '30 Minute Meeting', duration: 30, description: 'A quick 30-minute chat.', color: 'bg-blue-500', slug: '30-min-meeting', location: 'Zoom Call', active: true },
+                { id: 'evt2', name: '1 Hour Consultation', duration: 60, description: 'In-depth consultation to review your project.', color: 'bg-green-500', slug: '1-hour-consult', location: 'Google Meet', active: true },
+                { id: 'evt3', name: 'Product Demo', duration: 45, description: 'Live demonstration of our product features.', color: 'bg-purple-500', slug: 'product-demo', location: 'Microsoft Teams', active: false },
+            ],
+            scheduledEvents: [
+                { id: 'sch1', eventTypeId: 'evt1', eventName: '30 Minute Meeting', bookerName: 'Alice Wonderland', bookerEmail: 'alice@example.com', dateTime: '2024-07-15T10:00:00', notes: 'Discuss project Alice' },
+                { id: 'sch2', eventTypeId: 'evt2', eventName: '1 Hour Consultation', bookerName: 'Bob The Builder', bookerEmail: 'bob@example.com', dateTime: '2024-07-16T14:30:00', notes: 'Project plan review' },
+            ],
+            integrations: {
+                outlookCalendar: { name: 'Outlook Calendar', connected: false, icon: ICONS.outlook, description: 'Sync your Outlook Calendar to automatically manage your availability and create events.' },
+                outlookTodo: { name: 'Outlook To-Do', connected: false, icon: ICONS.todo, description: 'Create To-Do items in Outlook for new bookings and follow-ups.' }
+            },
+            booking: {
+                selectedEventType: null,
+                selectedDate: null,
+                selectedTime: null,
+                name: '',
+                email: '',
+                notes: ''
+            },
+            editingEventTypeId: null, // For editing existing event
+        };
+
+        const mainContent = document.getElementById('mainContent');
+        const mainNav = document.getElementById('mainNav');
+        const eventTypeForm = document.getElementById('eventTypeForm');
+        let eventBookingsChart = null;
+
+        // --- NAVIGATION ---
+        const navItems = [
+            { id: 'dashboard', label: 'Dashboard', icon: ICONS.dashboard, action: () => renderDashboardView() },
+            { id: 'eventTypes', label: 'Event Types', icon: ICONS.eventTypes, action: () => renderEventTypesView() },
+            { id: 'scheduledEvents', label: 'Scheduled Events', icon: ICONS.scheduledEvents, action: () => renderScheduledEventsView() },
+            { id: 'integrations', label: 'Integrations', icon: ICONS.integrations, action: () => renderIntegrationsView() },
+            { id: 'getApps', label: 'Get Apps', icon: ICONS.getApps, action: () => renderOfflineAppsView() },
+            { id: 'settings', label: 'Settings', icon: ICONS.settings, action: () => renderSettingsView() },
+        ];
+
+        function renderSidebar() {
+            mainNav.innerHTML = navItems.map(item => `
+                <a href="#" data-view="${item.id}" class="nav-link flex items-center space-x-3 px-3 py-2 rounded-md hover:bg-neutral-light ${state.currentView === item.id ? 'bg-primary-light text-primary-text font-semibold' : 'text-neutral-textLight hover:text-neutral-text'}">
+                    ${item.icon}
+                    <span>${item.label}</span>
+                </a>
+            `).join('');
+
+            document.querySelectorAll('.nav-link').forEach(link => {
+                link.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    navigateTo(link.dataset.view);
+                });
+            });
+        }
+
+        function navigateTo(viewId, params = null) {
+            state.currentView = viewId;
+            const navItem = navItems.find(item => item.id === viewId);
+            if (navItem) {
+                navItem.action(params);
+            } else if (viewId === 'bookingPage') {
+                renderBookingPage(params.eventTypeId);
+            }
+            renderSidebar(); // Re-render sidebar to update active state
+        }
+
+        // --- MODAL UTILITIES ---
+        function openModal(modalId) {
+            document.getElementById(modalId).classList.add('flex');
+            document.getElementById(modalId).classList.remove('hidden'); // If using hidden initially
+        }
+
+        function closeModal(modalId) {
+            document.getElementById(modalId).classList.remove('flex');
+            document.getElementById(modalId).classList.add('hidden'); // Ensure it's hidden
+             if (modalId === 'eventTypeModal') {
+                eventTypeForm.reset();
+                state.editingEventTypeId = null;
+                document.getElementById('eventTypeModalTitle').textContent = 'Create New Event Type';
+            }
+            if (modalId === 'copyLinkModal') {
+                document.getElementById('copyFeedback').textContent = '';
+            }
+        }
+        
+        // Add event listener to close modals when clicking outside modal-content
+        document.querySelectorAll('.modal').forEach(modal => {
+            modal.addEventListener('click', function(event) {
+                if (event.target === modal) { // Check if the click is on the backdrop
+                    closeModal(modal.id);
+                }
+            });
+        });
+
+
+        // --- VIEWS ---
+
+        function renderDashboardView() {
+            const totalBookings = state.scheduledEvents.length;
+            const activeEventTypes = state.eventTypes.filter(et => et.active).length;
+            
+            let bookingsByEventType = {};
+            state.eventTypes.forEach(et => bookingsByEventType[et.name] = 0);
+            state.scheduledEvents.forEach(se => {
+                const eventType = state.eventTypes.find(et => et.id === se.eventTypeId);
+                if (eventType) {
+                    bookingsByEventType[eventType.name]++;
+                }
+            });
+
+            mainContent.innerHTML = `
+                <div class="mb-8">
+                    <h1 class="text-3xl font-bold text-neutral-text">Dashboard</h1>
+                    <p class="text-neutral-textLight">Welcome back! Here's an overview of your scheduling activity.</p>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+                    <div class="bg-white p-6 rounded-xl shadow-lg">
+                        <h3 class="text-lg font-semibold text-neutral-text mb-1">Total Bookings</h3>
+                        <p class="text-4xl font-bold text-primary-DEFAULT">${totalBookings}</p>
+                        <p class="text-sm text-neutral-textLight mt-1">Across all event types</p>
+                    </div>
+                    <div class="bg-white p-6 rounded-xl shadow-lg">
+                        <h3 class="text-lg font-semibold text-neutral-text mb-1">Active Event Types</h3>
+                        <p class="text-4xl font-bold text-secondary-DEFAULT">${activeEventTypes}</p>
+                        <p class="text-sm text-neutral-textLight mt-1">Currently available for booking</p>
+                    </div>
+                    <div class="bg-white p-6 rounded-xl shadow-lg">
+                        <h3 class="text-lg font-semibold text-neutral-text mb-1">Upcoming Today</h3>
+                        <p class="text-4xl font-bold text-green-500">${getUpcomingTodayCount()}</p>
+                        <p class="text-sm text-neutral-textLight mt-1">Meetings scheduled for today</p>
+                    </div>
+                </div>
+
+                <div class="bg-white p-6 rounded-xl shadow-lg">
+                    <h3 class="text-xl font-semibold text-neutral-text mb-4">Bookings per Event Type</h3>
+                    <canvas id="eventBookingsChart" class="w-full h-64 md:h-80"></canvas>
+                </div>
+            `;
+
+            const ctx = document.getElementById('eventBookingsChart').getContext('2d');
+            if (eventBookingsChart) {
+                eventBookingsChart.destroy();
+            }
+            eventBookingsChart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: Object.keys(bookingsByEventType),
+                    datasets: [{
+                        label: 'Number of Bookings',
+                        data: Object.values(bookingsByEventType),
+                        backgroundColor: [
+                            'rgba(79, 70, 229, 0.6)', // indigo
+                            'rgba(14, 165, 233, 0.6)', // sky
+                            'rgba(234, 179, 8, 0.6)', // yellow
+                            'rgba(168, 85, 247, 0.6)', // purple
+                            'rgba(236, 72, 153, 0.6)' // pink
+                        ],
+                        borderColor: [
+                            'rgba(79, 70, 229, 1)',
+                            'rgba(14, 165, 233, 1)',
+                            'rgba(234, 179, 8, 1)',
+                            'rgba(168, 85, 247, 1)',
+                            'rgba(236, 72, 153, 1)'
+                        ],
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: {
+                                stepSize: 1
+                            }
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            display: false
+                        }
+                    }
+                }
+            });
+        }
+
+        function getUpcomingTodayCount() {
+            const today = new Date().toISOString().split('T')[0];
+            return state.scheduledEvents.filter(event => event.dateTime.startsWith(today)).length;
+        }
+
+
+        function renderEventTypesView() {
+            mainContent.innerHTML = `
+                <div class="flex justify-between items-center mb-8">
+                    <div>
+                        <h1 class="text-3xl font-bold text-neutral-text">Event Types</h1>
+                        <p class="text-neutral-textLight">Create and manage your bookable event types.</p>
+                    </div>
+                    <button onclick="openCreateEventTypeModal()" class="flex items-center space-x-2 bg-primary-DEFAULT text-white px-4 py-2 rounded-md hover:bg-primary-hover text-sm font-medium">
+                        ${ICONS.plus}
+                        <span>New Event Type</span>
+                    </button>
+                </div>
+                <div id="eventTypesList" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    ${state.eventTypes.map(eventType => `
+                        <div class="bg-white rounded-xl shadow-lg overflow-hidden">
+                            <div class="p-5">
+                                <div class="flex justify-between items-start">
+                                    <h3 class="text-lg font-semibold text-neutral-text mb-1">${eventType.name}</h3>
+                                    <span class="px-2 py-0.5 text-xs font-medium rounded-full ${eventType.active ? 'bg-success-light text-success-text' : 'bg-neutral-medium text-neutral-textLight'}">
+                                        ${eventType.active ? 'Active' : 'Inactive'}
+                                    </span>
+                                </div>
+                                <p class="text-sm text-neutral-textLight mb-1">${eventType.duration} min • ${eventType.location || 'Not specified'}</p>
+                                <p class="text-sm text-neutral-textLight mb-3 h-10 overflow-hidden text-ellipsis">${eventType.description || 'No description.'}</p>
+                                <div class="flex items-center space-x-1 mb-4">
+                                     <span class="w-4 h-4 rounded-full ${eventType.color || 'bg-gray-300'}"></span>
+                                     <p class="text-xs text-neutral-textLight">${eventType.color ? eventType.color.replace('bg-','').split('-')[0] : 'Default Color'}</p>
+                                </div>
+                                <div class="border-t border-neutral-dark pt-4 flex flex-wrap gap-2">
+                                    <button onclick="showBookingPage('${eventType.id}')" class="flex-1 text-center text-sm bg-primary-light text-primary-text px-3 py-1.5 rounded-md hover:bg-indigo-200 font-medium whitespace-nowrap">View booking page</button>
+                                    <button onclick="openCopyLinkModal('${eventType.id}')" title="Copy Link" class="p-2 bg-neutral-light hover:bg-neutral-medium rounded-md">${ICONS.copy}</button>
+                                    <button onclick="openEditEventTypeModal('${eventType.id}')" title="Edit" class="p-2 bg-neutral-light hover:bg-neutral-medium rounded-md">${ICONS.edit}</button>
+                                    <button onclick="toggleEventTypeActive('${eventType.id}')" title="${eventType.active ? 'Deactivate' : 'Activate'}" class="p-2 ${eventType.active ? 'bg-yellow-100 hover:bg-yellow-200' : 'bg-green-100 hover:bg-green-200'} rounded-md">
+                                        ${eventType.active ? 
+                                            `<svg class="icon text-yellow-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636"/></svg>` : 
+                                            `<svg class="icon text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>`
+                                        }
+                                    </button>
+                                    <button onclick="deleteEventType('${eventType.id}')" title="Delete" class="p-2 bg-red-100 hover:bg-red-200 rounded-md">${ICONS.trash}</button>
+                                </div>
+                            </div>
+                        </div>
+                    `).join('') || '<p class="col-span-full text-neutral-textLight text-center py-10">No event types created yet. Click "New Event Type" to get started.</p>'}
+                </div>
+            `;
+        }
+
+        function openCreateEventTypeModal() {
+            state.editingEventTypeId = null;
+            document.getElementById('eventTypeModalTitle').textContent = 'Create New Event Type';
+            eventTypeForm.reset();
+            openModal('eventTypeModal');
+        }
+
+        function openEditEventTypeModal(id) {
+            const eventType = state.eventTypes.find(et => et.id === id);
+            if (!eventType) return;
+            state.editingEventTypeId = id;
+            document.getElementById('eventTypeModalTitle').textContent = 'Edit Event Type';
+            document.getElementById('eventTypeIdInput').value = eventType.id;
+            document.getElementById('eventName').value = eventType.name;
+            document.getElementById('eventDuration').value = eventType.duration;
+            document.getElementById('eventDescription').value = eventType.description || '';
+            document.getElementById('eventLocation').value = eventType.location || '';
+            document.getElementById('eventColor').value = eventType.color || 'bg-blue-500';
+            openModal('eventTypeModal');
+        }
+
+        eventTypeForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            const formData = new FormData(eventTypeForm);
+            const eventData = {
+                name: formData.get('eventName'),
+                duration: parseInt(formData.get('eventDuration')),
+                description: formData.get('eventDescription'),
+                location: formData.get('eventLocation'),
+                color: formData.get('eventColor'),
+                active: true, // New events are active by default
+            };
+
+            if (state.editingEventTypeId) { // Editing existing
+                const index = state.eventTypes.findIndex(et => et.id === state.editingEventTypeId);
+                if (index > -1) {
+                    state.eventTypes[index] = { ...state.eventTypes[index], ...eventData };
+                }
+            } else { // Creating new
+                eventData.id = 'evt' + (Date.now() % 10000); // Simple unique ID
+                eventData.slug = eventData.name.toLowerCase().replace(/\s+/g, '-');
+                state.eventTypes.push(eventData);
+            }
+            
+            closeModal('eventTypeModal');
+            renderEventTypesView(); // Re-render the view
+        });
+
+        function toggleEventTypeActive(id) {
+            const eventType = state.eventTypes.find(et => et.id === id);
+            if (eventType) {
+                eventType.active = !eventType.active;
+                renderEventTypesView();
+            }
+        }
+        
+        function deleteEventType(id) {
+            if (confirm('Are you sure you want to delete this event type? This action cannot be undone.')) {
+                state.eventTypes = state.eventTypes.filter(et => et.id !== id);
+                // Optionally, also delete scheduled events associated with this type
+                // state.scheduledEvents = state.scheduledEvents.filter(se => se.eventTypeId !== id);
+                renderEventTypesView();
+            }
+        }
+
+        function showBookingPage(eventTypeId) {
+            navigateTo('bookingPage', { eventTypeId });
+        }
+
+        function openCopyLinkModal(eventTypeId) {
+            const eventType = state.eventTypes.find(et => et.id === eventTypeId);
+            if (!eventType) return;
+            const link = `${window.location.origin}${window.location.pathname}?event=${eventType.slug}`; // Mock link
+            document.getElementById('bookingLinkInput').value = link;
+            openModal('copyLinkModal');
+        }
+
+        function copyToClipboard() {
+            const input = document.getElementById('bookingLinkInput');
+            input.select();
+            input.setSelectionRange(0, 99999); // For mobile devices
+            try {
+                document.execCommand('copy');
+                document.getElementById('copyFeedback').textContent = 'Link copied to clipboard!';
+            } catch (err) {
+                document.getElementById('copyFeedback').textContent = 'Failed to copy.';
+                console.error('Failed to copy: ', err);
+            }
+        }
+
+        function renderBookingPage(eventTypeId) {
+            const eventType = state.eventTypes.find(et => et.id === eventTypeId);
+            if (!eventType) {
+                mainContent.innerHTML = `<p class="text-danger-DEFAULT">Error: Event type not found.</p>`;
+                return;
+            }
+            state.booking.selectedEventType = eventType;
+
+            // Mock available dates and times
+            const today = new Date();
+            const availableSlots = [];
+            for (let i = 0; i < 5; i++) { // Next 5 days
+                const date = new Date(today);
+                date.setDate(today.getDate() + i);
+                availableSlots.push({
+                    date: date.toISOString().split('T')[0],
+                    dateFormatted: date.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' }),
+                    times: ['09:00 AM', '09:30 AM', '10:00 AM', '10:30 AM', '02:00 PM', '02:30 PM', '03:00 PM']
+                });
+            }
+
+            mainContent.innerHTML = `
+                <div class="max-w-3xl mx-auto bg-white p-8 rounded-xl shadow-xl">
+                    <div class="flex items-center space-x-4 mb-6 pb-6 border-b border-neutral-dark">
+                        <div class="w-16 h-16 ${eventType.color} rounded-lg flex items-center justify-center text-white text-2xl font-bold">
+                            ${eventType.name.substring(0,1)}
+                        </div>
+                        <div>
+                            <h1 class="text-2xl font-bold text-neutral-text">${eventType.name}</h1>
+                            <p class="text-neutral-textLight">${eventType.duration} minutes • ${eventType.location || 'Online'}</p>
+                            <p class="text-sm text-neutral-textLight mt-1">${eventType.description || ''}</p>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                        <div>
+                            <h2 class="text-xl font-semibold text-neutral-text mb-3">Select a Date & Time</h2>
+                            <div id="timeSlotsContainer" class="space-y-4 max-h-96 overflow-y-auto pr-2">
+                                ${availableSlots.map(slot => `
+                                    <div>
+                                        <h3 class="font-semibold text-neutral-text mb-2">${slot.dateFormatted}</h3>
+                                        <div class="grid grid-cols-2 gap-2">
+                                            ${slot.times.map(time => `
+                                                <button data-date="${slot.date}" data-time="${time}" class="time-slot-btn border border-primary-DEFAULT text-primary-DEFAULT hover:bg-primary-DEFAULT hover:text-white p-2 rounded-md text-sm focus:ring-2 focus:ring-primary-DEFAULT focus:ring-opacity-50 transition-colors">
+                                                    ${time}
+                                                </button>
+                                            `).join('')}
+                                        </div>
+                                    </div>
+                                `).join('')}
+                            </div>
+                        </div>
+
+                        <div id="bookingFormContainer" class="hidden">
+                            <h2 class="text-xl font-semibold text-neutral-text mb-1">Enter Details</h2>
+                            <p class="text-sm text-neutral-textLight mb-4">For <span id="selectedDateTimeDisplay" class="font-medium"></span></p>
+                            <form id="confirmBookingForm">
+                                <div class="mb-4">
+                                    <label for="bookerName" class="block text-sm font-medium text-neutral-text mb-1">Name</label>
+                                    <input type="text" id="bookerName" required class="w-full p-2 border border-neutral-dark rounded-md">
+                                </div>
+                                <div class="mb-4">
+                                    <label for="bookerEmail" class="block text-sm font-medium text-neutral-text mb-1">Email</label>
+                                    <input type="email" id="bookerEmail" required class="w-full p-2 border border-neutral-dark rounded-md">
+                                </div>
+                                <div class="mb-4">
+                                    <label for="bookerNotes" class="block text-sm font-medium text-neutral-text mb-1">Notes (optional)</label>
+                                    <textarea id="bookerNotes" rows="3" class="w-full p-2 border border-neutral-dark rounded-md"></textarea>
+                                </div>
+                                <button type="submit" class="w-full bg-primary-DEFAULT text-white px-4 py-2.5 rounded-md hover:bg-primary-hover font-semibold">Schedule Event</button>
+                            </form>
+                        </div>
+                    </div>
+                    <button onclick="navigateTo('eventTypes')" class="mt-8 text-sm text-primary-DEFAULT hover:underline">&larr; Back to Event Types</button>
+                </div>
+            `;
+
+            document.querySelectorAll('.time-slot-btn').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    document.querySelectorAll('.time-slot-btn').forEach(b => b.classList.remove('bg-primary-DEFAULT', 'text-white'));
+                    btn.classList.add('bg-primary-DEFAULT', 'text-white');
+                    state.booking.selectedDate = btn.dataset.date;
+                    state.booking.selectedTime = btn.dataset.time;
+                    
+                    const dateObj = new Date(`${btn.dataset.date}T00:00:00`); // Ensure correct date parsing
+                    const formattedDate = dateObj.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
+
+                    document.getElementById('selectedDateTimeDisplay').textContent = `${formattedDate} at ${btn.dataset.time}`;
+                    document.getElementById('bookingFormContainer').classList.remove('hidden');
+                });
+            });
+
+            document.getElementById('confirmBookingForm').addEventListener('submit', (e) => {
+                e.preventDefault();
+                const newBooking = {
+                    id: 'sch' + (Date.now() % 10000),
+                    eventTypeId: eventType.id,
+                    eventName: eventType.name,
+                    bookerName: document.getElementById('bookerName').value,
+                    bookerEmail: document.getElementById('bookerEmail').value,
+                    dateTime: `${state.booking.selectedDate}T${convertTo24Hour(state.booking.selectedTime)}:00`,
+                    notes: document.getElementById('bookerNotes').value
+                };
+                state.scheduledEvents.push(newBooking);
+                
+                document.getElementById('bookingConfirmationDetails').innerHTML = `
+                    <strong>${eventType.name}</strong> with <strong>${newBooking.bookerName}</strong><br>
+                    is scheduled for ${new Date(newBooking.dateTime).toLocaleString('en-US', { dateStyle: 'full', timeStyle: 'short' })}.
+                `;
+                openModal('confirmBookingModal');
+            });
+        }
+        
+        function convertTo24Hour(time12h) {
+            const [time, modifier] = time12h.split(' ');
+            let [hours, minutes] = time.split(':');
+            if (hours === '12') hours = '00';
+            if (modifier === 'PM') hours = parseInt(hours, 10) + 12;
+            return `${hours.padStart(2, '0')}:${minutes}`;
+        }
+
+
+        function renderScheduledEventsView() {
+            const sortedEvents = [...state.scheduledEvents].sort((a,b) => new Date(a.dateTime) - new Date(b.dateTime));
+
+            mainContent.innerHTML = `
+                <div class="mb-8">
+                    <h1 class="text-3xl font-bold text-neutral-text">Scheduled Events</h1>
+                    <p class="text-neutral-textLight">View your upcoming and past bookings.</p>
+                </div>
+                ${sortedEvents.length === 0 ? `
+                    <div class="text-center py-10 bg-white rounded-xl shadow-lg">
+                        <svg class="mx-auto h-12 w-12 text-neutral-dark" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+                            <path vector-effect="non-scaling-stroke" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 13h6m-3-3v6m-9 1V7a2 2 0 012-2h6l2 2h6a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2z" />
+                        </svg>
+                        <h3 class="mt-2 text-lg font-medium text-neutral-text">No scheduled events</h3>
+                        <p class="mt-1 text-sm text-neutral-textLight">You don't have any bookings yet.</p>
+                    </div>
+                ` : `
+                <div class="bg-white rounded-xl shadow-lg overflow-hidden">
+                    <table class="min-w-full divide-y divide-neutral-medium">
+                        <thead class="bg-neutral-light">
+                            <tr>
+                                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-neutral-textLight uppercase tracking-wider">Event Type</th>
+                                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-neutral-textLight uppercase tracking-wider">Booked By</th>
+                                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-neutral-textLight uppercase tracking-wider">Date & Time</th>
+                                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-neutral-textLight uppercase tracking-wider">Status</th>
+                                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-neutral-textLight uppercase tracking-wider">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody class="bg-white divide-y divide-neutral-medium">
+                            ${sortedEvents.map(event => {
+                                const eventDate = new Date(event.dateTime);
+                                const isUpcoming = eventDate > new Date();
+                                const eventTypeDetails = state.eventTypes.find(et => et.id === event.eventTypeId);
+                                return `
+                                    <tr>
+                                        <td class="px-6 py-4 whitespace-nowrap">
+                                            <div class="text-sm font-medium text-neutral-text">${event.eventName}</div>
+                                            <div class="text-xs text-neutral-textLight">${eventTypeDetails ? eventTypeDetails.duration + ' min' : ''}</div>
+                                        </td>
+                                        <td class="px-6 py-4 whitespace-nowrap">
+                                            <div class="text-sm text-neutral-text">${event.bookerName}</div>
+                                            <div class="text-xs text-neutral-textLight">${event.bookerEmail}</div>
+                                        </td>
+                                        <td class="px-6 py-4 whitespace-nowrap">
+                                            <div class="text-sm text-neutral-text">${eventDate.toLocaleDateString('en-US', {dateStyle: 'medium'})}</div>
+                                            <div class="text-xs text-neutral-textLight">${eventDate.toLocaleTimeString('en-US', {timeStyle: 'short'})}</div>
+                                        </td>
+                                        <td class="px-6 py-4 whitespace-nowrap">
+                                            <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${isUpcoming ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}">
+                                                ${isUpcoming ? 'Upcoming' : 'Past'}
+                                            </span>
+                                        </td>
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                                            <button onclick="alert('Reschedule action for event ${event.id} (mock)')" class="text-primary-DEFAULT hover:text-primary-hover mr-3">Reschedule</button>
+                                            <button onclick="cancelBooking('${event.id}')" class="text-danger-DEFAULT hover:text-red-700">Cancel</button>
+                                        </td>
+                                    </tr>
+                                    ${event.notes ? `
+                                    <tr class="bg-neutral-light">
+                                        <td colspan="5" class="px-6 py-2 text-xs text-neutral-textLight">
+                                            <strong>Notes:</strong> ${event.notes}
+                                        </td>
+                                    </tr>` : ''}
+                                `;
+                            }).join('')}
+                        </tbody>
+                    </table>
+                </div>
+                `}
+            `;
+        }
+        
+        function cancelBooking(eventId) {
+            if (confirm('Are you sure you want to cancel this booking?')) {
+                state.scheduledEvents = state.scheduledEvents.filter(event => event.id !== eventId);
+                renderScheduledEventsView();
+                // In a real app, send cancellation email
+                alert('Booking cancelled (mock).');
+            }
+        }
+
+
+        function renderIntegrationsView() {
+            mainContent.innerHTML = `
+                <div class="mb-8">
+                    <h1 class="text-3xl font-bold text-neutral-text">Integrations</h1>
+                    <p class="text-neutral-textLight">Connect your favorite apps to streamline your workflow.</p>
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    ${Object.entries(state.integrations).map(([key, integration]) => `
+                        <div class="bg-white p-6 rounded-xl shadow-lg flex flex-col">
+                            <div class="flex items-center space-x-3 mb-3">
+                                <div class="p-2 bg-neutral-light rounded-lg">${integration.icon}</div>
+                                <h3 class="text-xl font-semibold text-neutral-text">${integration.name}</h3>
+                            </div>
+                            <p class="text-sm text-neutral-textLight mb-4 flex-grow">${integration.description}</p>
+                            <button 
+                                onclick="toggleIntegration('${key}')" 
+                                class="w-full py-2 px-4 rounded-md text-sm font-medium transition-colors
+                                ${integration.connected 
+                                    ? 'bg-neutral-medium text-neutral-text hover:bg-neutral-dark' 
+                                    : 'bg-primary-DEFAULT text-white hover:bg-primary-hover'}"
+                            >
+                                ${integration.connected ? 'Disconnect' : 'Connect'}
+                            </button>
+                            ${integration.connected ? '<p class="text-xs text-success-DEFAULT text-center mt-2">Successfully connected!</p>' : ''}
+                        </div>
+                    `).join('')}
+                </div>
+                 <div class="mt-8 bg-yellow-50 border-l-4 border-yellow-400 p-4 rounded-md">
+                    <div class="flex">
+                        <div class="flex-shrink-0">
+                            <svg class="h-5 w-5 text-yellow-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                                <path fill-rule="evenodd" d="M8.485 2.495c.673-1.167 2.357-1.167 3.03 0l6.28 10.875c.673 1.167-.17 2.625-1.516 2.625H3.72c-1.347 0-2.189-1.458-1.515-2.625L8.485 2.495zM10 5a.75.75 0 01.75.75v3.5a.75.75 0 01-1.5 0v-3.5A.75.75 0 0110 5zm0 9a1 1 0 100-2 1 1 0 000 2z" clip-rule="evenodd" />
+                            </svg>
+                        </div>
+                        <div class="ml-3">
+                            <p class="text-sm text-yellow-700">
+                                Please note: These are mock integrations. In a real application, clicking 'Connect' would initiate an OAuth flow with the respective service.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        function toggleIntegration(serviceKey) {
+            state.integrations[serviceKey].connected = !state.integrations[serviceKey].connected;
+            renderIntegrationsView(); // Re-render to show updated status
+        }
+
+        function renderOfflineAppsView() {
+            const apps = [
+                { name: 'Windows App', os: 'Windows', icon: ICONS.windows, description: 'Stay productive on your Windows PC with our native desktop app.', linkText: 'Download for Windows' },
+                { name: 'macOS App', os: 'macOS', icon: ICONS.apple, description: 'Seamless scheduling experience on your Mac.', linkText: 'Download for macOS' },
+                { name: 'Linux App', os: 'Linux (Debian)', icon: ICONS.linux, description: 'For Linux users, a dedicated app for Debian-based systems.', linkText: 'Download .deb package' },
+                { name: 'iOS App', os: 'Mobile', icon: ICONS.apple, description: 'Manage your schedule on the go with our iPhone and iPad app.', linkText: 'Get on App Store' },
+                { name: 'Android App', os: 'Mobile', icon: ICONS.android, description: 'Your scheduling assistant, right in your pocket on Android devices.', linkText: 'Get on Google Play' },
+            ];
+
+            mainContent.innerHTML = `
+                <div class="mb-8">
+                    <h1 class="text-3xl font-bold text-neutral-text">Get Our Apps</h1>
+                    <p class="text-neutral-textLight">Stay connected and manage your schedule from any device, even offline (mock functionality).</p>
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    ${apps.map(app => `
+                        <div class="bg-white p-6 rounded-xl shadow-lg flex flex-col items-center text-center">
+                            <div class="p-3 bg-primary-light rounded-full mb-4 text-primary-DEFAULT">${app.icon.replace('class="icon"','class="w-8 h-8"')}</div>
+                            <h3 class="text-xl font-semibold text-neutral-text mb-2">${app.name}</h3>
+                            <p class="text-sm text-neutral-textLight mb-4 flex-grow">${app.description}</p>
+                            <button onclick="alert('Mock download/redirect for ${app.name}.')" class="w-full bg-secondary-DEFAULT text-white px-4 py-2 rounded-md hover:bg-secondary-hover text-sm font-medium">
+                                ${app.linkText}
+                            </button>
+                        </div>
+                    `).join('')}
+                </div>
+                <div class="mt-8 bg-blue-50 border-l-4 border-blue-400 p-4 rounded-md">
+                    <div class="flex">
+                        <div class="flex-shrink-0">
+                            <svg class="h-5 w-5 text-blue-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a.75.75 0 000 1.5h.253a.25.25 0 01.244.304l-.459 2.066A1.75 1.75 0 0010.747 15H11a.75.75 0 000-1.5h-.253a.25.25 0 01-.244-.304l.459-2.066A1.75 1.75 0 009.253 9H9z" clip-rule="evenodd" /></svg>
+                        </div>
+                        <div class="ml-3">
+                            <p class="text-sm text-blue-700">
+                                The "offline plugin" capability described is a complex feature. These download links are for demonstration purposes only. A real implementation would require separate native application development for each platform and robust data synchronization logic.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+        
+        function renderSettingsView() {
+            mainContent.innerHTML = `
+                <div class="mb-8">
+                    <h1 class="text-3xl font-bold text-neutral-text">Settings</h1>
+                    <p class="text-neutral-textLight">Manage your account and application preferences.</p>
+                </div>
+                <div class="space-y-8 max-w-2xl">
+                    <div class="bg-white p-6 rounded-xl shadow-lg">
+                        <h2 class="text-xl font-semibold text-neutral-text mb-4">Profile Information</h2>
+                        <div class="space-y-3">
+                            <div>
+                                <label class="block text-sm font-medium text-neutral-textLight">Full Name</label>
+                                <input type="text" value="User Name (mock)" class="mt-1 block w-full p-2 border border-neutral-dark rounded-md shadow-sm bg-neutral-light cursor-not-allowed" readonly>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-neutral-textLight">Email Address</label>
+                                <input type="email" value="user@example.com (mock)" class="mt-1 block w-full p-2 border border-neutral-dark rounded-md shadow-sm bg-neutral-light cursor-not-allowed" readonly>
+                            </div>
+                            <button class="bg-primary-DEFAULT text-white px-4 py-2 rounded-md hover:bg-primary-hover text-sm font-medium" onclick="alert('Profile update functionality is not implemented in this mock.')">Update Profile</button>
+                        </div>
+                    </div>
+
+                    <div class="bg-white p-6 rounded-xl shadow-lg">
+                        <h2 class="text-xl font-semibold text-neutral-text mb-4">Preferences</h2>
+                        <div class="space-y-3">
+                           <div class="flex items-center justify-between">
+                                <span class="text-sm font-medium text-neutral-text">Enable Dark Mode (UI Mock)</span>
+                                <button id="darkModeToggle" onclick="toggleDarkMode()" class="relative inline-flex items-center h-6 rounded-full w-11 transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-DEFAULT bg-neutral-medium">
+                                    <span class="sr-only">Enable dark mode</span>
+                                    <span id="darkModeToggleKnob" class="inline-block w-4 h-4 transform bg-white rounded-full transition-transform duration-200 ease-in-out translate-x-1"></span>
+                                </button>
+                            </div>
+                            <div>
+                                <label for="timezoneSelect" class="block text-sm font-medium text-neutral-textLight">Timezone</label>
+                                <select id="timezoneSelect" class="mt-1 block w-full p-2 border border-neutral-dark rounded-md shadow-sm focus:ring-primary-DEFAULT focus:border-primary-DEFAULT">
+                                    <option>(UTC-08:00) Pacific Time (US & Canada)</option>
+                                    <option selected>(UTC-05:00) Eastern Time (US & Canada)</option>
+                                    <option>(UTC+00:00) Greenwich Mean Time</option>
+                                    <option>(UTC+01:00) Central European Time</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                     <div class="mt-8 bg-yellow-50 border-l-4 border-yellow-400 p-4 rounded-md">
+                        <div class="flex">
+                            <div class="flex-shrink-0">
+                                <svg class="h-5 w-5 text-yellow-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                                    <path fill-rule="evenodd" d="M8.485 2.495c.673-1.167 2.357-1.167 3.03 0l6.28 10.875c.673 1.167-.17 2.625-1.516 2.625H3.72c-1.347 0-2.189-1.458-1.515-2.625L8.485 2.495zM10 5a.75.75 0 01.75.75v3.5a.75.75 0 01-1.5 0v-3.5A.75.75 0 0110 5zm0 9a1 1 0 100-2 1 1 0 000 2z" clip-rule="evenodd" />
+                                </svg>
+                            </div>
+                            <div class="ml-3">
+                                <p class="text-sm text-yellow-700">
+                                    Settings are for demonstration purposes only and are not persisted. Dark mode is a UI toggle only and does not change the full application theme.
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        let isDarkModeEnabled = false;
+        function toggleDarkMode() {
+            isDarkModeEnabled = !isDarkModeEnabled;
+            const toggleButton = document.getElementById('darkModeToggle');
+            const knob = document.getElementById('darkModeToggleKnob');
+            if (isDarkModeEnabled) {
+                toggleButton.classList.remove('bg-neutral-medium');
+                toggleButton.classList.add('bg-primary-DEFAULT');
+                knob.classList.remove('translate-x-1');
+                knob.classList.add('translate-x-6');
+                // In a real app, you would add a 'dark' class to the HTML element
+                // document.documentElement.classList.add('dark');
+                alert("Dark mode toggled (UI only). A full dark theme would require extensive CSS changes.");
+            } else {
+                toggleButton.classList.remove('bg-primary-DEFAULT');
+                toggleButton.classList.add('bg-neutral-medium');
+                knob.classList.remove('translate-x-6');
+                knob.classList.add('translate-x-1');
+                // document.documentElement.classList.remove('dark');
+            }
+        }
+
+
+        // --- INITIALIZATION ---
+        document.addEventListener('DOMContentLoaded', () => {
+            renderSidebar();
+            // Check for deep link for booking page (mock)
+            const urlParams = new URLSearchParams(window.location.search);
+            const eventSlug = urlParams.get('event');
+            if (eventSlug) {
+                const eventType = state.eventTypes.find(et => et.slug === eventSlug && et.active);
+                if (eventType) {
+                    navigateTo('bookingPage', { eventTypeId: eventType.id });
+                    return;
+                }
+            }
+            navigateTo('dashboard'); // Default view
+        });
+
+    </script>
+</body>
+</html>

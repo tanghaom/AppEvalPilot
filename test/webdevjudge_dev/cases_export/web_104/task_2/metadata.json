@@ -1,0 +1,9 @@
+{
+  "web_id": "web_104",
+  "task_id": 2,
+  "task_type": "dynamic",
+  "instruction": "Task: Click a hyperlink within the currently displayed simulated web content.\nExpected Result: A simulated loading progress bar is displayed. The simulated web content updates to reflect the linked page. The address bar updates to the new URL. The new URL is added to a simulated browsing history.\n\nNote: The task is only considered successful if the expected result is achieved; otherwise, it is deemed infeasible.",
+  "max_steps": 15,
+  "expected": "A simulated loading progress bar is displayed. The simulated web content updates to reflect the linked page. The address bar updates to the new URL. The new URL is added to a simulated browsing history.",
+  "label": 1
+}

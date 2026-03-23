@@ -1,0 +1,9 @@
+{
+  "web_id": "web_90",
+  "task_id": 2,
+  "task_type": "dynamic",
+  "instruction": "Task: Click a 'Close' or 'Back' button/icon associated with the article detail view.\nExpected Result: The article detail view is hidden, and the main news feed list (articles grouped by date) is visible again.\n\nNote: The task is only considered successful if the expected result is achieved; otherwise, it is deemed infeasible.",
+  "max_steps": 15,
+  "expected": "The article detail view is hidden, and the main news feed list (articles grouped by date) is visible again.",
+  "label": 1
+}

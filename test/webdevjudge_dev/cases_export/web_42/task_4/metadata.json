@@ -1,0 +1,9 @@
+{
+  "web_id": "web_42",
+  "task_id": 4,
+  "task_type": "dynamic",
+  "instruction": "Task: Tap on a post thumbnail (e.g., in the feed, Explore, or Profile grid).\nExpected Result: A detailed view of the selected post is displayed (e.g., in a modal or overlay), showing a larger image and its caption.\n\nNote: The task is only considered successful if the expected result is achieved; otherwise, it is deemed infeasible.",
+  "max_steps": 15,
+  "expected": "A detailed view of the selected post is displayed (e.g., in a modal or overlay), showing a larger image and its caption.",
+  "label": 0
+}

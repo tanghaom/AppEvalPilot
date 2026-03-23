@@ -1,0 +1,761 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Stable Diffusion Elo Arena</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: #1e293b; /* slate-800 */ }
+        ::-webkit-scrollbar-thumb { background: #334155; /* slate-700 */ border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #475569; /* slate-600 */ }
+        .metadata-text {
+            font-size: 0.75rem; /* text-xs */
+            line-height: 1.25rem; /* leading-5 */
+            max-height: 120px; /* More space for metadata */
+            overflow-y: auto;
+            background-color: #0f172a; /* slate-950 for contrast */
+            padding: 0.5rem; /* p-2 */
+            border-radius: 0.375rem; /* rounded-md */
+            border: 1px solid #334155; /* border-slate-700 */
+            white-space: pre-wrap; /* Allow wrapping */
+            word-break: break-all; /* Break long strings */
+        }
+        .image-container {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            overflow: hidden;
+            cursor: pointer;
+            height: 40vh; /* Use viewport height for responsiveness */
+            min-height: 300px; /* Minimum height */
+        }
+        .image-container img {
+            max-width: 100%;
+            max-height: 100%;
+            object-fit: contain;
+            border-radius: 0.5rem; /* rounded-lg */
+        }
+        .selected-glow {
+            box-shadow: 0 0 15px 5px rgba(79, 70, 229, 0.7); /* indigo-600 glow */
+        }
+        .clickable-card {
+            transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+        }
+        .clickable-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05), 0 0 0 3px rgba(79, 70, 229, 0.5); /* indigo focus ring like */
+        }
+    </style>
+</head>
+<body class="bg-slate-900 text-slate-100 font-sans min-h-screen flex flex-col">
+
+    <div id="app" class="flex-grow flex flex-col container mx-auto p-4 space-y-6">
+        <!-- Header -->
+        <header class="text-center py-6">
+            <h1 class="text-4xl font-bold text-indigo-400">Stable Diffusion Elo Arena</h1>
+            <p class="text-slate-400 mt-2">Compare your generations and rank models!</p>
+        </header>
+
+        <!-- Controls -->
+        <div id="controls" class="flex flex-col sm:flex-row justify-center items-center space-y-4 sm:space-y-0 sm:space-x-4">
+            <div class="flex items-center">
+                <label for="imageFolderInput" class="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-3 px-6 rounded-lg shadow-md cursor-pointer transition duration-150 ease-in-out">
+                    Load Image Folder
+                </label>
+                <input type="file" id="imageFolderInput" webkitdirectory directory multiple class="hidden">
+            </div>
+            <button id="resetButton" class="bg-red-600 hover:bg-red-700 text-white font-semibold py-3 px-6 rounded-lg shadow-md transition duration-150 ease-in-out hidden">Reset Session</button>
+        </div>
+        <div id="loadingStatus" class="text-center text-sky-400 py-4"></div>
+
+        <!-- Comparison Arena -->
+        <main id="comparisonArena" class="grid grid-cols-1 md:grid-cols-2 gap-6 hidden">
+            <!-- Image A -->
+            <div id="imageAContainer" class="bg-slate-800 p-4 rounded-xl shadow-xl flex flex-col space-y-3 clickable-card">
+                <div class="image-container border-2 border-dashed border-slate-700 rounded-xl bg-slate-900/50">
+                    <!-- Placeholder or Image A -->
+                </div>
+                <div class="metadata-display space-y-1">
+                    <p class="text-sm text-slate-400"><strong>Model:</strong> <span id="modelA" class="text-sky-400">N/A</span></p>
+                    <p class="text-sm text-slate-400"><strong>Seed:</strong> <span id="seedA">N/A</span>, <strong>Steps:</strong> <span id="stepsA">N/A</span>, <strong>CFG:</strong> <span id="cfgA">N/A</span></p>
+                    <p class="text-sm text-slate-400"><strong>Sampler:</strong> <span id="samplerA">N/A</span></p>
+                    <details class="group">
+                        <summary class="text-xs text-indigo-400 cursor-pointer group-hover:underline">Show Prompt</summary>
+                        <div id="promptA" class="metadata-text text-slate-300"></div>
+                    </details>
+                    <details class="group">
+                        <summary class="text-xs text-indigo-400 cursor-pointer group-hover:underline">Show Negative Prompt</summary>
+                        <div id="negPromptA" class="metadata-text text-slate-300"></div>
+                    </details>
+                </div>
+                <button id="chooseA" class="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-4 rounded-lg transition duration-150 ease-in-out">Choose This</button>
+            </div>
+
+            <!-- Image B -->
+            <div id="imageBContainer" class="bg-slate-800 p-4 rounded-xl shadow-xl flex flex-col space-y-3 clickable-card">
+                <div class="image-container border-2 border-dashed border-slate-700 rounded-xl bg-slate-900/50">
+                    <!-- Placeholder or Image B -->
+                </div>
+                <div class="metadata-display space-y-1">
+                    <p class="text-sm text-slate-400"><strong>Model:</strong> <span id="modelB" class="text-sky-400">N/A</span></p>
+                    <p class="text-sm text-slate-400"><strong>Seed:</strong> <span id="seedB">N/A</span>, <strong>Steps:</strong> <span id="stepsB">N/A</span>, <strong>CFG:</strong> <span id="cfgB">N/A</span></p>
+                    <p class="text-sm text-slate-400"><strong>Sampler:</strong> <span id="samplerB">N/A</span></p>
+                    <details class="group">
+                        <summary class="text-xs text-indigo-400 cursor-pointer group-hover:underline">Show Prompt</summary>
+                        <div id="promptB" class="metadata-text text-slate-300"></div>
+                    </details>
+                     <details class="group">
+                        <summary class="text-xs text-indigo-400 cursor-pointer group-hover:underline">Show Negative Prompt</summary>
+                        <div id="negPromptB" class="metadata-text text-slate-300"></div>
+                    </details>
+                </div>
+                <button id="chooseB" class="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-4 rounded-lg transition duration-150 ease-in-out">Choose This</button>
+            </div>
+        </main>
+        <div id="noMorePairsMessage" class="text-center text-xl text-amber-400 py-8 hidden"></div>
+
+        <!-- Leaderboard -->
+        <section id="leaderboardSection" class="py-6 hidden">
+            <h2 class="text-3xl font-semibold text-center text-indigo-400 mb-6">Model Leaderboard</h2>
+            <div class="overflow-x-auto bg-slate-800 rounded-xl shadow-xl p-1">
+                <table class="min-w-full divide-y divide-slate-700">
+                    <thead class="bg-slate-700/50">
+                        <tr>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-slate-300 uppercase tracking-wider">Rank</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-slate-300 uppercase tracking-wider">Model</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-slate-300 uppercase tracking-wider">Elo</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-slate-300 uppercase tracking-wider">Wins</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-slate-300 uppercase tracking-wider">Losses</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-slate-300 uppercase tracking-wider">Matches</th>
+                        </tr>
+                    </thead>
+                    <tbody id="leaderboardBody" class="divide-y divide-slate-700">
+                        <!-- Leaderboard rows will be injected here -->
+                    </tbody>
+                </table>
+            </div>
+             <p class="text-xs text-slate-500 mt-4 text-center">Leaderboard data is saved in your browser's local storage.</p>
+        </section>
+
+        <footer class="text-center py-4 text-sm text-slate-500">
+            Created by an AI for image comparison.
+        </footer>
+    </div>
+
+    <script>
+        const appState = {
+            imagesData: [], // { id, fileName, blobUrl, file, metadata: { prompt, negPrompt, modelIdentifier, steps, sampler, cfgScale, seed, size }, parsed, errorParsing }
+            modelsElo: {}, // { modelIdentifier: { elo, wins, losses, matches } }
+            currentPairIndices: [], // [indexA, indexB]
+            K_FACTOR: 32,
+            INITIAL_ELO: 1200,
+            isLoading: false,
+            processedFilesCount: 0,
+            totalFilesToProcess: 0,
+        };
+
+        const imageFolderInput = document.getElementById('imageFolderInput');
+        const loadingStatus = document.getElementById('loadingStatus');
+        const comparisonArena = document.getElementById('comparisonArena');
+        const leaderboardSection = document.getElementById('leaderboardSection');
+        const leaderboardBody = document.getElementById('leaderboardBody');
+        const chooseAButton = document.getElementById('chooseA');
+        const chooseBButton = document.getElementById('chooseB');
+        const resetButton = document.getElementById('resetButton');
+        const noMorePairsMessage = document.getElementById('noMorePairsMessage');
+        
+        const imageAContainerDisplay = document.querySelector('#imageAContainer .image-container');
+        const imageBContainerDisplay = document.querySelector('#imageBContainer .image-container');
+
+        // DOM Update Functions
+        function updateLoadingStatus(message) {
+            loadingStatus.textContent = message;
+        }
+
+        function displayImage(container, imageData) {
+            container.innerHTML = ''; // Clear previous
+            if (imageData && imageData.blobUrl) {
+                const img = document.createElement('img');
+                img.src = imageData.blobUrl;
+                img.alt = imageData.fileName;
+                img.className = 'max-w-full max-h-full object-contain rounded-lg shadow-md';
+                container.appendChild(img);
+                
+                // Update metadata display
+                const side = container.parentElement.id === 'imageAContainer' ? 'A' : 'B';
+                document.getElementById(`model${side}`).textContent = imageData.metadata?.modelIdentifier || 'N/A';
+                document.getElementById(`seed${side}`).textContent = imageData.metadata?.seed || 'N/A';
+                document.getElementById(`steps${side}`).textContent = imageData.metadata?.steps || 'N/A';
+                document.getElementById(`cfg${side}`).textContent = imageData.metadata?.cfgScale || 'N/A';
+                document.getElementById(`sampler${side}`).textContent = imageData.metadata?.sampler || 'N/A';
+                document.getElementById(`prompt${side}`).textContent = imageData.metadata?.prompt || 'N/A';
+                document.getElementById(`negPrompt${side}`).textContent = imageData.metadata?.negPrompt || 'N/A';
+
+            } else {
+                // Placeholder
+                const placeholder = document.createElement('div');
+                placeholder.className = "bg-gray-200 border-2 border-dashed rounded-xl w-full h-full flex items-center justify-center text-slate-500";
+                placeholder.textContent = "No Image";
+                container.appendChild(placeholder);
+                
+                const side = container.parentElement.id === 'imageAContainer' ? 'A' : 'B';
+                document.getElementById(`model${side}`).textContent = 'N/A';
+                document.getElementById(`seed${side}`).textContent = 'N/A';
+                // Clear other metadata fields too
+            }
+        }
+        
+        function renderLeaderboard() {
+            leaderboardBody.innerHTML = '';
+            const sortedModels = Object.entries(appState.modelsElo)
+                .sort(([, a], [, b]) => b.elo - a.elo);
+
+            if (sortedModels.length === 0) {
+                leaderboardBody.innerHTML = `<tr><td colspan="6" class="text-center px-6 py-4 text-slate-400">No models rated yet. Load images and start comparing!</td></tr>`;
+                return;
+            }
+            
+            sortedModels.forEach(([modelIdentifier, data], index) => {
+                const tr = document.createElement('tr');
+                tr.className = index % 2 === 0 ? 'bg-slate-800/50' : 'bg-slate-900/30';
+                tr.innerHTML = `
+                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-slate-200">${index + 1}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-sky-400 font-semibold">${modelIdentifier}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-slate-300">${Math.round(data.elo)}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-green-400">${data.wins}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-red-400">${data.losses}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-slate-300">${data.matches}</td>
+                `;
+                leaderboardBody.appendChild(tr);
+            });
+            leaderboardSection.classList.remove('hidden');
+        }
+
+        // Metadata Parsing Logic
+        function parseMetadataFromText(textData) {
+            const metadata = {
+                prompt: '',
+                negPrompt: '',
+                steps: null,
+                sampler: null,
+                cfgScale: null,
+                seed: null,
+                size: null,
+                modelIdentifier: null,
+            };
+
+            if (!textData || typeof textData !== 'string') return metadata;
+
+            const negPromptMatch = textData.match(/Negative prompt:([\s\S]*?)(?:Steps:|Seed:|Lora hashes:|Version:)/i);
+            if (negPromptMatch && negPromptMatch[1]) {
+                metadata.negPrompt = negPromptMatch[1].trim();
+                metadata.prompt = textData.substring(0, negPromptMatch.index).trim();
+            } else {
+                // If no negative prompt, assume all text before "Steps:" or other keywords is the prompt
+                const stepsMatchFallback = textData.match(/(Steps:|Seed:|Lora hashes:|Version:)/i);
+                if (stepsMatchFallback) {
+                    metadata.prompt = textData.substring(0, stepsMatchFallback.index).trim();
+                } else {
+                     metadata.prompt = textData.trim(); // Or just take the whole thing if no other keywords
+                }
+            }
+            
+            const stepsMatch = textData.match(/Steps: (\d+)/i);
+            if (stepsMatch) metadata.steps = parseInt(stepsMatch[1]);
+
+            const samplerMatch = textData.match(/Sampler: ([^,]+?)(?:,|$|\n)/i);
+            if (samplerMatch) metadata.sampler = samplerMatch[1].trim();
+
+            const cfgScaleMatch = textData.match(/CFG scale: ([\d\.]+)/i);
+            if (cfgScaleMatch) metadata.cfgScale = parseFloat(cfgScaleMatch[1]);
+
+            const seedMatch = textData.match(/Seed: (\d+)/i);
+            if (seedMatch) metadata.seed = parseInt(seedMatch[1]);
+
+            const sizeMatch = textData.match(/Size: (\d+x\d+)/i);
+            if (sizeMatch) metadata.size = sizeMatch[1];
+
+            const modelMatch = textData.match(/Model: ([^,\n]+)/i);
+            if (modelMatch) {
+                metadata.modelIdentifier = modelMatch[1].trim();
+            } else {
+                const modelHashMatch = textData.match(/Model hash: ([0-9a-fA-F]+)/i);
+                if (modelHashMatch) {
+                    metadata.modelIdentifier = `hash_${modelHashMatch[1]}`; // Prefix to distinguish from names
+                }
+            }
+            return metadata;
+        }
+
+        async function extractMetadata(file) {
+            return new Promise((resolve) => {
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    const buffer = e.target.result;
+                    let textData = null;
+
+                    try {
+                        if (file.type === 'image/png') {
+                            textData = parsePngMetadata(buffer);
+                        } else if (file.type === 'image/webp') {
+                            textData = parseWebpMetadata(buffer);
+                        }
+                    } catch (err) {
+                        console.error(`Error parsing metadata for ${file.name}:`, err);
+                        resolve(parseMetadataFromText(null)); // return default empty metadata
+                        return;
+                    }
+                    
+                    if (textData) {
+                        resolve(parseMetadataFromText(textData));
+                    } else {
+                        console.warn(`No metadata found or extracted for ${file.name}`);
+                        resolve(parseMetadataFromText(null)); // Default empty metadata
+                    }
+                };
+                reader.onerror = (err) => {
+                    console.error(`Error reading file ${file.name}:`, err);
+                    resolve(parseMetadataFromText(null)); // Default empty metadata on read error
+                };
+                reader.readAsArrayBuffer(file);
+            });
+        }
+
+        function parsePngMetadata(arrayBuffer) {
+            const view = new DataView(arrayBuffer);
+            // Check PNG signature
+            if (view.getUint32(0) !== 0x89504E47 || view.getUint32(4) !== 0x0D0A1A0A) {
+                console.warn("Not a valid PNG file or invalid signature.");
+                return null;
+            }
+
+            let offset = 8;
+            const decoder = new TextDecoder('utf-8');
+            while (offset < view.byteLength) {
+                const length = view.getUint32(offset);
+                offset += 4;
+                const type = String.fromCharCode(view.getUint8(offset), view.getUint8(offset + 1), view.getUint8(offset + 2), view.getUint8(offset + 3));
+                offset += 4;
+
+                if (type === 'tEXt' || type === 'iTXt' || type === 'zTXt') { // iTXt and zTXt might need more complex handling (compression for zTXt)
+                    const chunkData = new Uint8Array(arrayBuffer, offset, length);
+                    // For tEXt, it's keyword\0text.
+                    // For iTXt, it's keyword\0compression_flag\0compression_method\0language_tag\0translated_keyword\0text
+                    // For simplicity, we'll assume it's mostly tEXt and the keyword is 'parameters'
+                    let keywordEnd = -1;
+                    for(let i=0; i < chunkData.length; i++) {
+                        if (chunkData[i] === 0) { // Null terminator
+                            keywordEnd = i;
+                            break;
+                        }
+                    }
+
+                    if (keywordEnd !== -1) {
+                        const keyword = decoder.decode(chunkData.slice(0, keywordEnd));
+                        if (keyword.toLowerCase() === 'parameters') {
+                            // For iTXt, there are more null separated fields before actual text
+                            // This simplified parser works best for tEXt
+                            let textStart = keywordEnd + 1;
+                            if (type === 'iTXt') { // Skip compression flag, method, lang tag, translated keyword
+                                let nullCount = 0;
+                                for(let i = keywordEnd + 1; i < chunkData.length; i++) {
+                                    if (chunkData[i] === 0) {
+                                        nullCount++;
+                                        if (nullCount === 4) { // After 4 more nulls for iTXt standard structure
+                                            textStart = i + 1;
+                                            break;
+                                        }
+                                    }
+                                }
+                            }
+                            return decoder.decode(chunkData.slice(textStart));
+                        }
+                    }
+                }
+                if (type === 'IEND') break;
+                offset += length + 4; // Skip data and CRC
+            }
+            return null;
+        }
+        
+        // Basic WebP EXIF UserComment parser (highly simplified)
+        function parseWebpMetadata(arrayBuffer) {
+            const view = new DataView(arrayBuffer);
+            // Check RIFF WEBP signature
+            if (view.getUint32(0, false) !== 0x52494646 || view.getUint32(8, false) !== 0x57454250) { // RIFF, WEBP
+                console.warn("Not a valid WebP file.");
+                return null;
+            }
+
+            let offset = 12; // Skip RIFF header and WEBP FourCC
+            const decoder = new TextDecoder(); // Default UTF-8
+
+            while (offset < view.byteLength - 8) { // Ensure there's space for chunk header
+                const chunkFourCC = String.fromCharCode(view.getUint8(offset), view.getUint8(offset + 1), view.getUint8(offset + 2), view.getUint8(offset + 3));
+                offset += 4;
+                const chunkSize = view.getUint32(offset, true); // WebP uses little-endian
+                offset += 4;
+
+                if (chunkFourCC === 'EXIF') {
+                    // Found EXIF chunk. Now, the hard part: parsing EXIF data to find UserComment.
+                    // This is a highly simplified attempt assuming UserComment is easy to find,
+                    // a full EXIF parser is too complex for this scope.
+                    // EXIF data itself is a TIFF structure.
+                    const exifDataOffset = offset;
+                    const exifDataLength = chunkSize;
+                    
+                    // Check for endianness (II or MM)
+                    const endianMarker = String.fromCharCode(view.getUint8(exifDataOffset), view.getUint8(exifDataOffset+1));
+                    const littleEndian = endianMarker === 'II';
+
+                    // Magic number 0x002A or 0x2A00
+                    const magic = littleEndian ? view.getUint16(exifDataOffset + 2, true) : view.getUint16(exifDataOffset + 2, false);
+                    if (magic !== 0x002A) { // TIFF magic number
+                        console.warn("Invalid TIFF structure in EXIF chunk.");
+                        return null;
+                    }
+
+                    let ifdOffset = littleEndian ? view.getUint32(exifDataOffset + 4, true) : view.getUint32(exifDataOffset + 4, false);
+
+                    // Iterate IFDs (usually just one primary IFD, then EXIF SubIFD)
+                    // For simplicity, we will scan for UserComment tag (0x9286) in a common location
+                    // This is a heuristic and might not always work.
+                    // A common place for UserComment is in the primary IFD or Exif SubIFD.
+                    // The UserComment often contains the full parameter string.
+                    // Let's just try to decode a portion of the EXIF chunk and search for "User comment" or "Negative prompt:"
+                    // This is a hacky fallback if proper tag parsing is too much.
+                    try {
+                        const potentialExifText = decoder.decode(new Uint8Array(arrayBuffer, exifDataOffset, Math.min(exifDataLength, 2048))); // Decode a chunk
+                        if (potentialExifText.includes("UserComment") || potentialExifText.includes("Negative prompt:") || potentialExifText.includes("Steps:")) {
+                             // Try to find the start of UserComment's actual content (often after encoding specifier like ASCII\0\0\0)
+                            let ucIndex = potentialExifText.indexOf("UserComment");
+                            if (ucIndex !== -1) {
+                                let actualCommentStartIndex = potentialExifText.indexOf("(", ucIndex); // often starts with ( for some tools
+                                 if (actualCommentStartIndex === -1) actualCommentStartIndex = potentialExifText.indexOf("UNICODE", ucIndex) !== -1 ? potentialExifText.indexOf("UNICODE", ucIndex) + 8 : potentialExifText.indexOf("ASCII", ucIndex) !== -1 ? potentialExifText.indexOf("ASCII", ucIndex) + 8 : -1;
+
+
+                                if (actualCommentStartIndex !== -1) {
+                                    let comment = potentialExifText.substring(actualCommentStartIndex);
+                                    // Let the generic parser handle this found string
+                                    return comment; 
+                                }
+                            }
+                            // If UserComment not found structurally, but keywords are there, it means it's likely embedded.
+                            // Let's try to find the start of the prompt-like structure.
+                            const promptStartKeywords = ["Negative prompt:", "Steps:", "Sampler:", "CFG scale:", "Seed:", "Size:", "Model:"];
+                            let earliestKeywordIndex = Infinity;
+                            for (const keyword of promptStartKeywords) {
+                                const idx = potentialExifText.indexOf(keyword);
+                                if (idx !== -1) earliestKeywordIndex = Math.min(earliestKeywordIndex, idx);
+                            }
+
+                            if (earliestKeywordIndex !== Infinity) {
+                                // Attempt to find the actual start of the prompt leading to these keywords
+                                // This is very heuristic. The metadata often starts with the positive prompt.
+                                let estimatedPromptStart = potentialExifText.substring(0, earliestKeywordIndex).lastIndexOf('\n') + 1;
+                                if (estimatedPromptStart < 0) estimatedPromptStart = 0; // If no newline, start from beginning of text
+
+                                // Limit search backwards for prompt start
+                                const searchBackwardsLimit = 500; // characters
+                                let searchStart = Math.max(0, earliestKeywordIndex - searchBackwardsLimit);
+                                
+                                // Try to find a reasonable start of the full parameter string
+                                let fullParamText = potentialExifText.substring(searchStart);
+                                // Often the params are near the start of the exif block or UserComment section
+                                // The user provided `User comment (tsu...`
+                                // Try to find the pattern like `(name:version), prompt...`
+                                const exampleStartPattern = /\([a-zA-Z0-9 ._()-]+:[0-9.]+\)/;
+                                const patternMatch = fullParamText.match(exampleStartPattern);
+                                if(patternMatch) {
+                                    return fullParamText.substring(patternMatch.index);
+                                } else {
+                                     // Fallback to the point where first keyword was found
+                                     return potentialExifText.substring(earliestKeywordIndex);
+                                }
+                            }
+                        }
+                    } catch (e) {
+                        console.warn("Error decoding/searching EXIF data for WebP:", e);
+                    }
+                    // If above failed, a full EXIF parser would be needed. For now, return null.
+                    console.warn("Simplified WebP EXIF UserComment parsing failed to find data.");
+                    return null;
+                }
+                offset += chunkSize;
+                if (chunkSize % 2 !== 0) offset++; // RIFF chunks are padded to even size
+            }
+            return null;
+        }
+
+        // Elo Logic
+        function calculateElo(rA, rB, scoreA) {
+            const eA = 1 / (1 + Math.pow(10, (rB - rA) / 400));
+            const eB = 1 / (1 + Math.pow(10, (rA - rB) / 400));
+            const newRA = rA + appState.K_FACTOR * (scoreA - eA);
+            const newRB = rB + appState.K_FACTOR * ((1 - scoreA) - eB);
+            return [newRA, newRB];
+        }
+
+        function updateElo(winnerModelId, loserModelId) {
+            if (!appState.modelsElo[winnerModelId]) {
+                appState.modelsElo[winnerModelId] = { elo: appState.INITIAL_ELO, wins: 0, losses: 0, matches: 0 };
+            }
+            if (!appState.modelsElo[loserModelId]) {
+                appState.modelsElo[loserModelId] = { elo: appState.INITIAL_ELO, wins: 0, losses: 0, matches: 0 };
+            }
+
+            const [newWinnerElo, newLoserElo] = calculateElo(
+                appState.modelsElo[winnerModelId].elo,
+                appState.modelsElo[loserModelId].elo,
+                1 // Winner gets score 1
+            );
+
+            appState.modelsElo[winnerModelId].elo = newWinnerElo;
+            appState.modelsElo[winnerModelId].wins++;
+            appState.modelsElo[winnerModelId].matches++;
+
+            appState.modelsElo[loserModelId].elo = newLoserElo;
+            appState.modelsElo[loserModelId].losses++;
+            appState.modelsElo[loserModelId].matches++;
+
+            saveStateToLocalStorage();
+            renderLeaderboard();
+        }
+
+        // Application Logic
+        async function handleFileSelection(event) {
+            const files = Array.from(event.target.files).filter(file => ['image/png', 'image/webp', 'image/jpeg'].includes(file.type)); // Added jpeg
+            if (files.length === 0) {
+                updateLoadingStatus("No compatible image files (PNG, WebP, JPG) selected.");
+                return;
+            }
+
+            appState.isLoading = true;
+            resetButton.classList.remove('hidden');
+            imageFolderInput.parentElement.classList.add('hidden'); // Hide input after selection
+            updateLoadingStatus(`Processing ${files.length} files...`);
+            
+            appState.totalFilesToProcess = files.length;
+            appState.processedFilesCount = 0;
+            appState.imagesData = []; // Reset previous images
+
+            for (const file of files) {
+                const existingImage = appState.imagesData.find(img => img.fileName === file.name);
+                if (existingImage) { // Simple duplicate check by filename
+                    appState.processedFilesCount++;
+                    updateLoadingStatus(`Processing ${appState.processedFilesCount}/${appState.totalFilesToProcess}: ${file.name} (skipped duplicate)`);
+                    continue;
+                }
+
+                const blobUrl = URL.createObjectURL(file);
+                const metadata = await extractMetadata(file);
+                
+                const imageEntry = {
+                    id: `${file.name}_${Date.now()}`, // Unique enough for a session
+                    fileName: file.name,
+                    blobUrl,
+                    file, // Keep for potential future use, but be mindful of memory
+                    metadata,
+                    parsed: !!metadata.modelIdentifier,
+                    errorParsing: !metadata.modelIdentifier && metadata.prompt === '' // Basic error check
+                };
+                appState.imagesData.push(imageEntry);
+                
+                if (metadata.modelIdentifier && !appState.modelsElo[metadata.modelIdentifier]) {
+                    appState.modelsElo[metadata.modelIdentifier] = { 
+                        elo: appState.INITIAL_ELO, wins: 0, losses: 0, matches: 0 
+                    };
+                }
+                appState.processedFilesCount++;
+                updateLoadingStatus(`Processing ${appState.processedFilesCount}/${appState.totalFilesToProcess}: ${file.name}`);
+            }
+            
+            appState.isLoading = false;
+            updateLoadingStatus(`Processed ${appState.imagesData.length} images. ${appState.imagesData.filter(img => img.metadata.modelIdentifier).length} have usable model data.`);
+            
+            if (appState.imagesData.filter(img => img.metadata.modelIdentifier).length < 2) {
+                 updateLoadingStatus("Not enough images with identifiable models to start the arena. Need at least 2 images from different models or with model data.");
+                 comparisonArena.classList.add('hidden');
+                 noMorePairsMessage.classList.add('hidden');
+            } else {
+                comparisonArena.classList.remove('hidden');
+                selectNextPair();
+            }
+            renderLeaderboard();
+            saveStateToLocalStorage(); // Save initial model list (with default Elo)
+        }
+
+        function selectNextPair() {
+            // Filter for images that have a model identifier
+            const usableImages = appState.imagesData.filter(img => img.metadata && img.metadata.modelIdentifier);
+
+            if (usableImages.length < 2) {
+                comparisonArena.classList.add('hidden');
+                noMorePairsMessage.textContent = "Not enough images with model data to continue comparing.";
+                noMorePairsMessage.classList.remove('hidden');
+                return;
+            }
+
+            let indexA, indexB;
+            let attempts = 0;
+            const maxAttempts = 50; // Prevent infinite loop if models are too similar
+
+            do {
+                indexA = Math.floor(Math.random() * usableImages.length);
+                indexB = Math.floor(Math.random() * usableImages.length);
+                attempts++;
+            } while (
+                (indexA === indexB || // Must be different images
+                (usableImages[indexA].metadata.modelIdentifier === usableImages[indexB].metadata.modelIdentifier && usableImages.length > 2)) && // Try for different models if possible
+                attempts < maxAttempts
+            );
+            
+            if (indexA === indexB || (usableImages[indexA].metadata.modelIdentifier === usableImages[indexB].metadata.modelIdentifier && attempts >= maxAttempts && usableImages.length > 2) ) {
+                 // Could not find two images from different models after many tries, or only one model exists.
+                 // Or only two images left and they are from the same model.
+                 // If we absolutely can't find different models, but have two different images, allow same model comparison (no ELO change though).
+                 // For simplicity, if we can't find different models, signal end or issue.
+                if (new Set(usableImages.map(img => img.metadata.modelIdentifier)).size < 2 && usableImages.length >=2) {
+                     noMorePairsMessage.textContent = "All remaining usable images are from the same model. Cannot conduct further Elo comparisons.";
+                     noMorePairsMessage.classList.remove('hidden');
+                     comparisonArena.classList.add('hidden');
+                     return;
+                } else if (attempts >= maxAttempts) { // Fallback to any two different images if distinct models are hard to find
+                    do {
+                        indexA = Math.floor(Math.random() * usableImages.length);
+                        indexB = Math.floor(Math.random() * usableImages.length);
+                    } while (indexA === indexB);
+                }
+            }
+
+
+            // Map back to original appState.imagesData indices if needed, but usableImages contains full objects
+            appState.currentPairIndices = [usableImages[indexA].id, usableImages[indexB].id];
+            
+            displayImage(imageAContainerDisplay, usableImages[indexA]);
+            displayImage(imageBContainerDisplay, usableImages[indexB]);
+            comparisonArena.classList.remove('hidden');
+            noMorePairsMessage.classList.add('hidden');
+
+            // Reset any glow effects
+            document.getElementById('imageAContainer').classList.remove('selected-glow');
+            document.getElementById('imageBContainer').classList.remove('selected-glow');
+            chooseAButton.disabled = false;
+            chooseBButton.disabled = false;
+        }
+
+        function handleChoice(chosenImageId) {
+            const imageA = appState.imagesData.find(img => img.id === appState.currentPairIndices[0]);
+            const imageB = appState.imagesData.find(img => img.id === appState.currentPairIndices[1]);
+
+            if (!imageA || !imageB || !imageA.metadata.modelIdentifier || !imageB.metadata.modelIdentifier) {
+                console.error("Error: Missing image data or model identifier for comparison.");
+                selectNextPair(); // Try to recover
+                return;
+            }
+
+            // Disable buttons to prevent double voting
+            chooseAButton.disabled = true;
+            chooseBButton.disabled = true;
+
+            let winner, loser;
+            if (chosenImageId === imageA.id) {
+                winner = imageA;
+                loser = imageB;
+                document.getElementById('imageAContainer').classList.add('selected-glow');
+            } else {
+                winner = imageB;
+                loser = imageA;
+                document.getElementById('imageBContainer').classList.add('selected-glow');
+            }
+            
+            // Only update Elo if models are different
+            if (winner.metadata.modelIdentifier !== loser.metadata.modelIdentifier) {
+                 updateElo(winner.metadata.modelIdentifier, loser.metadata.modelIdentifier);
+            } else {
+                console.log("Same model chosen, no Elo change.");
+                 // Still update match count for the model if desired, or just log
+                const modelId = winner.metadata.modelIdentifier;
+                if (appState.modelsElo[modelId]) { // Ensure model exists
+                    // appState.modelsElo[modelId].matches++; // Optionally count these "matches"
+                }
+            }
+
+            // Delay before loading next pair to show selection
+            setTimeout(() => {
+                selectNextPair();
+            }, 1000); // 1 second delay
+        }
+        
+        // Local Storage
+        function saveStateToLocalStorage() {
+            localStorage.setItem('eloArenaModelsElo', JSON.stringify(appState.modelsElo));
+        }
+
+        function loadStateFromLocalStorage() {
+            const storedElo = localStorage.getItem('eloArenaModelsElo');
+            if (storedElo) {
+                appState.modelsElo = JSON.parse(storedElo);
+            }
+        }
+
+        function resetSession() {
+            if (confirm("Are you sure you want to reset all data? This will clear the leaderboard and loaded images.")) {
+                appState.imagesData.forEach(img => {
+                    if (img.blobUrl) URL.revokeObjectURL(img.blobUrl);
+                });
+                appState.imagesData = [];
+                appState.modelsElo = {}; // Keep ELO data unless user explicitly wants to clear it via separate action
+                appState.currentPairIndices = [];
+                appState.processedFilesCount = 0;
+                appState.totalFilesToProcess = 0;
+
+                localStorage.removeItem('eloArenaModelsElo'); // Clear stored ELO data as well on full reset
+
+                updateLoadingStatus("Session reset. Load a new image folder.");
+                comparisonArena.classList.add('hidden');
+                leaderboardSection.classList.add('hidden');
+                leaderboardBody.innerHTML = '';
+                noMorePairsMessage.classList.add('hidden');
+                
+                imageFolderInput.value = ''; // Clear file input selection
+                imageFolderInput.parentElement.classList.remove('hidden');
+                resetButton.classList.add('hidden');
+                displayImage(imageAContainerDisplay, null); // Clear images
+                displayImage(imageBContainerDisplay, null);
+            }
+        }
+
+        // Event Listeners
+        imageFolderInput.addEventListener('change', handleFileSelection);
+        chooseAButton.addEventListener('click', () => handleChoice(appState.currentPairIndices[0]));
+        chooseBButton.addEventListener('click', () => handleChoice(appState.currentPairIndices[1]));
+        resetButton.addEventListener('click', resetSession);
+        document.getElementById('imageAContainer').addEventListener('click', (e) => {
+            if (e.target.tagName !== 'BUTTON' && !e.target.closest('details')) chooseAButton.click();
+        });
+        document.getElementById('imageBContainer').addEventListener('click', (e) => {
+            if (e.target.tagName !== 'BUTTON' && !e.target.closest('details')) chooseBButton.click();
+        });
+
+
+        // Initialization
+        function init() {
+            loadStateFromLocalStorage();
+            renderLeaderboard(); // Render any stored leaderboard initially
+            if (Object.keys(appState.modelsElo).length > 0) {
+                leaderboardSection.classList.remove('hidden');
+            }
+            updateLoadingStatus("Select an image folder to begin.");
+            // Set up initial placeholder display for images
+            displayImage(imageAContainerDisplay, null);
+            displayImage(imageBContainerDisplay, null);
+        }
+
+        init();
+
+    </script>
+</body>
+</html>

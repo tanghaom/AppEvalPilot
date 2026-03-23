@@ -1,0 +1,550 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Archicad Workflow Integrator</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Custom scrollbar for a more "tech" feel */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #1f2937; /* gray-800 */
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #374151; /* gray-700 */
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #4b5563; /* gray-600 */
+        }
+        /* Custom styling for select dropdown arrow if needed (Tailwind provides some utilities) */
+        select {
+            background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e");
+            background-position: right 0.5rem center;
+            background-repeat: no-repeat;
+            background-size: 1.5em 1.5em;
+            padding-right: 2.5rem;
+            -webkit-appearance: none;
+            -moz-appearance: none;
+            appearance: none;
+        }
+        .progress-bar-fill {
+            transition: width 0.3s ease-in-out;
+        }
+    </style>
+</head>
+<body class="bg-black text-white font-sans">
+
+    <div id="app" class="min-h-screen p-4 sm:p-8">
+        <!-- Navigation Hub -->
+        <div class="fixed top-4 right-4 z-50 bg-gray-900/70 backdrop-blur-lg rounded-full px-4 py-2 shadow-lg">
+            <div class="flex items-center gap-3">
+                <div id="systemStatusDot" class="h-2.5 w-2.5 rounded-full bg-green-500 animate-pulse"></div>
+                <span class="text-xs sm:text-sm font-mono">System Active</span>
+            </div>
+        </div>
+
+        <!-- Main Grid Layout -->
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 max-w-7xl mx-auto mt-16 mb-20">
+
+            <!-- Connection Room -->
+            <div id="card-connection" class="card" data-room="connection">
+                <div class="card-accent-bar bg-gradient-to-r from-cyan-500 to-blue-500"></div>
+                <div class="p-5">
+                    <h3 class="card-title flex items-center gap-3 mb-4">
+                        <div id="connectionStatusDot" class="h-3 w-3 rounded-full bg-red-500 transition-colors duration-300"></div>
+                        Connection Chamber
+                    </h3>
+                    <button id="connectButton" class="btn w-full bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-600 hover:to-blue-600">
+                        Initialize Connection
+                    </button>
+                    <div class="mt-4 h-2 bg-gray-700 rounded-full overflow-hidden">
+                        <div id="connectionProgress" class="progress-bar-fill h-full bg-gradient-to-r from-cyan-500 to-blue-500" style="width: 0%;"></div>
+                    </div>
+                    <p id="connectionStatusText" class="text-xs text-gray-400 mt-2 text-center">Status: Not Connected</p>
+                </div>
+            </div>
+
+            <!-- Data Extraction Room -->
+            <div id="card-extraction" class="card" data-room="extraction">
+                <div class="card-accent-bar bg-gradient-to-r from-purple-500 to-pink-500"></div>
+                 <div class="p-5">
+                    <h3 class="card-title flex items-center gap-3 mb-4">
+                        <svg class="w-5 h-5 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width={2} d="M8 4v16m8-16v16M4 8h16M4 16h16" />
+                        </svg>
+                        Data Matrix
+                    </h3>
+                    <button id="extractDataButton" class="btn w-full bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 mb-4">
+                        Extract Data
+                    </button>
+                    <div class="grid grid-cols-2 gap-3">
+                        <div>
+                            <label class="flex items-center space-x-2 p-2 rounded bg-gray-800/50 hover:bg-gray-700/50 cursor-pointer">
+                                <input type="checkbox" data-type="IDs" class="form-checkbox accent-purple-500">
+                                <span class="text-sm">IDs</span>
+                            </label>
+                        </div>
+                        <div>
+                            <label class="flex items-center space-x-2 p-2 rounded bg-gray-800/50 hover:bg-gray-700/50 cursor-pointer">
+                                <input type="checkbox" data-type="Names" class="form-checkbox accent-purple-500">
+                                <span class="text-sm">Names</span>
+                            </label>
+                        </div>
+                        <div>
+                            <label class="flex items-center space-x-2 p-2 rounded bg-gray-800/50 hover:bg-gray-700/50 cursor-pointer">
+                                <input type="checkbox" data-type="Materials" class="form-checkbox accent-purple-500">
+                                <span class="text-sm">Materials</span>
+                            </label>
+                        </div>
+                        <div>
+                            <label class="flex items-center space-x-2 p-2 rounded bg-gray-800/50 hover:bg-gray-700/50 cursor-pointer">
+                                <input type="checkbox" data-type="Areas" class="form-checkbox accent-purple-500">
+                                <span class="text-sm">Areas</span>
+                            </label>
+                        </div>
+                    </div>
+                    <p id="extractionStatusText" class="text-xs text-gray-400 mt-2 text-center">Status: Not Extracted</p>
+                </div>
+            </div>
+
+            <!-- AI Processing Room -->
+            <div id="card-ai" class="card" data-room="ai">
+                <div class="card-accent-bar bg-gradient-to-r from-emerald-500 to-green-500"></div>
+                <div class="p-5">
+                    <h3 class="card-title flex items-center gap-3 mb-4">
+                        <svg class="w-5 h-5 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path></svg>
+                        Neural Core
+                    </h3>
+                    <button id="processAiButton" class="btn w-full bg-gradient-to-r from-emerald-500 to-green-500 hover:from-emerald-600 hover:to-green-600 mb-4">
+                        Process With AI
+                    </button>
+                    <select id="aiTemplateSelect" class="w-full p-2.5 rounded bg-gray-800/50 border border-gray-700 focus:border-emerald-500 focus:ring-emerald-500 text-sm">
+                        <option value="" disabled selected>Select Protocol</option>
+                        <option value="Summarize the selected element data.">Summarize element data</option>
+                        <option value="List key properties of the selected elements.">List key properties</option>
+                        <option value="Generate a concise description for these elements.">Generate concise description</option>
+                        <option value="Extract all material information from the selected elements.">Extract material information</option>
+                    </select>
+                    <p id="aiStatusText" class="text-xs text-gray-400 mt-2 text-center">Status: Ready</p>
+                </div>
+            </div>
+
+            <!-- Rule Based Automation Room -->
+            <div id="card-rules" class="card" data-room="rules">
+                <div class="card-accent-bar bg-gradient-to-r from-amber-500 to-yellow-500"></div>
+                 <div class="p-5">
+                    <h3 class="card-title flex items-center gap-3 mb-4">
+                         <svg class="w-5 h-5 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 18.657A8 8 0 016.343 7.343S7 9 9 10c0-2 .5-5 2.986-7.014A7.987 7.987 0 0116 15c0 3-1.846 4.343-3.343 3.657zM9 13h6M12 10v6"></path></svg>
+                        Rule Definition
+                    </h3>
+                    <input id="ruleDefinitionInput" type="text" placeholder="Enter Rule (e.g., If Area > 100 then...)" class="w-full p-2.5 rounded bg-gray-800/50 border border-gray-700 focus:border-amber-500 focus:ring-amber-500 text-amber-300 placeholder-gray-500 text-sm">
+                    <p id="ruleTriggerStatusText" class="text-xs text-gray-400 mt-2">Rule Trigger Status: N/A</p>
+                </div>
+            </div>
+
+            <!-- Canvas Integration Section (Miro) -->
+            <div id="card-canvas" class="card" data-room="canvas">
+                <div class="card-accent-bar bg-gradient-to-r from-fuchsia-500 to-rose-500"></div>
+                <div class="p-5">
+                    <h3 class="card-title flex items-center gap-3 mb-4">
+                        <svg class="w-5 h-5 text-fuchsia-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                           <path stroke-linecap="round" stroke-linejoin="round" stroke-width={2} d="M4 6h16M4 10h16M4 14h16M4 18h16" />
+                        </svg>
+                       Miro Integration
+                    </h3>
+                    <button id="sendToMiroButton" class="btn w-full bg-gradient-to-r from-fuchsia-500 to-rose-500 hover:from-fuchsia-600 hover:to-rose-600">
+                        Send to Miro
+                    </button>
+                </div>
+            </div>
+            
+            <!-- Placeholder for grid alignment if needed -->
+            <!-- <div class="hidden lg:block"></div> -->
+
+
+            <!-- Output Terminal -->
+            <div id="card-output" class="card md:col-span-2 lg:col-span-3" data-room="output">
+                 <div class="p-5">
+                    <h3 class="card-title mb-4">Output Terminal</h3>
+                    <textarea id="outputTextArea" readonly class="w-full min-h-[150px] sm:min-h-[200px] p-3 rounded bg-black/60 border border-gray-800 font-mono text-sm text-green-400 focus:border-green-500 focus:ring-green-500" placeholder="Awaiting data stream..."></textarea>
+                </div>
+            </div>
+
+            <!-- Log Console -->
+            <div id="card-logs" class="card md:col-span-2 lg:col-span-3" data-room="logs">
+                <div class="p-5">
+                   <h3 class="card-title mb-4">Log Console</h3>
+                   <textarea id="logsTextArea" readonly class="w-full min-h-[100px] sm:min-h-[150px] p-3 rounded bg-black/60 border border-gray-800 font-mono text-xs text-gray-400 focus:border-gray-500 focus:ring-gray-500" placeholder="System logs will appear here..."></textarea>
+               </div>
+           </div>
+
+        </div>
+
+        <!-- Status Bar -->
+        <div class="fixed bottom-0 left-0 right-0 bg-gray-900/70 backdrop-blur-lg border-t border-gray-800 shadow-lg">
+            <div class="max-w-7xl mx-auto px-4 py-2 flex items-center justify-between text-xs sm:text-sm font-mono">
+                <div class="flex items-center gap-2 sm:gap-4">
+                    <span class="text-gray-500">Status:</span>
+                    <span id="overallStatusText" class="text-green-500">Online</span>
+                </div>
+                <div class="flex items-center gap-2 sm:gap-4">
+                    <span class="text-gray-500">Active Card:</span>
+                    <span id="activeRoomText" class="text-cyan-500">connection</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // --- Configuration ---
+        const SIMULATED_API_DELAY = 1000; // ms
+
+        // --- State ---
+        let state = {
+            connectionStatus: 'Not Connected', // Not Connected, Connecting..., Connected, Error
+            extractionStatus: 'Not Extracted', // Not Extracted, Extracting..., Extracted, Error
+            aiStatus: 'Ready', // Ready, Processing..., Complete, Error
+            progress: 0,
+            selectedTemplate: '',
+            ruleDefinition: '',
+            output: '',
+            logs: 'System initialized.\n',
+            activeRoom: 'connection',
+            dataTypes: { IDs: false, Names: false, Materials: false, Areas: false },
+            roomAccess: {
+                connection: true,
+                extraction: false,
+                ai: false,
+                rules: false,
+                output: true, // Output display is always accessible
+                logs: true,  // Logs display is always accessible
+                canvas: false,
+            }
+        };
+
+        // --- DOM Elements ---
+        const connectButton = document.getElementById('connectButton');
+        const connectionProgress = document.getElementById('connectionProgress');
+        const connectionStatusDot = document.getElementById('connectionStatusDot');
+        const connectionStatusText = document.getElementById('connectionStatusText');
+
+        const extractDataButton = document.getElementById('extractDataButton');
+        const extractionStatusText = document.getElementById('extractionStatusText');
+        const dataTypeCheckboxes = document.querySelectorAll('.form-checkbox[data-type]');
+
+        const processAiButton = document.getElementById('processAiButton');
+        const aiTemplateSelect = document.getElementById('aiTemplateSelect');
+        const aiStatusText = document.getElementById('aiStatusText');
+
+        const ruleDefinitionInput = document.getElementById('ruleDefinitionInput');
+        const ruleTriggerStatusText = document.getElementById('ruleTriggerStatusText');
+
+        const sendToMiroButton = document.getElementById('sendToMiroButton');
+
+        const outputTextArea = document.getElementById('outputTextArea');
+        const logsTextArea = document.getElementById('logsTextArea');
+        
+        const activeRoomText = document.getElementById('activeRoomText');
+        const allCards = document.querySelectorAll('.card');
+
+        // --- Helper Functions ---
+        function updateLogs(message, isError = false) {
+            const timestamp = new Date().toLocaleTimeString();
+            state.logs += `[${timestamp}] ${message}\n`;
+            if (isError) console.error(message); else console.log(message);
+            renderLogs();
+        }
+
+        async function simulateApiCall(action, successCondition = () => Math.random() > 0.2) {
+            updateLogs(`API Call: ${action} - Initiated...`);
+            await new Promise(resolve => setTimeout(resolve, SIMULATED_API_DELAY));
+            const success = successCondition();
+            if (success) {
+                updateLogs(`API Call: ${action} - Success`);
+                return { status: 'Success', data: `${action} completed successfully.` };
+            } else {
+                updateLogs(`API Call: ${action} - Failed`, true);
+                return { status: 'Error', message: `${action} failed.` };
+            }
+        }
+        
+        // --- Render Functions ---
+        function renderConnection() {
+            connectionStatusText.textContent = `Status: ${state.connectionStatus}`;
+            connectionProgress.style.width = `${state.progress}%`;
+            if (state.connectionStatus === 'Connected') {
+                connectionStatusDot.classList.remove('bg-red-500', 'bg-yellow-500');
+                connectionStatusDot.classList.add('bg-green-500');
+            } else if (state.connectionStatus === 'Connecting...') {
+                connectionStatusDot.classList.remove('bg-red-500', 'bg-green-500');
+                connectionStatusDot.classList.add('bg-yellow-500'); // Use yellow for connecting
+            } else { // Error or Not Connected
+                connectionStatusDot.classList.remove('bg-green-500', 'bg-yellow-500');
+                connectionStatusDot.classList.add('bg-red-500');
+            }
+        }
+
+        function renderExtraction() {
+            extractionStatusText.textContent = `Status: ${state.extractionStatus}`;
+            dataTypeCheckboxes.forEach(checkbox => {
+                checkbox.checked = state.dataTypes[checkbox.dataset.type];
+            });
+        }
+
+        function renderAI() {
+            aiStatusText.textContent = `Status: ${state.aiStatus}`;
+            aiTemplateSelect.value = state.selectedTemplate;
+            ruleTriggerStatusText.textContent = `Rule Trigger Status: ${state.aiStatus === 'Complete' ? 'Ready for rules' : (state.aiStatus === 'Processing...' ? 'AI Processing...' : 'N/A')}`;
+        }
+        
+        function renderRuleDefinition() {
+            ruleDefinitionInput.value = state.ruleDefinition;
+        }
+
+        function renderOutput() {
+            outputTextArea.value = state.output;
+            outputTextArea.scrollTop = outputTextArea.scrollHeight; // Scroll to bottom
+        }
+
+        function renderLogs() {
+            logsTextArea.value = state.logs;
+            logsTextArea.scrollTop = logsTextArea.scrollHeight; // Scroll to bottom
+        }
+
+        function renderActiveRoom() {
+            activeRoomText.textContent = state.activeRoom;
+            allCards.forEach(card => {
+                const roomName = card.dataset.room;
+                if (roomName === state.activeRoom) {
+                    card.classList.add('active-card');
+                    // Match border color to accent bar gradient
+                    if (roomName === 'connection') card.style.borderColor = '#06b6d4'; // cyan-500
+                    else if (roomName === 'extraction') card.style.borderColor = '#a855f7'; // purple-500
+                    else if (roomName === 'ai') card.style.borderColor = '#10b981'; // emerald-500
+                    else if (roomName === 'rules') card.style.borderColor = '#f59e0b'; // amber-500
+                    else if (roomName === 'canvas') card.style.borderColor = '#d946ef'; // fuchsia-500
+                    else card.style.borderColor = '#6b7280'; // gray-500
+                } else {
+                    card.classList.remove('active-card');
+                    card.style.borderColor = '#374151'; // gray-700
+                }
+            });
+        }
+
+        function renderRoomAccess() {
+            allCards.forEach(card => {
+                const roomName = card.dataset.room;
+                const isAccessible = state.roomAccess[roomName];
+                const button = card.querySelector('button:not(#viewLogsButton)'); // Exclude non-gatekeeping buttons
+                
+                if (!isAccessible) {
+                    card.classList.add('opacity-60', 'cursor-not-allowed');
+                    if (button) button.disabled = true;
+                    // For inputs/selects within inaccessible cards
+                    card.querySelectorAll('input, select').forEach(el => el.disabled = true);
+                } else {
+                    card.classList.remove('opacity-60', 'cursor-not-allowed');
+                    if (button) button.disabled = false;
+                    card.querySelectorAll('input, select').forEach(el => el.disabled = false);
+                }
+            });
+            // Specific button states
+            extractDataButton.disabled = !state.roomAccess.extraction;
+            processAiButton.disabled = !state.roomAccess.ai;
+            ruleDefinitionInput.disabled = !state.roomAccess.rules;
+            sendToMiroButton.disabled = !state.roomAccess.canvas;
+        }
+        
+        function updateAllUI() {
+            renderConnection();
+            renderExtraction();
+            renderAI();
+            renderRuleDefinition();
+            renderOutput();
+            renderLogs();
+            renderActiveRoom();
+            renderRoomAccess();
+        }
+
+        // --- Event Handlers ---
+        async function handleConnection() {
+            state.connectionStatus = 'Connecting...';
+            state.progress = 33;
+            updateAllUI();
+
+            // Simulate API call
+            await new Promise(resolve => setTimeout(resolve, SIMULATED_API_DELAY));
+            
+            // Mock response
+            const success = Math.random() > 0.2; // 80% chance success
+            if (success) {
+                state.connectionStatus = 'Connected';
+                state.progress = 100;
+                updateLogs('Connection to Archicad Successful.');
+                state.roomAccess.extraction = true;
+            } else {
+                state.connectionStatus = 'Error';
+                state.progress = 0;
+                updateLogs('Connection to Archicad Failed.', true);
+            }
+            updateAllUI();
+        }
+
+        async function handleDataExtraction() {
+            if (!state.roomAccess.extraction) return;
+            const selectedDataTypes = Object.entries(state.dataTypes)
+                .filter(([_, value]) => value)
+                .map(([key, _]) => key);
+
+            if (selectedDataTypes.length === 0) {
+                updateLogs('No data types selected for extraction.', true);
+                alert('Please select at least one data type to extract.');
+                return;
+            }
+
+            state.extractionStatus = 'Extracting...';
+            updateAllUI();
+
+            // Simulate API call
+            await new Promise(resolve => setTimeout(resolve, SIMULATED_API_DELAY));
+            // Mock response
+            const success = Math.random() > 0.2;
+            if (success) {
+                state.extractionStatus = 'Extracted';
+                const extractedData = `Extracted Data:\n- Types: ${selectedDataTypes.join(', ')}\n- Elements Found: ${Math.floor(Math.random() * 100) + 10}\n- Timestamp: ${new Date().toISOString()}`;
+                state.output = extractedData;
+                updateLogs(`Data extracted for: ${selectedDataTypes.join(', ')}.`);
+                state.roomAccess.ai = true;
+            } else {
+                state.extractionStatus = 'Error';
+                updateLogs('Data Extraction Failed.', true);
+            }
+            updateAllUI();
+        }
+
+        async function handleAiProcessing() {
+            if (!state.roomAccess.ai) return;
+            if (!state.selectedTemplate) {
+                updateLogs('No AI protocol selected.', true);
+                alert('Please select an AI protocol.');
+                return;
+            }
+
+            state.aiStatus = 'Processing...';
+            updateAllUI();
+            
+            // Simulate API call
+            await new Promise(resolve => setTimeout(resolve, SIMULATED_API_DELAY));
+            // Mock response
+            const success = Math.random() > 0.2;
+            if (success) {
+                state.aiStatus = 'Complete';
+                const aiResult = `AI Processing Result (Protocol: ${state.selectedTemplate}):\nProcessed data insights...\n- Key finding 1\n- Recommendation A\n- Summary generated.`;
+                state.output = aiResult;
+                updateLogs(`AI processing complete with protocol: ${state.selectedTemplate}.`);
+                state.roomAccess.rules = true;
+                state.roomAccess.output = true; // Already true, but good to be explicit
+                state.roomAccess.canvas = true;
+            } else {
+                state.aiStatus = 'Error';
+                updateLogs('AI Processing Failed.', true);
+            }
+            updateAllUI();
+        }
+        
+        function handleSelectTemplate(event) {
+            state.selectedTemplate = event.target.value;
+            updateLogs(`AI Protocol selected: ${state.selectedTemplate}`);
+            updateAllUI();
+        }
+
+        function handleCheckboxChange(event) {
+            const { type } = event.target.dataset;
+            state.dataTypes[type] = event.target.checked;
+            updateLogs(`Data type toggled: ${type} is now ${event.target.checked ? 'selected' : 'deselected'}.`);
+            updateAllUI();
+        }
+
+        function handleRuleDefinitionChange(event) {
+            state.ruleDefinition = event.target.value;
+            // No direct log here, maybe on apply/save rule if that was a feature
+        }
+
+        async function handleMiroCall() {
+            if (!state.roomAccess.canvas) return;
+            updateLogs('Attempting to send data to Miro...');
+            
+            // Simulate API call
+            await new Promise(resolve => setTimeout(resolve, SIMULATED_API_DELAY));
+            // Mock response
+            const success = Math.random() > 0.3;
+            if (success) {
+                updateLogs('Data successfully sent to Miro board (simulated).');
+                state.output += '\n\n[Miro Update] Data pushed to Miro board.';
+            } else {
+                updateLogs('Failed to send data to Miro (simulated).', true);
+                 state.output += '\n\n[Miro Update Error] Could not push to Miro.';
+            }
+            updateAllUI();
+        }
+
+        function handleCardClick(event) {
+            const card = event.target.closest('.card');
+            if (card) {
+                const roomName = card.dataset.room;
+                if (state.roomAccess[roomName] !== false) { // Allow switching if not explicitly false (true or undefined)
+                    state.activeRoom = roomName;
+                    updateAllUI();
+                } else {
+                    updateLogs(`Access to ${roomName} is currently restricted. Complete previous steps.`);
+                }
+            }
+        }
+
+        // --- Initial Setup & Event Listeners ---
+        document.addEventListener('DOMContentLoaded', () => {
+            connectButton.addEventListener('click', handleConnection);
+            extractDataButton.addEventListener('click', handleDataExtraction);
+            processAiButton.addEventListener('click', handleAiProcessing);
+            sendToMiroButton.addEventListener('click', handleMiroCall);
+
+            aiTemplateSelect.addEventListener('change', handleSelectTemplate);
+            ruleDefinitionInput.addEventListener('input', handleRuleDefinitionChange);
+
+            dataTypeCheckboxes.forEach(checkbox => {
+                checkbox.addEventListener('change', handleCheckboxChange);
+            });
+
+            allCards.forEach(card => {
+                card.addEventListener('click', handleCardClick);
+            });
+            
+            // Add base styles for cards and active state
+            const styleSheet = document.createElement("style");
+            styleSheet.type = "text/css";
+            styleSheet.innerText = `
+                .card { 
+                    @apply bg-gray-900/70 backdrop-blur-lg rounded-xl shadow-xl border border-gray-700 transition-all duration-300 relative overflow-hidden;
+                    @apply transform hover:scale-[1.02];
+                }
+                .card-accent-bar { @apply absolute top-0 left-0 w-full h-1 opacity-70; }
+                .card-title { @apply text-lg font-semibold text-gray-100; }
+                .btn { @apply px-4 py-2.5 rounded-lg text-white font-medium transition-all duration-200 shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed; }
+                .form-checkbox { @apply rounded border-gray-600 bg-gray-700 text-base focus:ring-offset-0; }
+                .active-card { 
+                    @apply shadow-2xl scale-[1.01]; /* border-2 is handled by JS for specific color */
+                }
+            `;
+            document.head.appendChild(styleSheet);
+
+            updateAllUI(); // Initial render
+        });
+
+    </script>
+</body>
+</html>

@@ -1,0 +1,9 @@
+{
+  "web_id": "web_70",
+  "task_id": 3,
+  "task_type": "dynamic",
+  "instruction": "Task: Click on a specific dog's summary card, image, or name from the list of dogs.\nExpected Result: A detailed profile view/section for the selected dog is displayed, showing more information, images, and description.\n\nNote: The task is only considered successful if the expected result is achieved; otherwise, it is deemed infeasible.",
+  "max_steps": 15,
+  "expected": "A detailed profile view/section for the selected dog is displayed, showing more information, images, and description.",
+  "label": 1
+}

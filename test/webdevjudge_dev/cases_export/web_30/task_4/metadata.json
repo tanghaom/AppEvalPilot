@@ -1,0 +1,9 @@
+{
+  "web_id": "web_30",
+  "task_id": 4,
+  "task_type": "dynamic",
+  "instruction": "Task: Click a 'Save File' button/icon.\nExpected Result: The current text in the editor pane is stored (simulated) for the active file, and a visual feedback (e.g., temporary message 'File Saved') is shown.\n\nNote: The task is only considered successful if the expected result is achieved; otherwise, it is deemed infeasible.",
+  "max_steps": 15,
+  "expected": "The current text in the editor pane is stored (simulated) for the active file, and a visual feedback (e.g., temporary message 'File Saved') is shown.",
+  "label": 0
+}

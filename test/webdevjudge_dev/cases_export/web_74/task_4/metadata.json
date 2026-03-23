@@ -1,0 +1,9 @@
+{
+  "web_id": "web_74",
+  "task_id": 4,
+  "task_type": "dynamic",
+  "instruction": "Task: Attempt a move (arrow key or swipe) when no valid moves are left on a full grid.\nExpected Result: No tiles move. 'Game Over' state is indicated. Further moves are prevented until 'New Game' is initiated.\n\nNote: The task is only considered successful if the expected result is achieved; otherwise, it is deemed infeasible.",
+  "max_steps": 15,
+  "expected": "No tiles move. 'Game Over' state is indicated. Further moves are prevented until 'New Game' is initiated.",
+  "label": 0
+}

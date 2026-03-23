@@ -1,0 +1,487 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Amazom.com - Online Shopping</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Custom scrollbar for webkit browsers */
+        ::-webkit-scrollbar {
+            height: 8px;
+            width: 8px;
+        }
+        ::-webkit-scrollbar-thumb {
+            background-color: #a0aec0; /* Tailwind gray-500 */
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background-color: #718096; /* Tailwind gray-600 */
+        }
+        ::-webkit-scrollbar-track {
+            background-color: #e2e8f0; /* Tailwind gray-300 */
+        }
+        body {
+            font-family: "Amazon Ember", Arial, sans-serif; /* Approximation, system fonts will be fallback */
+        }
+        .amazon-link-hover:hover {
+            text-decoration: underline;
+            color: #C7511F; /* Custom orange-600 for link hover */
+        }
+        #accountDropdown .grid-cols-2 > div:first-child {
+            border-right: 1px solid #e5e7eb; /* Tailwind gray-200 */
+        }
+        /* Custom focus style for the entire search component */
+        .search-focused #searchCategoryBtn,
+        .search-focused #amazonSearchInput,
+        .search-focused #searchSubmitBtn {
+            border-color: #F08804 !important; /* amazon-orange */
+            box-shadow: 0 0 0 1px #F08804, 0 0 0 2px rgba(240, 136, 4, 0.5);
+        }
+        #searchCategoryBtn, #amazonSearchInput, #searchSubmitBtn {
+            border: 1px solid transparent; /* Default border */
+        }
+        #amazonSearchInput{
+             border-left: none;
+             border-right: none;
+        }
+        #searchCategoryBtn {
+            border-right: 1px solid #CBD5E0; /* gray-400 between category and input */
+        }
+
+
+    </style>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['"Amazon Ember"', 'Arial', 'sans-serif'], // Custom font stack
+                    },
+                    colors: {
+                        amazon: {
+                            'dark-blue': '#131A22',      // Header primary
+                            'DEFAULT': '#232F3E',        // Header secondary / Footer main
+                            'light-blue': '#37475A',     // Subnav
+                            'page-bg': '#EAEDED',        // Page background
+                            'link': '#007185',           // Standard links
+                            'link-hover': '#C7511F',     // Link hover
+                            'yellow-accent': '#FEBD69',  // Lighter yellow accents
+                            'orange-accent': '#F08804',    // Primary orange buttons/accents
+                        },
+                    },
+                    height: {
+                        '14': '3.5rem', // 56px for header
+                        '10': '2.5rem', // 40px for search bar elements
+                    },
+                    minHeight: {
+                        '10': '2.5rem',
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+<body class="bg-amazon-page-bg">
+
+    <!-- Header -->
+    <header class="bg-amazon-dark-blue text-white h-14 flex items-center px-2 py-1 space-x-2 md:space-x-3 sticky top-0 z-50">
+        <!-- Logo -->
+        <a href="#" class="border border-transparent rounded-sm p-1 -m-1 hover:border-white flex items-center flex-shrink-0">
+            <span class="text-2xl font-bold pt-1">Amazom</span><span class="text-xs relative top-1 leading-none">.com</span>
+        </a>
+
+        <!-- Deliver to -->
+        <a href="#" class="border border-transparent rounded-sm p-1 -m-1 hover:border-white hidden md:flex items-center space-x-1 flex-shrink-0">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-5 h-5">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M15 10.5a3 3 0 11-6 0 3 3 0 016 0z" />
+                <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1115 0z" />
+            </svg>
+            <div>
+                <div class="text-xs text-gray-300 leading-tight">Deliver to</div>
+                <div class="text-sm font-semibold leading-tight">Location</div>
+            </div>
+        </a>
+
+        <!-- Search Bar -->
+        <div id="searchBarContainer" class="flex-grow flex items-center h-10 rounded-md overflow-hidden">
+            <div class="relative h-full">
+                <button id="searchCategoryBtn" class="bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs px-2.5 h-full flex items-center whitespace-nowrap focus:outline-none">
+                    All <span class="ml-1 text-gray-500 text-xs">▼</span>
+                </button>
+                <div id="searchCategoryDropdown" class="absolute left-0 mt-0.5 w-56 bg-white rounded-md shadow-lg z-20 hidden text-sm border border-gray-300">
+                    <a href="#" class="block px-4 py-2 text-gray-700 hover:bg-gray-100">All Departments</a>
+                    <a href="#" class="block px-4 py-2 text-gray-700 hover:bg-gray-100">Arts & Crafts</a>
+                    <a href="#" class="block px-4 py-2 text-gray-700 hover:bg-gray-100">Automotive</a>
+                    <a href="#" class="block px-4 py-2 text-gray-700 hover:bg-gray-100">Baby</a>
+                </div>
+            </div>
+            <input type="text" id="amazonSearchInput" placeholder="Search Amazom" class="px-3 h-full flex-grow text-gray-900 focus:outline-none">
+            <button id="searchSubmitBtn" class="bg-amazon-yellow-accent hover:bg-yellow-500 px-3 h-full flex items-center focus:outline-none">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-5 h-5 text-amazon-dark-blue">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" />
+                </svg>
+            </button>
+        </div>
+
+        <!-- Right Nav -->
+        <nav class="flex items-center space-x-1 md:space-x-2 text-sm h-full flex-shrink-0">
+            <div class="relative hidden lg:block border border-transparent rounded-sm p-1 -m-1 hover:border-white" id="langDropdownContainer">
+                <button id="langBtn" class="flex items-center p-1">
+                    <div class="bg-gray-400 border border-gray-500 rounded-sm w-5 h-3.5 mr-1"></div> <!-- Placeholder for flag -->
+                    <span class="font-semibold text-xs">EN</span> <span class="ml-0.5 text-gray-400 text-xs">▼</span>
+                </button>
+                <div id="langDropdown" class="absolute right-0 mt-1 w-48 bg-white rounded-md shadow-lg z-20 hidden text-gray-700 border border-gray-300">
+                    <a href="#" class="flex items-center px-3 py-2 text-xs hover:bg-gray-100"><input type="radio" name="language" checked class="mr-2 form-radio text-amazon-orange-accent focus:ring-amazon-orange-accent border-gray-400"> English - EN</a>
+                    <div class="border-t border-gray-200 my-1"></div>
+                    <a href="#" class="flex items-center px-3 py-2 text-xs hover:bg-gray-100"><input type="radio" name="language" class="mr-2 form-radio text-amazon-orange-accent focus:ring-amazon-orange-accent border-gray-400"> Español - ES</a>
+                </div>
+            </div>
+
+            <div class="relative border border-transparent rounded-sm p-1 -m-1 hover:border-white" id="accountDropdownContainer">
+                <button id="accountBtn" class="p-1 leading-tight">
+                    <div class="text-xs">Hello, sign in</div>
+                    <div class="font-semibold text-sm flex items-center">Account & Lists <span class="ml-0.5 text-gray-400 text-xs">▼</span></div>
+                </button>
+                <div id="accountDropdown" class="absolute right-0 mt-1 w-max min-w-[24rem] bg-white rounded-md shadow-lg z-20 hidden text-gray-700 border border-gray-300">
+                    <div class="p-3 border-b border-gray-200 text-center">
+                        <button class="w-1/2 mx-auto bg-amazon-yellow-accent hover:bg-yellow-500 border border-yellow-600/50 text-slate-800 py-1.5 rounded-lg text-xs shadow-sm">Sign in</button>
+                        <p class="text-xs mt-1">New customer? <a href="#" class="text-amazon-link amazon-link-hover">Start here.</a></p>
+                    </div>
+                    <div class="grid grid-cols-2">
+                        <div class="p-3">
+                            <h3 class="font-semibold text-base mb-1 px-1">Your Lists</h3>
+                            <a href="#" class="block px-1 py-0.5 text-sm text-gray-700 hover:bg-gray-100 amazon-link-hover">Create a List</a>
+                            <a href="#" class="block px-1 py-0.5 text-sm text-gray-700 hover:bg-gray-100 amazon-link-hover">Find a List</a>
+                        </div>
+                        <div class="p-3">
+                            <h3 class="font-semibold text-base mb-1 px-1">Your Account</h3>
+                            <a href="#" class="block px-1 py-0.5 text-sm text-gray-700 hover:bg-gray-100 amazon-link-hover">Account</a>
+                            <a href="#" class="block px-1 py-0.5 text-sm text-gray-700 hover:bg-gray-100 amazon-link-hover">Orders</a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <a href="#" class="border border-transparent rounded-sm p-1 -m-1 hover:border-white hidden md:block leading-tight p-2">
+                <div class="text-xs">Returns</div>
+                <div class="font-semibold text-sm">& Orders</div>
+            </a>
+
+            <a href="#" class="border border-transparent rounded-sm p-1 -m-1 hover:border-white flex items-end p-2">
+                <div class="relative">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-7 h-7">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 3h1.386c.51 0 .955.343 1.087.835l.383 1.437M7.5 14.25a3 3 0 00-3 3h15.75m-12.75-3h11.218c1.121-2.3 2.1-4.684 2.924-7.138a60.114 60.114 0 00-16.536-1.84M7.5 14.25L5.106 5.272M6 20.25a.75.75 0 11-1.5 0 .75.75 0 011.5 0zm12.75 0a.75.75 0 11-1.5 0 .75.75 0 011.5 0z" />
+                    </svg>
+                    <span class="absolute -top-1 left-3.5 text-amazon-orange-accent font-bold text-sm bg-amazon-dark-blue px-1 rounded-full leading-none">0</span>
+                </div>
+                <span class="font-semibold ml-1 text-sm hidden lg:inline">Cart</span>
+            </a>
+        </nav>
+    </header>
+
+    <!-- Sub Navigation -->
+    <nav class="bg-amazon-light-blue text-white px-2 py-1.5 flex items-center space-x-2 md:space-x-3 text-sm sticky top-14 z-40 overflow-x-auto whitespace-nowrap">
+        <button class="flex items-center space-x-1 border border-transparent rounded-sm p-1 -m-1 hover:border-white">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" />
+            </svg>
+            <span class="font-semibold text-xs">All</span>
+        </button>
+        <a href="#" class="border border-transparent rounded-sm p-1 -m-1 hover:border-white text-xs">Today's Deals</a>
+        <a href="#" class="border border-transparent rounded-sm p-1 -m-1 hover:border-white text-xs">Customer Service</a>
+        <a href="#" class="border border-transparent rounded-sm p-1 -m-1 hover:border-white text-xs">Registry</a>
+        <a href="#" class="border border-transparent rounded-sm p-1 -m-1 hover:border-white text-xs">Gift Cards</a>
+        <a href="#" class="border border-transparent rounded-sm p-1 -m-1 hover:border-white text-xs">Sell</a>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="pb-8 max-w-none">
+        <!-- Hero Section -->
+        <div class="relative w-full min-h-[200px] h-[25vh] md:h-[40vh] lg:h-[50vh] xl:h-[calc(100vh-250px)] max-h-[600px] overflow-hidden group">
+            <div id="heroCarousel" class="w-full h-full">
+                <div class="carousel-slide absolute inset-0 transition-opacity duration-700 ease-in-out opacity-100 z-0">
+                    <img src="https://m.media-amazon.com/images/I/61lwJy4B8PL._SX3000_.jpg" alt="Hero Banner 1" class="w-full h-full object-cover">
+                </div>
+                <div class="carousel-slide absolute inset-0 transition-opacity duration-700 ease-in-out opacity-0 z-0">
+                     <img src="https://m.media-amazon.com/images/I/71Ie3JXGfVL._SX3000_.jpg" alt="Hero Banner 2" class="w-full h-full object-cover">
+                </div>
+                <div class="carousel-slide absolute inset-0 transition-opacity duration-700 ease-in-out opacity-0 z-0">
+                     <img src="https://m.media-amazon.com/images/I/71U-Q+N7PXL._SX3000_.jpg" alt="Hero Banner 3" class="w-full h-full object-cover">
+                </div>
+            </div>
+            <div class="absolute inset-x-0 bottom-0 h-1/4 md:h-1/3 bg-gradient-to-t from-amazon-page-bg to-transparent z-10"></div>
+
+            <button id="prevBtn" class="absolute top-0 bottom-0 left-0 w-12 md:w-16 flex items-center justify-center text-black opacity-0 group-hover:opacity-100 transition-opacity duration-300 focus:outline-none z-20">
+                <span class="bg-white/80 hover:bg-white p-2 md:p-3 rounded-md shadow-md text-2xl md:text-3xl">❮</span>
+            </button>
+            <button id="nextBtn" class="absolute top-0 bottom-0 right-0 w-12 md:w-16 flex items-center justify-center text-black opacity-0 group-hover:opacity-100 transition-opacity duration-300 focus:outline-none z-20">
+                <span class="bg-white/80 hover:bg-white p-2 md:p-3 rounded-md shadow-md text-2xl md:text-3xl">❯</span>
+            </button>
+        </div>
+
+        <!-- Product Cards Section -->
+        <div class="px-2 md:px-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 md:gap-5 -mt-10 md:-mt-20 lg:-mt-40 xl:-mt-64 relative z-20">
+            <div class="bg-white p-3 md:p-4 rounded-sm shadow-sm flex flex-col">
+                <h2 class="text-xl font-semibold mb-2">Gaming accessories</h2>
+                <div class="grid grid-cols-2 gap-x-2 gap-y-3 mb-3 flex-grow">
+                    <div>
+                        <div class="bg-gray-200 border-2 border-dashed rounded-lg w-full aspect-square"></div>
+                        <p class="text-xs mt-1">Headsets</p>
+                    </div>
+                    <div>
+                        <div class="bg-gray-200 border-2 border-dashed rounded-lg w-full aspect-square"></div>
+                        <p class="text-xs mt-1">Keyboards</p>
+                    </div>
+                    <div>
+                        <div class="bg-gray-200 border-2 border-dashed rounded-lg w-full aspect-square"></div>
+                        <p class="text-xs mt-1">Computer mice</p>
+                    </div>
+                    <div>
+                        <div class="bg-gray-200 border-2 border-dashed rounded-lg w-full aspect-square"></div>
+                        <p class="text-xs mt-1">Chairs</p>
+                    </div>
+                </div>
+                <a href="#" class="text-sm text-amazon-link amazon-link-hover mt-auto">See more</a>
+            </div>
+
+            <div class="bg-white p-3 md:p-4 rounded-sm shadow-sm flex flex-col">
+                <h2 class="text-xl font-semibold mb-2">Deals in PCs</h2>
+                <div class="bg-gray-200 border-2 border-dashed rounded-lg w-full h-60 md:h-72 mb-3 flex-grow"></div>
+                <a href="#" class="text-sm text-amazon-link amazon-link-hover mt-auto">Shop now</a>
+            </div>
+
+            <div class="bg-white p-3 md:p-4 rounded-sm shadow-sm flex flex-col">
+                <h2 class="text-xl font-semibold mb-2">Amazom Basics</h2>
+                <div class="bg-gray-200 border-2 border-dashed rounded-lg w-full h-60 md:h-72 mb-3 flex-grow"></div>
+                <a href="#" class="text-sm text-amazon-link amazon-link-hover mt-auto">See more</a>
+            </div>
+            
+            <div class="space-y-3 md:space-y-5">
+                <div class="bg-white p-3 md:p-4 rounded-sm shadow-sm">
+                    <h2 class="text-lg font-semibold mb-3">Sign in for the best experience</h2>
+                    <button class="w-full bg-amazon-yellow-accent hover:bg-yellow-500 border border-yellow-600/50 text-slate-800 py-1.5 rounded-lg text-sm shadow-sm">Sign in securely</button>
+                </div>
+                <div class="bg-white rounded-sm shadow-sm hidden lg:block">
+                     <div class="bg-gray-200 border-2 border-dashed rounded-lg w-full h-28"></div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="px-2 md:px-4 mt-5 md:mt-8">
+            <div class="bg-white p-3 md:p-4 rounded-sm shadow-sm">
+                <h2 class="text-xl font-semibold mb-3">Frequently repurchased in Home</h2>
+                <div class="flex space-x-3 overflow-x-auto pb-2 -mb-2">
+                    {[...Array(8)].map((_, i) => (
+                    <div key={i} class="flex-shrink-0 w-32 md:w-40 text-center">
+                        <div class="bg-gray-200 border-2 border-dashed rounded-lg w-full h-28 md:h-32 mb-1.5"></div>
+                        <a href="#" class="text-xs md:text-sm text-amazon-link amazon-link-hover line-clamp-2">Product Title ${i+1} that might be long</a>
+                    </div>
+                    ))}
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <footer>
+        <button id="backToTop" class="w-full bg-amazon-light-blue hover:bg-opacity-90 text-white py-3.5 text-sm">
+            Back to top
+        </button>
+
+        <div class="bg-amazon text-white pt-8 md:pt-10 pb-6">
+            <div class="container mx-auto px-4 max-w-screen-lg">
+                <div class="grid grid-cols-2 sm:grid-cols-4 gap-5 md:gap-8 mb-8 text-xs md:text-sm">
+                    <div>
+                        <h3 class="font-bold mb-1.5">Get to Know Us</h3>
+                        <ul class="space-y-1">
+                            <li><a href="#" class="text-gray-300 hover:underline">Careers</a></li>
+                            <li><a href="#" class="text-gray-300 hover:underline">Blog</a></li>
+                            <li><a href="#" class="text-gray-300 hover:underline">About Amazom</a></li>
+                        </ul>
+                    </div>
+                    <div>
+                        <h3 class="font-bold mb-1.5">Make Money with Us</h3>
+                        <ul class="space-y-1">
+                            <li><a href="#" class="text-gray-300 hover:underline">Sell products</a></li>
+                            <li><a href="#" class="text-gray-300 hover:underline">Sell on Business</a></li>
+                            <li><a href="#" class="text-gray-300 hover:underline">Become an Affiliate</a></li>
+                        </ul>
+                    </div>
+                    <div>
+                        <h3 class="font-bold mb-1.5">Amazom Payment</h3>
+                        <ul class="space-y-1">
+                            <li><a href="#" class="text-gray-300 hover:underline">Business Card</a></li>
+                            <li><a href="#" class="text-gray-300 hover:underline">Shop with Points</a></li>
+                            <li><a href="#" class="text-gray-300 hover:underline">Reload Balance</a></li>
+                        </ul>
+                    </div>
+                    <div>
+                        <h3 class="font-bold mb-1.5">Let Us Help You</h3>
+                        <ul class="space-y-1">
+                            <li><a href="#" class="text-gray-300 hover:underline">Your Account</a></li>
+                            <li><a href="#" class="text-gray-300 hover:underline">Your Orders</a></li>
+                            <li><a href="#" class="text-gray-300 hover:underline">Help</a></li>
+                        </ul>
+                    </div>
+                </div>
+                <div class="border-t border-amazon-light-blue pt-6 flex flex-col items-center space-y-3">
+                    <div class="flex items-center space-x-4 md:space-x-6">
+                        <span class="text-xl font-bold">Amazom</span>
+                        <div class="flex space-x-1.5 text-xs">
+                            <a href="#" class="border border-gray-500 rounded-sm px-2 py-0.5 text-gray-300 hover:text-white hover:border-gray-400">English</a>
+                            <a href="#" class="border border-gray-500 rounded-sm px-2 py-0.5 text-gray-300 hover:text-white hover:border-gray-400">$ USD</a>
+                            <a href="#" class="border border-gray-500 rounded-sm px-2 py-0.5 text-gray-300 hover:text-white hover:border-gray-400 flex items-center">
+                                <div class="bg-gray-400 border border-gray-500 rounded-sm w-4 h-3 mr-1"></div> USA
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="bg-amazon-dark-blue text-gray-400 py-5 text-xs">
+            <div class="container mx-auto px-4 max-w-screen-lg text-center">
+                <div class="inline-flex space-x-3 mb-1">
+                    <a href="#" class="hover:underline">Conditions of Use</a>
+                    <a href="#" class="hover:underline">Privacy Notice</a>
+                    <a href="#" class="hover:underline">Your Ads Privacy Choices</a>
+                </div>
+                <div>&copy; 1996-2024, Amazom.com, Inc. or its affiliates</div>
+            </div>
+        </div>
+    </footer>
+
+    <script>
+    // Pseudo-JSX for product list in footer was not meant to be run, replacing with JS
+    function renderHorizontalScrollProducts() {
+        const container = document.querySelector('.frequently-repurchased-container'); // Add this class to the div
+        if (!container) return;
+        
+        let productsHTML = '';
+        for (let i = 0; i < 8; i++) {
+            productsHTML += `
+                <div class="flex-shrink-0 w-32 md:w-40 text-center">
+                    <div class="bg-gray-200 border-2 border-dashed rounded-lg w-full h-28 md:h-32 mb-1.5"></div>
+                    <a href="#" class="text-xs md:text-sm text-amazon-link amazon-link-hover line-clamp-2">Product Title ${i+1} that might be long</a>
+                </div>
+            `;
+        }
+        // Find the correct div to inject into:
+        const targetDiv = document.querySelector('h2.text-xl.font-semibold.mb-3 + div.flex.space-x-3');
+        if (targetDiv) {
+            targetDiv.innerHTML = productsHTML;
+        }
+    }
+    
+    document.addEventListener('DOMContentLoaded', function () {
+        renderHorizontalScrollProducts(); // Call the function to render products
+
+        // Dropdown toggle logic
+        const activeDropdowns = [];
+        function closeAllDropdowns() {
+            activeDropdowns.forEach(dropdown => {
+                if (dropdown) dropdown.classList.add('hidden');
+            });
+            activeDropdowns.length = 0;
+        }
+
+        function toggleDropdown(buttonId, dropdownId) {
+            const button = document.getElementById(buttonId);
+            const dropdown = document.getElementById(dropdownId);
+            if (!button || !dropdown) return;
+
+            if (dropdown.classList.contains('hidden')) {
+                closeAllDropdowns();
+                dropdown.classList.remove('hidden');
+                activeDropdowns.push(dropdown);
+            } else {
+                dropdown.classList.add('hidden');
+                const index = activeDropdowns.indexOf(dropdown);
+                if (index > -1) activeDropdowns.splice(index, 1);
+            }
+        }
+        
+        const dropdownTriggers = [
+            { btn: 'searchCategoryBtn', dd: 'searchCategoryDropdown' },
+            { btn: 'langBtn', dd: 'langDropdown' },
+            { btn: 'accountBtn', dd: 'accountDropdown' }
+        ];
+
+        dropdownTriggers.forEach(trigger => {
+            const btnEl = document.getElementById(trigger.btn);
+            if (btnEl) {
+                btnEl.addEventListener('click', (event) => {
+                    event.stopPropagation();
+                    toggleDropdown(trigger.btn, trigger.dd);
+                });
+            }
+        });
+
+        window.addEventListener('click', (event) => {
+            let clickedInsideADropdownInteraction = false;
+            dropdownTriggers.forEach(trigger => {
+                const btnEl = document.getElementById(trigger.btn);
+                const ddEl = document.getElementById(trigger.dd);
+                if ((btnEl && btnEl.contains(event.target)) || (ddEl && ddEl.contains(event.target))) {
+                    clickedInsideADropdownInteraction = true;
+                }
+            });
+            if (!clickedInsideADropdownInteraction) closeAllDropdowns();
+        });
+            
+        // Search bar focus styling
+        const searchInput = document.getElementById('amazonSearchInput');
+        const searchBarContainer = document.getElementById('searchBarContainer');
+        if (searchInput && searchBarContainer) {
+            searchInput.addEventListener('focus', () => searchBarContainer.classList.add('search-focused'));
+            searchInput.addEventListener('blur', () => searchBarContainer.classList.remove('search-focused'));
+        }
+
+        // Hero Carousel
+        const slides = document.querySelectorAll('#heroCarousel .carousel-slide');
+        let currentSlide = 0;
+        const slideIntervalTime = 5000;
+        let autoSlideInterval;
+
+        function showSlide(index) {
+            slides.forEach((slide, i) => {
+                slide.classList.remove('opacity-100', 'z-10'); // Ensure z-10 for active
+                slide.classList.add('opacity-0', 'z-0');    // Ensure z-0 for inactive
+                if (i === index) {
+                    slide.classList.remove('opacity-0', 'z-0');
+                    slide.classList.add('opacity-100', 'z-10');
+                }
+            });
+        }
+
+        function nextSlide() {
+            currentSlide = (currentSlide + 1) % slides.length;
+            showSlide(currentSlide);
+        }
+
+        function prevSlide() {
+            currentSlide = (currentSlide - 1 + slides.length) % slides.length;
+            showSlide(currentSlide);
+        }
+
+        function startAutoSlide() {
+            clearInterval(autoSlideInterval);
+            autoSlideInterval = setInterval(nextSlide, slideIntervalTime);
+        }
+        
+        if (slides.length > 0) {
+            const nextBtn = document.getElementById('nextBtn');
+            const prevBtn = document.getElementById('prevBtn');
+            if (nextBtn) nextBtn.addEventListener('click', () => { nextSlide(); startAutoSlide(); });
+            if (prevBtn) prevBtn.addEventListener('click', () => { prevSlide(); startAutoSlide(); });
+            showSlide(currentSlide);
+            startAutoSlide();
+        }
+
+        const backToTopButton = document.getElementById('backToTop');
+        if (backToTopButton) {
+            backToTopButton.addEventListener('click', () => window.scrollTo({ top: 0, behavior: 'smooth' }));
+        }
+    });
+    </script>
+</body>
+</html>

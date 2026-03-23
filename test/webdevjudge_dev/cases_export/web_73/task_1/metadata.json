@@ -1,0 +1,9 @@
+{
+  "web_id": "web_73",
+  "task_id": 1,
+  "task_type": "dynamic",
+  "instruction": "Task: User clicks an 'Add to Order' button for a specific menu item.\nExpected Result: The item is added to a visible order summary/cart section on the page, and a total price or item count updates.\n\nNote: The task is only considered successful if the expected result is achieved; otherwise, it is deemed infeasible.",
+  "max_steps": 15,
+  "expected": "The item is added to a visible order summary/cart section on the page, and a total price or item count updates.",
+  "label": 1
+}

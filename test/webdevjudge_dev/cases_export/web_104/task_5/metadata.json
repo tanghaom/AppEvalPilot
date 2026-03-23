@@ -1,0 +1,9 @@
+{
+  "web_id": "web_104",
+  "task_id": 5,
+  "task_type": "dynamic",
+  "instruction": "Task: Select a User Agent string from a provided list (e.g., dropdown or radio buttons).\nExpected Result: The browser's active (simulated) User Agent string is updated. Subsequent simulated page requests would use this new User Agent.\n\nNote: The task is only considered successful if the expected result is achieved; otherwise, it is deemed infeasible.",
+  "max_steps": 15,
+  "expected": "The browser's active (simulated) User Agent string is updated. Subsequent simulated page requests would use this new User Agent.",
+  "label": 1
+}

@@ -1,0 +1,9 @@
+{
+  "web_id": "web_77",
+  "task_id": 4,
+  "task_type": "dynamic",
+  "instruction": "Task: On a Question Review page, modify the text content of a displayed question within its editable text field.\nExpected Result: The displayed question text updates to reflect the new input, simulating a local change.\n\nNote: The task is only considered successful if the expected result is achieved; otherwise, it is deemed infeasible.",
+  "max_steps": 15,
+  "expected": "The displayed question text updates to reflect the new input, simulating a local change.",
+  "label": 0
+}

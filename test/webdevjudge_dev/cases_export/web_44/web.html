@@ -1,0 +1,452 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>كرت خدمة ديناميكي</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Custom CSS for animations and effects */
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(56, 189, 248, 0.7); }
+            50% { transform: scale(1.05); box-shadow: 0 0 0 10px rgba(56, 189, 248, 0); }
+        }
+
+        .button-pulse-hover:hover {
+            animation: pulse 1.5s infinite;
+        }
+
+        .title-underline::after {
+            content: '';
+            position: absolute;
+            bottom: -4px; /* Adjust based on text size */
+            left: 0;
+            width: 0;
+            height: 2px; /* Thickness of the underline */
+            background-color: #38bdf8; /* sky-400 */
+            transition: width 0.3s ease-out;
+        }
+
+        .group:hover .title-underline::after {
+            width: 60%; /* Or 100% if you prefer full underline */
+        }
+        
+        /* For initial element reveal animation */
+        .reveal- calcio {
+            opacity: 0;
+            transform: translateY(20px);
+            transition: opacity 0.6s ease-out, transform 0.6s ease-out;
+        }
+
+        .revealed {
+            opacity: 1;
+            transform: translateY(0);
+        }
+        
+        /* Custom tooltip styling */
+        .custom-tooltip-container {
+            position: relative;
+            display: inline-block;
+        }
+
+        .custom-tooltip-text {
+            visibility: hidden;
+            width: 140px;
+            background-color: #1f2937; /* gray-800 */
+            color: #fff;
+            text-align: center;
+            border-radius: 6px;
+            padding: 5px 0;
+            position: absolute;
+            z-index: 10;
+            bottom: 125%; /* Position above the element */
+            left: 50%;
+            margin-left: -70px; /* Center the tooltip */
+            opacity: 0;
+            transition: opacity 0.3s, visibility 0.3s;
+            font-size: 0.75rem; /* text-xs */
+        }
+
+        .custom-tooltip-text::after { /* Tooltip arrow */
+            content: "";
+            position: absolute;
+            top: 100%;
+            left: 50%;
+            margin-left: -5px;
+            border-width: 5px;
+            border-style: solid;
+            border-color: #1f2937 transparent transparent transparent;
+        }
+
+        .custom-tooltip-container:hover .custom-tooltip-text {
+            visibility: visible;
+            opacity: 1;
+        }
+
+        /* Modal Animation */
+        .modal-scale-enter {
+            opacity: 0;
+            transform: scale(0.95);
+        }
+        .modal-scale-enter-active {
+            opacity: 1;
+            transform: scale(1);
+            transition: opacity 300ms, transform 300ms;
+        }
+        .modal-scale-leave {
+            opacity: 1;
+            transform: scale(1);
+        }
+        .modal-scale-leave-active {
+            opacity: 0;
+            transform: scale(0.95);
+            transition: opacity 300ms, transform 300ms;
+        }
+
+        /* Floating animation for icons (example) */
+        @keyframes float {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-8px); }
+        }
+        .animate-float {
+            animation: float 3s ease-in-out infinite;
+        }
+
+    </style>
+</head>
+<body class="bg-gradient-to-br from-slate-900 to-blue-950 min-h-screen flex items-center justify-center p-4 selection:bg-sky-500 selection:text-white">
+
+    <div id="particles-js" class="fixed inset-0 -z-10"></div>
+
+    <!-- Service Card -->
+    <div id="serviceCard" class="group w-full max-w-sm overflow-hidden rounded-3xl 
+                    bg-blue-900/60 backdrop-blur-xl border border-blue-800/50
+                    shadow-2xl transition-all duration-300 ease-out hover:shadow-blue-500/40 hover:-translate-y-2
+                    reveal- calcio">
+        
+        <!-- Responsive Image Handling -->
+        <!-- Hidden on small screens (becomes card background) -->
+        <div class="hidden sm:block relative overflow-hidden rounded-t-3xl">
+            <div id="heroImage" class="w-full h-56 bg-blue-800/70 border-b border-blue-700/50
+                             flex items-center justify-center 
+                             group-hover:scale-110 transition-transform duration-500 ease-in-out cursor-pointer">
+                <!-- Placeholder Icon for Hero Image -->
+                <svg class="w-20 h-20 text-sky-300 animate-float" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 18v-5.25m0 0a6.01 6.01 0 001.5-.189m-1.5.189a6.01 6.01 0 01-1.5-.189m3.75 7.478a12.06 12.06 0 01-4.5 0m3.75 2.311a2.996 2.996 0 01-3.75 0M16.5 18v-5.25m0 0a6.009 6.009 0 011.5-.189m-1.5.189a6.009 6.009 0 00-1.5-.189m3.75 7.478a12.059 12.059 0 00-4.5 0m3.75 2.311a2.996 2.996 0 00-3.75 0M4.5 18v-5.25m0 0a6.01 6.01 0 011.5-.189m-1.5.189a6.01 6.01 0 00-1.5-.189m3.75 7.478a12.059 12.059 0 00-4.5 0m3.75 2.311a2.996 2.996 0 01-3.75 0" />
+                </svg>
+            </div>
+        </div>
+        <!-- On small screens, card itself has background image -->
+        <!-- Use JS to set this or a specific class if image is dynamic -->
+        <!-- For now, small screens will have a solid top part if image div is hidden -->
+
+
+        <div class="p-6 sm:p-8">
+            <!-- Service Title -->
+            <h2 id="serviceTitle" class="relative text-2xl sm:text-3xl font-bold text-white mb-3 cursor-default reveal- calcio" style="transition-delay: 0.1s;">
+                <span class="title-underline">خدمة مبتكرة</span>
+            </h2>
+
+            <!-- Short Description -->
+            <p id="serviceDescription" class="text-gray-300 text-sm sm:text-base mb-6 leading-relaxed 
+                            opacity-0 max-h-0 group-hover:opacity-100 group-hover:max-h-40 
+                            transform -translate-y-2 group-hover:translate-y-0 
+                            transition-all duration-500 ease-in-out overflow-hidden reveal- calcio" style="transition-delay: 0.2s;">
+                هذه الخدمة تقدم لك حلولاً فريدة ومصممة خصيصًا لتلبية احتياجاتك. اكتشف كيف يمكننا مساعدتك في تحقيق أهدافك بكفاءة وفعالية. انضم إلينا الآن واستمتع بتجربة لا مثيل لها.
+            </p>
+
+            <!-- Rating System -->
+            <div id="ratingSystem" class="flex items-center space-x-1 space-x-reverse mb-6 reveal- calcio" style="transition-delay: 0.3s;">
+                <span class="text-sm text-gray-400 mr-2">التقييم:</span>
+                <!-- Stars -->
+                <!-- Using Unicode stars for simplicity, can be SVGs -->
+                <button data-value="1" class="star text-2xl text-gray-500 hover:text-yellow-400 transition-colors duration-200">★</button>
+                <button data-value="2" class="star text-2xl text-gray-500 hover:text-yellow-400 transition-colors duration-200">★</button>
+                <button data-value="3" class="star text-2xl text-gray-500 hover:text-yellow-400 transition-colors duration-200">★</button>
+                <button data-value="4" class="star text-2xl text-gray-500 hover:text-yellow-400 transition-colors duration-200">★</button>
+                <button data-value="5" class="star text-2xl text-gray-500 hover:text-yellow-400 transition-colors duration-200">★</button>
+            </div>
+
+            <!-- Call-to-Action Button -->
+            <div class="custom-tooltip-container reveal- calcio" style="transition-delay: 0.4s;">
+                <button id="ctaButton" class="w-full bg-sky-500 text-white font-semibold py-3 px-6 rounded-xl
+                                 hover:bg-sky-600 focus:outline-none focus:ring-2 focus:ring-sky-400 focus:ring-opacity-75
+                                 transition-all duration-300 ease-in-out button-pulse-hover transform hover:scale-105">
+                    تعرف أكثر
+                </button>
+                <span class="custom-tooltip-text">اضغط لمعرفة المزيد من التفاصيل عن الخدمة!</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal -->
+    <div id="serviceModal" class="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 z-50 opacity-0 pointer-events-none transition-opacity duration-300">
+        <div id="modalContent" class="bg-gradient-to-br from-slate-800 to-blue-950 p-6 sm:p-8 rounded-2xl shadow-xl w-full max-w-lg border border-blue-700 modal-scale-enter">
+            <div class="flex justify-between items-center mb-6">
+                <h3 class="text-2xl font-bold text-white">تفاصيل الخدمة</h3>
+                <button id="closeModalButton" class="text-gray-400 hover:text-white transition-colors">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                </button>
+            </div>
+            
+            <div class="text-gray-300 space-y-4">
+                <p>هنا يمكنك إضافة تفاصيل موسعة حول الخدمة. يمكن أن تشمل:</p>
+                <ul class="list-disc list-inside space-y-2 pl-4">
+                    <li>ميزات الخدمة بالتفصيل.</li>
+                    <li>فوائد استخدام الخدمة.</li>
+                    <li>دراسات حالة أو أمثلة.</li>
+                    <li>أسعار أو خطط اشتراك (إذا كانت متوفرة).</li>
+                </ul>
+                <div class="my-6 h-48 bg-gray-700/50 border-2 border-dashed border-gray-500/80 rounded-xl flex items-center justify-center">
+                    <p class="text-gray-400">يمكن وضع رسم بياني هنا (Chart.js)</p>
+                </div>
+                <p>نحن نسعى لتقديم أفضل تجربة ممكنة لعملائنا.</p>
+            </div>
+
+            <div class="mt-8 text-right">
+                <button id="modalAction" class="bg-green-500 text-white font-semibold py-2 px-5 rounded-lg
+                                 hover:bg-green-600 focus:outline-none focus:ring-2 focus:ring-green-400 focus:ring-opacity-75
+                                 transition-colors duration-300">
+                    احصل على الخدمة
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Particles.js CDN -->
+    <script src="https://cdn.jsdelivr.net/particles.js/2.0.0/particles.min.js"></script>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            // --- Initial Reveal Animation ---
+            const revealElements = document.querySelectorAll('.reveal- calcio');
+            const observer = new IntersectionObserver((entries) => {
+                entries.forEach(entry => {
+                    if (entry.isIntersecting) {
+                        // Add staggered delay for elements if needed
+                        // For now, reveal all with their CSS delays
+                        entry.target.classList.add('revealed');
+                        // observer.unobserve(entry.target); // Optional: stop observing after revealed
+                    }
+                });
+            }, { threshold: 0.1 }); // Trigger when 10% of element is visible
+
+            // If card is immediately visible, trigger animation
+            const card = document.getElementById('serviceCard');
+            if (card) { // Ensure card element exists
+                 // A small delay to ensure styles are applied and transitions can occur
+                setTimeout(() => {
+                    card.classList.add('revealed'); // Reveal card itself
+                    // Reveal inner elements after card has started its transition
+                    // Use CSS transition-delay for staggering these
+                    document.querySelectorAll('#serviceCard .reveal- calcio').forEach(el => {
+                        el.classList.add('revealed');
+                    });
+                }, 100);
+            }
+
+
+            // --- Modal Logic ---
+            const ctaButton = document.getElementById('ctaButton');
+            const modal = document.getElementById('serviceModal');
+            const modalContent = document.getElementById('modalContent');
+            const closeModalButton = document.getElementById('closeModalButton');
+
+            function openModal() {
+                modal.classList.remove('opacity-0', 'pointer-events-none');
+                modalContent.classList.remove('modal-scale-enter');
+                modalContent.classList.add('modal-scale-enter-active');
+            }
+
+            function closeModal() {
+                modalContent.classList.remove('modal-scale-enter-active');
+                modalContent.classList.add('modal-scale-leave-active');
+                setTimeout(() => {
+                    modal.classList.add('opacity-0', 'pointer-events-none');
+                    modalContent.classList.remove('modal-scale-leave-active');
+                    modalContent.classList.add('modal-scale-enter'); // Reset for next open
+                }, 300); // Match transition duration
+            }
+
+            if(ctaButton) ctaButton.addEventListener('click', openModal);
+            if(closeModalButton) closeModalButton.addEventListener('click', closeModal);
+            if(modal) {
+                modal.addEventListener('click', (event) => {
+                    if (event.target === modal) { // Click outside modal content
+                        closeModal();
+                    }
+                });
+            }
+            document.addEventListener('keydown', (event) => {
+                if (event.key === 'Escape' && !modal.classList.contains('opacity-0')) {
+                    closeModal();
+                }
+            });
+
+            // --- Rating Stars Logic ---
+            const stars = document.querySelectorAll('#ratingSystem .star');
+            let currentRating = 0;
+
+            stars.forEach(star => {
+                star.addEventListener('mouseover', () => {
+                    const value = parseInt(star.dataset.value);
+                    highlightStars(value);
+                });
+
+                star.addEventListener('mouseout', () => {
+                    highlightStars(currentRating); // Revert to selected rating or 0
+                });
+
+                star.addEventListener('click', () => {
+                    currentRating = parseInt(star.dataset.value);
+                    highlightStars(currentRating);
+                    console.log(`User rated: ${currentRating} stars`);
+                    // Here you can send the rating to a server or store it
+                });
+            });
+
+            function highlightStars(value) {
+                stars.forEach(s => {
+                    if (parseInt(s.dataset.value) <= value) {
+                        s.classList.remove('text-gray-500');
+                        s.classList.add('text-yellow-400');
+                    } else {
+                        s.classList.remove('text-yellow-400');
+                        s.classList.add('text-gray-500');
+                    }
+                });
+            }
+
+            // --- Particles.js Initialization ---
+            if (typeof particlesJS !== 'undefined') {
+                particlesJS('particles-js', {
+                    "particles": {
+                        "number": {
+                            "value": 80,
+                            "density": {
+                                "enable": true,
+                                "value_area": 800
+                            }
+                        },
+                        "color": {
+                            "value": "#38bdf8" // sky-400
+                        },
+                        "shape": {
+                            "type": "circle",
+                            "stroke": {
+                                "width": 0,
+                                "color": "#000000"
+                            },
+                            "polygon": {
+                                "nb_sides": 5
+                            }
+                        },
+                        "opacity": {
+                            "value": 0.3,
+                            "random": false,
+                            "anim": {
+                                "enable": false,
+                                "speed": 1,
+                                "opacity_min": 0.1,
+                                "sync": false
+                            }
+                        },
+                        "size": {
+                            "value": 3,
+                            "random": true,
+                            "anim": {
+                                "enable": false,
+                                "speed": 40,
+                                "size_min": 0.1,
+                                "sync": false
+                            }
+                        },
+                        "line_linked": {
+                            "enable": true,
+                            "distance": 150,
+                            "color": "#38bdf8", // sky-400
+                            "opacity": 0.2,
+                            "width": 1
+                        },
+                        "move": {
+                            "enable": true,
+                            "speed": 2,
+                            "direction": "none",
+                            "random": false,
+                            "straight": false,
+                            "out_mode": "out",
+                            "bounce": false,
+                            "attract": {
+                                "enable": false,
+                                "rotateX": 600,
+                                "rotateY": 1200
+                            }
+                        }
+                    },
+                    "interactivity": {
+                        "detect_on": "canvas",
+                        "events": {
+                            "onhover": {
+                                "enable": true,
+                                "mode": "grab" 
+                            },
+                            "onclick": {
+                                "enable": true,
+                                "mode": "push"
+                            },
+                            "resize": true
+                        },
+                        "modes": {
+                            "grab": {
+                                "distance": 140,
+                                "line_linked": {
+                                    "opacity": 0.5
+                                }
+                            },
+                            "bubble": {
+                                "distance": 400,
+                                "size": 40,
+                                "duration": 2,
+                                "opacity": 8,
+                                "speed": 3
+                            },
+                            "repulse": {
+                                "distance": 200,
+                                "duration": 0.4
+                            },
+                            "push": {
+                                "particles_nb": 4
+                            },
+                            "remove": {
+                                "particles_nb": 2
+                            }
+                        }
+                    },
+                    "retina_detect": true
+                });
+            } else {
+                console.error("Particles.js not loaded.");
+            }
+
+            // Responsive Image as Background for Small Screens
+            // This is a conceptual approach. Direct background-image manipulation via JS might be needed
+            // if the image source is dynamic. For a static placeholder or known image, CSS can handle it.
+            // The current HTML structure hides the image div on small screens.
+            // To make the card itself have a background image:
+            // const serviceCard = document.getElementById('serviceCard');
+            // if (window.innerWidth < 640) { // Tailwind's 'sm' breakpoint
+            //    serviceCard.style.backgroundImage = "url('path/to/your/small-screen-image.jpg')";
+            //    serviceCard.classList.add('bg-cover', 'bg-center');
+            //    // You might need to adjust padding or text colors if text is over the image
+            // }
+            // For simplicity, I've used CSS to hide the hero image div on 'sm' screens.
+            // The card content will then just be on the glassmorphic background.
+            // A true image-as-background for the whole card on small screens would require more specific CSS or JS.
+            // The request was "الصورة تتحول إلى خلفية، والنصوص تظهر فوقها بشكل متناسق."
+            // Current implementation: the distinct image block is hidden, text content remains in its own padded area.
+            // If a full background image is needed, further CSS would be required, for example,
+            // by adding a specific class on small screens that sets a background image on `serviceCard`.
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,9 @@
+{
+  "web_id": "web_2",
+  "task_id": 3,
+  "task_type": "dynamic",
+  "instruction": "Task: Click a button to call an emergency meeting.\nExpected Result: A modal or section appears displaying player avatars/names for discussion and voting.\n\nNote: The task is only considered successful if the expected result is achieved; otherwise, it is deemed infeasible.",
+  "max_steps": 15,
+  "expected": "A modal or section appears displaying player avatars/names for discussion and voting.",
+  "label": 1
+}

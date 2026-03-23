@@ -1,0 +1,9 @@
+{
+  "web_id": "web_42",
+  "task_id": 3,
+  "task_type": "dynamic",
+  "instruction": "Task: Tap the 'Profile' icon in a bottom navigation bar.\nExpected Result: The main content area switches to display the 'User Profile' page, showing profile information and a grid of the user's posts.\n\nNote: The task is only considered successful if the expected result is achieved; otherwise, it is deemed infeasible.",
+  "max_steps": 15,
+  "expected": "The main content area switches to display the 'User Profile' page, showing profile information and a grid of the user's posts.",
+  "label": 1
+}

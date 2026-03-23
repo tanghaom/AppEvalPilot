@@ -1,0 +1,9 @@
+{
+  "web_id": "web_26",
+  "task_id": 1,
+  "task_type": "dynamic",
+  "instruction": "Task: Enter birthdate into the 'Find Your Astral Scent' quiz form field.\nExpected Result: The birthdate input field updates with the entered date.\n\nNote: The task is only considered successful if the expected result is achieved; otherwise, it is deemed infeasible.",
+  "max_steps": 15,
+  "expected": "The birthdate input field updates with the entered date.",
+  "label": 0
+}

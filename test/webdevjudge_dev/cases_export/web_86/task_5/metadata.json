@@ -1,0 +1,9 @@
+{
+  "web_id": "web_86",
+  "task_id": 5,
+  "task_type": "dynamic",
+  "instruction": "Task: Add multiple translations to the 'Historial de Traducciones' until its content overflows the designated container, then attempt to scroll the history area.\nExpected Result: The history area becomes scrollable. The user can successfully scroll up and down to view older translation messages. Each message in the history should maintain its well-formatted and easy-to-read structure.\n\nNote: The task is only considered successful if the expected result is achieved; otherwise, it is deemed infeasible.",
+  "max_steps": 15,
+  "expected": "The history area becomes scrollable. The user can successfully scroll up and down to view older translation messages. Each message in the history should maintain its well-formatted and easy-to-read structure.",
+  "label": 0
+}

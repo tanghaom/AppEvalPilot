@@ -1,0 +1,9 @@
+{
+  "web_id": "web_47",
+  "task_id": 3,
+  "task_type": "dynamic",
+  "instruction": "Task: Scroll through the chat history when messages exceed the viewable area.\nExpected Result: Older messages become visible as the user scrolls up; newer messages or the input area become visible as the user scrolls down.\n\nNote: The task is only considered successful if the expected result is achieved; otherwise, it is deemed infeasible.",
+  "max_steps": 15,
+  "expected": "Older messages become visible as the user scrolls up; newer messages or the input area become visible as the user scrolls down.",
+  "label": 1
+}

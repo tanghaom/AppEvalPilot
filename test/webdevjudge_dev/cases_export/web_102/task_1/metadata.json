@@ -1,0 +1,9 @@
+{
+  "web_id": "web_102",
+  "task_id": 1,
+  "task_type": "dynamic",
+  "instruction": "Task: Control player character movement within the 3D 'live report' scene using keyboard inputs (e.g., WASD, arrow keys).\nExpected Result: The player's avatar or first-person camera translates (moves forward/backward, strafes left/right) within the 3D environment.\n\nNote: The task is only considered successful if the expected result is achieved; otherwise, it is deemed infeasible.",
+  "max_steps": 15,
+  "expected": "The player's avatar or first-person camera translates (moves forward/backward, strafes left/right) within the 3D environment.",
+  "label": 1
+}

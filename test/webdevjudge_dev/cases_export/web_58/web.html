@@ -1,0 +1,1108 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sudoku Master</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Custom base styles */
+        body {
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+        }
+
+        .sudoku-grid {
+            display: grid;
+            grid-template-columns: repeat(9, minmax(0, 1fr));
+            grid-template-rows: repeat(9, minmax(0, 1fr));
+            width: 100%;
+            max-width: 500px; /* Max width for the grid */
+            aspect-ratio: 1 / 1; /* Keep it square */
+            border: 2px solid var(--grid-border-color, #374151); /* dark-gray-700 */
+        }
+
+        .sudoku-cell {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            border: 1px solid var(--cell-border-color, #D1D5DB); /* gray-300 */
+            font-size: 1.5rem; /* Default, will be adjusted by accessibility */
+            position: relative;
+            cursor: pointer;
+            transition: background-color 0.2s ease-in-out;
+        }
+        
+        /* Thick borders for 3x3 regions */
+        .sudoku-cell:nth-child(3n) { border-right-width: 2px; border-right-color: var(--grid-border-color, #374151); }
+        .sudoku-cell:nth-child(9n) { border-right-width: 1px; border-right-color: var(--cell-border-color, #D1D5DB); } /* Reset last column right border */
+        /* Target rows for thick bottom borders */
+        .sudoku-grid > .sudoku-cell:nth-child(n+19):nth-child(-n+27),
+        .sudoku-grid > .sudoku-cell:nth-child(n+46):nth-child(-n+54) {
+            border-bottom-width: 2px;
+            border-bottom-color: var(--grid-border-color, #374151);
+        }
+        /* Reset last row bottom border */
+         .sudoku-grid > .sudoku-cell:nth-child(n+73):nth-child(-n+81) {
+            border-bottom-width: 1px;
+            border-bottom-color: var(--cell-border-color, #D1D5DB);
+        }
+        /* Ensure corners don't get double thick borders from grid container */
+         .sudoku-grid > .sudoku-cell:nth-child(1), .sudoku-grid > .sudoku-cell:nth-child(10), .sudoku-grid > .sudoku-cell:nth-child(19),
+         .sudoku-grid > .sudoku-cell:nth-child(28), .sudoku-grid > .sudoku-cell:nth-child(37), .sudoku-grid > .sudoku-cell:nth-child(46),
+         .sudoku-grid > .sudoku-cell:nth-child(55), .sudoku-grid > .sudoku-cell:nth-child(64), .sudoku-grid > .sudoku-cell:nth-child(73) {
+             border-left-width: 1px; border-left-color: var(--cell-border-color, #D1D5DB);
+         }
+         .sudoku-grid > .sudoku-cell:nth-child(1), .sudoku-grid > .sudoku-cell:nth-child(2), .sudoku-grid > .sudoku-cell:nth-child(3),
+         .sudoku-grid > .sudoku-cell:nth-child(4), .sudoku-grid > .sudoku-cell:nth-child(5), .sudoku-grid > .sudoku-cell:nth-child(6),
+         .sudoku-grid > .sudoku-cell:nth-child(7), .sudoku-grid > .sudoku-cell:nth-child(8), .sudoku-grid > .sudoku-cell:nth-child(9) {
+             border-top-width: 1px; border-top-color: var(--cell-border-color, #D1D5DB);
+         }
+
+
+        .pencil-mark-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            grid-template-rows: repeat(3, 1fr);
+            width: 90%;
+            height: 90%;
+            position: absolute;
+            top: 5%;
+            left: 5%;
+            pointer-events: none; /* So clicks go to the cell */
+        }
+        .pencil-mark-cell {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: clamp(0.5rem, 2vw, 0.75rem); /* Responsive pencil mark size */
+        }
+
+        /* Animations */
+        .cell-error-shake { animation: shake 0.4s cubic-bezier(.36,.07,.19,.97) both; }
+        @keyframes shake {
+            10%, 90% { transform: translateX(-1px); }
+            20%, 80% { transform: translateX(2px); }
+            30%, 50%, 70% { transform: translateX(-3px); }
+            40%, 60% { transform: translateX(3px); }
+        }
+        .number-pop-in { animation: popIn 0.3s ease-out; }
+        @keyframes popIn {
+            0% { transform: scale(0.5); opacity: 0; }
+            80% { transform: scale(1.2); }
+            100% { transform: scale(1); opacity: 1; }
+        }
+        .fade-in { animation: fadeIn 0.5s ease-in-out; }
+        @keyframes fadeIn {
+            0% { opacity: 0; }
+            100% { opacity: 1; }
+        }
+
+        /* Accessibility font size classes */
+        .font-size-sm .sudoku-cell { font-size: 1.25rem; }
+        .font-size-sm .pencil-mark-cell { font-size: clamp(0.4rem, 1.8vw, 0.65rem); }
+        .font-size-md .sudoku-cell { font-size: 1.5rem; }
+        .font-size-md .pencil-mark-cell { font-size: clamp(0.5rem, 2vw, 0.75rem); }
+        .font-size-lg .sudoku-cell { font-size: 1.75rem; }
+        .font-size-lg .pencil-mark-cell { font-size: clamp(0.6rem, 2.2vw, 0.85rem); }
+        
+        /* High Contrast Mode Styles */
+        :root {
+            --hc-bg: black;
+            --hc-text: white;
+            --hc-primary: #FFFF00; /* Yellow */
+            --hc-secondary: #00FFFF; /* Cyan */
+            --hc-border: white;
+            --hc-cell-bg: #111111;
+            --hc-cell-fixed-bg: #222222;
+            --hc-cell-selected-bg: #444400; /* Dark Yellow */
+            --hc-cell-highlight-bg: #282800;
+            --hc-pencil-text: #AAAAAA;
+            --hc-error-text: #FF00FF; /* Magenta */
+            --hc-button-bg: #FFFF00;
+            --hc-button-text: black;
+        }
+        .high-contrast {
+            --grid-border-color: var(--hc-border);
+            --cell-border-color: var(--hc-border);
+        }
+        .high-contrast body { background-color: var(--hc-bg) !important; color: var(--hc-text) !important; }
+        .high-contrast .sudoku-cell { background-color: var(--hc-cell-bg); border-color: var(--hc-border); }
+        .high-contrast .sudoku-cell.fixed-num { color: var(--hc-primary); font-weight: bold; background-color: var(--hc-cell-fixed-bg); }
+        .high-contrast .sudoku-cell.user-num { color: var(--hc-secondary); }
+        .high-contrast .sudoku-cell.selected { background-color: var(--hc-cell-selected-bg) !important; }
+        .high-contrast .sudoku-cell.highlighted { background-color: var(--hc-cell-highlight-bg) !important; }
+        .high-contrast .sudoku-cell.error-num { color: var(--hc-error-text) !important; }
+        .high-contrast .pencil-mark-cell { color: var(--hc-pencil-text) !important; }
+        .high-contrast button, .high-contrast select {
+            background-color: var(--hc-button-bg) !important;
+            color: var(--hc-button-text) !important;
+            border-color: var(--hc-text) !important;
+        }
+        .high-contrast .text-primary { color: var(--hc-primary) !important; }
+        .high-contrast .bg-primary { background-color: var(--hc-primary) !important; color: var(--hc-button-text) !important; }
+        .high-contrast input[type="checkbox"]:checked { background-color: var(--hc-primary) !important; }
+
+        /* Custom scrollbar for modals in dark mode */
+        .dark .modal-content::-webkit-scrollbar { width: 8px; }
+        .dark .modal-content::-webkit-scrollbar-track { background: #2D3748; /* dark-surface */ }
+        .dark .modal-content::-webkit-scrollbar-thumb { background: #4A5568; /* gray-600 */ border-radius: 4px; }
+        .dark .modal-content::-webkit-scrollbar-thumb:hover { background: #718096; /* gray-500 */ }
+    </style>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        'primary': '#4A90E2', // Blue
+                        'primary-dark': '#357ABD',
+                        'secondary': '#50E3C2', // Teal
+                        'accent': '#F5A623', // Orange
+                        'neutral-light': '#F8F9FA', // Off-white
+                        'neutral-medium': '#DEE2E6', // Light gray
+                        'neutral-dark': '#495057', // Dark gray
+                        'text-main': '#212529', // Almost black
+                        'text-light': '#6C757D', // Medium gray
+                        'error': '#D9534F', // Red
+                        'success': '#5CB85C', // Green
+                        'pencil': '#777777',
+
+                        'dark-bg': '#1A202C', // Dark blue-gray
+                        'dark-surface': '#2D3748', // Slightly lighter dark blue-gray
+                        'dark-text': '#E2E8F0', // Light gray for text
+                        'dark-primary': '#63B3ED', // Lighter Blue
+                        'dark-secondary': '#4FD1C5', // Lighter Teal
+                        'dark-accent': '#F6AD55', // Lighter Orange
+                        'dark-pencil': '#A0AEC0', // Lighter gray for pencil
+                        'dark-error': '#FC8181', // Lighter Red
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'system-ui', 'sans-serif'],
+                    },
+                    keyframes: {
+                        shake: {
+                            '10%, 90%': { transform: 'translateX(-1px)' },
+                            '20%, 80%': { transform: 'translateX(2px)' },
+                            '30%, 50%, 70%': { transform: 'translateX(-3px)' },
+                            '40%, 60%': { transform: 'translateX(3px)' },
+                        },
+                        popIn: {
+                            '0%': { transform: 'scale(0.5)', opacity: '0' },
+                            '80%': { transform: 'scale(1.2)' },
+                            '100%': { transform: 'scale(1)', opacity: '1' },
+                        },
+                        fadeIn: {
+                            '0%': { opacity: '0' },
+                            '100%': { opacity: '1' },
+                        }
+                    },
+                    animation: {
+                        shake: 'shake 0.4s cubic-bezier(.36,.07,.19,.97) both',
+                        popIn: 'popIn 0.3s ease-out',
+                        fadeIn: 'fadeIn 0.5s ease-in-out',
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+<body class="bg-neutral-light dark:bg-dark-bg text-text-main dark:text-dark-text font-sans flex flex-col items-center justify-start min-h-screen p-2 sm:p-4 transition-colors duration-300 font-size-md">
+
+    <div id="gameContainer" class="w-full max-w-4xl mx-auto flex flex-col items-center space-y-4">
+        <header class="w-full flex flex-col sm:flex-row justify-between items-center p-4 rounded-lg bg-white dark:bg-dark-surface shadow-md">
+            <h1 class="text-3xl font-bold text-primary dark:text-dark-primary">Sudoku Master</h1>
+            <button id="settingsButton" class="mt-2 sm:mt-0 p-2 rounded-md hover:bg-neutral-medium dark:hover:bg-gray-700">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M9.594 3.94c.09-.542.56-.94 1.11-.94h2.593c.55 0 1.02.398 1.11.94l.213 1.281c.063.374.313.686.646.87.074.04.147.083.22.127.324.196.72.257 1.075.124l1.217-.456a1.125 1.125 0 011.37.49l1.296 2.247a1.125 1.125 0 01-.26 1.431l-1.003.827c-.293.24-.438.613-.431.992a6.759 6.759 0 010 1.903c-.007.378.138.75.43.99l1.005.828c.424.35.534.954.26 1.43l-1.298 2.247a1.125 1.125 0 01-1.369.491l-1.217-.456c-.355-.133-.75-.072-1.076.124a6.57 6.57 0 01-.22.128c-.333.183-.582.495-.644.869l-.213 1.28c-.09.543-.56.941-1.11.941h-2.594c-.55 0-1.02-.398-1.11-.94l-.213-1.281c-.062-.374-.312-.686-.644-.87a6.52 6.52 0 01-.22-.127c-.325-.196-.72-.257-1.076-.124l-1.217.456a1.125 1.125 0 01-1.369-.49l-1.297-2.247a1.125 1.125 0 01.26-1.431l1.004-.827c.292-.24.437-.613.43-.992a6.759 6.759 0 010-1.903c.007-.378-.138-.75-.43-.99l-1.004-.828a1.125 1.125 0 01-.26-1.43l1.297-2.247a1.125 1.125 0 011.37-.491l1.216.456c.356.133.751.072 1.076-.124.072-.044.146-.087.22-.128.332-.183.582-.495.644-.869l.214-1.281z" />
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                  </svg>                  
+            </button>
+        </header>
+
+        <div class="w-full flex flex-col lg:flex-row gap-4 items-start">
+            <!-- Left Panel: Game Controls & Info -->
+            <div class="w-full lg:w-1/3 space-y-4 order-2 lg:order-1">
+                <div class="p-4 rounded-lg bg-white dark:bg-dark-surface shadow-md">
+                    <h2 class="text-xl font-semibold mb-3 text-center text-primary dark:text-dark-primary">Controls</h2>
+                    <div class="grid grid-cols-2 gap-2 mb-4">
+                        <div>
+                            <label for="difficulty" class="block text-sm font-medium text-text-light dark:text-gray-400">Difficulty</label>
+                            <select id="difficulty" class="mt-1 block w-full py-2 px-3 border border-neutral-medium dark:border-gray-600 bg-white dark:bg-gray-700 rounded-md shadow-sm focus:outline-none focus:ring-primary focus:border-primary dark:focus:ring-dark-primary dark:focus:border-dark-primary sm:text-sm">
+                                <option value="easy">Easy</option>
+                                <option value="medium" selected>Medium</option>
+                                <option value="hard">Hard</option>
+                                <option value="expert">Expert</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label for="gameMode" class="block text-sm font-medium text-text-light dark:text-gray-400">Mode</label>
+                            <select id="gameMode" class="mt-1 block w-full py-2 px-3 border border-neutral-medium dark:border-gray-600 bg-white dark:bg-gray-700 rounded-md shadow-sm focus:outline-none focus:ring-primary focus:border-primary dark:focus:ring-dark-primary dark:focus:border-dark-primary sm:text-sm">
+                                <option value="classic" selected>Classic</option>
+                                <option value="relaxed">Relaxed</option>
+                            </select>
+                        </div>
+                    </div>
+                    <button id="newGameButton" class="w-full bg-primary dark:bg-dark-primary hover:bg-primary-dark dark:hover:bg-blue-400 text-white font-bold py-2 px-4 rounded transition-colors duration-150">
+                        New Game
+                    </button>
+                </div>
+
+                <div class="p-4 rounded-lg bg-white dark:bg-dark-surface shadow-md">
+                    <h2 class="text-xl font-semibold mb-3 text-center text-primary dark:text-dark-primary">Actions</h2>
+                    <div class="grid grid-cols-3 gap-2 text-center">
+                        <button id="pencilButton" class="action-btn p-2 rounded-md border border-neutral-medium dark:border-gray-600 hover:bg-neutral-light dark:hover:bg-gray-700 transition-colors" title="Pencil Marks (P)">
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6 mx-auto"><path stroke-linecap="round" stroke-linejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L6.832 19.82a4.5 4.5 0 01-1.897 1.13l-2.685.8.8-2.685a4.5 4.5 0 011.13-1.897L16.863 4.487zm0 0L19.5 7.125" /></svg>
+                            <span class="text-xs">Pencil</span>
+                        </button>
+                        <button id="eraseButton" class="action-btn p-2 rounded-md border border-neutral-medium dark:border-gray-600 hover:bg-neutral-light dark:hover:bg-gray-700 transition-colors" title="Erase (Backspace/Delete)">
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6 mx-auto"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9.75L14.25 12m0 0L12 14.25m2.25-2.25L14.25 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                            <span class="text-xs">Erase</span>
+                        </button>
+                         <button id="hintButton" class="action-btn p-2 rounded-md border border-neutral-medium dark:border-gray-600 hover:bg-neutral-light dark:hover:bg-gray-700 transition-colors" title="Hint (H)">
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6 mx-auto"><path stroke-linecap="round" stroke-linejoin="round" d="M12 18v-5.25m0 0a6.01 6.01 0 001.5-.189m-1.5.189a6.01 6.01 0 01-1.5-.189m3.75 7.478a12.06 12.06 0 01-4.5 0m3.75 2.355a15.07 15.07 0 01-4.5 0M12 6.75A2.25 2.25 0 1112 2.25a2.25 2.25 0 010 4.5z" /></svg>
+                            <span class="text-xs">Hint</span>
+                        </button>
+                    </div>
+                </div>
+
+                <div id="infoPanel" class="p-4 rounded-lg bg-white dark:bg-dark-surface shadow-md">
+                    <h2 class="text-xl font-semibold mb-3 text-center text-primary dark:text-dark-primary">Game Info</h2>
+                    <div class="flex justify-around text-center">
+                        <div>
+                            <div class="text-sm text-text-light dark:text-gray-400">Time</div>
+                            <div id="timerDisplay" class="text-2xl font-mono">00:00</div>
+                        </div>
+                        <div>
+                            <div class="text-sm text-text-light dark:text-gray-400">Mistakes</div>
+                            <div id="mistakesDisplay" class="text-2xl font-mono">0/3</div>
+                        </div>
+                         <div id="scoreSection" class="hidden"> <!-- Hidden by default, shown in scored mode -->
+                            <div class="text-sm text-text-light dark:text-gray-400">Score</div>
+                            <div id="scoreDisplay" class="text-2xl font-mono">0</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Center Panel: Sudoku Grid & Number Pad -->
+            <div class="w-full lg:w-2/3 flex flex-col items-center space-y-4 order-1 lg:order-2">
+                <div id="sudokuGridContainer" class="sudoku-grid bg-white dark:bg-dark-surface shadow-lg rounded-md overflow-hidden">
+                    <!-- Cells will be generated by JS -->
+                </div>
+
+                <div id="numberPad" class="grid grid-cols-5 gap-1 sm:gap-2 p-2 rounded-lg bg-white dark:bg-dark-surface shadow-md w-full max-w-xs sm:max-w-sm">
+                    <!-- Numbers 1-9 and other controls -->
+                    <!-- JS will populate this, example for one button: -->
+                    <!-- <button class="num-button text-xl font-bold p-2 sm:p-3 rounded hover:bg-neutral-medium dark:hover:bg-gray-700 aspect-square">1</button> -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Win Modal -->
+    <div id="winModal" class="fixed inset-0 bg-black bg-opacity-75 backdrop-blur-sm hidden items-center justify-center p-4 z-50 fade-in">
+        <div class="modal-content bg-white dark:bg-dark-surface p-6 sm:p-8 rounded-lg shadow-2xl text-center max-w-md w-full transform transition-all scale-95 opacity-0" 
+             style="animation: popIn 0.3s forwards, fadeInModalContent 0.3s 0.1s forwards; @keyframes fadeInModalContent { to { opacity: 1; transform: scale(1); } }">
+            <h2 class="text-3xl font-bold text-success dark:text-green-400 mb-4">Congratulations!</h2>
+            <p class="text-lg mb-2">You solved the puzzle!</p>
+            <div class="text-md mb-1">Time: <span id="winTime" class="font-semibold"></span></div>
+            <div class="text-md mb-1">Mistakes: <span id="winMistakes" class="font-semibold"></span></div>
+            <div id="winScoreSection" class="text-md mb-4">Score: <span id="winScore" class="font-semibold"></span></div>
+            <button id="playAgainButton" class="w-full bg-primary dark:bg-dark-primary hover:bg-primary-dark dark:hover:bg-blue-400 text-white font-bold py-3 px-4 rounded text-lg transition-colors duration-150">
+                Play Again
+            </button>
+        </div>
+    </div>
+    
+    <!-- Settings Modal -->
+    <div id="settingsModal" class="fixed inset-0 bg-black bg-opacity-75 backdrop-blur-sm hidden items-center justify-center p-4 z-50 fade-in">
+        <div class="modal-content bg-white dark:bg-dark-surface p-6 sm:p-8 rounded-lg shadow-2xl w-full max-w-lg transform transition-all scale-95 opacity-0 overflow-y-auto max-h-[90vh]"
+             style="animation: popIn 0.3s forwards, fadeInModalContent 0.3s 0.1s forwards;">
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="text-2xl font-bold text-primary dark:text-dark-primary">Settings</h2>
+                <button id="closeSettingsButton" class="p-1 rounded-md hover:bg-neutral-medium dark:hover:bg-gray-700">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+                </button>
+            </div>
+
+            <div class="space-y-6">
+                <div>
+                    <h3 class="text-lg font-semibold mb-2 text-text-main dark:text-dark-text">Appearance</h3>
+                    <div class="space-y-3">
+                        <div class="flex items-center justify-between">
+                            <label for="darkModeToggle" class="text-sm text-text-light dark:text-gray-400">Dark Mode</label>
+                            <button id="darkModeToggle" class="relative inline-flex items-center h-6 rounded-full w-11 transition-colors focus:outline-none bg-gray-200 dark:bg-gray-700">
+                                <span class="sr-only">Dark Mode</span>
+                                <span class="inline-block w-4 h-4 transform bg-white dark:translate-x-5 rounded-full transition-transform"></span>
+                            </button>
+                        </div>
+                         <div class="flex items-center justify-between">
+                            <label for="highContrastToggle" class="text-sm text-text-light dark:text-gray-400">High Contrast Mode</label>
+                            <button id="highContrastToggle" class="relative inline-flex items-center h-6 rounded-full w-11 transition-colors focus:outline-none bg-gray-200 dark:bg-gray-700">
+                                <span class="sr-only">High Contrast Mode</span>
+                                <span class="inline-block w-4 h-4 transform bg-white dark:translate-x-5 rounded-full transition-transform"></span>
+                            </button>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-text-light dark:text-gray-400 mb-1">Font Size</label>
+                            <div class="flex space-x-2">
+                                <button data-size="sm" class="fontSizeButton flex-1 py-2 px-3 border border-neutral-medium dark:border-gray-600 rounded-md text-sm hover:bg-neutral-light dark:hover:bg-gray-700">Small</button>
+                                <button data-size="md" class="fontSizeButton flex-1 py-2 px-3 border border-neutral-medium dark:border-gray-600 rounded-md text-sm hover:bg-neutral-light dark:hover:bg-gray-700 ring-2 ring-primary dark:ring-dark-primary">Medium</button>
+                                <button data-size="lg" class="fontSizeButton flex-1 py-2 px-3 border border-neutral-medium dark:border-gray-600 rounded-md text-sm hover:bg-neutral-light dark:hover:bg-gray-700">Large</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div>
+                    <h3 class="text-lg font-semibold mb-2 text-text-main dark:text-dark-text">Gameplay</h3>
+                     <div class="flex items-center justify-between">
+                        <label for="audioFeedbackToggle" class="text-sm text-text-light dark:text-gray-400">Audio Feedback</label>
+                        <button id="audioFeedbackToggle" class="relative inline-flex items-center h-6 rounded-full w-11 transition-colors focus:outline-none bg-gray-200 dark:bg-gray-700">
+                            <span class="sr-only">Audio Feedback</span>
+                            <span class="inline-block w-4 h-4 transform bg-white dark:translate-x-5 rounded-full transition-transform"></span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+
+    <script>
+    const GRID_SIZE = 9;
+    const BOX_SIZE = 3;
+    const DIFFICULTIES = {
+        easy: 45,    // Number of cells to remove
+        medium: 50,
+        hard: 55,
+        expert: 60
+    };
+    const MAX_MISTAKES = 3;
+
+    let gameState = {
+        currentBoard: [], // Current state of the board with user inputs
+        initialBoard: [], // Puzzle board (fixed numbers)
+        solutionBoard: [], // Fully solved board
+        pencilMarks: {}, // { "r,c": Set(1,2,3...) }
+        selectedCell: null, // { r, c }
+        isPencilMode: false,
+        timerInterval: null,
+        timeElapsed: 0,
+        mistakes: 0,
+        score: 0,
+        gameMode: 'classic', // 'classic', 'relaxed'
+        difficulty: 'medium',
+        isGameOver: false,
+        settings: {
+            darkMode: false,
+            highContrastMode: false,
+            fontSize: 'md',
+            audioFeedback: true,
+        }
+    };
+
+    // DOM Elements
+    const sudokuGridContainer = document.getElementById('sudokuGridContainer');
+    const numberPadContainer = document.getElementById('numberPad');
+    const newGameButton = document.getElementById('newGameButton');
+    const difficultySelect = document.getElementById('difficulty');
+    const gameModeSelect = document.getElementById('gameMode');
+    const pencilButton = document.getElementById('pencilButton');
+    const eraseButton = document.getElementById('eraseButton');
+    const hintButton = document.getElementById('hintButton');
+    const timerDisplay = document.getElementById('timerDisplay');
+    const mistakesDisplay = document.getElementById('mistakesDisplay');
+    const scoreDisplay = document.getElementById('scoreDisplay');
+    const scoreSection = document.getElementById('scoreSection');
+    
+    const winModal = document.getElementById('winModal');
+    const winTime = document.getElementById('winTime');
+    const winMistakes = document.getElementById('winMistakes');
+    const winScore = document.getElementById('winScore');
+    const winScoreSection = document.getElementById('winScoreSection');
+    const playAgainButton = document.getElementById('playAgainButton');
+
+    const settingsButton = document.getElementById('settingsButton');
+    const settingsModal = document.getElementById('settingsModal');
+    const closeSettingsButton = document.getElementById('closeSettingsButton');
+    const darkModeToggle = document.getElementById('darkModeToggle');
+    const highContrastToggle = document.getElementById('highContrastToggle');
+    const audioFeedbackToggle = document.getElementById('audioFeedbackToggle');
+    const fontSizeButtons = document.querySelectorAll('.fontSizeButton');
+
+    // Audio Context
+    let audioCtx;
+    try {
+        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    } catch (e) {
+        console.warn("Web Audio API is not supported in this browser.");
+        gameState.settings.audioFeedback = false; // Disable if not supported
+    }
+
+    function playSound(type) {
+        if (!audioCtx || !gameState.settings.audioFeedback) return;
+
+        const oscillator = audioCtx.createOscillator();
+        const gainNode = audioCtx.createGain();
+        oscillator.connect(gainNode);
+        gainNode.connect(audioCtx.destination);
+        gainNode.gain.setValueAtTime(0.08, audioCtx.currentTime); // Volume reduced
+
+        switch (type) {
+            case 'place':
+                oscillator.type = 'sine';
+                oscillator.frequency.setValueAtTime(660, audioCtx.currentTime); // E5
+                gainNode.gain.exponentialRampToValueAtTime(0.00001, audioCtx.currentTime + 0.15);
+                break;
+            case 'error':
+                oscillator.type = 'square';
+                oscillator.frequency.setValueAtTime(120, audioCtx.currentTime); 
+                gainNode.gain.exponentialRampToValueAtTime(0.00001, audioCtx.currentTime + 0.3);
+                break;
+            case 'win':
+                const freqs = [261.63, 329.63, 392.00, 523.25]; // C4, E4, G4, C5
+                let time = audioCtx.currentTime;
+                freqs.forEach((freq, i) => {
+                    const osc = audioCtx.createOscillator();
+                    const gn = audioCtx.createGain();
+                    osc.connect(gn);
+                    gn.connect(audioCtx.destination);
+                    osc.type = 'triangle';
+                    osc.frequency.setValueAtTime(freq, time + i * 0.1);
+                    gn.gain.setValueAtTime(0.1, time + i * 0.1);
+                    gn.gain.exponentialRampToValueAtTime(0.00001, time + i * 0.1 + 0.15);
+                    osc.start(time + i * 0.1);
+                    osc.stop(time + i * 0.1 + 0.2);
+                });
+                return; 
+            case 'select':
+                 oscillator.type = 'sine';
+                 oscillator.frequency.setValueAtTime(880, audioCtx.currentTime); // A5
+                 gainNode.gain.setValueAtTime(0.03, audioCtx.currentTime);
+                 gainNode.gain.exponentialRampToValueAtTime(0.00001, audioCtx.currentTime + 0.05);
+                 break;
+            case 'erase':
+                 oscillator.type = 'sawtooth';
+                 oscillator.frequency.setValueAtTime(330, audioCtx.currentTime); // E4
+                 gainNode.gain.setValueAtTime(0.05, audioCtx.currentTime);
+                 gainNode.gain.exponentialRampToValueAtTime(0.00001, audioCtx.currentTime + 0.1);
+                 break;
+        }
+        oscillator.start(audioCtx.currentTime);
+        oscillator.stop(audioCtx.currentTime + 0.3);
+    }
+
+    // --- Sudoku Logic ---
+    function shuffleArray(array) {
+        for (let i = array.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [array[i], array[j]] = [array[j], array[i]];
+        }
+    }
+
+    function isValidPlacement(board, r, c, num) {
+        // Check row
+        for (let x = 0; x < GRID_SIZE; x++) {
+            if (board[r][x] === num && x !== c) return false;
+        }
+        // Check column
+        for (let x = 0; x < GRID_SIZE; x++) {
+            if (board[x][c] === num && x !== r) return false;
+        }
+        // Check 3x3 box
+        const boxStartRow = r - r % BOX_SIZE;
+        const boxStartCol = c - c % BOX_SIZE;
+        for (let i = 0; i < BOX_SIZE; i++) {
+            for (let j = 0; j < BOX_SIZE; j++) {
+                if (board[boxStartRow + i][boxStartCol + j] === num && (boxStartRow + i !== r || boxStartCol + j !== c)) return false;
+            }
+        }
+        return true;
+    }
+    
+    function findEmptyCell(board) {
+        for (let r = 0; r < GRID_SIZE; r++) {
+            for (let c = 0; c < GRID_SIZE; c++) {
+                if (board[r][c] === 0) return [r, c];
+            }
+        }
+        return null; // All cells filled
+    }
+
+    function solveSudoku(board) {
+        const emptyCell = findEmptyCell(board);
+        if (!emptyCell) return true; // Solved
+
+        const [r, c] = emptyCell;
+        const numbers = [1, 2, 3, 4, 5, 6, 7, 8, 9];
+        shuffleArray(numbers); // For generating different puzzles
+
+        for (const num of numbers) {
+            if (isValidPlacement(board, r, c, num)) {
+                board[r][c] = num;
+                if (solveSudoku(board)) return true;
+                board[r][c] = 0; // Backtrack
+            }
+        }
+        return false;
+    }
+
+    function generatePuzzle() {
+        // 1. Create an empty board
+        let solvedBoard = Array(GRID_SIZE).fill(null).map(() => Array(GRID_SIZE).fill(0));
+        
+        // 2. Fill it with a valid Sudoku solution
+        solveSudoku(solvedBoard);
+        gameState.solutionBoard = JSON.parse(JSON.stringify(solvedBoard)); // Deep copy
+
+        // 3. Create puzzle by removing numbers
+        let puzzleBoard = JSON.parse(JSON.stringify(solvedBoard));
+        let cellsToRemove = DIFFICULTIES[gameState.difficulty];
+        let attempts = cellsToRemove * 2; // Limit attempts to avoid infinite loop on very hard puzzles
+
+        let removedCount = 0;
+        while (removedCount < cellsToRemove && attempts > 0) {
+            const r = Math.floor(Math.random() * GRID_SIZE);
+            const c = Math.floor(Math.random() * GRID_SIZE);
+
+            if (puzzleBoard[r][c] !== 0) {
+                // For simplicity, we are not checking for unique solution after removal for this exercise
+                // A true unique solution check is complex. We assume our generated board is the target.
+                puzzleBoard[r][c] = 0;
+                removedCount++;
+            }
+            attempts--;
+        }
+        
+        gameState.initialBoard = JSON.parse(JSON.stringify(puzzleBoard));
+        gameState.currentBoard = JSON.parse(JSON.stringify(puzzleBoard));
+    }
+
+    // --- UI Rendering ---
+    function renderBoard() {
+        sudokuGridContainer.innerHTML = '';
+        for (let r = 0; r < GRID_SIZE; r++) {
+            for (let c = 0; c < GRID_SIZE; c++) {
+                const cell = document.createElement('div');
+                cell.classList.add('sudoku-cell');
+                cell.dataset.r = r;
+                cell.dataset.c = c;
+
+                const mainNumberSpan = document.createElement('span');
+                mainNumberSpan.classList.add('main-number');
+                
+                const pencilMarkGrid = document.createElement('div');
+                pencilMarkGrid.classList.add('pencil-mark-grid', 'hidden');
+
+                const cellKey = `${r},${c}`;
+                const pencilMarksForCell = gameState.pencilMarks[cellKey];
+
+                if (gameState.currentBoard[r][c] !== 0) {
+                    mainNumberSpan.textContent = gameState.currentBoard[r][c];
+                    if (gameState.initialBoard[r][c] !== 0) {
+                        cell.classList.add('fixed-num', 'font-semibold', 'text-text-main', 'dark:text-dark-text');
+                        if (gameState.settings.highContrastMode) cell.classList.add('hc-fixed'); else cell.classList.remove('hc-fixed');
+                    } else {
+                        cell.classList.add('user-num', 'text-primary', 'dark:text-dark-primary');
+                        if (gameState.settings.highContrastMode) cell.classList.add('hc-user'); else cell.classList.remove('hc-user');
+                        
+                        // Check if user number is correct against solution for styling
+                        if (gameState.currentBoard[r][c] !== gameState.solutionBoard[r][c]) {
+                           cell.classList.add('error-num', 'text-error', 'dark:text-dark-error');
+                        }
+                    }
+                } else if (pencilMarksForCell && pencilMarksForCell.size > 0) {
+                    pencilMarkGrid.classList.remove('hidden');
+                    for (let i = 1; i <= 9; i++) {
+                        const pCell = document.createElement('div');
+                        pCell.classList.add('pencil-mark-cell', 'text-pencil', 'dark:text-dark-pencil');
+                        if (pencilMarksForCell.has(i)) {
+                            pCell.textContent = i;
+                        }
+                        pencilMarkGrid.appendChild(pCell);
+                    }
+                }
+
+                cell.appendChild(mainNumberSpan);
+                cell.appendChild(pencilMarkGrid);
+                sudokuGridContainer.appendChild(cell);
+            }
+        }
+        highlightCells();
+        updateInfoPanel();
+    }
+
+    function renderNumberPad() {
+        numberPadContainer.innerHTML = '';
+        for (let i = 1; i <= 9; i++) {
+            const button = document.createElement('button');
+            button.classList.add('num-button', 'text-xl', 'sm:text-2xl', 'font-bold', 'p-2', 'sm:p-3', 'rounded-md', 'border', 'border-neutral-medium', 'dark:border-gray-600', 'hover:bg-neutral-light', 'dark:hover:bg-gray-700', 'transition-colors', 'aspect-square', 'flex', 'items-center', 'justify-center');
+            button.textContent = i;
+            button.dataset.num = i;
+            numberPadContainer.appendChild(button);
+        }
+         // Add placeholder for alignment or special buttons if needed
+        const placeholder = document.createElement('div'); // Or could be erase/pencil here
+        numberPadContainer.appendChild(placeholder);
+    }
+    
+    function highlightCells() {
+        document.querySelectorAll('.sudoku-cell').forEach(cellDiv => {
+            cellDiv.classList.remove('selected', 'highlighted', 'bg-blue-100', 'dark:bg-blue-900', 'bg-gray-200', 'dark:bg-gray-700');
+            if (gameState.settings.highContrastMode) {
+                cellDiv.classList.remove('hc-selected', 'hc-highlighted');
+            }
+
+            const r = parseInt(cellDiv.dataset.r);
+            const c = parseInt(cellDiv.dataset.c);
+
+            if (gameState.selectedCell && gameState.selectedCell.r === r && gameState.selectedCell.c === c) {
+                cellDiv.classList.add('selected');
+                if(gameState.settings.highContrastMode) cellDiv.classList.add('hc-selected');
+                else cellDiv.classList.add('bg-blue-200', 'dark:bg-blue-800');
+
+            } else if (gameState.selectedCell) {
+                const sr = gameState.selectedCell.r;
+                const sc = gameState.selectedCell.c;
+                const selectedNum = gameState.currentBoard[sr][sc];
+
+                // Highlight row, col, box
+                if (r === sr || c === sc || 
+                    (Math.floor(r / BOX_SIZE) === Math.floor(sr / BOX_SIZE) && Math.floor(c / BOX_SIZE) === Math.floor(sc / BOX_SIZE))) {
+                    cellDiv.classList.add('highlighted');
+                     if(gameState.settings.highContrastMode) cellDiv.classList.add('hc-highlighted');
+                     else cellDiv.classList.add('bg-neutral-medium', 'dark:bg-gray-600');
+                }
+                // Highlight same numbers
+                if (selectedNum !== 0 && gameState.currentBoard[r][c] === selectedNum) {
+                     cellDiv.classList.add('highlighted', 'font-bold');
+                     if(gameState.settings.highContrastMode) cellDiv.classList.add('hc-highlighted');
+                     else cellDiv.classList.add('bg-secondary', 'dark:bg-dark-secondary', 'text-white', 'dark:text-black');
+                }
+            }
+        });
+    }
+
+    function updateInfoPanel() {
+        const minutes = Math.floor(gameState.timeElapsed / 60).toString().padStart(2, '0');
+        const seconds = (gameState.timeElapsed % 60).toString().padStart(2, '0');
+        timerDisplay.textContent = `${minutes}:${seconds}`;
+        mistakesDisplay.textContent = `${gameState.mistakes}/${MAX_MISTAKES}`;
+        
+        if (gameState.gameMode === 'classic' && gameState.difficulty !== 'easy') { // Example scoring logic
+            scoreDisplay.textContent = gameState.score;
+            scoreSection.classList.remove('hidden');
+        } else {
+            scoreSection.classList.add('hidden');
+        }
+
+        if (gameState.gameMode === 'relaxed') {
+            timerDisplay.parentElement.classList.add('hidden');
+            mistakesDisplay.parentElement.classList.add('hidden');
+            scoreSection.classList.add('hidden');
+        } else {
+            timerDisplay.parentElement.classList.remove('hidden');
+            mistakesDisplay.parentElement.classList.remove('hidden');
+        }
+    }
+
+
+    // --- Event Handlers ---
+    function handleCellClick(event) {
+        const cell = event.target.closest('.sudoku-cell');
+        if (!cell || gameState.isGameOver) return;
+
+        const r = parseInt(cell.dataset.r);
+        const c = parseInt(cell.dataset.c);
+        gameState.selectedCell = { r, c };
+        playSound('select');
+        renderBoard(); // Re-render to update highlights
+    }
+
+    function handleNumberInput(num) {
+        if (!gameState.selectedCell || gameState.isGameOver || gameState.initialBoard[gameState.selectedCell.r][gameState.selectedCell.c] !== 0) {
+            return;
+        }
+
+        const { r, c } = gameState.selectedCell;
+        const cellKey = `${r},${c}`;
+
+        if (gameState.isPencilMode) {
+            if (!gameState.pencilMarks[cellKey]) {
+                gameState.pencilMarks[cellKey] = new Set();
+            }
+            if (gameState.pencilMarks[cellKey].has(num)) {
+                gameState.pencilMarks[cellKey].delete(num);
+            } else {
+                gameState.pencilMarks[cellKey].add(num);
+            }
+            gameState.currentBoard[r][c] = 0; // Clear main number if pencil marking
+            playSound('place'); 
+        } else {
+            // Clear pencil marks for this cell if a number is placed
+            if (gameState.pencilMarks[cellKey]) {
+                gameState.pencilMarks[cellKey].clear();
+            }
+
+            const currentCell = document.querySelector(`.sudoku-cell[data-r="${r}"][data-c="${c}"]`);
+            currentCell.classList.remove('cell-error-shake'); // Remove previous shake if any
+
+            if (gameState.currentBoard[r][c] === num) { // If same number is entered, clear it (toggle behavior)
+                gameState.currentBoard[r][c] = 0;
+                playSound('erase');
+            } else {
+                const isCorrect = (num === gameState.solutionBoard[r][c]);
+                if (isCorrect) {
+                    gameState.currentBoard[r][c] = num;
+                    playSound('place');
+                    if(gameState.gameMode === 'classic') gameState.score += 10; // Basic scoring
+                    
+                    const mainNumSpan = currentCell.querySelector('.main-number');
+                    if(mainNumSpan) {
+                        mainNumSpan.classList.add('number-pop-in');
+                        mainNumSpan.addEventListener('animationend', () => mainNumSpan.classList.remove('number-pop-in'), {once: true});
+                    }
+
+                } else {
+                    gameState.currentBoard[r][c] = num; // Show incorrect number temporarily
+                    playSound('error');
+                    currentCell.classList.add('cell-error-shake');
+                    
+                    if (gameState.gameMode !== 'relaxed') {
+                        gameState.mistakes++;
+                        if(gameState.gameMode === 'classic') gameState.score -=5;
+                        if (gameState.mistakes >= MAX_MISTAKES) {
+                            handleGameOver(false); // Lose condition
+                        }
+                    }
+                     // After shake, revert if you don't want to keep wrong numbers
+                    // For this version, we keep the wrong number but mark it
+                }
+            }
+        }
+        renderBoard();
+        if (!gameState.isPencilMode && gameState.currentBoard[r][c] !== 0) { // Only check win if not pencil and a number was placed
+             checkWinCondition();
+        }
+    }
+    
+    function handleKeyboardInput(event) {
+        if(event.target.tagName === 'SELECT' || event.target.tagName === 'BUTTON' || event.target.tagName === 'INPUT') return; // Ignore if focus is on form elements
+
+        if (gameState.isGameOver) return;
+
+        const key = event.key;
+        if (key >= '1' && key <= '9') {
+            handleNumberInput(parseInt(key));
+        } else if ((key === 'Backspace' || key === 'Delete') && gameState.selectedCell) {
+            handleErase();
+        } else if (key.toLowerCase() === 'p') {
+            togglePencilMode();
+        } else if (key.toLowerCase() === 'h') {
+            provideHint();
+        } else if (key.startsWith('Arrow') && gameState.selectedCell) {
+            let { r, c } = gameState.selectedCell;
+            if (key === 'ArrowUp' && r > 0) r--;
+            else if (key === 'ArrowDown' && r < GRID_SIZE - 1) r++;
+            else if (key === 'ArrowLeft' && c > 0) c--;
+            else if (key === 'ArrowRight' && c < GRID_SIZE - 1) c++;
+            gameState.selectedCell = { r, c };
+            playSound('select');
+            renderBoard();
+        }
+    }
+
+    function togglePencilMode() {
+        gameState.isPencilMode = !gameState.isPencilMode;
+        pencilButton.classList.toggle('bg-primary', gameState.isPencilMode);
+        pencilButton.classList.toggle('dark:bg-dark-primary', gameState.isPencilMode);
+        pencilButton.classList.toggle('text-white', gameState.isPencilMode);
+        pencilButton.classList.toggle('dark:text-black', gameState.isPencilMode);
+        // If high contrast, adjust active pencil button style
+        if (gameState.settings.highContrastMode) {
+            if (gameState.isPencilMode) {
+                 pencilButton.style.backgroundColor = 'var(--hc-secondary)'; // e.g., Cyan for active
+                 pencilButton.style.color = 'var(--hc-bg)';
+            } else {
+                pencilButton.style.backgroundColor = 'var(--hc-button-bg)';
+                pencilButton.style.color = 'var(--hc-button-text)';
+            }
+        }
+    }
+
+    function handleErase() {
+        if (!gameState.selectedCell || gameState.isGameOver) return;
+        const { r, c } = gameState.selectedCell;
+        if (gameState.initialBoard[r][c] === 0) { // Can only erase user-entered numbers or pencil marks
+            gameState.currentBoard[r][c] = 0;
+            const cellKey = `${r},${c}`;
+            if (gameState.pencilMarks[cellKey]) {
+                gameState.pencilMarks[cellKey].clear();
+            }
+            playSound('erase');
+            renderBoard();
+        }
+    }
+    
+    function provideHint() {
+        if (gameState.isGameOver || gameState.gameMode === 'relaxed') return;
+        if (!gameState.selectedCell && findEmptyCell(gameState.currentBoard) === null) return; // No empty cells or no cell selected
+
+        let cellToHint = gameState.selectedCell;
+        
+        // If no cell is selected, or selected cell is already filled, find an empty one
+        if (!cellToHint || gameState.currentBoard[cellToHint.r][cellToHint.c] !== 0) {
+            const emptyCell = findEmptyCell(gameState.currentBoard);
+            if (!emptyCell) return; // No empty cells left
+            cellToHint = { r: emptyCell[0], c: emptyCell[1] };
+            gameState.selectedCell = cellToHint; // Select the hinted cell
+        }
+        
+        const {r, c} = cellToHint;
+
+        if (gameState.initialBoard[r][c] === 0 && gameState.currentBoard[r][c] === 0) { // Can only hint empty, non-fixed cells
+            const solutionNum = gameState.solutionBoard[r][c];
+            gameState.currentBoard[r][c] = solutionNum;
+
+            // Clear pencil marks for this cell
+            const cellKey = `${r},${c}`;
+            if (gameState.pencilMarks[cellKey]) {
+                gameState.pencilMarks[cellKey].clear();
+            }
+
+            playSound('place');
+            if(gameState.gameMode === 'classic') gameState.score -= 20; // Penalty for hint
+
+            const cellDiv = document.querySelector(`.sudoku-cell[data-r="${r}"][data-c="${c}"]`);
+            if (cellDiv) {
+                const mainNumSpan = cellDiv.querySelector('.main-number');
+                if(mainNumSpan) {
+                    mainNumSpan.classList.add('number-pop-in');
+                    mainNumSpan.addEventListener('animationend', () => mainNumSpan.classList.remove('number-pop-in'), {once: true});
+                }
+            }
+            renderBoard();
+            checkWinCondition();
+        }
+    }
+
+
+    // --- Game Flow ---
+    function startNewGame() {
+        gameState.isGameOver = false;
+        gameState.difficulty = difficultySelect.value;
+        gameState.gameMode = gameModeSelect.value;
+        gameState.pencilMarks = {};
+        gameState.isPencilMode = false;
+        pencilButton.classList.remove('bg-primary', 'dark:bg-dark-primary', 'text-white', 'dark:text-black');
+        if (gameState.settings.highContrastMode) { // Reset pencil button for HC
+             pencilButton.style.backgroundColor = 'var(--hc-button-bg)';
+             pencilButton.style.color = 'var(--hc-button-text)';
+        }
+
+
+        generatePuzzle();
+        renderBoard();
+        renderNumberPad(); // In case it needs re-rendering based on mode (not currently, but good practice)
+        
+        gameState.mistakes = 0;
+        gameState.score = 0; // Reset score for classic mode
+        updateInfoPanel();
+
+        clearInterval(gameState.timerInterval);
+        gameState.timeElapsed = 0;
+        if (gameState.gameMode !== 'relaxed') {
+            gameState.timerInterval = setInterval(() => {
+                gameState.timeElapsed++;
+                updateInfoPanel();
+            }, 1000);
+        }
+        
+        winModal.classList.add('hidden');
+        winModal.querySelector('.modal-content').classList.remove('opacity-100', 'scale-100');
+        winModal.querySelector('.modal-content').classList.add('opacity-0', 'scale-95');
+
+        // Make sure number pad buttons are wired up
+        document.querySelectorAll('.num-button').forEach(btn => {
+            btn.onclick = () => handleNumberInput(parseInt(btn.dataset.num));
+        });
+    }
+
+    function checkWinCondition() {
+        for (let r = 0; r < GRID_SIZE; r++) {
+            for (let c = 0; c < GRID_SIZE; c++) {
+                if (gameState.currentBoard[r][c] === 0 || gameState.currentBoard[r][c] !== gameState.solutionBoard[r][c]) {
+                    return false; // Not solved
+                }
+            }
+        }
+        handleGameOver(true); // Solved
+        return true;
+    }
+
+    function handleGameOver(isWin) {
+        gameState.isGameOver = true;
+        clearInterval(gameState.timerInterval);
+        
+        if (isWin) {
+            playSound('win');
+            winTime.textContent = timerDisplay.textContent;
+            winMistakes.textContent = gameState.mistakes;
+            if (gameState.gameMode === 'classic' && gameState.difficulty !== 'easy') {
+                // Time bonus (example: 1000 - timeInSeconds, minimum 0)
+                let timeBonus = Math.max(0, (gameState.difficulty === 'medium' ? 500 : gameState.difficulty === 'hard' ? 1000 : 250) - gameState.timeElapsed);
+                gameState.score += timeBonus;
+                winScore.textContent = gameState.score;
+                winScoreSection.classList.remove('hidden');
+            } else {
+                winScoreSection.classList.add('hidden');
+            }
+            winModal.classList.remove('hidden');
+            // Trigger modal animation
+            setTimeout(() => {
+                 winModal.querySelector('.modal-content').classList.add('opacity-100', 'scale-100');
+                 winModal.querySelector('.modal-content').classList.remove('opacity-0', 'scale-95');
+            }, 50); // Small delay to ensure CSS transition triggers
+        } else {
+            // Optional: Show a "Game Over - Too many mistakes" modal
+            alert("Game Over! Too many mistakes."); // Simple alert for now
+            // Or could offer to start a new game.
+        }
+    }
+    
+    // --- Accessibility & Settings ---
+    function applySettings() {
+        // Dark Mode
+        if (gameState.settings.darkMode) {
+            document.documentElement.classList.add('dark');
+            darkModeToggle.classList.add('bg-primary', 'dark:bg-dark-primary');
+            darkModeToggle.querySelector('span:last-child').classList.add('translate-x-5');
+        } else {
+            document.documentElement.classList.remove('dark');
+            darkModeToggle.classList.remove('bg-primary', 'dark:bg-dark-primary');
+            darkModeToggle.querySelector('span:last-child').classList.remove('translate-x-5');
+        }
+
+        // High Contrast Mode
+        if (gameState.settings.highContrastMode) {
+            document.documentElement.classList.add('high-contrast');
+            highContrastToggle.classList.add('bg-primary', 'dark:bg-dark-primary'); // Use primary as active indicator
+            highContrastToggle.querySelector('span:last-child').classList.add('translate-x-5');
+        } else {
+            document.documentElement.classList.remove('high-contrast');
+            highContrastToggle.classList.remove('bg-primary', 'dark:bg-dark-primary');
+            highContrastToggle.querySelector('span:last-child').classList.remove('translate-x-5');
+        }
+        
+        // Font Size
+        document.body.classList.remove('font-size-sm', 'font-size-md', 'font-size-lg');
+        document.body.classList.add(`font-size-${gameState.settings.fontSize}`);
+        fontSizeButtons.forEach(btn => {
+            btn.classList.remove('ring-2', 'ring-primary', 'dark:ring-dark-primary');
+            if (btn.dataset.size === gameState.settings.fontSize) {
+                btn.classList.add('ring-2', 'ring-primary', 'dark:ring-dark-primary');
+            }
+        });
+
+        // Audio Feedback
+        if (gameState.settings.audioFeedback) {
+            audioFeedbackToggle.classList.add('bg-primary', 'dark:bg-dark-primary');
+            audioFeedbackToggle.querySelector('span:last-child').classList.add('translate-x-5');
+        } else {
+            audioFeedbackToggle.classList.remove('bg-primary', 'dark:bg-dark-primary');
+            audioFeedbackToggle.querySelector('span:last-child').classList.remove('translate-x-5');
+        }
+        
+        renderBoard(); // Re-render board to apply visual changes from settings
+    }
+
+    function saveSettings() {
+        localStorage.setItem('sudokuSettings', JSON.stringify(gameState.settings));
+    }
+
+    function loadSettings() {
+        const saved = localStorage.getItem('sudokuSettings');
+        if (saved) {
+            gameState.settings = JSON.parse(saved);
+            // Ensure audio context isn't re-enabled if API not supported
+            if (!window.AudioContext && !window.webkitAudioContext) {
+                gameState.settings.audioFeedback = false;
+            }
+        }
+        // Apply initial dark mode from OS preference if no saved setting
+        else if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+            gameState.settings.darkMode = true;
+        }
+        applySettings();
+    }
+
+    // Settings Modal Toggles
+    settingsButton.addEventListener('click', () => {
+        settingsModal.classList.remove('hidden');
+        setTimeout(() => {
+            settingsModal.querySelector('.modal-content').classList.add('opacity-100', 'scale-100');
+            settingsModal.querySelector('.modal-content').classList.remove('opacity-0', 'scale-95');
+        }, 50);
+    });
+    closeSettingsButton.addEventListener('click', () => {
+        settingsModal.querySelector('.modal-content').classList.remove('opacity-100', 'scale-100');
+        settingsModal.querySelector('.modal-content').classList.add('opacity-0', 'scale-95');
+        setTimeout(() => settingsModal.classList.add('hidden'), 300); // Match animation duration
+    });
+    darkModeToggle.addEventListener('click', () => {
+        gameState.settings.darkMode = !gameState.settings.darkMode;
+        applySettings();
+        saveSettings();
+    });
+    highContrastToggle.addEventListener('click', () => {
+        gameState.settings.highContrastMode = !gameState.settings.highContrastMode;
+        applySettings();
+        saveSettings();
+    });
+    audioFeedbackToggle.addEventListener('click', () => {
+         if (!audioCtx && !gameState.settings.audioFeedback) { // If context failed and trying to enable
+            alert("Audio is not supported or was disabled by your browser.");
+            gameState.settings.audioFeedback = false; // Keep it false
+        } else {
+            gameState.settings.audioFeedback = !gameState.settings.audioFeedback;
+        }
+        applySettings();
+        saveSettings();
+    });
+    fontSizeButtons.forEach(button => {
+        button.addEventListener('click', () => {
+            gameState.settings.fontSize = button.dataset.size;
+            applySettings();
+            saveSettings();
+        });
+    });
+
+    // --- Initialization ---
+    document.addEventListener('DOMContentLoaded', () => {
+        loadSettings(); // Load settings first
+
+        sudokuGridContainer.addEventListener('click', handleCellClick);
+        newGameButton.addEventListener('click', startNewGame);
+        pencilButton.addEventListener('click', togglePencilMode);
+        eraseButton.addEventListener('click', handleErase);
+        hintButton.addEventListener('click', provideHint);
+        playAgainButton.addEventListener('click', () => {
+            winModal.querySelector('.modal-content').classList.remove('opacity-100', 'scale-100');
+            winModal.querySelector('.modal-content').classList.add('opacity-0', 'scale-95');
+            setTimeout(() => {
+                winModal.classList.add('hidden');
+                startNewGame();
+            }, 300);
+        });
+        
+        document.addEventListener('keydown', handleKeyboardInput);
+
+        // Initialize first game
+        startNewGame();
+    });
+
+    </script>
+</body>
+</html>

@@ -1,0 +1,9 @@
+{
+  "web_id": "web_85",
+  "task_id": 3,
+  "task_type": "dynamic",
+  "instruction": "Task: Enable pawn promotion by allowing users to choose a new piece.\nExpected Result: When a pawn reaches the promotion rank (opponent's back rank), the user is presented with a UI element (e.g., a modal or a set of piece icons) to click and select a Queen, Rook, Bishop, or Knight. Upon selection, the pawn is replaced by the chosen piece on that square.\n\nNote: The task is only considered successful if the expected result is achieved; otherwise, it is deemed infeasible.",
+  "max_steps": 15,
+  "expected": "When a pawn reaches the promotion rank (opponent's back rank), the user is presented with a UI element (e.g., a modal or a set of piece icons) to click and select a Queen, Rook, Bishop, or Knight. Upon selection, the pawn is replaced by the chosen piece on that square.",
+  "label": 1
+}

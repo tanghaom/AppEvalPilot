@@ -1,0 +1,9 @@
+{
+  "web_id": "web_7",
+  "task_id": 4,
+  "task_type": "dynamic",
+  "instruction": "Task: Click the 'Edit' button on any message (user or AI).\nExpected Result: The text content of the selected message populates the main input bar. An 'editing message' notification appears near the input bar. Any text previously being typed in the input bar is stashed.\n\nNote: The task is only considered successful if the expected result is achieved; otherwise, it is deemed infeasible.",
+  "max_steps": 15,
+  "expected": "The text content of the selected message populates the main input bar. An 'editing message' notification appears near the input bar. Any text previously being typed in the input bar is stashed.",
+  "label": 1
+}

@@ -1,0 +1,519 @@
+<!DOCTYPE html>
+<html lang="en" class="">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Interactive Quiz Platform</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        /* Custom CSS can go here if absolutely necessary, but prefer Tailwind classes */
+        .btn {
+            @apply px-4 py-2 rounded-lg font-medium shadow-md focus:outline-none focus:ring-2 focus:ring-offset-2 transition-all duration-150 ease-in-out;
+        }
+        .btn-primary {
+            @apply bg-primary-DEFAULT text-white hover:bg-primary-dark focus:ring-primary-light;
+            @apply dark:bg-dark-primary-DEFAULT dark:hover:bg-dark-primary-dark dark:focus:ring-dark-primary-light;
+        }
+        .btn-secondary {
+            @apply bg-gray-200 text-gray-700 hover:bg-gray-300 focus:ring-gray-400;
+            @apply dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600 dark:focus:ring-gray-500;
+        }
+        .btn-disabled {
+            @apply bg-gray-300 text-gray-500 cursor-not-allowed shadow-none;
+            @apply dark:bg-gray-600 dark:text-gray-400;
+        }
+        .option-btn {
+            @apply w-full p-4 mb-3 text-left border-2 rounded-lg transition-all duration-150 ease-in-out;
+            @apply border-gray-300 hover:border-primary-light hover:bg-primary-light/10;
+            @apply dark:border-gray-600 dark:hover:border-dark-primary-light dark:hover:bg-dark-primary-light/10;
+        }
+        .option-btn.selected-correct {
+            @apply bg-emerald-50 border-emerald-500 text-emerald-700;
+            @apply dark:bg-emerald-900/50 dark:border-emerald-500 dark:text-emerald-300;
+        }
+        .option-btn.selected-incorrect {
+            @apply bg-red-50 border-red-500 text-red-700;
+            @apply dark:bg-red-900/50 dark:border-red-500 dark:text-red-300;
+        }
+        .option-btn:disabled {
+            @apply opacity-70 cursor-not-allowed hover:bg-transparent dark:hover:bg-transparent;
+        }
+        .animate-fadeIn { animation: fadeIn 0.5s ease-out forwards; }
+        .animate-slideInUp { animation: slideInUp 0.5s ease-out forwards; }
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+        @keyframes slideInUp {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+    </style>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'ui-sans-serif', 'system-ui', '-apple-system', 'BlinkMacSystemFont', '"Segoe UI"', 'Roboto', '"Helvetica Neue"', 'Arial', '"Noto Sans"', 'sans-serif', '"Apple Color Emoji"', '"Segoe UI Emoji"', '"Segoe UI Symbol"', '"Noto Color Emoji"'],
+                    },
+                    colors: {
+                        primary: {
+                            light: '#6366F1', // Indigo 500
+                            DEFAULT: '#4F46E5', // Indigo 600
+                            dark: '#4338CA'  // Indigo 700
+                        },
+                        emerald: { // For correct answers
+                            50: '#ECFDF5', 100: '#D1FAE5', 200: '#A7F3D0', 300: '#6EE7B7', 400: '#34D399',
+                            500: '#10B981', 600: '#059669', 700: '#047857', 800: '#065F46', 900: '#064E3B'
+                        },
+                        red: { // For incorrect answers
+                            50: '#FEF2F2', 100: '#FEE2E2', 200: '#FECACA', 300: '#FCA5A5', 400: '#F87171',
+                            500: '#EF4444', 600: '#DC2626', 700: '#B91C1C', 800: '#991B1B', 900: '#7F1D1D'
+                        },
+                        background: '#F9FAFB', // Gray 50
+                        surface: '#FFFFFF',    // White
+                        textPrimary: '#1F2937', // Gray 800
+                        textSecondary: '#6B7280', // Gray 500
+                        dark: {
+                            primary: {
+                                light: '#818CF8', // Indigo 400
+                                DEFAULT: '#6366F1', // Indigo 500
+                                dark: '#4F46E5'  // Indigo 600
+                            },
+                            background: '#111827', // Gray 900
+                            surface: '#1F2937',    // Gray 800
+                            textPrimary: '#F3F4F6', // Gray 100
+                            textSecondary: '#9CA3AF', // Gray 400
+                        }
+                    },
+                }
+            }
+        }
+    </script>
+</head>
+<body class="bg-background text-textPrimary dark:bg-dark-background dark:text-dark-textPrimary font-sans antialiased">
+
+    <div id="appContainer" class="min-h-screen flex flex-col items-center justify-center p-4 sm:p-6 lg:p-8 relative">
+
+        <!-- Theme Toggle Button -->
+        <div class="fixed top-4 right-4 z-50">
+            <button id="themeToggleBtn" aria-label="Toggle dark mode" class="p-3 rounded-full bg-surface dark:bg-dark-surface shadow-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors duration-150">
+                <svg id="themeIconLight" xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-amber-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" /></svg>
+                <svg id="themeIconDark" xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-indigo-400 hidden" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" /></svg>
+            </button>
+        </div>
+
+        <!-- Start Screen -->
+        <div id="startScreen" class="w-full max-w-lg bg-surface dark:bg-dark-surface p-6 sm:p-10 rounded-xl shadow-2xl text-center animate-fadeIn">
+            <h1 class="text-3xl sm:text-4xl font-bold text-primary-DEFAULT dark:text-dark-primary-DEFAULT mb-2">Quiz Platform</h1>
+            <p class="text-textSecondary dark:text-dark-textSecondary mb-8">Upload a quiz file (CSV or JSON) to begin.</p>
+            
+            <div class="mb-6">
+                <label for="quizFile" class="block text-sm font-medium text-textPrimary dark:text-dark-textPrimary mb-2">Upload Quiz File (.csv, .json)</label>
+                <input type="file" id="quizFile" accept=".csv,.json" class="block w-full text-sm text-gray-500 dark:text-gray-400
+                    file:mr-4 file:py-2 file:px-4
+                    file:rounded-full file:border-0
+                    file:text-sm file:font-semibold
+                    file:bg-primary-light/20 file:text-primary-DEFAULT
+                    dark:file:bg-dark-primary-light/20 dark:file:text-dark-primary-DEFAULT
+                    hover:file:bg-primary-light/30 dark:hover:file:bg-dark-primary-light/30
+                    cursor-pointer">
+            </div>
+            <p id="fileNameDisplay" class="text-sm text-textSecondary dark:text-dark-textSecondary mb-2 h-5"></p>
+            <p id="fileError" class="text-sm text-red-600 dark:text-red-400 mb-6 h-5"></p>
+
+            <button id="startQuizBtn" class="btn btn-primary w-full text-lg py-3" disabled>Start Quiz</button>
+        </div>
+
+        <!-- Quiz Screen -->
+        <div id="quizScreen" class="w-full max-w-2xl bg-surface dark:bg-dark-surface p-6 sm:p-8 rounded-xl shadow-2xl hidden">
+            <header class="flex justify-between items-center mb-6">
+                <p id="questionProgress" class="text-sm font-medium text-textSecondary dark:text-dark-textSecondary">Question 1 of 10</p>
+                <button id="quizHomeBtn" class="btn btn-secondary text-sm">Home</button>
+            </header>
+
+            <div id="questionContainer" class="mb-8 animate-slideInUp">
+                <h2 id="questionText" class="text-xl sm:text-2xl font-semibold text-textPrimary dark:text-dark-textPrimary mb-6 min-h-[3em]">Question text will appear here.</h2>
+                <div id="optionsContainer">
+                    <!-- Option buttons will be dynamically inserted here -->
+                </div>
+            </div>
+
+            <footer class="flex justify-between items-center">
+                <button id="prevQuestionBtn" class="btn btn-secondary">Previous</button>
+                <button id="nextQuestionBtn" class="btn btn-primary">Next</button>
+                <button id="finishQuizBtn" class="btn btn-primary hidden">Finish Quiz</button>
+            </footer>
+        </div>
+
+        <!-- Results Screen -->
+        <div id="resultsScreen" class="w-full max-w-lg bg-surface dark:bg-dark-surface p-6 sm:p-10 rounded-xl shadow-2xl text-center hidden">
+            <h1 class="text-3xl sm:text-4xl font-bold text-primary-DEFAULT dark:text-dark-primary-DEFAULT mb-4">Quiz Completed!</h1>
+            <p id="quizFileNameResults" class="text-sm text-textSecondary dark:text-dark-textSecondary mb-6"></p>
+
+            <div class="space-y-3 text-lg mb-8">
+                <p>Total Questions: <span id="totalQuestions" class="font-semibold">0</span></p>
+                <p class="text-emerald-600 dark:text-emerald-400">Correct Answers: <span id="correctAnswers" class="font-semibold">0</span></p>
+                <p class="text-red-600 dark:text-red-400">Incorrect Answers: <span id="incorrectAnswers" class="font-semibold">0</span></p>
+                <p class="text-2xl font-bold mt-2">Score: <span id="scorePercentage" class="text-primary-DEFAULT dark:text-dark-primary-DEFAULT">0%</span></p>
+            </div>
+
+            <button id="resultsHomeBtn" class="btn btn-primary w-full text-lg py-3">Take Another Quiz</button>
+        </div>
+    </div>
+
+    <script>
+        const appState = {
+            currentView: 'start', // 'start', 'quiz', 'results'
+            quizRawData: [],      // { question: string, options: string[], correctAnswer: string }
+            quizActiveData: [],   // { question: string, options: string[], correctAnswer: string, originalIndex: number, shuffledOptions: string[] } - questions shuffled
+            currentQuestionIndex: 0,
+            userAnswers: {},      // { [originalIndex]: { selectedOption: string, isCorrect: boolean, answerTime?: number } }
+            quizFileName: '',
+            theme: localStorage.getItem('theme') || 'light',
+        };
+
+        // DOM Elements
+        const appContainer = document.getElementById('appContainer');
+        const startScreen = document.getElementById('startScreen');
+        const quizScreen = document.getElementById('quizScreen');
+        const resultsScreen = document.getElementById('resultsScreen');
+        const themeToggleBtn = document.getElementById('themeToggleBtn');
+        const themeIconLight = document.getElementById('themeIconLight');
+        const themeIconDark = document.getElementById('themeIconDark');
+        const quizFileInp = document.getElementById('quizFile');
+        const fileNameDisplay = document.getElementById('fileNameDisplay');
+        const fileError = document.getElementById('fileError');
+        const startQuizBtn = document.getElementById('startQuizBtn');
+        const questionProgress = document.getElementById('questionProgress');
+        const quizHomeBtn = document.getElementById('quizHomeBtn');
+        const questionTextEl = document.getElementById('questionText');
+        const optionsContainer = document.getElementById('optionsContainer');
+        const prevQuestionBtn = document.getElementById('prevQuestionBtn');
+        const nextQuestionBtn = document.getElementById('nextQuestionBtn');
+        const finishQuizBtn = document.getElementById('finishQuizBtn');
+        const quizFileNameResults = document.getElementById('quizFileNameResults');
+        const totalQuestionsEl = document.getElementById('totalQuestions');
+        const correctAnswersEl = document.getElementById('correctAnswers');
+        const incorrectAnswersEl = document.getElementById('incorrectAnswers');
+        const scorePercentageEl = document.getElementById('scorePercentage');
+        const resultsHomeBtn = document.getElementById('resultsHomeBtn');
+
+        // Utility Functions
+        function shuffleArray(array) {
+            const newArray = [...array];
+            for (let i = newArray.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [newArray[i], newArray[j]] = [newArray[j], newArray[i]];
+            }
+            return newArray;
+        }
+
+        // Theme Management
+        function applyTheme(theme) {
+            if (theme === 'dark') {
+                document.documentElement.classList.add('dark');
+                themeIconLight.classList.add('hidden');
+                themeIconDark.classList.remove('hidden');
+            } else {
+                document.documentElement.classList.remove('dark');
+                themeIconLight.classList.remove('hidden');
+                themeIconDark.classList.add('hidden');
+            }
+            appState.theme = theme;
+            localStorage.setItem('theme', theme);
+        }
+
+        function toggleTheme() {
+            applyTheme(appState.theme === 'light' ? 'dark' : 'light');
+        }
+
+        // View Management
+        function showView(viewName) {
+            startScreen.classList.add('hidden');
+            quizScreen.classList.add('hidden');
+            resultsScreen.classList.add('hidden');
+
+            document.getElementById(viewName).classList.remove('hidden');
+            document.getElementById(viewName).classList.remove('animate-fadeIn'); // remove for re-animation
+            void document.getElementById(viewName).offsetWidth; // Trigger reflow
+            document.getElementById(viewName).classList.add('animate-fadeIn'); // re-add for animation
+
+            appState.currentView = viewName;
+        }
+
+        // File Handling and Parsing
+        function handleFileUpload(event) {
+            const file = event.target.files[0];
+            fileError.textContent = '';
+            fileNameDisplay.textContent = '';
+            startQuizBtn.disabled = true;
+            startQuizBtn.classList.add('btn-disabled');
+
+
+            if (!file) return;
+
+            appState.quizFileName = file.name;
+            fileNameDisplay.textContent = `Selected: ${file.name}`;
+            const reader = new FileReader();
+
+            reader.onload = (e) => {
+                const content = e.target.result;
+                const fileType = file.name.split('.').pop().toLowerCase();
+                try {
+                    let parsedData;
+                    if (fileType === 'csv') {
+                        parsedData = parseCSVQuiz(content);
+                    } else if (fileType === 'json') {
+                        parsedData = parseJSONQuiz(content);
+                    } else {
+                        throw new Error('Unsupported file type. Please use CSV or JSON.');
+                    }
+                    
+                    if (!validateQuizData(parsedData)) {
+                         throw new Error('Invalid quiz data structure. Each item must have "question", "options" (array of strings), and "correctAnswer" (string).');
+                    }
+
+                    appState.quizRawData = parsedData;
+                    startQuizBtn.disabled = false;
+                    startQuizBtn.classList.remove('btn-disabled');
+                    fileError.textContent = '';
+                } catch (error) {
+                    console.error("File parsing error:", error);
+                    fileError.textContent = error.message;
+                    appState.quizRawData = [];
+                    fileNameDisplay.textContent = '';
+                }
+            };
+
+            reader.onerror = () => {
+                fileError.textContent = 'Error reading file.';
+                appState.quizRawData = [];
+                 fileNameDisplay.textContent = '';
+            };
+
+            reader.readAsText(file);
+        }
+
+        function parseCSVQuiz(csvString) {
+            const lines = csvString.split(/\r?\n/).filter(line => line.trim() !== '');
+            if (lines.length === 0) throw new Error('CSV file is empty or invalid.');
+            
+            return lines.map((line, index) => {
+                const parts = line.split(',').map(part => part.trim());
+                if (parts.length < 3) throw new Error(`CSV Line ${index + 1} is malformed: needs at least question, one option, and correct answer.`);
+                
+                const question = parts[0];
+                const correctAnswer = parts[parts.length - 1];
+                const options = parts.slice(1, parts.length - 1);
+
+                if (options.length < 2) throw new Error(`CSV Line ${index + 1}: At least two options are required.`);
+                if (!options.includes(correctAnswer)) throw new Error(`CSV Line ${index + 1}: Correct answer "${correctAnswer}" not found in options.`);
+                
+                return { question, options, correctAnswer };
+            });
+        }
+
+        function parseJSONQuiz(jsonString) {
+            try {
+                const data = JSON.parse(jsonString);
+                if (!Array.isArray(data)) throw new Error('JSON must be an array of quiz questions.');
+                return data;
+            } catch (e) {
+                throw new Error('Invalid JSON format: ' + e.message);
+            }
+        }
+        
+        function validateQuizData(data) {
+            if (!Array.isArray(data) || data.length === 0) return false;
+            return data.every(item => 
+                item &&
+                typeof item.question === 'string' &&
+                Array.isArray(item.options) &&
+                item.options.length >= 2 && 
+                item.options.every(opt => typeof opt === 'string') &&
+                typeof item.correctAnswer === 'string' &&
+                item.options.includes(item.correctAnswer)
+            );
+        }
+
+        // Quiz Logic
+        function startQuiz() {
+            if (appState.quizRawData.length === 0) {
+                fileError.textContent = 'No quiz data loaded. Please upload a valid file.';
+                return;
+            }
+            // Shuffle questions and assign originalIndex
+            appState.quizActiveData = shuffleArray(appState.quizRawData.map((q, index) => ({ ...q, originalIndex: index })));
+            
+            // For each question in the active quiz, shuffle its options
+            appState.quizActiveData = appState.quizActiveData.map(questionItem => ({
+                ...questionItem,
+                shuffledOptions: shuffleArray(questionItem.options)
+            }));
+
+            appState.currentQuestionIndex = 0;
+            appState.userAnswers = {};
+            showView('quizScreen');
+            renderCurrentQuestion();
+        }
+
+        function renderCurrentQuestion() {
+            if (appState.quizActiveData.length === 0) return;
+
+            const questionData = appState.quizActiveData[appState.currentQuestionIndex];
+            const originalQIndex = questionData.originalIndex;
+
+            questionTextEl.textContent = questionData.question;
+            questionTextEl.parentElement.classList.remove('animate-slideInUp');
+            void questionTextEl.parentElement.offsetWidth;
+            questionTextEl.parentElement.classList.add('animate-slideInUp');
+
+
+            optionsContainer.innerHTML = ''; // Clear previous options
+            
+            const alreadyAnswered = appState.userAnswers[originalQIndex];
+
+            questionData.shuffledOptions.forEach(optionText => {
+                const optionBtn = document.createElement('button');
+                optionBtn.classList.add('option-btn');
+                optionBtn.textContent = optionText;
+                optionBtn.onclick = () => handleAnswerSelection(optionText, originalQIndex);
+                
+                if (alreadyAnswered) {
+                    optionBtn.disabled = true;
+                    if (optionText === alreadyAnswered.selectedOption) {
+                        optionBtn.classList.add(alreadyAnswered.isCorrect ? 'selected-correct' : 'selected-incorrect');
+                    }
+                }
+                optionsContainer.appendChild(optionBtn);
+            });
+
+            updateQuizNavigation();
+        }
+        
+        function handleAnswerSelection(selectedOptionText, originalQIndex) {
+            if (appState.userAnswers[originalQIndex]) return; // Already answered
+
+            const currentQuestionData = appState.quizActiveData.find(q => q.originalIndex === originalQIndex);
+            const isCorrect = selectedOptionText === currentQuestionData.correctAnswer;
+
+            appState.userAnswers[originalQIndex] = {
+                selectedOption: selectedOptionText,
+                isCorrect: isCorrect
+            };
+            
+            // Visually update options
+            const optionButtons = optionsContainer.querySelectorAll('.option-btn');
+            optionButtons.forEach(btn => {
+                btn.disabled = true; // Disable all options after selection
+                if (btn.textContent === selectedOptionText) {
+                    btn.classList.add(isCorrect ? 'selected-correct' : 'selected-incorrect');
+                }
+            });
+            updateQuizNavigation(); // Re-check if finish button should appear
+        }
+
+        function updateQuizNavigation() {
+            const totalQuestions = appState.quizActiveData.length;
+            questionProgress.textContent = `Question ${appState.currentQuestionIndex + 1} of ${totalQuestions}`;
+
+            prevQuestionBtn.disabled = appState.currentQuestionIndex === 0;
+            prevQuestionBtn.classList.toggle('btn-disabled', prevQuestionBtn.disabled);
+
+            nextQuestionBtn.disabled = appState.currentQuestionIndex === totalQuestions - 1;
+            nextQuestionBtn.classList.toggle('btn-disabled', nextQuestionBtn.disabled);
+            
+            // Show Finish button on the last question IF it has been answered
+            const currentOriginalIndex = appState.quizActiveData[appState.currentQuestionIndex].originalIndex;
+            const isLastQuestionAnswered = appState.userAnswers[currentOriginalIndex] !== undefined;
+
+            if (appState.currentQuestionIndex === totalQuestions - 1 && isLastQuestionAnswered) {
+                nextQuestionBtn.classList.add('hidden');
+                finishQuizBtn.classList.remove('hidden');
+            } else {
+                nextQuestionBtn.classList.remove('hidden');
+                finishQuizBtn.classList.add('hidden');
+            }
+             // All questions answered?
+            const allAnswered = Object.keys(appState.userAnswers).length === totalQuestions;
+            if (allAnswered && appState.currentQuestionIndex === totalQuestions -1) {
+                 finishQuizBtn.classList.remove('hidden');
+                 nextQuestionBtn.classList.add('hidden');
+            }
+        }
+
+        function navigateQuestion(direction) {
+            if (direction === 'next' && appState.currentQuestionIndex < appState.quizActiveData.length - 1) {
+                appState.currentQuestionIndex++;
+            } else if (direction === 'prev' && appState.currentQuestionIndex > 0) {
+                appState.currentQuestionIndex--;
+            }
+            renderCurrentQuestion();
+        }
+
+        function finishQuiz() {
+            let correctCount = 0;
+            Object.values(appState.userAnswers).forEach(answer => {
+                if (answer.isCorrect) correctCount++;
+            });
+            const total = appState.quizActiveData.length;
+            const incorrectCount = total - correctCount;
+            const percentage = total > 0 ? Math.round((correctCount / total) * 100) : 0;
+
+            quizFileNameResults.textContent = `Results for: ${appState.quizFileName || 'your quiz'}`;
+            totalQuestionsEl.textContent = total;
+            correctAnswersEl.textContent = correctCount;
+            incorrectAnswersEl.textContent = incorrectCount;
+            scorePercentageEl.textContent = `${percentage}%`;
+            
+            showView('resultsScreen');
+        }
+        
+        function goHome() {
+            appState.quizRawData = [];
+            appState.quizActiveData = [];
+            appState.currentQuestionIndex = 0;
+            appState.userAnswers = {};
+            appState.quizFileName = '';
+            
+            quizFileInp.value = ''; // Clear file input
+            fileNameDisplay.textContent = '';
+            fileError.textContent = '';
+            startQuizBtn.disabled = true;
+            startQuizBtn.classList.add('btn-disabled');
+
+            // Ensure quiz screen specific elements are reset if needed
+            nextQuestionBtn.classList.remove('hidden');
+            finishQuizBtn.classList.add('hidden');
+
+            showView('startScreen');
+        }
+
+        // Event Listeners
+        themeToggleBtn.addEventListener('click', toggleTheme);
+        quizFileInp.addEventListener('change', handleFileUpload);
+        startQuizBtn.addEventListener('click', startQuiz);
+        
+        quizHomeBtn.addEventListener('click', goHome);
+        resultsHomeBtn.addEventListener('click', goHome);
+
+        prevQuestionBtn.addEventListener('click', () => navigateQuestion('prev'));
+        nextQuestionBtn.addEventListener('click', () => navigateQuestion('next'));
+        finishQuizBtn.addEventListener('click', finishQuiz);
+
+        // Initialization
+        function initApp() {
+            applyTheme(appState.theme); // Apply saved or default theme
+            showView('startScreen');     // Show initial screen
+        }
+
+        document.addEventListener('DOMContentLoaded', initApp);
+
+    </script>
+</body>
+</html>

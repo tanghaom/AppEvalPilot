@@ -1,0 +1,9 @@
+{
+  "web_id": "web_74",
+  "task_id": 5,
+  "task_type": "dynamic",
+  "instruction": "Task: Navigate to 'New Game' button using Tab key and activate with Enter/Spacebar.\nExpected Result: 'New Game' button receives focus. Pressing Enter/Spacebar resets the game (grid and score) like a click.\n\nNote: The task is only considered successful if the expected result is achieved; otherwise, it is deemed infeasible.",
+  "max_steps": 15,
+  "expected": "'New Game' button receives focus. Pressing Enter/Spacebar resets the game (grid and score) like a click.",
+  "label": 1
+}

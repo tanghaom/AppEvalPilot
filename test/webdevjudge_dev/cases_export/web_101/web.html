@@ -1,0 +1,996 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>scenebox - AI Script to Media</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
+    <style>
+        /* Custom scrollbar for webkit browsers */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #f1f5f9; /* slate-100 */
+            border-radius: 10px;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #64748b; /* slate-500 */
+            border-radius: 10px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #475569; /* slate-600 */
+        }
+        /* Basic transition for page changes */
+        .page-content {
+            animation: fadeIn 0.5s ease-in-out;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .modal {
+            animation: modalFadeIn 0.3s ease-out;
+        }
+        @keyframes modalFadeIn {
+            from { opacity: 0; transform: scale(0.95); }
+            to { opacity: 1; transform: scale(1); }
+        }
+    </style>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: {
+                            DEFAULT: '#4f46e5', // indigo-600
+                            light: '#6366f1',  // indigo-500
+                            dark: '#3730a3',   // indigo-800
+                        },
+                        secondary: {
+                            DEFAULT: '#0d9488', // teal-600
+                            light: '#14b8a6',  // teal-500
+                        },
+                        neutral: {
+                            ...tailwind.colors.slate
+                        }
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    },
+                }
+            }
+        }
+    </script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body class="bg-neutral-100 font-sans antialiased text-neutral-800">
+
+    <!-- App Container -->
+    <div id="app" class="min-h-screen flex flex-col">
+
+        <!-- Header -->
+        <header class="bg-white shadow-md sticky top-0 z-50">
+            <nav class="container mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between">
+                <a href="#" onclick="app.navigateTo('landing')" class="text-3xl font-bold text-primary-DEFAULT">
+                    scenebox
+                </a>
+                <div class="flex items-center space-x-4">
+                    <a href="#" onclick="app.navigateTo('landing')" class="hidden sm:inline text-neutral-600 hover:text-primary-DEFAULT transition-colors">Home</a>
+                    <a href="#" onclick="app.navigateTo('pricing')" class="hidden sm:inline text-neutral-600 hover:text-primary-DEFAULT transition-colors">Pricing</a>
+                    <div id="auth-links" class="flex items-center space-x-2">
+                        <button onclick="app.showModal('loginModal')" class="px-4 py-2 text-sm font-medium text-primary-DEFAULT hover:text-primary-light transition-colors">Log In</button>
+                        <button onclick="app.showModal('signupModal')" class="px-4 py-2 text-sm font-medium text-white bg-primary-DEFAULT hover:bg-primary-light rounded-lg transition-colors">Sign Up</button>
+                    </div>
+                    <div id="user-menu" class="hidden items-center space-x-4">
+                        <button onclick="app.navigateTo('appDashboard')" class="px-4 py-2 text-sm font-medium text-white bg-secondary-DEFAULT hover:bg-secondary-light rounded-lg transition-colors">Dashboard</button>
+                        <div class="relative">
+                            <button onclick="app.toggleBasketPreview()" id="basket-button" class="relative p-2 rounded-full hover:bg-neutral-100 transition-colors">
+                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6 text-neutral-600">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 10.5V6a3.75 3.75 0 10-7.5 0v4.5m11.356-1.993l1.263 12c.07.665-.45 1.243-1.119 1.243H4.25a1.125 1.125 0 01-1.12-1.243l1.264-12A1.125 1.125 0 015.513 7.5h12.974c.576 0 1.059.435 1.119 1.007zM8.625 10.5a.375.375 0 11-.75 0 .375.375 0 01.75 0zm7.5 0a.375.375 0 11-.75 0 .375.375 0 01.75 0z" />
+                                </svg>
+                                <span id="basket-count" class="absolute -top-1 -right-1 bg-pink-500 text-white text-xs font-bold rounded-full h-5 w-5 flex items-center justify-center">0</span>
+                            </button>
+                            <div id="basket-preview" class="hidden absolute right-0 mt-2 w-80 bg-white rounded-lg shadow-xl overflow-hidden z-20">
+                                <div class="p-4">
+                                    <h3 class="text-lg font-semibold text-neutral-700 mb-2">Your Basket</h3>
+                                    <div id="basket-preview-items" class="max-h-60 overflow-y-auto space-y-2 text-sm">
+                                        <!-- Basket items will be populated here -->
+                                        <p class="text-neutral-500">Your basket is empty.</p>
+                                    </div>
+                                    <button onclick="app.navigateTo('basket'); app.closeBasketPreview();" class="mt-4 w-full bg-primary-DEFAULT text-white py-2 px-4 rounded-lg hover:bg-primary-light transition-colors">View Full Basket & Download</button>
+                                </div>
+                            </div>
+                        </div>
+                        <button onclick="app.navigateTo('profile')" class="p-2 rounded-full hover:bg-neutral-100 transition-colors">
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6 text-neutral-600">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M17.982 18.725A7.488 7.488 0 0012 15.75a7.488 7.488 0 00-5.982 2.975m11.963 0a9 9 0 10-11.963 0m11.963 0A8.966 8.966 0 0112 21a8.966 8.966 0 01-5.982-2.275M15 9.75a3 3 0 11-6 0 3 3 0 016 0z" />
+                            </svg>
+                        </button>
+                        <button onclick="app.logout()" class="text-neutral-600 hover:text-primary-DEFAULT transition-colors">Logout</button>
+                    </div>
+                </div>
+            </nav>
+        </header>
+
+        <!-- Main Content Area -->
+        <main id="main-content" class="flex-grow container mx-auto px-4 sm:px-6 lg:px-8 py-8">
+            <!-- Content will be injected here by JavaScript -->
+        </main>
+
+        <!-- Footer -->
+        <footer class="bg-neutral-800 text-neutral-300 py-12">
+            <div class="container mx-auto px-4 sm:px-6 lg:px-8 text-center">
+                <p>&copy; 2024 scenebox. All rights reserved.</p>
+                <p class="text-sm mt-2">Turn your scripts into visual stories, effortlessly.</p>
+            </div>
+        </footer>
+
+        <!-- Modals -->
+        <!-- Login Modal -->
+        <div id="loginModal" class="fixed inset-0 bg-neutral-900 bg-opacity-50 flex items-center justify-center z-50 hidden">
+            <div class="modal bg-white p-8 rounded-lg shadow-xl w-full max-w-md">
+                <h2 class="text-2xl font-bold text-neutral-800 mb-6">Log In to scenebox</h2>
+                <form id="loginForm">
+                    <div class="mb-4">
+                        <label for="loginEmail" class="block text-sm font-medium text-neutral-700 mb-1">Email</label>
+                        <input type="email" id="loginEmail" class="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:ring-primary-DEFAULT focus:border-primary-DEFAULT" placeholder="you@example.com" required>
+                    </div>
+                    <div class="mb-6">
+                        <label for="loginPassword" class="block text-sm font-medium text-neutral-700 mb-1">Password</label>
+                        <input type="password" id="loginPassword" class="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:ring-primary-DEFAULT focus:border-primary-DEFAULT" placeholder="••••••••" required>
+                    </div>
+                    <button type="submit" class="w-full bg-primary-DEFAULT text-white py-2 px-4 rounded-lg hover:bg-primary-light transition-colors font-semibold">Log In</button>
+                </form>
+                <p class="text-sm text-neutral-600 mt-4 text-center">
+                    Don't have an account? <button onclick="app.showModal('signupModal'); app.hideModal('loginModal')" class="text-primary-DEFAULT hover:underline">Sign Up</button>
+                </p>
+                <button onclick="app.hideModal('loginModal')" class="absolute top-4 right-4 text-neutral-500 hover:text-neutral-700">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                </button>
+            </div>
+        </div>
+
+        <!-- Signup Modal -->
+        <div id="signupModal" class="fixed inset-0 bg-neutral-900 bg-opacity-50 flex items-center justify-center z-50 hidden">
+            <div class="modal bg-white p-8 rounded-lg shadow-xl w-full max-w-md">
+                <h2 class="text-2xl font-bold text-neutral-800 mb-6">Create your scenebox Account</h2>
+                <form id="signupForm">
+                    <div class="mb-4">
+                        <label for="signupName" class="block text-sm font-medium text-neutral-700 mb-1">Full Name</label>
+                        <input type="text" id="signupName" class="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:ring-primary-DEFAULT focus:border-primary-DEFAULT" placeholder="Your Name" required>
+                    </div>
+                    <div class="mb-4">
+                        <label for="signupEmail" class="block text-sm font-medium text-neutral-700 mb-1">Email</label>
+                        <input type="email" id="signupEmail" class="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:ring-primary-DEFAULT focus:border-primary-DEFAULT" placeholder="you@example.com" required>
+                    </div>
+                    <div class="mb-6">
+                        <label for="signupPassword" class="block text-sm font-medium text-neutral-700 mb-1">Password</label>
+                        <input type="password" id="signupPassword" class="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:ring-primary-DEFAULT focus:border-primary-DEFAULT" placeholder="Create a strong password" required>
+                    </div>
+                    <button type="submit" class="w-full bg-primary-DEFAULT text-white py-2 px-4 rounded-lg hover:bg-primary-light transition-colors font-semibold">Sign Up</button>
+                </form>
+                 <p class="text-sm text-neutral-600 mt-4 text-center">
+                    Already have an account? <button onclick="app.showModal('loginModal'); app.hideModal('signupModal')" class="text-primary-DEFAULT hover:underline">Log In</button>
+                </p>
+                <button onclick="app.hideModal('signupModal')" class="absolute top-4 right-4 text-neutral-500 hover:text-neutral-700">
+                     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const app = {
+            state: {
+                currentPage: 'landing',
+                isAuthenticated: false,
+                user: null, // { name: '', email: '' }
+                scriptText: '',
+                analyzedScenes: [], // [{ title: "Scene 1", keywords: ["keyword1"], media: [] }]
+                basket: [], // [{ id, type, src, title, downloadUrl, sceneTitle }]
+                isBasketPreviewOpen: false,
+            },
+
+            init() {
+                // Event Listeners for Modals
+                document.getElementById('loginForm').addEventListener('submit', this.handleLogin.bind(this));
+                document.getElementById('signupForm').addEventListener('submit', this.handleSignup.bind(this));
+                
+                // Initial Render
+                this.render();
+
+                // Close basket preview if clicked outside
+                document.addEventListener('click', (event) => {
+                    const basketPreview = document.getElementById('basket-preview');
+                    const basketButton = document.getElementById('basket-button');
+                    if (this.state.isBasketPreviewOpen && !basketPreview.contains(event.target) && !basketButton.contains(event.target)) {
+                        this.closeBasketPreview();
+                    }
+                });
+            },
+
+            // --- Navigation & Rendering ---
+            navigateTo(page) {
+                this.state.currentPage = page;
+                this.render();
+                window.scrollTo(0, 0); // Scroll to top on page change
+            },
+
+            render() {
+                const mainContent = document.getElementById('main-content');
+                mainContent.innerHTML = ''; // Clear previous content
+                mainContent.className = 'page-content flex-grow container mx-auto px-4 sm:px-6 lg:px-8 py-8'; // Reset classes
+
+                this.updateHeader();
+                this.updateBasketCount();
+                this.renderBasketPreviewItems();
+
+                switch (this.state.currentPage) {
+                    case 'landing':
+                        mainContent.appendChild(this.createLandingPage());
+                        break;
+                    case 'appDashboard':
+                        if (!this.state.isAuthenticated) { this.navigateTo('landing'); this.showModal('loginModal'); return; }
+                        mainContent.appendChild(this.createAppDashboardPage());
+                        break;
+                    case 'profile':
+                        if (!this.state.isAuthenticated) { this.navigateTo('landing'); this.showModal('loginModal'); return; }
+                        mainContent.appendChild(this.createProfilePage());
+                        break;
+                    case 'pricing':
+                        mainContent.appendChild(this.createPricingPage());
+                        break;
+                    case 'basket':
+                        if (!this.state.isAuthenticated) { this.navigateTo('landing'); this.showModal('loginModal'); return; }
+                        mainContent.appendChild(this.createBasketPage());
+                        break;
+                    default:
+                        mainContent.appendChild(this.createLandingPage());
+                }
+            },
+
+            updateHeader() {
+                const authLinks = document.getElementById('auth-links');
+                const userMenu = document.getElementById('user-menu');
+                if (this.state.isAuthenticated) {
+                    authLinks.classList.add('hidden');
+                    userMenu.classList.remove('hidden');
+                    userMenu.classList.add('flex');
+                } else {
+                    authLinks.classList.remove('hidden');
+                    userMenu.classList.add('hidden');
+                    userMenu.classList.remove('flex');
+                }
+            },
+
+            // --- Page Creation Methods ---
+            createLandingPage() {
+                const section = document.createElement('div');
+                section.innerHTML = `
+                    <section class="text-center py-16 bg-gradient-to-br from-primary-DEFAULT to-secondary-DEFAULT rounded-xl shadow-2xl text-white">
+                        <h1 class="text-5xl md:text-6xl font-bold mb-6">Unlock Visuals for Your Scripts</h1>
+                        <p class="text-xl md:text-2xl mb-10 max-w-3xl mx-auto text-indigo-100">
+                            scenebox uses AI to analyze your script and find the perfect images & videos, fast.
+                        </p>
+                        <button onclick="${this.state.isAuthenticated ? "app.navigateTo('appDashboard')" : "app.showModal('signupModal')"}" class="bg-white text-primary-dark font-semibold py-3 px-8 rounded-lg text-lg hover:bg-neutral-100 transition-transform transform hover:scale-105 shadow-lg">
+                            Get Started Free
+                        </button>
+                    </section>
+
+                    <section class="py-16">
+                        <h2 class="text-3xl font-bold text-center text-neutral-800 mb-12">How It Works</h2>
+                        <div class="grid md:grid-cols-3 gap-8 text-center">
+                            <div class="bg-white p-8 rounded-lg shadow-lg">
+                                <div class="text-primary-DEFAULT mb-4">
+                                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-16 h-16 mx-auto">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" />
+                                    </svg>
+                                </div>
+                                <h3 class="text-xl font-semibold mb-2 text-neutral-700">1. Input Your Script</h3>
+                                <p class="text-neutral-600">Paste your movie script, project brief, or any text content.</p>
+                            </div>
+                            <div class="bg-white p-8 rounded-lg shadow-lg">
+                                <div class="text-primary-DEFAULT mb-4">
+                                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-16 h-16 mx-auto">
+                                      <path stroke-linecap="round" stroke-linejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L1.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09zM18.25 12L17 14.25l-1.25-2.25L13.5 11l2.25-1.25L17 7.5l1.25 2.25L20.5 11l-2.25 1.25z"/>
+                                    </svg>
+                                </div>
+                                <h3 class="text-xl font-semibold mb-2 text-neutral-700">2. AI Analysis</h3>
+                                <p class="text-neutral-600">Our NLP model breaks down your script into scenes and extracts key elements.</p>
+                            </div>
+                            <div class="bg-white p-8 rounded-lg shadow-lg">
+                                <div class="text-primary-DEFAULT mb-4">
+                                     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-16 h-16 mx-auto">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 15.75l5.159-5.159a2.25 2.25 0 013.182 0l5.159 5.159m-1.5-1.5l1.409-1.409a2.25 2.25 0 013.182 0l2.909 2.909m-18 3.75h16.5a1.5 1.5 0 001.5-1.5V6a1.5 1.5 0 00-1.5-1.5H3.75A1.5 1.5 0 002.25 6v12a1.5 1.5 0 001.5 1.5zm10.5-11.25h.008v.008h-.008V8.25zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0z" />
+                                    </svg>
+                                </div>
+                                <h3 class="text-xl font-semibold mb-2 text-neutral-700">3. Get Media</h3>
+                                <p class="text-neutral-600">Discover relevant images and videos from free stock sources. Add to basket and download!</p>
+                            </div>
+                        </div>
+                    </section>
+                    
+                    <section class="py-16 bg-neutral-50 rounded-lg">
+                        <h2 class="text-3xl font-bold text-center text-neutral-800 mb-4">Script-to-Media Demo</h2>
+                        <p class="text-center text-neutral-600 mb-8 max-w-2xl mx-auto">See a simplified example of how scenebox transforms script text into visual suggestions.</p>
+                        <div class="max-w-4xl mx-auto bg-white p-6 sm:p-8 rounded-xl shadow-xl border border-neutral-200">
+                            <div class="grid md:grid-cols-2 gap-6">
+                                <div>
+                                    <h4 class="text-lg font-semibold text-neutral-700 mb-2">Sample Script Input:</h4>
+                                    <div class="bg-neutral-100 p-4 rounded-lg h-64 overflow-y-auto text-sm text-neutral-700 border border-neutral-200">
+                                        <p class="font-mono whitespace-pre-wrap">SCENE 1
+INT. COZY CAFE - MORNING
+
+Sunlight streams through the window, illuminating dust motes dancing in the air. ANNA (20s), a writer, types furiously on her laptop, a half-empty coffee cup beside her.
+
+The cafe is bustling with the morning rush - people chatting, the clatter of cups, the hiss of the espresso machine.
+
+ANNA pauses, sips her coffee, and looks out the window at the busy street. A small smile plays on her lips.
+
+CUT TO:
+
+SCENE 2
+EXT. CITY PARK - AFTERNOON
+
+Anna walks through a vibrant park, a notebook in hand. Trees provide ample shade, and children's laughter can be heard from a nearby playground.
+
+She sits on a bench overlooking a pond where ducks are swimming peacefully. She opens her notebook and begins to write, inspired.
+                                        </p>
+                                    </div>
+                                </div>
+                                <div>
+                                    <h4 class="text-lg font-semibold text-neutral-700 mb-2">Generated Media Suggestions:</h4>
+                                    <div class="space-y-3 h-64 overflow-y-auto">
+                                        <div class="p-3 bg-neutral-50 rounded-lg border border-neutral-200">
+                                            <p class="font-semibold text-sm text-primary-dark">Scene 1: Cozy Cafe - Morning</p>
+                                            <div class="flex space-x-2 mt-1 overflow-x-auto py-1">
+                                                <div class="flex-shrink-0 w-24 h-16 bg-neutral-200 border-2 border-dashed border-neutral-400 rounded-lg flex items-center justify-center text-neutral-500 text-xs p-1">Cafe Interior</div>
+                                                <div class="flex-shrink-0 w-24 h-16 bg-neutral-200 border-2 border-dashed border-neutral-400 rounded-lg flex items-center justify-center text-neutral-500 text-xs p-1">Laptop on table</div>
+                                                <div class="flex-shrink-0 w-24 h-16 bg-neutral-200 border-2 border-dashed border-neutral-400 rounded-lg flex items-center justify-center text-neutral-500 text-xs p-1">Sunlight window</div>
+                                            </div>
+                                        </div>
+                                        <div class="p-3 bg-neutral-50 rounded-lg border border-neutral-200">
+                                            <p class="font-semibold text-sm text-primary-dark">Scene 2: City Park - Afternoon</p>
+                                            <div class="flex space-x-2 mt-1 overflow-x-auto py-1">
+                                                <div class="flex-shrink-0 w-24 h-16 bg-neutral-200 border-2 border-dashed border-neutral-400 rounded-lg flex items-center justify-center text-neutral-500 text-xs p-1">Park bench</div>
+                                                <div class="flex-shrink-0 w-24 h-16 bg-neutral-200 border-2 border-dashed border-neutral-400 rounded-lg flex items-center justify-center text-neutral-500 text-xs p-1">Ducks on pond</div>
+                                                <div class="flex-shrink-0 w-24 h-16 bg-neutral-200 border-2 border-dashed border-neutral-400 rounded-lg flex items-center justify-center text-neutral-500 text-xs p-1">Woman writing</div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </section>
+
+                    <section class="py-16 text-center">
+                        <h2 class="text-3xl font-bold text-neutral-800 mb-6">Ready to Bring Your Script to Life?</h2>
+                        <button onclick="${this.state.isAuthenticated ? "app.navigateTo('appDashboard')" : "app.showModal('signupModal')"}" class="bg-primary-DEFAULT text-white font-semibold py-3 px-10 rounded-lg text-xl hover:bg-primary-light transition-transform transform hover:scale-105 shadow-lg">
+                            Start Creating Now
+                        </button>
+                    </section>
+                `;
+                return section;
+            },
+
+            createAppDashboardPage() {
+                const page = document.createElement('div');
+                page.innerHTML = `
+                    <div class="bg-white p-6 sm:p-8 rounded-xl shadow-xl border border-neutral-200">
+                        <h2 class="text-3xl font-bold text-neutral-800 mb-2">Script Analysis</h2>
+                        <p class="text-neutral-600 mb-6">Paste your script below. We'll break it into scenes and suggest relevant media.</p>
+                        
+                        <div class="mb-6">
+                            <label for="scriptInput" class="block text-sm font-medium text-neutral-700 mb-1">Your Script:</label>
+                            <textarea id="scriptInput" rows="10" class="w-full p-3 border border-neutral-300 rounded-lg focus:ring-primary-DEFAULT focus:border-primary-DEFAULT text-sm" placeholder="Paste your script here...\n\nSCENE 1\nINT. OLD LIBRARY - NIGHT\nA lone FIGURE searches through dusty tomes...\n\nSCENE 2\nEXT. MOUNTAIN TOP - SUNRISE\nThe FIGURE stands victorious, overlooking a vast valley..."></textarea>
+                        </div>
+                        <button id="analyzeScriptBtn" class="bg-secondary-DEFAULT text-white py-2 px-6 rounded-lg hover:bg-secondary-light transition-colors font-semibold">
+                            Analyze Script & Find Media
+                        </button>
+
+                        <div id="analysis-loading" class="mt-6 text-center hidden">
+                            <div class="inline-flex items-center text-neutral-600">
+                                <svg class="animate-spin -ml-1 mr-3 h-5 w-5 text-primary-DEFAULT" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                </svg>
+                                Processing script and fetching media...
+                            </div>
+                        </div>
+                        
+                        <div id="mediaResultsArea" class="mt-8">
+                            <!-- Media results will be populated here -->
+                        </div>
+                    </div>
+                `;
+
+                const analyzeBtn = page.querySelector('#analyzeScriptBtn');
+                analyzeBtn.addEventListener('click', () => this.handleScriptAnalysis());
+                
+                const scriptInput = page.querySelector('#scriptInput');
+                scriptInput.value = this.state.scriptText; // Preserve script text
+                scriptInput.addEventListener('input', (e) => { this.state.scriptText = e.target.value; });
+
+
+                if(this.state.analyzedScenes.length > 0) {
+                    this.renderMediaResults(page.querySelector('#mediaResultsArea'));
+                }
+
+                return page;
+            },
+
+            createProfilePage() {
+                const page = document.createElement('div');
+                page.innerHTML = `
+                    <div class="bg-white p-6 sm:p-8 rounded-xl shadow-xl border border-neutral-200 max-w-lg mx-auto">
+                        <h2 class="text-3xl font-bold text-neutral-800 mb-6">Your Profile</h2>
+                        <div class="space-y-4">
+                            <div>
+                                <p class="text-sm font-medium text-neutral-500">Name</p>
+                                <p class="text-lg text-neutral-700">${this.state.user.name}</p>
+                            </div>
+                            <div>
+                                <p class="text-sm font-medium text-neutral-500">Email</p>
+                                <p class="text-lg text-neutral-700">${this.state.user.email}</p>
+                            </div>
+                            <div>
+                                <p class="text-sm font-medium text-neutral-500">Subscription Plan</p>
+                                <p class="text-lg text-neutral-700">Free Plan <span class="text-sm ml-2">(<a href="#" onclick="app.navigateTo('pricing')" class="text-primary-DEFAULT hover:underline">Upgrade</a>)</span></p>
+                            </div>
+                        </div>
+                        <button onclick="app.logout()" class="mt-8 w-full bg-neutral-200 text-neutral-700 py-2 px-4 rounded-lg hover:bg-neutral-300 transition-colors font-semibold">
+                            Log Out
+                        </button>
+                    </div>
+                `;
+                return page;
+            },
+            
+            createPricingPage() {
+                const page = document.createElement('div');
+                page.innerHTML = `
+                    <section class="py-12">
+                        <h2 class="text-4xl font-bold text-center text-neutral-800 mb-4">Flexible Plans for Everyone</h2>
+                        <p class="text-xl text-center text-neutral-600 mb-12 max-w-2xl mx-auto">Choose the plan that best fits your creative workflow and budget.</p>
+                        
+                        <div class="grid md:grid-cols-3 gap-8 max-w-5xl mx-auto">
+                            <!-- Free Plan -->
+                            <div class="bg-white p-8 rounded-xl shadow-lg border border-neutral-200 flex flex-col">
+                                <h3 class="text-2xl font-semibold text-neutral-800 mb-2">Free</h3>
+                                <p class="text-4xl font-bold text-neutral-800 mb-4">$0<span class="text-lg font-normal text-neutral-500">/month</span></p>
+                                <p class="text-neutral-600 mb-6 min-h-[48px]">Perfect for trying out scenebox and small projects.</p>
+                                <ul class="space-y-3 text-neutral-700 mb-8 flex-grow">
+                                    <li class="flex items-center"><svg class="w-5 h-5 text-green-500 mr-2" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path></svg>Basic script analysis</li>
+                                    <li class="flex items-center"><svg class="w-5 h-5 text-green-500 mr-2" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path></svg>Access to free media sources</li>
+                                    <li class="flex items-center"><svg class="w-5 h-5 text-green-500 mr-2" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path></svg>5 downloads per month</li>
+                                    <li class="flex items-center"><svg class="w-5 h-5 text-green-500 mr-2" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path></svg>Community support</li>
+                                </ul>
+                                <button onclick="${this.state.isAuthenticated ? "app.navigateTo('appDashboard')" : "app.showModal('signupModal')"}" class="w-full bg-neutral-200 text-neutral-700 py-3 px-4 rounded-lg hover:bg-neutral-300 transition-colors font-semibold">
+                                    Get Started
+                                </button>
+                            </div>
+
+                            <!-- Pro Plan -->
+                            <div class="bg-white p-8 rounded-xl shadow-2xl border-2 border-primary-DEFAULT flex flex-col relative">
+                                <span class="absolute top-0 -translate-y-1/2 left-1/2 -translate-x-1/2 bg-primary-DEFAULT text-white text-xs font-semibold px-3 py-1 rounded-full">POPULAR</span>
+                                <h3 class="text-2xl font-semibold text-primary-DEFAULT mb-2">Pro</h3>
+                                <p class="text-4xl font-bold text-neutral-800 mb-4">$10<span class="text-lg font-normal text-neutral-500">/month</span></p>
+                                <p class="text-neutral-600 mb-6 min-h-[48px]">For professionals and frequent users needing more power.</p>
+                                <ul class="space-y-3 text-neutral-700 mb-8 flex-grow">
+                                    <li class="flex items-center"><svg class="w-5 h-5 text-green-500 mr-2" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path></svg>Advanced script analysis</li>
+                                    <li class="flex items-center"><svg class="w-5 h-5 text-green-500 mr-2" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path></svg>Unlimited media searches</li>
+                                    <li class="flex items-center"><svg class="w-5 h-5 text-green-500 mr-2" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path></svg>Unlimited downloads</li>
+                                    <li class="flex items-center"><svg class="w-5 h-5 text-green-500 mr-2" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path></svg>Faster media retrieval</li>
+                                    <li class="flex items-center"><svg class="w-5 h-5 text-green-500 mr-2" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path></svg>Priority support</li>
+                                    <li class="flex items-center"><svg class="w-5 h-5 text-green-500 mr-2" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path></svg>Ad-free experience</li>
+                                </ul>
+                                <button onclick="app.handlePayPalPayment('Pro Plan', 10)" class="w-full bg-primary-DEFAULT text-white py-3 px-4 rounded-lg hover:bg-primary-light transition-colors font-semibold">
+                                    Choose Pro
+                                </button>
+                            </div>
+
+                            <!-- Business Plan -->
+                            <div class="bg-white p-8 rounded-xl shadow-lg border border-neutral-200 flex flex-col">
+                                <h3 class="text-2xl font-semibold text-neutral-800 mb-2">Business</h3>
+                                <p class="text-4xl font-bold text-neutral-800 mb-4">$25<span class="text-lg font-normal text-neutral-500">/month</span></p>
+                                <p class="text-neutral-600 mb-6 min-h-[48px]">For teams and organizations with high-volume needs.</p>
+                                <ul class="space-y-3 text-neutral-700 mb-8 flex-grow">
+                                    <li class="flex items-center"><svg class="w-5 h-5 text-green-500 mr-2" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path></svg>All Pro features</li>
+                                    <li class="flex items-center"><svg class="w-5 h-5 text-green-500 mr-2" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path></svg>Team collaboration features (soon)</li>
+                                    <li class="flex items-center"><svg class="w-5 h-5 text-green-500 mr-2" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path></svg>Higher API limits</li>
+                                    <li class="flex items-center"><svg class="w-5 h-5 text-green-500 mr-2" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path></svg>Dedicated account manager</li>
+                                </ul>
+                                <button onclick="app.handlePayPalPayment('Business Plan', 25)" class="w-full bg-neutral-200 text-neutral-700 py-3 px-4 rounded-lg hover:bg-neutral-300 transition-colors font-semibold">
+                                    Choose Business
+                                </button>
+                            </div>
+                        </div>
+                    </section>
+                `;
+                return page;
+            },
+
+            createBasketPage() {
+                const page = document.createElement('div');
+                page.classList.add('bg-white', 'p-6', 'sm:p-8', 'rounded-xl', 'shadow-xl', 'border', 'border-neutral-200');
+                
+                if (this.state.basket.length === 0) {
+                    page.innerHTML = `
+                        <h2 class="text-3xl font-bold text-neutral-800 mb-6">Your Basket</h2>
+                        <div class="text-center py-12">
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-24 h-24 text-neutral-300 mx-auto mb-4">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 3h1.386c.51 0 .955.343 1.087.835l.383 1.437M7.5 14.25a3 3 0 00-3 3h15.75m-12.75-3h11.218c1.121-2.3 2.1-4.684 2.924-7.138a60.114 60.114 0 00-16.536-1.84M7.5 14.25L5.106 5.272M6 20.25a.75.75 0 11-1.5 0 .75.75 0 011.5 0zm12.75 0a.75.75 0 11-1.5 0 .75.75 0 011.5 0z" />
+                            </svg>
+                            <p class="text-xl text-neutral-600 mb-2">Your basket is currently empty.</p>
+                            <p class="text-neutral-500 mb-6">Start analyzing scripts to add media here.</p>
+                            <button onclick="app.navigateTo('appDashboard')" class="bg-primary-DEFAULT text-white py-2 px-6 rounded-lg hover:bg-primary-light transition-colors font-semibold">
+                                Find Media
+                            </button>
+                        </div>
+                    `;
+                    return page;
+                }
+
+                let itemsHTML = '';
+                this.state.basket.forEach(item => {
+                    const mediaPreview = item.type === 'image' ? 
+                        `<img src="${item.src}" alt="${item.title}" class="w-24 h-16 object-cover rounded-md">` :
+                        `<div class="w-24 h-16 bg-neutral-200 border-2 border-dashed border-neutral-400 rounded-md flex items-center justify-center text-neutral-500">
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-8 h-8"><path stroke-linecap="round" stroke-linejoin="round" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /><path stroke-linecap="round" stroke-linejoin="round" d="M15.91 11.672a.375.375 0 010 .656l-5.603 3.113a.375.375 0 01-.557-.328V8.887c0-.286.307-.466.557-.327l5.603 3.112z" /></svg>
+                         </div> (Video)`;
+
+                    itemsHTML += `
+                        <div class="flex items-center justify-between p-3 bg-neutral-50 rounded-lg border border-neutral-200">
+                            <div class="flex items-center space-x-3">
+                                ${mediaPreview}
+                                <div>
+                                    <p class="font-semibold text-neutral-700">${item.title}</p>
+                                    <p class="text-xs text-neutral-500">From: ${item.sceneTitle || 'General Selection'}</p>
+                                    <p class="text-xs text-neutral-500">Type: ${item.type}</p>
+                                </div>
+                            </div>
+                            <button onclick="app.removeFromBasket('${item.id}')" class="text-red-500 hover:text-red-700 p-1 rounded-full hover:bg-red-100 transition-colors">
+                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12.56 0c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" />
+                                </svg>
+                            </button>
+                        </div>
+                    `;
+                });
+
+                page.innerHTML = `
+                    <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-6">
+                        <h2 class="text-3xl font-bold text-neutral-800 mb-4 md:mb-0">Your Media Basket</h2>
+                        <button id="downloadAllBtn" class="bg-green-500 text-white py-2 px-6 rounded-lg hover:bg-green-600 transition-colors font-semibold flex items-center space-x-2">
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5"><path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" /></svg>
+                            <span>Download All (${this.state.basket.length} items)</span>
+                        </button>
+                    </div>
+                    <div id="basketItemsContainer" class="space-y-4 max-h-[60vh] overflow-y-auto pr-2">
+                        ${itemsHTML}
+                    </div>
+                    <div id="download-progress" class="mt-4 text-sm text-neutral-600 hidden"></div>
+                `;
+
+                page.querySelector('#downloadAllBtn').addEventListener('click', () => this.handleDownloadAll());
+                return page;
+            },
+
+            // --- Authentication ---
+            showModal(modalId) {
+                document.getElementById(modalId).classList.remove('hidden');
+            },
+            hideModal(modalId) {
+                document.getElementById(modalId).classList.add('hidden');
+            },
+            handleLogin(event) {
+                event.preventDefault();
+                const email = document.getElementById('loginEmail').value;
+                // Simulate login
+                this.state.isAuthenticated = true;
+                this.state.user = { name: 'Demo User', email: email };
+                this.hideModal('loginModal');
+                this.navigateTo('appDashboard');
+                document.getElementById('loginForm').reset();
+            },
+            handleSignup(event) {
+                event.preventDefault();
+                const name = document.getElementById('signupName').value;
+                const email = document.getElementById('signupEmail').value;
+                // Simulate signup
+                this.state.isAuthenticated = true;
+                this.state.user = { name: name, email: email };
+                this.hideModal('signupModal');
+                this.navigateTo('appDashboard');
+                document.getElementById('signupForm').reset();
+            },
+            logout() {
+                this.state.isAuthenticated = false;
+                this.state.user = null;
+                this.state.basket = []; // Clear basket on logout
+                this.state.analyzedScenes = []; // Clear analyzed scenes
+                this.state.scriptText = ''; // Clear script text
+                this.navigateTo('landing');
+            },
+
+            // --- Script Analysis & Media ---
+            async handleScriptAnalysis() {
+                const scriptText = document.getElementById('scriptInput').value.trim();
+                if (!scriptText) {
+                    alert('Please paste your script first.');
+                    return;
+                }
+                this.state.scriptText = scriptText;
+                
+                const loadingDiv = document.getElementById('analysis-loading');
+                const resultsArea = document.getElementById('mediaResultsArea');
+                resultsArea.innerHTML = ''; // Clear previous results
+                loadingDiv.classList.remove('hidden');
+
+                // Simulate NLP processing and API calls
+                await new Promise(resolve => setTimeout(resolve, 1500)); // Simulate delay
+
+                this.state.analyzedScenes = this.simulateNlpProcessing(scriptText);
+                this.renderMediaResults(resultsArea);
+                loadingDiv.classList.add('hidden');
+            },
+
+            simulateNlpProcessing(script) {
+                const scenes = [];
+                const sceneRegex = /^(SCENE\s*\d*|INT\.|EXT\.)[.\s\S]*?(?=\n\n^(SCENE\s*\d*|INT\.|EXT\.)|\Z)/gmi;
+                let match;
+                let sceneCount = 0;
+
+                const scriptLines = script.split('\n');
+                let currentSceneTitle = "General Script Elements";
+                let currentSceneKeywords = [];
+                let currentSceneContent = [];
+
+                function processCollectedScene() {
+                    if (currentSceneContent.length > 0 || currentSceneKeywords.length > 0) {
+                         const extractedKeywords = extractKeywordsFromText(currentSceneContent.join('\n'));
+                         scenes.push({
+                            title: currentSceneTitle,
+                            keywords: [...new Set([...currentSceneKeywords, ...extractedKeywords])].slice(0, 5), // Max 5 unique keywords
+                            media: [] // Will be populated by fetching
+                        });
+                    }
+                    currentSceneKeywords = [];
+                    currentSceneContent = [];
+                }
+
+
+                scriptLines.forEach(line => {
+                    const sceneHeaderMatch = line.match(/^(SCENE\s*\d*.*?|INT\.[^\n]*|EXT\.[^\n]*)/i);
+                    if (sceneHeaderMatch) {
+                        processCollectedScene(); // Process previous scene
+                        currentSceneTitle = sceneHeaderMatch[0].trim();
+                        if (!currentSceneTitle) currentSceneTitle = `Scene ${++sceneCount}`;
+                    } else {
+                        currentSceneContent.push(line);
+                    }
+                });
+                processCollectedScene(); // Process the last scene
+
+
+                // If no scenes detected, treat the whole script as one block
+                if (scenes.length === 0 && script.length > 0) {
+                     scenes.push({
+                        title: "Script Analysis",
+                        keywords: extractKeywordsFromText(script).slice(0,5),
+                        media: []
+                    });
+                }
+                
+                // Populate media for keywords (simulation)
+                scenes.forEach(scene => {
+                    scene.keywords.forEach(keyword => {
+                        // Add 1-2 mock media items per keyword
+                        for(let i=0; i < Math.floor(Math.random() * 2) + 1; i++) {
+                            const mediaId = `media-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+                            const isImage = Math.random() > 0.3; // 70% chance image, 30% video
+                            scene.media.push({
+                                id: mediaId,
+                                type: isImage ? 'image' : 'video',
+                                title: `${keyword.charAt(0).toUpperCase() + keyword.slice(1)} ${isImage ? 'Shot' : 'Clip'} ${i+1}`,
+                                src: isImage ? `https://picsum.photos/seed/${mediaId}/400/300` : 'placeholder_video', // Actual image URL
+                                downloadUrl: isImage ? `https://picsum.photos/seed/${mediaId}/1280/720` : null, // Higher res for download
+                                sourceApi: 'Picsum Photos (Mock)'
+                            });
+                        }
+                    });
+                     // If no keywords found for a scene, but scene exists, add generic placeholder
+                    if(scene.keywords.length === 0 && scene.title !== "General Script Elements"){
+                         const mediaId = `media-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+                         scene.media.push({
+                                id: mediaId,
+                                type: 'image',
+                                title: `Generic scene visual`,
+                                src: `https://picsum.photos/seed/${mediaId}/400/300`,
+                                downloadUrl: `https://picsum.photos/seed/${mediaId}/1280/720`,
+                                sourceApi: 'Picsum Photos (Mock)'
+                            });
+                    }
+                });
+                return scenes;
+
+                function extractKeywordsFromText(text) {
+                    const commonWords = new Set(['a', 'an', 'the', 'is', 'are', 'was', 'were', 'he', 'she', 'it', 'they', 'to', 'of', 'in', 'on', 'at', 'and', 'or', 'but', 'with', 'from', 'into', 'out', 'up', 'down', 'for', 'scene', 'int', 'ext', 'day', 'night']);
+                    const words = text.toLowerCase().replace(/[^\w\s]/g, '').split(/\s+/);
+                    const keywordMap = {};
+                    words.forEach(word => {
+                        if (word.length > 3 && !commonWords.has(word) && !/\d+/.test(word)) {
+                            keywordMap[word] = (keywordMap[word] || 0) + 1;
+                        }
+                    });
+                    return Object.entries(keywordMap)
+                        .sort((a, b) => b[1] - a[1])
+                        .map(entry => entry[0])
+                        .slice(0, 10); // Get top 10 keywords
+                }
+            },
+
+            renderMediaResults(container) {
+                container.innerHTML = ''; // Clear
+                if (this.state.analyzedScenes.length === 0) {
+                    container.innerHTML = '<p class="text-neutral-500">No media suggestions found. Try a different script or refine your input.</p>';
+                    return;
+                }
+
+                this.state.analyzedScenes.forEach(scene => {
+                    if (scene.media.length === 0 && scene.keywords.length === 0) return; // Skip empty scenes without keywords
+
+                    const sceneDiv = document.createElement('div');
+                    sceneDiv.className = 'mb-10 p-6 bg-neutral-50 rounded-lg border border-neutral-200';
+                    sceneDiv.innerHTML = `<h3 class="text-xl font-semibold text-primary-dark mb-4">${scene.title}</h3>`;
+                    
+                    if(scene.keywords.length > 0){
+                         const keywordsP = document.createElement('p');
+                         keywordsP.className = 'text-sm text-neutral-600 mb-4';
+                         keywordsP.innerHTML = `<strong>Keywords:</strong> ${scene.keywords.join(', ')}`;
+                         sceneDiv.appendChild(keywordsP);
+                    }
+
+
+                    if (scene.media.length === 0) {
+                        sceneDiv.innerHTML += '<p class="text-neutral-500">No specific media suggestions for these keywords. Try broadening your script\'s descriptions.</p>';
+                    } else {
+                        const gridDiv = document.createElement('div');
+                        gridDiv.className = 'grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4';
+                        
+                        scene.media.forEach(item => {
+                            const itemCard = document.createElement('div');
+                            itemCard.className = 'bg-white rounded-lg shadow-md overflow-hidden flex flex-col group';
+                            
+                            let mediaPreviewHTML;
+                            if (item.type === 'image') {
+                                mediaPreviewHTML = `<img src="${item.src}" alt="${item.title}" class="w-full h-40 object-cover group-hover:scale-105 transition-transform duration-300">`;
+                            } else { // Video placeholder
+                                mediaPreviewHTML = `
+                                    <div class="w-full h-40 bg-neutral-200 flex items-center justify-center text-neutral-500 relative group-hover:bg-neutral-300 transition-colors">
+                                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-12 h-12 opacity-70 group-hover:opacity-100 transition-opacity">
+                                            <path stroke-linecap="round" stroke-linejoin="round" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                            <path stroke-linecap="round" stroke-linejoin="round" d="M15.91 11.672a.375.375 0 010 .656l-5.603 3.113a.375.375 0 01-.557-.328V8.887c0-.286.307-.466.557-.327l5.603 3.112z" />
+                                        </svg>
+                                        <span class="absolute bottom-2 right-2 text-xs bg-black bg-opacity-50 text-white px-1.5 py-0.5 rounded">Video</span>
+                                    </div>`;
+                            }
+
+                            const isInBasket = this.state.basket.some(bItem => bItem.id === item.id);
+                            const addButtonClass = isInBasket 
+                                ? 'bg-neutral-200 text-neutral-500 cursor-not-allowed' 
+                                : 'bg-primary-light text-white hover:bg-primary-DEFAULT';
+                            const addButtonText = isInBasket ? 'Added' : 'Add to Basket';
+                            const addButtonDisabled = isInBasket ? 'disabled' : '';
+
+
+                            itemCard.innerHTML = `
+                                ${mediaPreviewHTML}
+                                <div class="p-3 flex flex-col flex-grow">
+                                    <h4 class="font-semibold text-sm text-neutral-700 truncate" title="${item.title}">${item.title}</h4>
+                                    <p class="text-xs text-neutral-500 mb-2">${item.sourceApi}</p>
+                                    <button ${addButtonDisabled} onclick="app.addToBasket({ id: '${item.id}', type: '${item.type}', src: '${item.src}', title: '${item.title}', downloadUrl: '${item.downloadUrl}', sceneTitle: '${scene.title.replace(/'/g, "\\'")}' })" 
+                                            class="mt-auto w-full py-1.5 px-3 text-xs font-medium rounded-md transition-colors ${addButtonClass}">
+                                        ${addButtonText}
+                                    </button>
+                                </div>
+                            `;
+                            gridDiv.appendChild(itemCard);
+                        });
+                        sceneDiv.appendChild(gridDiv);
+                    }
+                    container.appendChild(sceneDiv);
+                });
+            },
+
+            // --- Basket Functionality ---
+            addToBasket(item) {
+                if (this.state.basket.some(bItem => bItem.id === item.id)) return; // Already in basket
+                this.state.basket.push(item);
+                this.updateBasketCount();
+                this.renderBasketPreviewItems();
+                // Re-render media results if on appDashboard to update button states
+                if (this.state.currentPage === 'appDashboard') {
+                    const resultsArea = document.getElementById('mediaResultsArea');
+                    if(resultsArea) this.renderMediaResults(resultsArea);
+                }
+                 if (this.state.currentPage === 'basket') { // Re-render basket page if currently on it
+                    this.render();
+                }
+            },
+
+            removeFromBasket(itemId) {
+                this.state.basket = this.state.basket.filter(item => item.id !== itemId);
+                this.updateBasketCount();
+                this.renderBasketPreviewItems();
+                if (this.state.currentPage === 'basket') { // Re-render basket page if currently on it
+                    this.render();
+                }
+                 // Re-render media results if on appDashboard to update button states
+                if (this.state.currentPage === 'appDashboard') {
+                    const resultsArea = document.getElementById('mediaResultsArea');
+                    if(resultsArea) this.renderMediaResults(resultsArea);
+                }
+            },
+
+            updateBasketCount() {
+                const basketCountEl = document.getElementById('basket-count');
+                if(basketCountEl) basketCountEl.textContent = this.state.basket.length;
+            },
+            
+            toggleBasketPreview() {
+                this.state.isBasketPreviewOpen = !this.state.isBasketPreviewOpen;
+                const basketPreview = document.getElementById('basket-preview');
+                if (this.state.isBasketPreviewOpen) {
+                    basketPreview.classList.remove('hidden');
+                    this.renderBasketPreviewItems();
+                } else {
+                    basketPreview.classList.add('hidden');
+                }
+            },
+
+            closeBasketPreview() {
+                this.state.isBasketPreviewOpen = false;
+                document.getElementById('basket-preview').classList.add('hidden');
+            },
+
+            renderBasketPreviewItems() {
+                const container = document.getElementById('basket-preview-items');
+                if (!container) return;
+
+                if (this.state.basket.length === 0) {
+                    container.innerHTML = '<p class="text-neutral-500 italic">Your basket is empty.</p>';
+                    return;
+                }
+                
+                container.innerHTML = '';
+                this.state.basket.slice(0, 5).forEach(item => { // Show up to 5 items in preview
+                    const itemDiv = document.createElement('div');
+                    itemDiv.className = 'flex items-center justify-between py-1';
+                    const itemPreview = item.type === 'image' ? 
+                        `<img src="${item.src}" alt="${item.title.substring(0,20)}" class="w-10 h-8 object-cover rounded-sm mr-2">` :
+                        `<div class="w-10 h-8 bg-neutral-200 rounded-sm mr-2 flex items-center justify-center text-neutral-400">
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-4 h-4"><path stroke-linecap="round" stroke-linejoin="round" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /><path stroke-linecap="round" stroke-linejoin="round" d="M15.91 11.672a.375.375 0 010 .656l-5.603 3.113a.375.375 0 01-.557-.328V8.887c0-.286.307-.466.557-.327l5.603 3.112z" /></svg>
+                         </div>`;
+
+                    itemDiv.innerHTML = `
+                        <div class="flex items-center">
+                           ${itemPreview}
+                           <span class="text-neutral-700 truncate" title="${item.title}">${item.title.length > 25 ? item.title.substring(0,25) + '...' : item.title}</span>
+                        </div>
+                        <button onclick="app.removeFromBasket('${item.id}')" class="text-red-400 hover:text-red-600 p-0.5 rounded-full hover:bg-red-50 transition-colors">
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-4 h-4"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+                        </button>
+                    `;
+                    container.appendChild(itemDiv);
+                });
+
+                if (this.state.basket.length > 5) {
+                    const moreItems = document.createElement('p');
+                    moreItems.className = 'text-xs text-neutral-500 text-center mt-1';
+                    moreItems.textContent = `+ ${this.state.basket.length - 5} more items...`;
+                    container.appendChild(moreItems);
+                }
+            },
+
+            async handleDownloadAll() {
+                if (this.state.basket.length === 0) {
+                    alert('Your basket is empty.');
+                    return;
+                }
+
+                const downloadProgressDiv = document.getElementById('download-progress');
+                if (downloadProgressDiv) downloadProgressDiv.classList.remove('hidden');
+                
+                const updateProgress = (message) => {
+                    if(downloadProgressDiv) downloadProgressDiv.textContent = message;
+                };
+
+                updateProgress('Preparing your download... (This is a simulation)');
+
+                const zip = new JSZip();
+                let filesToFetch = this.state.basket.filter(item => item.type === 'image' && item.downloadUrl && item.downloadUrl !== 'null');
+                let fetchedCount = 0;
+
+                if (filesToFetch.length === 0) {
+                     updateProgress('No downloadable image files in basket. Video download simulation not implemented.');
+                     setTimeout(() => { if(downloadProgressDiv) downloadProgressDiv.classList.add('hidden'); }, 3000);
+                     alert("Note: For this demo, only images from Picsum are actually downloaded. Videos and other placeholders would be listed.");
+                     return;
+                }
+
+                updateProgress(`Starting download of ${filesToFetch.length} images...`);
+
+                const fetchPromises = filesToFetch.map(async (item, index) => {
+                    try {
+                        const response = await fetch(item.downloadUrl);
+                        if (!response.ok) throw new Error(`Failed to fetch ${item.title}`);
+                        const blob = await response.blob();
+                        const filename = `${item.sceneTitle ? item.sceneTitle.replace(/[^a-zA-Z0-9_]/g, '_') + '_' : ''}${item.title.replace(/[^a-zA-Z0-9_]/g, '_')}.jpg`;
+                        zip.file(filename, blob);
+                        fetchedCount++;
+                        updateProgress(`Downloaded ${fetchedCount}/${filesToFetch.length}: ${item.title}`);
+                    } catch (error) {
+                        console.error('Error fetching item for zip:', item.title, error);
+                        updateProgress(`Error downloading ${item.title}. Skipping.`);
+                        // Optionally add a text file to the zip noting the error.
+                        zip.file(`ERROR_${item.title.replace(/[^a-zA-Z0-9_]/g, '_')}.txt`, `Could not download: ${item.title}\nURL: ${item.downloadUrl}\nError: ${error.message}`);
+                    }
+                });
+
+                await Promise.all(fetchPromises);
+
+                if (fetchedCount > 0) {
+                    updateProgress('Zipping files...');
+                    zip.generateAsync({ type: "blob" })
+                        .then(function(content) {
+                            saveAs(content, "scenebox_media.zip");
+                            updateProgress('Download complete! Your zip file should be downloading.');
+                             setTimeout(() => { if(downloadProgressDiv) downloadProgressDiv.classList.add('hidden'); }, 5000);
+                        })
+                        .catch(err => {
+                            console.error("Error zipping files:", err);
+                            updateProgress('Error creating zip file.');
+                            alert('There was an error creating the zip file.');
+                        });
+                } else {
+                    updateProgress('No files were successfully downloaded to zip.');
+                     setTimeout(() => { if(downloadProgressDiv) downloadProgressDiv.classList.add('hidden'); }, 3000);
+                }
+            },
+
+            // --- Payment Simulation ---
+            handlePayPalPayment(planName, amount) {
+                if (!this.state.isAuthenticated) {
+                    this.showModal('loginModal');
+                    alert('Please log in or sign up to subscribe.');
+                    return;
+                }
+                alert(`Simulating PayPal Checkout for ${planName} ($${amount}/month).\nIn a real application, you would be redirected to PayPal.`);
+                // Simulate successful payment and upgrade (for demo)
+                setTimeout(() => {
+                    alert(`Payment for ${planName} successful! Your account is now upgraded (simulation).`);
+                    // Here you would update user's subscription status in backend.
+                    // For demo, perhaps update profile page if we had plan display there.
+                    if (this.state.currentPage === 'profile') this.render(); // Re-render profile if on it
+                }, 1000);
+            }
+        };
+
+        document.addEventListener('DOMContentLoaded', () => {
+            app.init();
+        });
+    </script>
+
+</body>
+</html>

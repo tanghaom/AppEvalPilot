@@ -1,0 +1,9 @@
+{
+  "web_id": "web_34",
+  "task_id": 2,
+  "task_type": "dynamic",
+  "instruction": "Task: Click a 'Back' button after simulating navigation to at least two distinct content states (e.g., simulated page A, then simulated page B).\nExpected Result: The page's main content area reverts to display the content of simulated page A.\n\nNote: The task is only considered successful if the expected result is achieved; otherwise, it is deemed infeasible.",
+  "max_steps": 15,
+  "expected": "The page's main content area reverts to display the content of simulated page A.",
+  "label": 0
+}

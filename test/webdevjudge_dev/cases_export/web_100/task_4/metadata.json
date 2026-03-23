@@ -1,0 +1,9 @@
+{
+  "web_id": "web_100",
+  "task_id": 4,
+  "task_type": "dynamic",
+  "instruction": "Task: Focus on and type text into the 'Type anything...' input field.\nExpected Result: When the field receives focus, its `box-shadow` styling changes from an inset shadow to an outset shadow. Typed text appears in the field.\n\nNote: The task is only considered successful if the expected result is achieved; otherwise, it is deemed infeasible.",
+  "max_steps": 15,
+  "expected": "When the field receives focus, its `box-shadow` styling changes from an inset shadow to an outset shadow. Typed text appears in the field.",
+  "label": 1
+}

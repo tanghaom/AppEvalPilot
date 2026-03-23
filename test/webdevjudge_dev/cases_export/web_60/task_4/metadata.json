@@ -1,0 +1,9 @@
+{
+  "web_id": "web_60",
+  "task_id": 4,
+  "task_type": "dynamic",
+  "instruction": "Task: Activate a 'Dark Mode' toggle switch, likely found within a 'Settings' area accessible from the sidebar.\nExpected Result: The dashboard's overall color scheme instantly changes to a dark theme, and can be toggled back to the light theme.\n\nNote: The task is only considered successful if the expected result is achieved; otherwise, it is deemed infeasible.",
+  "max_steps": 15,
+  "expected": "The dashboard's overall color scheme instantly changes to a dark theme, and can be toggled back to the light theme.",
+  "label": 0
+}

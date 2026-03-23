@@ -1,0 +1,478 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Collaborative Editor</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.15/codemirror.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.15/addon/hint/show-hint.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.15/addon/lint/lint.min.css">
+    
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.15/codemirror.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.15/mode/markdown/markdown.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.15/mode/javascript/javascript.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.15/addon/edit/closetag.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.15/addon/edit/closebrackets.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.15/addon/comment/comment.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.15/addon/selection/active-line.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.15/addon/hint/show-hint.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.15/addon/hint/anyword-hint.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.15/addon/lint/lint.min.js"></script>
+    <!-- Note: For full JS linting, JSHint (or other linters) would be needed via CDN and configured. -->
+    <!-- e.g. <script src="https://cdnjs.cloudflare.com/ajax/libs/jshint/2.13.6/jshint.min.js"></script> -->
+    <!-- <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.15/addon/lint/javascript-lint.min.js"></script> -->
+
+    <style>
+        /* Custom CodeMirror Theme: collaborative-ai-theme */
+        .cm-s-collaborative-ai-theme.CodeMirror {
+            font-family: 'Menlo', 'Monaco', 'Consolas', 'Courier New', monospace;
+            font-size: 14px;
+            line-height: 1.6;
+            height: 100%;
+            background-color: #1e293b; /* slate-800 */
+            color: #e2e8f0; /* slate-200 */
+        }
+        .cm-s-collaborative-ai-theme .CodeMirror-gutters {
+            background: #0f172a; /* slate-900 */
+            border-right: 1px solid #334155; /* slate-700 */
+        }
+        .cm-s-collaborative-ai-theme .CodeMirror-linenumber {
+            color: #64748b; /* slate-500 */
+            padding: 0 5px 0 5px; /* Tailwind: px-1.5-ish, original: 0 3px 0 5px */
+        }
+        .cm-s-collaborative-ai-theme .CodeMirror-cursor {
+            border-left: 1.5px solid #f1f5f9; /* slate-100 */
+        }
+        .cm-s-collaborative-ai-theme .CodeMirror-activeline-background {
+            background: #33415530; /* slate-700 with alpha */
+        }
+        .cm-s-collaborative-ai-theme .CodeMirror-selected {
+            background: #0ea5e940; /* sky-500 with alpha */
+        }
+        .cm-s-collaborative-ai-theme .cm-keyword { color: #38bdf8; } /* sky-400 */
+        .cm-s-collaborative-ai-theme .cm-atom { color: #c084fc; } /* purple-400 */
+        .cm-s-collaborative-ai-theme .cm-number { color: #34d399; } /* emerald-400 */
+        .cm-s-collaborative-ai-theme .cm-string { color: #fbbf24; } /* amber-400 */
+        .cm-s-collaborative-ai-theme .cm-string-2 { color: #fdba74; } /* orange-300 */
+        .cm-s-collaborative-ai-theme .cm-comment { color: #94a3b8; font-style: italic; } /* slate-400 */
+        .cm-s-collaborative-ai-theme .cm-variable { color: #e2e8f0; } /* slate-200 */
+        .cm-s-collaborative-ai-theme .cm-variable-2 { color: #7dd3fc; } /* sky-300 */
+        .cm-s-collaborative-ai-theme .cm-variable-3, .cm-s-collaborative-ai-theme .cm-type { color: #a5b4fc; } /* indigo-300 */
+        .cm-s-collaborative-ai-theme .cm-def { color: #f472b6; } /* pink-400 */
+        .cm-s-collaborative-ai-theme .cm-operator { color: #cbd5e1; } /* slate-300 */
+        .cm-s-collaborative-ai-theme .cm-meta { color: #2dd4bf; } /* teal-400 */
+        .cm-s-collaborative-ai-theme .cm-tag { color: #38bdf8; } /* sky-400 */
+        .cm-s-collaborative-ai-theme .cm-attribute { color: #c084fc; } /* purple-400 */
+        .cm-s-collaborative-ai-theme .cm-qualifier { color: #fbbf24; } /* amber-400 */
+        .cm-s-collaborative-ai-theme .cm-property { color: #7dd3fc; } /* sky-300 */
+        .cm-s-collaborative-ai-theme .cm-error { /* Basic error styling, can be enhanced by linters */
+            border-bottom: 1px dotted #ef4444; /* red-500 */
+        }
+        .cm-s-collaborative-ai-theme .CodeMirror-matchingbracket { 
+            outline:1px solid #fbbf2480; /* amber-400 with alpha */
+            color: #e2e8f0 !important; /* slate-200 */
+            background-color: #fbbf2420; /* amber-400 with more alpha */
+        }
+        .cm-s-collaborative-ai-theme .CodeMirror-nonmatchingbracket { 
+            outline:1px solid #f8717180; /* red-400 with alpha */
+            color: #e2e8f0 !important; /* slate-200 */
+            background-color: #f8717120; /* red-400 with more alpha */
+        }
+
+        /* Custom scrollbar for webkit browsers */
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: #0f172a; /* slate-900 */ }
+        ::-webkit-scrollbar-thumb { background: #334155; /* slate-700 */ border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #475569; /* slate-600 */ }
+
+        /* For simulated grammar/spell check underline */
+        .cm-spell-error {
+            text-decoration-line: underline;
+            text-decoration-style: wavy;
+            text-decoration-color: #f87171; /* red-400 */
+        }
+        .cm-grammar-error {
+            text-decoration-line: underline;
+            text-decoration-style: wavy;
+            text-decoration-color: #fbbf24; /* amber-400 */
+        }
+        
+        /* Ensure CodeMirror fills its wrapper */
+        #editor-wrapper .CodeMirror {
+            position: absolute;
+            top: 0; left: 0; right: 0; bottom: 0;
+            height: 100%;
+        }
+    </style>
+</head>
+<body class="bg-slate-900 text-slate-200 flex flex-col h-screen antialiased select-none">
+
+    <!-- Toolbar -->
+    <header class="bg-slate-800 border-b border-slate-700 p-3 flex items-center justify-between shadow-lg h-16 flex-shrink-0 z-30">
+        <div class="flex items-center space-x-2 sm:space-x-3">
+            <!-- Logo -->
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-7 h-7 sm:w-8 sm:h-8 text-sky-400">
+                <path d="M12.75 2.25a.75.75 0 00-1.5 0v2.385c0 .41.168.804.47 1.085l1.735 1.563a.75.75 0 001.16-.956L13.5 4.585V2.25zM8.45 4.613a.75.75 0 10-1.012-.07L5.902 6.606a.75.75 0 10.94 1.163L8.45 5.528V4.613zm7.102.07a.75.75 0 10-1.012.07L16.052 6.67l1.536-1.085a.75.75 0 10-.94-1.163L15.55 5.528V4.613zM5.01 9.682a.75.75 0 000 1.498V12c0 .089.013.176.037.26L3.12 13.814a.75.75 0 10.94 1.163L6.02 13.21V12a.75.75 0 00-.75-.75h-.26zm13.98 0a.75.75 0 000 1.498V12c0 .089-.013.176-.037.26l1.957 1.554a.75.75 0 10.94-1.163L17.98 13.21V12a.75.75 0 00-.75-.75h-.26zM12 9a.75.75 0 00-.75.75v7.5a.75.75 0 001.5 0v-7.5A.75.75 0 0012 9z"></path><path fill-rule="evenodd" d="M12 21.75c-4.816 0-8.75-3.614-8.75-8.062 0-4.448 3.934-8.063 8.75-8.063s8.75 3.615 8.75 8.063C20.75 18.136 16.816 21.75 12 21.75zm0-1.5c3.968 0 7.25-3.007 7.25-6.562S15.968 7.062 12 7.062s-7.25 3.007-7.25 6.626S8.032 20.25 12 20.25z" clip-rule="evenodd"></path>
+            </svg>
+            <span class="text-lg sm:text-xl font-semibold text-sky-400 hidden sm:inline">AI Editor</span>
+            
+            <button id="undo-btn" title="Undo (Ctrl+Z)" class="p-2 rounded-md hover:bg-slate-700 text-slate-400 hover:text-sky-400 transition-colors">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M9 15L3 9m0 0l6-6M3 9h12a6 6 0 010 12h-3" />
+                </svg>
+            </button>
+            <button id="redo-btn" title="Redo (Ctrl+Y)" class="p-2 rounded-md hover:bg-slate-700 text-slate-400 hover:text-sky-400 transition-colors">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M15 15l6-6m0 0l-6-6m6 6H9a6 6 0 000 12h3" />
+                </svg>
+            </button>
+             <button id="comment-btn" title="Toggle Comment (Ctrl+/)" class="p-2 rounded-md hover:bg-slate-700 text-slate-400 hover:text-sky-400 transition-colors">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M8.625 12a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0H8.25m4.125 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0H12m4.125 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0h-.375M21 12c0 4.556-3.86 8.25-8.625 8.25S3.75 16.556 3.75 12C3.75 7.444 7.61 3.75 12.375 3.75S21 7.444 21 12z" />
+                </svg>
+            </button>
+        </div>
+        <div class="flex items-center space-x-2 sm:space-x-3">
+            <!-- Simulated user presence indicators -->
+            <div class="flex items-center -space-x-2">
+                <div class="w-7 h-7 sm:w-8 sm:h-8 bg-pink-500 rounded-full border-2 border-slate-900 ring-1 sm:ring-2 ring-pink-500 flex items-center justify-center text-white text-xs font-semibold" title="User Alice">A</div>
+                <div class="w-7 h-7 sm:w-8 sm:h-8 bg-indigo-500 rounded-full border-2 border-slate-900 ring-1 sm:ring-2 ring-indigo-500 flex items-center justify-center text-white text-xs font-semibold" title="User Bob">B</div>
+                <div class="w-7 h-7 sm:w-8 sm:h-8 bg-emerald-500 rounded-full border-2 border-slate-900 ring-1 sm:ring-2 ring-emerald-500 flex items-center justify-center text-white text-xs font-semibold" title="You">Y</div>
+            </div>
+            <button id="toggle-sidebar-btn" title="Toggle AI Panel" class="p-2 rounded-md hover:bg-slate-700 text-slate-400 hover:text-sky-400 transition-colors">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M10.343 3.94c.09-.542.56-.94 1.11-.94h1.093c.55 0 1.02.398 1.11.94l.149.894c.07.424.384.764.78.93s.844.17 1.25.028l.83-.279a1.125 1.125 0 011.248.503l.395.79c.304.608.133 1.34-.408 1.768l-.72.539c-.31.23-.498.595-.498.977v0c0 .382.188.747.498.976l.72.54a1.125 1.125 0 01.408 1.768l-.395.79a1.125 1.125 0 01-1.248.503l-.83-.279a1.132 1.132 0 00-1.25.028 1.132 1.132 0 00-.78.93l-.149.894c-.09.542-.56.94-1.11.94h-1.093c-.55 0-1.02-.398-1.11-.94l-.149-.894a1.132 1.132 0 00-.78-.93c-.406-.156-.844-.17-1.25-.028l-.83.279a1.125 1.125 0 01-1.248-.503l-.395-.79c-.304-.608-.133-1.34.408-1.768l.72-.539c.31-.23.498.595.498.977v0c0-.382-.188-.747-.498-.976l-.72-.54a1.125 1.125 0 01-.408-1.768l.395-.79A1.125 1.125 0 015.32 5.072l.83.279a1.132 1.132 0 001.25-.028c.396-.166.71-.506.78-.93l.149-.894z" />
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                </svg>
+            </button>
+        </div>
+    </header>
+
+    <!-- Main Content Area (Editor + Sidebar) -->
+    <div class="flex-1 flex relative overflow-hidden">
+        <div id="editor-wrapper" class="flex-1 h-full relative bg-slate-800"> <!-- This wrapper ensures CM can be positioned absolutely to fill it -->
+            <textarea id="codemirror-editor" class="h-full w-full"></textarea> <!-- CM replaces this -->
+        </div>
+
+        <aside id="sidebar" class="w-80 md:w-96 bg-slate-800/95 backdrop-blur-sm border-l border-slate-700 h-full absolute top-0 right-0 transform translate-x-full transition-transform duration-300 ease-in-out shadow-xl overflow-y-auto p-6 space-y-6 z-20">
+            <div class="flex justify-between items-center">
+                <h2 class="text-xl font-semibold text-sky-400">AI Assistant</h2>
+                <button id="close-sidebar-btn" class="text-slate-400 hover:text-sky-400 p-1 rounded-md hover:bg-slate-700">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                </button>
+            </div>
+
+            <div class="space-y-6" id="sidebar-content">
+                <div>
+                    <h3 class="text-base font-semibold text-slate-300 mb-2">Contextual Suggestions</h3>
+                    <div id="ai-suggestions-panel" class="text-sm text-slate-400 space-y-1 max-h-40 overflow-y-auto">
+                        <p class="italic p-1.5">Start typing to see suggestions...</p>
+                    </div>
+                </div>
+                
+                <div>
+                    <h3 class="text-base font-semibold text-slate-300 mb-2">Grammar & Style</h3>
+                    <button id="check-grammar-btn" class="w-full text-left p-2.5 rounded-md bg-sky-600 hover:bg-sky-500 text-white transition-colors text-sm font-medium mb-2 shadow-sm">Check Document</button>
+                    <div id="grammar-issues-panel" class="text-sm text-slate-400 space-y-1 max-h-48 overflow-y-auto">
+                        <p class="italic p-2 bg-slate-700/30 rounded-md">No issues found yet.</p>
+                    </div>
+                </div>
+
+                <div>
+                    <h3 class="text-base font-semibold text-slate-300 mb-2">Creative Content</h3>
+                    <button id="generate-title-btn" class="w-full text-left p-2.5 rounded-md bg-slate-700 hover:bg-slate-600 text-slate-200 transition-colors text-sm font-medium mb-1 shadow-sm">Suggest Title</button>
+                    <button id="generate-conclusion-btn" class="w-full text-left p-2.5 rounded-md bg-slate-700 hover:bg-slate-600 text-slate-200 transition-colors text-sm font-medium mb-2 shadow-sm">Suggest Conclusion</button>
+                    <div id="generated-content-panel" class="text-sm text-slate-400 p-2 bg-slate-700/30 rounded-md min-h-[3em]">
+                        {/* <!-- Generated content appears here --> */}
+                    </div>
+                </div>
+
+                <div>
+                    <h3 class="text-base font-semibold text-slate-300 mb-2">Text Actions</h3>
+                     <button id="rewrite-text-btn" class="w-full text-left p-2.5 rounded-md bg-slate-700 hover:bg-slate-600 text-slate-200 transition-colors text-sm font-medium mb-2 shadow-sm">Rewrite Selected Text</button>
+                    <div id="rewrite-suggestions-panel" class="text-sm text-slate-400 p-2 bg-slate-700/30 rounded-md min-h-[3em]">
+                        {/* <!-- Rewrite suggestions here --> */}
+                    </div>
+                </div>
+
+                <div>
+                    <h3 class="text-base font-semibold text-slate-300 mb-2">Tone Analysis</h3>
+                    <button id="analyze-tone-btn" class="w-full text-left p-2.5 rounded-md bg-slate-700 hover:bg-slate-600 text-slate-200 transition-colors text-sm font-medium mb-2 shadow-sm">Analyze Tone</button>
+                    <div id="tone-analysis-panel" class="text-sm text-slate-400 p-2 bg-slate-700/30 rounded-md min-h-[3em]">
+                        {/* <!-- Analysis here --> */}
+                    </div>
+                </div>
+            </div>
+        </aside>
+    </div>
+
+<script>
+    const initialContent = `# Welcome to the AI Collaborative Editor!
+
+This is a **Markdown** document. You can *edit* this text.
+Select text and press Ctrl+/ or Cmd+/ to toggle comments.
+
+## Features to Explore:
+- Real-time AI suggestions (try typing "function" or "loop" if in JS mode, or "suggestion" for general hints)
+- Grammar and spelling checks (click "Check Document" in the sidebar)
+- Content generation (try "Suggest Title")
+- Tone analysis
+
+Some common mispeled words: acomodate, definately, experince.
+A sentence with grammar issue: The cat jump high. This is badd.
+
+Try selecting some text and asking for a rewrite!
+
+---
+*Note: AI features are simulated for demonstration purposes.*
+*Actual collaboration features (multi-user real-time editing) require a backend server and are not implemented in this demo.*
+`;
+
+    let editor;
+    let grammarMarks = []; // To keep track of marked texts for clearing
+
+    document.addEventListener('DOMContentLoaded', () => {
+        editor = CodeMirror.fromTextArea(document.getElementById('codemirror-editor'), {
+            value: initialContent,
+            lineNumbers: true,
+            mode: 'markdown', 
+            theme: 'collaborative-ai-theme',
+            autoCloseBrackets: true,
+            autoCloseTags: true,
+            lineWrapping: true,
+            styleActiveLine: true,
+            // Linting setup (mocked for grammar/spell check)
+            gutters: ["CodeMirror-linenumbers"/*, "CodeMirror-lint-markers"*/], // Lint markers can be added if a real linter is configured
+            // lint: true, // Enable if a linter (e.g., javascript-lint with JSHint) is properly configured
+            extraKeys: {
+                "Ctrl-/": "toggleComment",
+                "Cmd-/": "toggleComment",
+                // Example for specific autocomplete trigger:
+                // "Ctrl-Space": "autocomplete", 
+            }
+        });
+
+        // Sidebar toggle logic
+        const sidebar = document.getElementById('sidebar');
+        const toggleSidebarBtn = document.getElementById('toggle-sidebar-btn');
+        const closeSidebarBtn = document.getElementById('close-sidebar-btn');
+        
+        const openSidebar = () => {
+            sidebar.classList.remove('translate-x-full');
+            editor.refresh(); 
+        };
+
+        const closeSidebar = () => {
+            sidebar.classList.add('translate-x-full');
+            editor.refresh();
+        };
+
+        toggleSidebarBtn.addEventListener('click', () => {
+            sidebar.classList.contains('translate-x-full') ? openSidebar() : closeSidebar();
+        });
+        closeSidebarBtn.addEventListener('click', closeSidebar);
+
+        // Toolbar actions
+        document.getElementById('undo-btn').addEventListener('click', () => editor.undo());
+        document.getElementById('redo-btn').addEventListener('click', () => editor.redo());
+        document.getElementById('comment-btn').addEventListener('click', () => editor.execCommand("toggleComment"));
+
+        // AI Feature Mock Implementations Panel References
+        const aiSuggestionsPanel = document.getElementById('ai-suggestions-panel');
+        const grammarIssuesPanel = document.getElementById('grammar-issues-panel');
+        const generatedContentPanel = document.getElementById('generated-content-panel');
+        const rewriteSuggestionsPanel = document.getElementById('rewrite-suggestions-panel');
+        const toneAnalysisPanel = document.getElementById('tone-analysis-panel');
+
+        // Helper to create suggestion buttons
+        function createSuggestionItem(text, action) {
+            const btn = document.createElement('button');
+            btn.textContent = text;
+            btn.className = 'block w-full text-left p-1.5 hover:bg-slate-700 rounded-md text-sky-400 transition-colors';
+            btn.addEventListener('click', action);
+            return btn;
+        }
+        
+        // 1. Contextual Suggestions (Mocked)
+        editor.on('cursorActivity', CodeMirror.debounce(() => {
+            const cursor = editor.getCursor();
+            const token = editor.getTokenAt(cursor);
+            const currentWord = token.string.toLowerCase();
+            
+            aiSuggestionsPanel.innerHTML = ''; // Clear previous
+            
+            let suggestionsMade = false;
+            if (currentWord.includes('suggest') && currentWord.length > 3) {
+                aiSuggestionsPanel.appendChild(createSuggestionItem('Insert "suggestion"', () => editor.replaceRange('suggestion ', editor.posFromIndex(token.start), editor.posFromIndex(token.end))));
+                aiSuggestionsPanel.appendChild(createSuggestionItem('Insert "suggested approach"', () => editor.replaceRange('suggested approach ', editor.posFromIndex(token.start), editor.posFromIndex(token.end))));
+                suggestionsMade = true;
+            } else if (currentWord.includes('feat') && currentWord.length > 3) {
+                aiSuggestionsPanel.appendChild(createSuggestionItem('Insert "feature set"', () => editor.replaceRange('feature set ', editor.posFromIndex(token.start), editor.posFromIndex(token.end))));
+                aiSuggestionsPanel.appendChild(createSuggestionItem('Insert "new feature integration"', () => editor.replaceRange('new feature integration ', editor.posFromIndex(token.start), editor.posFromIndex(token.end))));
+                suggestionsMade = true;
+            }
+            
+            if (!suggestionsMade) {
+                 aiSuggestionsPanel.innerHTML = `<p class="italic p-1.5">No specific suggestions for "${currentWord}". Keep typing.</p>`;
+            }
+            if(token.string.trim() === "") {
+                 aiSuggestionsPanel.innerHTML = `<p class="italic p-1.5">Start typing to see suggestions...</p>`;
+            }
+
+        }, 250)); // Debounce to avoid too frequent updates
+
+        // 2. Grammar & Spell Check (Mocked)
+        const mockSpellErrors = [
+            { word: 'acomodate', correction: 'accommodate' },
+            { word: 'definately', correction: 'definitely' },
+            { word: 'experince', correction: 'experience' },
+            { word: 'badd', correction: 'bad' }
+        ];
+        const mockGrammarPhrases = [
+            { phrase: 'cat jump high', suggestion: 'cat jumps high', explanation: 'Subject-verb agreement.' }
+        ];
+        
+        document.getElementById('check-grammar-btn').addEventListener('click', () => {
+            grammarMarks.forEach(mark => mark.clear());
+            grammarMarks = [];
+            grammarIssuesPanel.innerHTML = '';
+            let issueCount = 0;
+
+            const content = editor.getValue();
+            const lines = content.split('\n');
+
+            lines.forEach((line, lineIndex) => {
+                mockSpellErrors.forEach(errorInfo => {
+                    let match;
+                    const regex = new RegExp(`\\b${errorInfo.word}\\b`, 'gi');
+                    while ((match = regex.exec(line)) !== null) {
+                        const from = { line: lineIndex, ch: match.index };
+                        const to = { line: lineIndex, ch: match.index + errorInfo.word.length };
+                        grammarMarks.push(editor.markText(from, to, { className: 'cm-spell-error' }));
+                        addGrammarIssue(`Spelling: "${errorInfo.word}"`, `Did you mean "${errorInfo.correction}"?`, from, errorInfo.correction, errorInfo.word.length);
+                        issueCount++;
+                    }
+                });
+
+                mockGrammarPhrases.forEach(phraseInfo => {
+                    let match;
+                    // Escape special characters in phrase for regex
+                    const escapedPhrase = phraseInfo.phrase.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+                    const regex = new RegExp(escapedPhrase, 'gi'); 
+                    while ((match = regex.exec(line)) !== null) {
+                        const from = { line: lineIndex, ch: match.index };
+                        const to = { line: lineIndex, ch: match.index + phraseInfo.phrase.length };
+                        grammarMarks.push(editor.markText(from, to, { className: 'cm-grammar-error' }));
+                        addGrammarIssue(`Grammar: "${phraseInfo.phrase}"`, `Consider: "${phraseInfo.suggestion}". ${phraseInfo.explanation || ''}`, from, phraseInfo.suggestion, phraseInfo.phrase.length);
+                        issueCount++;
+                    }
+                });
+            });
+
+            if (issueCount === 0) {
+                grammarIssuesPanel.innerHTML = '<p class="text-emerald-400 p-2 bg-slate-700/30 rounded-md">No issues found!</p>';
+            }
+        });
+
+        function addGrammarIssue(title, suggestionText, position, replacementText = null, originalLength = 0) {
+            const issueDiv = document.createElement('div');
+            issueDiv.className = 'p-2 bg-slate-700/50 rounded-md mb-1 cursor-pointer hover:bg-slate-600 transition-colors';
+            
+            const titleEl = document.createElement('p');
+            titleEl.className = 'font-semibold text-slate-300';
+            titleEl.textContent = title;
+            issueDiv.appendChild(titleEl);
+
+            const suggestionEl = document.createElement('p');
+            suggestionEl.className = (title.startsWith("Spelling") ? 'text-red-400' : 'text-amber-400');
+            suggestionEl.textContent = suggestionText;
+            issueDiv.appendChild(suggestionEl);
+
+            issueDiv.addEventListener('click', () => {
+                editor.setSelection(position, {line: position.line, ch: position.ch + originalLength});
+                editor.focus();
+                if (replacementText) {
+                    // Give a small delay for selection to be visible
+                    setTimeout(() => {
+                        if (confirm(`Replace "${title.split('"')[1]}" with "${replacementText}"?`)) {
+                            editor.replaceSelection(replacementText);
+                            // Optionally, re-run check or clear this specific mark and remove from UI
+                            issueDiv.remove();
+                            // For simplicity, user can re-run check. Better UX would auto-clear.
+                        }
+                    }, 100);
+                }
+            });
+            grammarIssuesPanel.appendChild(issueDiv);
+        }
+
+        // 3. Rewrite Selected Text (Mocked)
+        document.getElementById('rewrite-text-btn').addEventListener('click', () => {
+            const selectedText = editor.getSelection();
+            rewriteSuggestionsPanel.innerHTML = ''; // Clear previous
+            if (!selectedText.trim()) {
+                rewriteSuggestionsPanel.innerHTML = '<p class="italic text-amber-400 p-1.5">Please select some text to rewrite.</p>';
+                return;
+            }
+            const formalRewrite = `A more formal phrasing for "${selectedText}" could be... [formal version].`;
+            const conciseRewrite = `To make "${selectedText}" more concise: [concise version].`;
+            
+            rewriteSuggestionsPanel.appendChild(createSuggestionItem(`Formal: ... [formal version]`, () => editor.replaceSelection(`[Formal version of: ${selectedText}]`)));
+            rewriteSuggestionsPanel.appendChild(createSuggestionItem(`Concise: ... [concise version]`, () => editor.replaceSelection(`[Concise version of: ${selectedText}]`)));
+            rewriteSuggestionsPanel.appendChild(createSuggestionItem(`Expand: ... [expanded version]`, () => editor.replaceSelection(`[Expanded version of: ${selectedText}]`)));
+        });
+
+        // 4. Creative Content Generation (Mocked)
+        document.getElementById('generate-title-btn').addEventListener('click', () => {
+            const mockTitle = "Insightful Analysis: A New Perspective";
+            generatedContentPanel.innerHTML = `<p class="text-emerald-400">Suggested Title:</p>`;
+            generatedContentPanel.appendChild(createSuggestionItem(mockTitle, () => {
+                editor.replaceRange(mockTitle + "\n\n", {line: 0, ch: 0});
+                editor.focus();
+            }));
+        });
+        document.getElementById('generate-conclusion-btn').addEventListener('click', () => {
+            const mockConclusion = "In summary, these findings highlight crucial areas for development and future exploration.";
+            generatedContentPanel.innerHTML = `<p class="text-emerald-400">Suggested Conclusion:</p>`;
+            generatedContentPanel.appendChild(createSuggestionItem(mockConclusion, () => {
+                const lastLine = editor.lastLine();
+                editor.replaceRange("\n\n" + mockConclusion, {line: lastLine, ch: editor.getLine(lastLine).length});
+                editor.focus();
+            }));
+        });
+
+        // 5. Tone Analysis (Mocked)
+        document.getElementById('analyze-tone-btn').addEventListener('click', () => {
+            const content = editor.getValue();
+            let tone = "Neutral";
+            let confidence = "Medium";
+            if (content.toLowerCase().includes("!") || content.toLowerCase().includes("amazing") || content.toLowerCase().includes("great")) {
+                tone = "Positive, Enthusiastic";
+                confidence = "High";
+            } else if (content.toLowerCase().includes("problem") || content.toLowerCase().includes("issue") || content.toLowerCase().includes("however")) {
+                tone = "Cautious, Analytical";
+                confidence = "Medium";
+            } else if (content.length < 100) {
+                tone = "Brief";
+                confidence = "Varies (short text)";
+            }
+            toneAnalysisPanel.innerHTML = `
+                <p><span class="font-semibold text-slate-300">Overall Tone:</span> <span class="text-sky-400">${tone}</span></p>
+                <p><span class="font-semibold text-slate-300">Confidence Level:</span> <span class="text-emerald-400">${confidence}</span></p>
+                <p class="italic text-xs mt-1 text-slate-500">This is a simplified mock analysis.</p>
+            `;
+        });
+        
+        // Initial call to set up placeholder in suggestion panel
+        aiSuggestionsPanel.innerHTML = `<p class="italic p-1.5">Start typing to see suggestions...</p>`;
+        // Set focus to the editor initially
+        editor.focus();
+
+    }); // End DOMContentLoaded
+</script>
+
+</body>
+</html>

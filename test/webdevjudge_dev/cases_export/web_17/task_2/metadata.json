@@ -1,0 +1,9 @@
+{
+  "web_id": "web_17",
+  "task_id": 2,
+  "task_type": "dynamic",
+  "instruction": "Task: Control camera view or aiming direction using mouse movement.\nExpected Result: The game camera or player's viewpoint changes orientation based on mouse input.\n\nNote: The task is only considered successful if the expected result is achieved; otherwise, it is deemed infeasible.",
+  "max_steps": 15,
+  "expected": "The game camera or player's viewpoint changes orientation based on mouse input.",
+  "label": 1
+}

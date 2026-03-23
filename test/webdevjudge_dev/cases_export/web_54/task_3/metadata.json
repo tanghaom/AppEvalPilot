@@ -1,0 +1,9 @@
+{
+  "web_id": "web_54",
+  "task_id": 3,
+  "task_type": "dynamic",
+  "instruction": "Task: Submit a new text post by entering a title and content into the creation form, then clicking a 'Submit Post' button.\nExpected Result: The new post appears in the list of posts, displaying the entered title and content.\n\nNote: The task is only considered successful if the expected result is achieved; otherwise, it is deemed infeasible.",
+  "max_steps": 15,
+  "expected": "The new post appears in the list of posts, displaying the entered title and content.",
+  "label": 0
+}

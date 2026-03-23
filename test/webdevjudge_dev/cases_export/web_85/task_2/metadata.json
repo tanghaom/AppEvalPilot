@@ -1,0 +1,9 @@
+{
+  "web_id": "web_85",
+  "task_id": 2,
+  "task_type": "dynamic",
+  "instruction": "Task: Enable game reset through a 'Reset Game' button.\nExpected Result: Clicking the 'Reset Game' button restores the board to its initial starting position, with all pieces in their starting squares, and sets the turn to White.\n\nNote: The task is only considered successful if the expected result is achieved; otherwise, it is deemed infeasible.",
+  "max_steps": 15,
+  "expected": "Clicking the 'Reset Game' button restores the board to its initial starting position, with all pieces in their starting squares, and sets the turn to White.",
+  "label": 1
+}

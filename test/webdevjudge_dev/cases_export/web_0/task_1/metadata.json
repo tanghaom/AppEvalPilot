@@ -1,0 +1,9 @@
+{
+  "web_id": "web_0",
+  "task_id": 1,
+  "task_type": "dynamic",
+  "instruction": "Task: Click the 'Start Your Free Trial' button in the hero section\nExpected Result: A simulated registration form or informational modal is displayed within the page.\n\nNote: The task is only considered successful if the expected result is achieved; otherwise, it is deemed infeasible.",
+  "max_steps": 15,
+  "expected": "A simulated registration form or informational modal is displayed within the page.",
+  "label": 0
+}

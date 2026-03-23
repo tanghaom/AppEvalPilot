@@ -1,0 +1,9 @@
+{
+  "web_id": "web_54",
+  "task_id": 1,
+  "task_type": "dynamic",
+  "instruction": "Task: Click an upvote/downvote button on a post.\nExpected Result: The post's score visually updates, and the button's state changes to reflect the user's action (e.g., highlighted upvote, score increases).\n\nNote: The task is only considered successful if the expected result is achieved; otherwise, it is deemed infeasible.",
+  "max_steps": 15,
+  "expected": "The post's score visually updates, and the button's state changes to reflect the user's action (e.g., highlighted upvote, score increases).",
+  "label": 0
+}

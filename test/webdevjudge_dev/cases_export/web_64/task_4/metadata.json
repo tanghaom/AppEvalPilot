@@ -1,0 +1,9 @@
+{
+  "web_id": "web_64",
+  "task_id": 4,
+  "task_type": "dynamic",
+  "instruction": "Task: Hover the mouse cursor over a partially obscured product image in the 'Veiled Glimpses' section or a product category grid.\nExpected Result: The hovered product image momentarily changes its appearance (e.g., increases brightness, shows more detail, or a subtle glow effect appears).\n\nNote: The task is only considered successful if the expected result is achieved; otherwise, it is deemed infeasible.",
+  "max_steps": 15,
+  "expected": "The hovered product image momentarily changes its appearance (e.g., increases brightness, shows more detail, or a subtle glow effect appears).",
+  "label": 0
+}

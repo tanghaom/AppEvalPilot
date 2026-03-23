@@ -1,0 +1,9 @@
+{
+  "web_id": "web_76",
+  "task_id": 5,
+  "task_type": "dynamic",
+  "instruction": "Task: User selects a specific pickup time slot from a list of (client-side defined) available options (e.g., by clicking a radio button).\nExpected Result: The chosen time slot is visually marked as selected, and a (simulated) order confirmation message, including a pickup token and the selected time, is displayed.\n\nNote: The task is only considered successful if the expected result is achieved; otherwise, it is deemed infeasible.",
+  "max_steps": 15,
+  "expected": "The chosen time slot is visually marked as selected, and a (simulated) order confirmation message, including a pickup token and the selected time, is displayed.",
+  "label": 0
+}

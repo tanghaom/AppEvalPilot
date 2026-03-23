@@ -1,0 +1,603 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>The Digital Sanctum</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;900&family=Orbitron:wght@400;700;900&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #020617; /* slate-950 */
+            color: #e2e8f0; /* slate-200 */
+            overflow-x: hidden;
+        }
+
+        .font-orbitron {
+            font-family: 'Orbitron', sans-serif;
+        }
+
+        /* Hero Entry Screen Animations */
+        #hero-entry-screen {
+            transition: opacity 1s ease-out;
+        }
+
+        .particle-container {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            overflow: hidden;
+        }
+
+        .particle {
+            position: absolute;
+            background-color: #22d3ee; /* cyan-400 */
+            border-radius: 50%;
+            opacity: 0;
+            animation: float 20s infinite ease-in-out;
+        }
+
+        @keyframes float {
+            0% { transform: translateY(0vh) translateX(0vw) scale(1); opacity: 0; }
+            25% { opacity: 0.6; }
+            50% { transform: translateY(-30vh) translateX(10vw) scale(0.8); opacity: 0.3; }
+            75% { opacity: 0.5; }
+            100% { transform: translateY(30vh) translateX(-10vw) scale(1.2); opacity: 0; }
+        }
+
+        .code-line-container {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            overflow: hidden;
+            opacity: 0.3;
+        }
+        
+        .code-line {
+            position: absolute;
+            font-family: 'Menlo', 'Monaco', 'Consolas', 'Liberation Mono', 'Courier New', monospace;
+            color: #22d3ee; /* cyan-400 */
+            font-size: 0.7rem;
+            line-height: 1.2;
+            opacity: 0;
+            animation: scrollCode 15s linear infinite;
+            white-space: pre; /* Preserves formatting of generated binary strings */
+            writing-mode: vertical-rl; /* For a more "Matrix" feel if lines are long */
+            text-orientation: mixed;
+            transform: rotate(180deg); /* Since writing-mode is vertical-rl */
+        }
+
+        @keyframes scrollCode {
+            0% { transform: translateY(-100%) rotate(180deg); opacity: 0; }
+            10%, 90% { opacity: 0.3; }
+            100% { transform: translateY(100vh) rotate(180deg); opacity: 0; }
+        }
+        
+        #central-glow {
+            width: 100px;
+            height: 100px;
+            border-radius: 50%;
+            background-color: rgba(6, 182, 212, 0.1); /* cyan-500 with low opacity */
+            box-shadow: 0 0 30px 10px rgba(6, 182, 212, 0.3), 0 0 10px 5px rgba(6, 182, 212, 0.2);
+            animation: pulse-glow-center 3s infinite ease-in-out;
+            transition: transform 0.7s ease-out, opacity 0.5s ease-out;
+        }
+
+        @keyframes pulse-glow-center {
+            0%, 100% { transform: scale(1); box-shadow: 0 0 30px 10px rgba(6, 182, 212, 0.3), 0 0 10px 5px rgba(6, 182, 212, 0.2); opacity: 0.7; }
+            50% { transform: scale(1.1); box-shadow: 0 0 50px 20px rgba(6, 182, 212, 0.5), 0 0 20px 10px rgba(6, 182, 212, 0.3); opacity: 1; }
+        }
+
+        #energy-wave {
+            position: absolute;
+            border-radius: 50%;
+            background-color: rgba(6, 182, 212, 0.5); /* cyan-500 */
+            transform: scale(0);
+            opacity: 0;
+            pointer-events: none;
+            transition: transform 1s cubic-bezier(0.25, 1, 0.5, 1), opacity 1s ease-out; /* Custom cubic-bezier for fast expansion */
+        }
+        #energy-wave.expand {
+            transform: scale(30); /* Adjust scale to cover screen */
+            opacity: 0;
+        }
+        
+        /* Main Content Styling */
+        #main-app-content {
+            transition: opacity 1s ease-in 0.5s; /* Delay fade-in until after wave */
+        }
+
+        .product-card {
+            background-color: #0f172a; /* slate-900 */
+            border: 1px solid #1e293b; /* slate-800 */
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+            overflow: hidden; /* For info overlay */
+        }
+        .product-card:hover {
+            transform: translateY(-8px) scale(1.02);
+            box-shadow: 0 10px 30px -5px rgba(6, 182, 212, 0.3), 0 0 15px rgba(6,182,212,0.2);
+        }
+        
+        .product-card .info-overlay {
+            background: linear-gradient(to top, rgba(15, 23, 42, 0.95) 0%, rgba(15, 23, 42, 0.7) 100%);
+            opacity: 0;
+            transform: translateY(100%);
+            transition: opacity 0.4s ease-out, transform 0.4s ease-out;
+        }
+        .product-card:hover .info-overlay {
+            opacity: 1;
+            transform: translateY(0%);
+        }
+        .product-card-image-placeholder {
+            background-color: #334155; /* slate-700 */
+            border: 2px dashed #06b6d4; /* cyan-500 */
+            color: #67e8f9; /* cyan-300 */
+        }
+        .product-card-image-placeholder > svg {
+            width: 3rem; height: 3rem; opacity: 0.5;
+        }
+
+        .btn-primary {
+            background-color: #06b6d4; /* cyan-500 */
+            color: #020617; /* slate-950 */
+            transition: background-color 0.3s ease, transform 0.2s ease;
+        }
+        .btn-primary:hover {
+            background-color: #0891b2; /* cyan-600 */
+            transform: scale(1.05);
+        }
+        .btn-secondary {
+            background-color: transparent;
+            border: 1px solid #06b6d4; /* cyan-500 */
+            color: #22d3ee; /* cyan-400 */
+            transition: background-color 0.3s ease, color 0.3s ease, transform 0.2s ease;
+        }
+        .btn-secondary:hover {
+            background-color: rgba(6, 182, 212, 0.1);
+            color: #67e8f9; /* cyan-300 */
+            transform: scale(1.05);
+        }
+
+        /* Modal Styling */
+        #product-detail-modal {
+            background-color: rgba(2, 6, 23, 0.8); /* slate-950 with opacity for backdrop */
+            transition: opacity 0.3s ease-in-out;
+        }
+        .modal-content {
+            background-color: #0f172a; /* slate-900 */
+            border: 1px solid #1e293b; /* slate-800 */
+            box-shadow: 0 0 50px 10px rgba(6, 182, 212, 0.1);
+        }
+        .key-option {
+            border: 2px solid #334155; /* slate-700 */
+            transition: border-color 0.3s ease, background-color 0.3s ease;
+        }
+        .key-option.selected {
+            border-color: #06b6d4; /* cyan-500 */
+            background-color: rgba(6, 182, 212, 0.1);
+        }
+        .key-option:hover:not(.selected) {
+            border-color: #0891b2; /* cyan-600 */
+        }
+
+        .community-logo-placeholder {
+            background-color: #1e293b; /* slate-800 */
+            border: 1px dashed #334155; /* slate-700 */
+            transition: border-color 0.3s ease, transform 0.3s ease;
+        }
+        .community-logo-placeholder:hover {
+            border-color: #06b6d4; /* cyan-500 */
+            transform: scale(1.1);
+        }
+
+        /* Custom scrollbar for better dark theme integration */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #0f172a; /* slate-900 */
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #334155; /* slate-700 */
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #0891b2; /* cyan-600 */
+        }
+
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+    </style>
+</head>
+<body class="bg-slate-950 text-slate-200">
+
+    <!-- Hero Entry Screen -->
+    <div id="hero-entry-screen" class="fixed inset-0 bg-slate-950 z-50 flex flex-col items-center justify-center p-8">
+        <div class="particle-container" id="particle-container-hero"></div>
+        <div class="code-line-container" id="code-line-container-hero"></div>
+        
+        <div id="central-glow" class="absolute"></div>
+        <div id="energy-wave" class="w-16 h-16"></div>
+
+        <div class="relative z-10 text-center">
+            <h1 class="font-orbitron text-4xl sm:text-5xl md:text-6xl font-bold text-cyan-400 mb-4 animate-pulse">
+                THE DIGITAL SANCTUM
+            </h1>
+            <p class="text-slate-300 text-lg sm:text-xl mb-8 max-w-2xl mx-auto">
+                Where shadows trade secrets, and code unlocks power.
+            </p>
+            <button id="enter-sanctum-button" class="font-orbitron btn-primary text-lg font-semibold py-3 px-8 rounded-lg shadow-lg hover:shadow-cyan-500/50 focus:outline-none focus:ring-2 focus:ring-cyan-400 focus:ring-opacity-75">
+                Enter the Sanctum
+            </button>
+        </div>
+    </div>
+
+    <!-- Main Application Content -->
+    <div id="main-app-content" class="opacity-0 min-h-screen flex flex-col">
+        <header class="sticky top-0 z-40 bg-slate-950/80 backdrop-blur-md shadow-lg">
+            <div class="container mx-auto px-4 sm:px-6 lg:px-8">
+                <div class="flex items-center justify-between h-20">
+                    <div class="font-orbitron text-2xl font-bold text-cyan-400">
+                        Digital Sanctum
+                    </div>
+                    <nav>
+                        <button id="explore-products-nav-button" class="font-semibold text-slate-300 hover:text-cyan-400 transition-colors duration-300 px-4 py-2">
+                            Explore Products
+                        </button>
+                        <button id="community-nav-button" class="font-semibold text-slate-300 hover:text-cyan-400 transition-colors duration-300 px-4 py-2">
+                            Inner Circle
+                        </button>
+                    </nav>
+                </div>
+            </div>
+        </header>
+
+        <main class="flex-grow">
+            <!-- Hero Section (after entry) -->
+            <section id="revealed-hero" class="py-16 sm:py-24 bg-gradient-to-b from-slate-950 via-slate-900 to-slate-900 relative overflow-hidden">
+                <div class="absolute inset-0 opacity-10 particle-container" id="particle-container-main"></div>
+                <div class="container mx-auto px-4 sm:px-6 lg:px-8 text-center relative z-10">
+                    <h1 id="main-headline" class="font-orbitron text-4xl sm:text-5xl md:text-6xl font-bold mb-6">
+                        <span class="bg-clip-text text-transparent bg-gradient-to-r from-cyan-400 to-purple-500">Unlock the Power Within</span>
+                    </h1>
+                    <p id="main-subheadline" class="text-xl sm:text-2xl text-slate-300 mb-10 max-w-3xl mx-auto">
+                        Exclusive Digital Tools. Flexible Access. Your journey into the extraordinary begins now.
+                    </p>
+                    <button id="main-explore-cta" class="btn-primary font-semibold text-lg py-3 px-10 rounded-lg shadow-xl hover:shadow-cyan-500/50 focus:outline-none focus:ring-2 focus:ring-cyan-400 focus:ring-opacity-75">
+                        Discover Our Arsenal
+                    </button>
+                </div>
+            </section>
+
+            <!-- Product Showcase Section -->
+            <section id="product-showcase-section" class="py-16 sm:py-24 bg-slate-900">
+                <div class="container mx-auto px-4 sm:px-6 lg:px-8">
+                    <h2 class="font-orbitron text-3xl sm:text-4xl font-bold text-center mb-12 sm:mb-16 text-cyan-400">
+                        Featured Offerings
+                    </h2>
+                    <div id="product-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 xl:gap-12">
+                        <!-- Product cards will be injected here by JavaScript -->
+                    </div>
+                </div>
+            </section>
+
+            <!-- Community Access Section -->
+            <section id="community-section" class="py-16 sm:py-24 bg-slate-950">
+                <div class="container mx-auto px-4 sm:px-6 lg:px-8 text-center">
+                    <h2 class="font-orbitron text-3xl sm:text-4xl font-bold mb-6 text-cyan-400">Join the Inner Circle</h2>
+                    <p class="text-lg text-slate-400 mb-10 max-w-2xl mx-auto">
+                        Connect with fellow members, gain exclusive insights, and receive priority access to new drops.
+                    </p>
+                    <div class="flex flex-col sm:flex-row justify-center items-center space-y-6 sm:space-y-0 sm:space-x-8">
+                        <a href="#" target="_blank" class="group flex items-center p-4 rounded-lg community-logo-placeholder w-64 sm:w-auto justify-center">
+                            <div class="w-12 h-12 bg-slate-700/50 border-2 border-dashed border-cyan-500/50 rounded-lg flex items-center justify-center mr-4 group-hover:border-cyan-400 transition-colors">
+                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6 text-cyan-400 group-hover:text-cyan-300 transition-colors">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L1.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09l2.846.813-.005.005L11.25 12l2.846.813a4.5 4.5 0 003.09 3.09L18.75 18l-.813-2.846a4.5 4.5 0 00-3.09-3.09l-2.846-.813zM12 3.75a8.25 8.25 0 100 16.5 8.25 8.25 0 000-16.5z" />
+                                </svg>
+                            </div>
+                            <span class="text-xl font-semibold text-slate-200 group-hover:text-cyan-300 transition-colors">Discord Server</span>
+                        </a>
+                        <a href="#" target="_blank" class="group flex items-center p-4 rounded-lg community-logo-placeholder w-64 sm:w-auto justify-center">
+                             <div class="w-12 h-12 bg-slate-700/50 border-2 border-dashed border-cyan-500/50 rounded-lg flex items-center justify-center mr-4 group-hover:border-cyan-400 transition-colors">
+                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6 text-cyan-400 group-hover:text-cyan-300 transition-colors">
+                                  <path stroke-linecap="round" stroke-linejoin="round" d="M12 20.25c4.97 0 9-3.694 9-8.25s-4.03-8.25-9-8.25S3 7.056 3 11.625 7.03 20.25 12 20.25zM9.75 9.75c0-.414.336-.75.75-.75h3c.414 0 .75.336.75.75v3c0 .414-.336.75-.75.75h-3a.75.75 0 01-.75-.75v-3z" />
+                                </svg>
+                            </div>
+                            <span class="text-xl font-semibold text-slate-200 group-hover:text-cyan-300 transition-colors">Telegram Channel</span>
+                        </a>
+                    </div>
+                </div>
+            </section>
+        </main>
+
+        <footer class="bg-slate-950 py-8 text-center border-t border-slate-800">
+            <p class="text-slate-500">&copy; <span id="current-year"></span> The Digital Sanctum. All Rights Reserved. Enter at your own risk.</p>
+        </footer>
+    </div>
+
+    <!-- Product Detail Modal -->
+    <div id="product-detail-modal" class="fixed inset-0 z-50 flex items-center justify-center p-4 hidden">
+        <div class="absolute inset-0 bg-slate-950/70 backdrop-blur-sm" id="modal-backdrop"></div>
+        <div class="modal-content relative z-10 w-full max-w-3xl max-h-[90vh] rounded-xl shadow-2xl p-6 sm:p-8 flex flex-col overflow-y-auto no-scrollbar">
+            <button id="modal-close-button" class="absolute top-4 right-4 text-slate-400 hover:text-cyan-400 transition-colors">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-8 h-8">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+            </button>
+            
+            <div class="flex flex-col md:flex-row gap-6 sm:gap-8">
+                <div class="md:w-1/3">
+                    <div id="modal-product-image" class="bg-slate-700/50 border-2 border-dashed border-cyan-500/50 rounded-xl w-full aspect-square flex items-center justify-center text-center p-4">
+                        <span class="text-cyan-500/70 text-sm">High-Resolution Asset Preview</span>
+                    </div>
+                </div>
+                <div class="md:w-2/3">
+                    <h3 id="modal-product-name" class="font-orbitron text-3xl font-bold mb-2 text-cyan-400">Product Name</h3>
+                    <p id="modal-product-tagline" class="text-lg text-slate-300 mb-4">Product tagline goes here.</p>
+                    <p id="modal-product-description" class="text-slate-400 mb-6 text-sm leading-relaxed">Detailed product description covering features, benefits, and use cases. This section elaborates on the unique value proposition of the digital asset.</p>
+                </div>
+            </div>
+
+            <div class="mt-6 pt-6 border-t border-slate-800">
+                <h4 class="text-xl font-semibold mb-4 text-slate-100">Access Key Options:</h4>
+                <div id="modal-price-options" class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
+                    <!-- Pricing options will be injected here -->
+                </div>
+                <p id="modal-product-details" class="text-xs text-slate-500 mb-6">Further details about the product or access key specifics.</p>
+                <button id="modal-unlock-button" class="btn-primary w-full py-3 text-lg font-semibold rounded-lg">
+                    Unlock Now
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const App = {
+            state: {
+                heroRevealed: false,
+                modalOpen: false,
+                currentProduct: null,
+                selectedKeyType: null,
+            },
+            elements: {},
+            products: [
+                { id: 1, name: "Chrono Weaver", tagline: "Bend time to your will.", description: "An advanced temporal manipulation suite for project management and predictive analysis. Optimize workflows and foresee market shifts with unparalleled accuracy.", prices: { daily: "$9.99", weekly: "$49.99", monthly: "$149.99" }, category: "Productivity", details: "Full access to Chrono Weaver's core engine, temporal projection module, and anomaly detection system. Includes 24/7 paradox support." },
+                { id: 2, name: "Aether Scribe", tagline: "Content that resonates across dimensions.", description: "AI-powered content generation tool that taps into collective consciousness to create deeply engaging and original narratives, articles, and scripts.", prices: { daily: "$7.99", weekly: "$39.99", monthly: "$119.99" }, category: "Creative Tools", details: "Leverages quantum entanglement for semantic understanding. Features multi-dimensional style adaptation and plagiarism-proof unique content generation." },
+                { id: 3, name: "Nova Shield", tagline: "Your fortress in the digital storm.", description: "Next-generation cybersecurity solution employing adaptive polymorphic defenses to neutralize zero-day threats and secure your digital assets.", prices: { daily: "$12.99", weekly: "$69.99", monthly: "$199.99" }, category: "Security", details: "Heuristic analysis, AI-driven threat prediction, and decentralized defense network. Protects against known and unknown cyber threats with quantum encryption." },
+                { id: 4, name: "Synth Weaver", tagline: "Compose the sound of the future.", description: "A revolutionary audio synthesis platform that allows for the creation of entirely new soundscapes and musical textures through fractal algorithms and neural networks.", prices: { daily: "$6.99", weekly: "$34.99", monthly: "$99.99" }, category: "Creative Tools", details: "Infinite sonic possibilities with generative sound design, real-time morphing, and an intuitive, hyper-dimensional interface. Export in lossless formats." },
+                { id: 5, name: "Oracle Matrix", tagline: "Visions from the data stream.", description: "A powerful data visualization and predictive analytics tool that transforms complex datasets into actionable insights and future trend forecasts.", prices: { daily: "$10.99", weekly: "$59.99", monthly: "$179.99" }, category: "Data & Analytics", details: "Connects to diverse data sources, features advanced machine learning models, and provides stunning, interactive holographic data displays (simulated)." },
+                { id: 6, name: "Phantom Drive", tagline: "Untraceable, unbreakable storage.", description: "A decentralized, encrypted cloud storage solution offering ultimate privacy and data security. Your files exist everywhere and nowhere.", prices: { daily: "$8.99", weekly: "$44.99", monthly: "$129.99" }, category: "Security", details: "Sharded data distribution across a peer-to-peer network, military-grade encryption, and resilient against censorship or data loss. Anonymous access." }
+            ],
+
+            init() {
+                this.cacheDOMElements();
+                this.setupEventListeners();
+                this.renderProducts();
+                this.createBackgroundEffects(this.elements.particleContainerHero, 30, 'particle');
+                this.createBackgroundEffects(this.elements.codeLineContainerHero, 15, 'code-line');
+                this.createBackgroundEffects(this.elements.particleContainerMain, 15, 'particle'); // Fewer particles for main background
+                this.elements.currentYear.textContent = new Date().getFullYear();
+            },
+
+            cacheDOMElements() {
+                this.elements = {
+                    heroEntryScreen: document.getElementById('hero-entry-screen'),
+                    enterSanctumButton: document.getElementById('enter-sanctum-button'),
+                    centralGlow: document.getElementById('central-glow'),
+                    energyWave: document.getElementById('energy-wave'),
+                    mainAppContent: document.getElementById('main-app-content'),
+                    productGrid: document.getElementById('product-grid'),
+                    exploreProductsNavButton: document.getElementById('explore-products-nav-button'),
+                    communityNavButton: document.getElementById('community-nav-button'),
+                    mainExploreCTA: document.getElementById('main-explore-cta'),
+                    
+                    productModal: document.getElementById('product-detail-modal'),
+                    modalBackdrop: document.getElementById('modal-backdrop'),
+                    modalCloseButton: document.getElementById('modal-close-button'),
+                    modalProductName: document.getElementById('modal-product-name'),
+                    modalProductTagline: document.getElementById('modal-product-tagline'),
+                    modalProductImage: document.getElementById('modal-product-image'), // For placeholder styling
+                    modalProductDescription: document.getElementById('modal-product-description'),
+                    modalProductDetails: document.getElementById('modal-product-details'),
+                    modalPriceOptions: document.getElementById('modal-price-options'),
+                    modalUnlockButton: document.getElementById('modal-unlock-button'),
+
+                    particleContainerHero: document.getElementById('particle-container-hero'),
+                    codeLineContainerHero: document.getElementById('code-line-container-hero'),
+                    particleContainerMain: document.getElementById('particle-container-main'),
+                    currentYear: document.getElementById('current-year')
+                };
+            },
+
+            setupEventListeners() {
+                this.elements.enterSanctumButton.addEventListener('click', () => this.revealHeroAnimation());
+                
+                this.elements.exploreProductsNavButton.addEventListener('click', () => this.scrollToSection('product-showcase-section'));
+                this.elements.communityNavButton.addEventListener('click', () => this.scrollToSection('community-section'));
+                this.elements.mainExploreCTA.addEventListener('click', () => this.scrollToSection('product-showcase-section'));
+
+                this.elements.modalCloseButton.addEventListener('click', () => this.closeProductModal());
+                this.elements.modalBackdrop.addEventListener('click', () => this.closeProductModal());
+                this.elements.modalUnlockButton.addEventListener('click', () => this.handleUnlock());
+
+                // Ensure product grid delegated listeners are setup after products are rendered, or use event delegation
+                this.elements.productGrid.addEventListener('click', (event) => {
+                    const card = event.target.closest('.product-card');
+                    if (card && card.dataset.productId) {
+                        const productId = parseInt(card.dataset.productId);
+                        this.openProductModal(productId);
+                    }
+                });
+            },
+
+            scrollToSection(sectionId) {
+                 const section = document.getElementById(sectionId);
+                 if(section) {
+                    section.scrollIntoView({ behavior: 'smooth' });
+                 }
+            },
+
+            revealHeroAnimation() {
+                if (this.state.heroRevealed) return;
+                this.state.heroRevealed = true;
+
+                // Start energy wave expansion
+                this.elements.centralGlow.style.transform = 'scale(0)';
+                this.elements.centralGlow.style.opacity = '0';
+                this.elements.energyWave.classList.add('expand');
+
+                // Fade out hero entry screen
+                this.elements.heroEntryScreen.style.opacity = '0';
+                setTimeout(() => {
+                    this.elements.heroEntryScreen.classList.add('hidden');
+                }, 1000); // Match hero entry screen transition duration
+
+                // Fade in main app content
+                this.elements.mainAppContent.style.opacity = '1';
+            },
+
+            createBackgroundEffects(container, count, type) {
+                if (!container) return;
+                for (let i = 0; i < count; i++) {
+                    const el = document.createElement('div');
+                    if (type === 'particle') {
+                        el.classList.add('particle');
+                        el.style.left = `${Math.random() * 100}vw`;
+                        el.style.top = `${Math.random() * 100}vh`;
+                        const size = Math.random() * 3 + 1; // 1px to 4px
+                        el.style.width = `${size}px`;
+                        el.style.height = `${size}px`;
+                        el.style.animationDelay = `${Math.random() * 20}s`;
+                        el.style.animationDuration = `${Math.random() * 10 + 15}s`; // 15-25s duration
+                    } else if (type === 'code-line') {
+                        el.classList.add('code-line');
+                        el.style.left = `${Math.random() * 100}vw`; // Spread across width
+                        el.style.animationDelay = `${Math.random() * 15}s`;
+                        // Generate some binary-like text for code lines
+                        let codeText = '';
+                        for(let j=0; j < Math.floor(Math.random()*30 + 20); j++){ // 20-50 chars long
+                            codeText += Math.random() > 0.5 ? '1' : '0';
+                            if(Math.random() > 0.9) codeText += '\n'; // Occasional new line
+                        }
+                        el.textContent = codeText;
+
+                    }
+                    container.appendChild(el);
+                }
+            },
+
+            renderProducts() {
+                this.elements.productGrid.innerHTML = ''; // Clear existing products
+                this.products.forEach(product => {
+                    const card = document.createElement('div');
+                    card.className = 'product-card rounded-xl p-6 flex flex-col cursor-pointer shadow-lg';
+                    card.dataset.productId = product.id;
+                    
+                    // Placeholder for actual SVG icon
+                    const iconPlaceholder = `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-8 h-8 mb-4 text-cyan-400 group-hover:text-cyan-300 transition-colors"><path stroke-linecap="round" stroke-linejoin="round" d="M3.75 13.5l10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75z"></path></svg>`;
+
+
+                    card.innerHTML = `
+                        <div class="product-card-image-placeholder rounded-lg w-full h-40 mb-6 flex items-center justify-center text-sm p-4">
+                            ${iconPlaceholder.replace('w-8 h-8', 'w-16 h-16 opacity-50')} <!-- Larger icon for card -->
+                            <span class="sr-only">${product.name} Preview</span>
+                        </div>
+                        <h3 class="font-orbitron text-2xl font-semibold mb-2 text-slate-100">${product.name}</h3>
+                        <p class="text-sm text-slate-400 mb-4 flex-grow">${product.tagline}</p>
+                        <div class="mt-auto">
+                             <p class="text-xs text-cyan-400 font-semibold">Starting from ${product.prices.daily}/day</p>
+                        </div>
+                        <div class="info-overlay absolute inset-0 p-6 flex flex-col justify-end items-start">
+                            <h4 class="font-orbitron text-xl font-bold text-white mb-1">${product.name}</h4>
+                            <p class="text-xs text-slate-300 mb-3">${product.description.substring(0,100)}...</p>
+                            <span class="text-sm font-semibold text-cyan-300 py-1 px-3 rounded-full bg-cyan-500/20 border border-cyan-500">View Details</span>
+                        </div>
+                    `;
+                    this.elements.productGrid.appendChild(card);
+                });
+            },
+
+            openProductModal(productId) {
+                const product = this.products.find(p => p.id === productId);
+                if (!product) return;
+
+                this.state.currentProduct = product;
+                this.state.selectedKeyType = 'daily'; // Default selection
+
+                this.elements.modalProductName.textContent = product.name;
+                this.elements.modalProductTagline.textContent = product.tagline;
+                this.elements.modalProductDescription.textContent = product.description;
+                this.elements.modalProductDetails.textContent = product.details;
+                
+                this.elements.modalProductImage.innerHTML = `<span class="text-cyan-500/70 text-sm">${product.name} - Asset Visualization</span>`;
+
+
+                this.renderPriceOptions();
+
+                this.elements.productModal.classList.remove('hidden');
+                this.elements.productModal.style.opacity = '0';
+                document.body.classList.add('overflow-hidden'); // Prevent background scroll
+                setTimeout(() => { // Allow display change to take effect before opacity transition
+                    this.elements.productModal.style.opacity = '1';
+                }, 10);
+
+                this.state.modalOpen = true;
+            },
+
+            renderPriceOptions() {
+                const product = this.state.currentProduct;
+                this.elements.modalPriceOptions.innerHTML = '';
+                Object.entries(product.prices).forEach(([type, price]) => {
+                    const optionDiv = document.createElement('div');
+                    optionDiv.className = `key-option p-4 rounded-lg cursor-pointer text-center ${type === this.state.selectedKeyType ? 'selected' : ''}`;
+                    optionDiv.dataset.keyType = type;
+                    optionDiv.innerHTML = `
+                        <p class="font-semibold text-lg capitalize text-slate-100">${type}</p>
+                        <p class="text-cyan-400 text-xl font-bold">${price}</p>
+                    `;
+                    optionDiv.addEventListener('click', () => this.selectKeyType(type));
+                    this.elements.modalPriceOptions.appendChild(optionDiv);
+                });
+            },
+
+            selectKeyType(type) {
+                this.state.selectedKeyType = type;
+                this.renderPriceOptions(); // Re-render to update selection style
+            },
+
+            closeProductModal() {
+                this.elements.productModal.style.opacity = '0';
+                document.body.classList.remove('overflow-hidden');
+                setTimeout(() => {
+                    this.elements.productModal.classList.add('hidden');
+                }, 300); // Match modal transition duration
+                this.state.modalOpen = false;
+                this.state.currentProduct = null;
+                this.state.selectedKeyType = null;
+            },
+
+            handleUnlock() {
+                if (this.state.currentProduct && this.state.selectedKeyType) {
+                    alert(`Initiating access for ${this.state.currentProduct.name} (${this.state.selectedKeyType} key).\nPrice: ${this.state.currentProduct.prices[this.state.selectedKeyType]}.\n(This is a simulation. No actual transaction will occur.)`);
+                    this.closeProductModal();
+                } else {
+                    alert("Please select a product and key type.");
+                }
+            }
+        };
+
+        document.addEventListener('DOMContentLoaded', () => App.init());
+    </script>
+</body>
+</html>

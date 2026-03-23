@@ -1,0 +1,9 @@
+{
+  "web_id": "web_70",
+  "task_id": 4,
+  "task_type": "dynamic",
+  "instruction": "Task: Click an 'Apply to Adopt' button located on a dog's detailed profile page.\nExpected Result: An adoption application form section/modal becomes visible on the page.\n\nNote: The task is only considered successful if the expected result is achieved; otherwise, it is deemed infeasible.",
+  "max_steps": 15,
+  "expected": "An adoption application form section/modal becomes visible on the page.",
+  "label": 1
+}

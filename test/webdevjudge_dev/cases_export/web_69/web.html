@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Day/Night Toggle Switch</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Using a common system font stack for better cross-platform consistency */
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";
+        }
+
+        /* Star twinkling animation */
+        @keyframes twinkle {
+            0%, 100% { opacity: 0.4; transform: scale(0.7); } /* Stars are slightly smaller and dimmer */
+            50% { opacity: 1; transform: scale(1.1); }   /* Stars are brighter and slightly larger */
+        }
+        
+        /* Base class to apply animation to stars. Opacity is primarily controlled by JS for show/hide, then by animation. */
+        .star-animate {
+            animation: twinkle 3s infinite ease-in-out;
+        }
+        /* Animation variations for a more natural, less synchronized twinkling effect */
+        /* Negative delays make animations start part-way through their cycle */
+        .star-1 { animation-delay: 0s; animation-duration: 2.5s; }
+        .star-2 { animation-delay: -0.7s; animation-duration: 3s; }
+        .star-3 { animation-delay: -1.4s; animation-duration: 2s; }
+        .star-4 { animation-delay: -2.1s; animation-duration: 3.5s; }
+        .star-5 { animation-delay: -2.8s; animation-duration: 2.2s; }
+        .star-6 { animation-delay: -3.5s; animation-duration: 3.2s; }
+
+        /* Sun glow effect */
+        .sun-glow {
+            /* A bright, warm glow. Color matches Tailwind's yellow-400 (251, 191, 36) */
+            box-shadow: 0 0 25px 8px rgba(251, 191, 36, 0.5); /* Softer glow for better blending */
+        }
+
+        /* Moon glow effect */
+        .moon-glow {
+            /* A soft, cool glow. Color matches Tailwind's slate-300 (203, 213, 225) */
+            box-shadow: 0 0 20px 5px rgba(203, 213, 225, 0.35); /* Softer glow */
+        }
+
+        /* Moon surface with craters using multiple radial gradients */
+        .moon-surface {
+            /* These gradients create a textured look resembling craters */
+            background-image:
+                radial-gradient(circle at 30% 35%, rgba(0,0,0,0.12) 0%, rgba(0,0,0,0.12) 18%, transparent 22%),
+                radial-gradient(circle at 65% 60%, rgba(0,0,0,0.15) 0%, rgba(0,0,0,0.15) 15%, transparent 19%),
+                radial-gradient(circle at 70% 25%, rgba(0,0,0,0.1) 0%, rgba(0,0,0,0.1) 9%, transparent 12%),
+                radial-gradient(circle at 45% 80%, rgba(0,0,0,0.05) 0%, rgba(0,0,0,0.05) 25%, transparent 30%);
+        }
+    </style>
+</head>
+<body class="bg-slate-100 flex flex-col items-center justify-center min-h-screen p-4 transition-colors duration-700 ease-in-out">
+
+    <!-- Toggle Switch Component -->
+    <div class="flex flex-col items-center">
+        <!-- The main toggle switch pill -->
+        <!-- `w-48 h-20` base size, `sm:w-60 sm:h-24` for small screens and up -->
+        <!-- `rounded-full` for pill shape, `overflow-hidden` to clip contents -->
+        <!-- `cursor-pointer` indicates interactivity, `shadow-lg` for depth -->
+        <!-- `bg-slate-500` provides a base color during transitions, though usually covered -->
+        <div id="toggleSwitch" class="relative w-48 h-20 sm:w-60 sm:h-24 rounded-full overflow-hidden cursor-pointer shadow-lg bg-slate-500">
+            
+            <!-- Background Layer: Holds Day and Night Scenes -->
+            <div class="absolute inset-0">
+                <!-- Day Scene Background -->
+                <!-- `bg-sky-400` for light blue sky -->
+                <!-- `opacity-100` makes it initially visible -->
+                <!-- `transition-opacity duration-700 ease-in-out` for smooth fade -->
+                <div id="dayBg" class="absolute inset-0 bg-sky-400 opacity-100 transition-opacity duration-700 ease-in-out">
+                    <!-- Clouds: Positioned absolutely within dayBg. Opacity controlled by JS. -->
+                    <!-- Cloud 1: Multiple overlapping circles for a fluffier effect -->
+                    <div class="cloud absolute top-[20%] left-[15%] transition-opacity duration-700 ease-in-out opacity-100">
+                        <div class="absolute bg-white/80 rounded-full w-8 h-6 sm:w-10 sm:h-8"></div>
+                        <div class="absolute bg-white/70 rounded-full w-10 h-8 sm:w-12 sm:h-10 left-4 sm:left-5 top-1 sm:top-2"></div>
+                        <div class="absolute bg-white/80 rounded-full w-8 h-6 sm:w-10 sm:h-8 left-2 sm:left-3 top-5 sm:top-6"></div>
+                    </div>
+                    <!-- Cloud 2 -->
+                    <div class="cloud absolute top-[45%] left-[60%] transition-opacity duration-700 ease-in-out opacity-100">
+                        <div class="absolute bg-white/70 rounded-full w-12 h-10 sm:w-14 sm:h-12"></div>
+                        <div class="absolute bg-white/60 rounded-full w-10 h-8 sm:w-12 sm:h-10 left-6 sm:left-7 top-2 sm:top-3"></div>
+                    </div>
+                     <!-- Cloud 3 (smaller, background) -->
+                    <div class="cloud absolute top-[10%] left-[75%] transition-opacity duration-700 ease-in-out opacity-100">
+                        <div class="absolute bg-white/60 rounded-full w-6 h-5 sm:w-8 sm:h-6"></div>
+                    </div>
+                </div>
+
+                <!-- Night Scene Background -->
+                <!-- `bg-gradient-to-br from-slate-900 to-slate-700` for dark night sky -->
+                <!-- `opacity-0` makes it initially hidden -->
+                <div id="nightBg" class="absolute inset-0 bg-gradient-to-br from-slate-900 to-slate-700 opacity-0 transition-opacity duration-700 ease-in-out">
+                    <!-- Stars: Positioned absolutely. Opacity controlled by JS, twinkle by CSS. -->
+                    <!-- `w-1 h-1` or `w-0.5 h-0.5` for small star sizes, responsive with `sm:` prefix -->
+                    <!-- `opacity-0` initially, JS will set to 1 to show and let CSS animation handle twinkle -->
+                    <div class="star star-animate star-1 absolute bg-white rounded-full w-1 h-1 sm:w-1.5 sm:h-1.5 top-[20%] left-[15%] opacity-0"></div>
+                    <div class="star star-animate star-2 absolute bg-white rounded-full w-0.5 h-0.5 sm:w-1 sm:h-1 top-[30%] left-[80%] opacity-0"></div>
+                    <div class="star star-animate star-3 absolute bg-white rounded-full w-1 h-1 sm:w-1.5 sm:h-1.5 top-[50%] left-[30%] opacity-0"></div>
+                    <div class="star star-animate star-4 absolute bg-white rounded-full w-0.5 h-0.5 sm:w-1 sm:h-1 top-[70%] left-[65%] opacity-0"></div>
+                    <div class="star star-animate star-5 absolute bg-white rounded-full w-1 h-1 top-[85%] left-[25%] opacity-0"></div>
+                    <div class="star star-animate star-6 absolute bg-white rounded-full w-1 h-1 top-[55%] left-[90%] opacity-0"></div>
+                </div>
+            </div>
+
+            <!-- Celestial Body Container (Sun/Moon) - This element slides -->
+            <!-- `w-16 h-16` base, `sm:w-18 sm:h-18` responsive size -->
+            <!-- `top-1/2 -translate-y-1/2` for vertical centering -->
+            <!-- `z-10` to be above background scenes -->
+            <!-- `transition-all duration-700 ease-in-out` for smooth sliding (left/right properties) -->
+            <!-- Initial position: `left-2.5 sm:left-3 right-auto` (Day mode) -->
+            <div id="celestialBodyContainer" class="absolute top-1/2 -translate-y-1/2 w-16 h-16 sm:w-18 sm:h-18 rounded-full z-10 transition-all duration-700 ease-in-out left-2.5 sm:left-3 right-auto">
+                <!-- Sun -->
+                <!-- `bg-yellow-400` for bright yellow color -->
+                <!-- `sun-glow` class for custom shadow effect -->
+                <!-- `transition-opacity duration-500 ease-in-out` for smooth fade of sun/moon appearance -->
+                <!-- `opacity-100` initially visible -->
+                <div id="sun" class="absolute inset-0 w-full h-full bg-yellow-400 rounded-full flex items-center justify-center transition-opacity duration-500 ease-in-out opacity-100 sun-glow">
+                </div>
+                <!-- Moon -->
+                <!-- `bg-slate-300` for light gray moon color -->
+                <!-- `moon-glow` for custom shadow, `moon-surface` for crater details -->
+                <!-- `opacity-0` initially hidden -->
+                <div id="moon" class="absolute inset-0 w-full h-full bg-slate-300 rounded-full flex items-center justify-center transition-opacity duration-500 ease-in-out opacity-0 moon-glow moon-surface">
+                </div>
+            </div>
+        </div>
+
+        <!-- Mode Label -->
+        <!-- `mt-5` for spacing, `text-xl sm:text-2xl` for responsive font size -->
+        <!-- `font-semibold` for emphasis -->
+        <!-- `text-slate-700` initial color (Day mode) -->
+        <!-- `transition-colors duration-700 ease-in-out` for smooth color change of text -->
+        <div id="modeLabel" class="mt-5 text-xl sm:text-2xl font-semibold text-slate-700 transition-colors duration-700 ease-in-out">Day Mode</div>
+    </div>
+
+    <script>
+    document.addEventListener('DOMContentLoaded', () => {
+        // DOM Element References
+        const toggleSwitch = document.getElementById('toggleSwitch');
+        const dayBg = document.getElementById('dayBg');
+        const nightBg = document.getElementById('nightBg');
+        const celestialBodyContainer = document.getElementById('celestialBodyContainer');
+        const sun = document.getElementById('sun');
+        const moon = document.getElementById('moon');
+        const modeLabel = document.getElementById('modeLabel');
+        const clouds = document.querySelectorAll('.cloud'); // Collection of all cloud elements
+        const stars = document.querySelectorAll('.star');   // Collection of all star elements
+
+        // State Variable
+        let isDayMode = true; // Initial state is Day Mode
+
+        // Function to update the UI based on the current mode
+        function updateModeUI() {
+            if (isDayMode) {
+                // --- Transition to Day Mode ---
+
+                // Backgrounds: Day background visible, Night background hidden
+                dayBg.style.opacity = '1';
+                nightBg.style.opacity = '0';
+
+                // Celestial Body Position: Sun to the left
+                // Uses Tailwind classes for positioning. `left-2.5` (10px) and `sm:left-3` (12px).
+                // `right-auto` ensures `left` positioning takes precedence.
+                celestialBodyContainer.classList.remove('right-2.5', 'sm:right-3', 'left-auto');
+                celestialBodyContainer.classList.add('left-2.5', 'sm:left-3', 'right-auto');
+                
+                // Sun/Moon Visibility: Sun visible, Moon hidden
+                sun.style.opacity = '1';
+                moon.style.opacity = '0';
+
+                // Label Text and Color: Update for Day Mode
+                modeLabel.textContent = 'Day Mode';
+                modeLabel.classList.remove('text-slate-300'); // Remove night mode text color
+                modeLabel.classList.add('text-slate-700');   // Add day mode text color
+
+                // Main Page Background: Light background for Day Mode
+                document.body.classList.remove('bg-slate-900'); // Remove night mode page background
+                document.body.classList.add('bg-slate-100');   // Add day mode page background
+
+                // Clouds and Stars Visibility: Show clouds, hide stars
+                clouds.forEach(cloud => cloud.style.opacity = '1');
+                stars.forEach(star => star.style.opacity = '0');
+                
+            } else {
+                // --- Transition to Night Mode ---
+
+                // Backgrounds: Day background hidden, Night background visible
+                dayBg.style.opacity = '0';
+                nightBg.style.opacity = '1';
+
+                // Celestial Body Position: Moon to the right
+                // Uses Tailwind classes `right-2.5` (10px) and `sm:right-3` (12px).
+                // `left-auto` ensures `right` positioning takes precedence.
+                celestialBodyContainer.classList.remove('left-2.5', 'sm:left-3', 'right-auto');
+                celestialBodyContainer.classList.add('right-2.5', 'sm:right-3', 'left-auto');
+
+                // Sun/Moon Visibility: Sun hidden, Moon visible
+                sun.style.opacity = '0';
+                moon.style.opacity = '1';
+
+                // Label Text and Color: Update for Night Mode
+                modeLabel.textContent = 'Night Mode';
+                modeLabel.classList.remove('text-slate-700'); // Remove day mode text color
+                modeLabel.classList.add('text-slate-300');   // Add night mode text color
+                
+                // Main Page Background: Dark background for Night Mode
+                document.body.classList.remove('bg-slate-100');   // Remove day mode page background
+                document.body.classList.add('bg-slate-900'); // Add night mode page background
+                
+                // Clouds and Stars Visibility: Hide clouds, show stars
+                // Twinkling effect for stars is handled by CSS animations (`star-animate` class)
+                clouds.forEach(cloud => cloud.style.opacity = '0');
+                stars.forEach(star => star.style.opacity = '1'); 
+            }
+        }
+
+        // Event Listener for the toggle switch
+        toggleSwitch.addEventListener('click', () => {
+            isDayMode = !isDayMode; // Flip the mode state
+            updateModeUI();         // Update the UI to reflect the new state
+        });
+
+        // Initial UI Setup:
+        // The HTML is structured for Day Mode by default.
+        // This JS ensures cloud/star opacities are correctly set on load,
+        // reinforcing the default state or correcting if HTML was different.
+        if (isDayMode) {
+            clouds.forEach(cloud => cloud.style.opacity = '1');
+            stars.forEach(star => star.style.opacity = '0');
+        } else {
+            // This else block would only run if `isDayMode` was initialized to `false`.
+            // Not the case here, but good for completeness if initial state could vary.
+            clouds.forEach(cloud => cloud.style.opacity = '0');
+            stars.forEach(star => star.style.opacity = '1');
+        }
+    });
+    </script>
+
+</body>
+</html>

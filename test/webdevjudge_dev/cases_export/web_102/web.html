@@ -1,0 +1,538 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Live Report & Alien Briefing</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            font-family: 'Inter', 'Arial', sans-serif; /* Using Inter as a common modern sans-serif */
+            overscroll-behavior: none; /* Prevent pull-to-refresh on mobile for game */
+        }
+        #gameCanvas {
+            image-rendering: pixelated; /* For a retro feel */
+            image-rendering: -moz-crisp-edges;
+            image-rendering: crisp-edges;
+            cursor: crosshair; /* Indicate interactivity */
+        }
+        /* Custom animation for weapon firing */
+        @keyframes ping-once {
+            0% { transform: scale(1); opacity: 1; }
+            50% { transform: scale(1.1); opacity: 0.7; }
+            100% { transform: scale(1.3); opacity: 0; }
+        }
+        .animate-ping-once {
+            animation: ping-once 0.3s cubic-bezier(0, 0, 0.2, 1);
+        }
+    </style>
+</head>
+<body class="bg-slate-900 text-slate-100 min-h-screen flex flex-col overflow-hidden">
+
+    <header class="bg-slate-800 p-3 shadow-lg sticky top-0 z-50">
+        <h1 class="text-2xl font-bold text-pink-400 text-center tracking-wider">PROJECT: FLAMINGO DAWN - Classified Feed</h1>
+    </header>
+
+    <main class="flex-grow flex flex-col lg:flex-row gap-4 p-4 overflow-hidden">
+
+        <!-- Live Report Section (Doom Clone) -->
+        <section id="live-report-section" class="lg:w-3/5 w-full bg-slate-800 p-4 rounded-lg shadow-xl flex flex-col min-h-[450px] lg:min-h-0 border-2 border-slate-700">
+            <div class="flex justify-between items-center mb-3">
+                <h2 class="text-xl font-semibold text-red-500 flex items-center">
+                    <span class="animate-pulse mr-2">🔴</span> LIVE: Krzysztof Stanowski - Warzone Report
+                </h2>
+                <div id="weapon-indicator" class="text-sm bg-slate-700 px-3 py-1 rounded-md border border-slate-600">Device: Sonic Microphone Array</div>
+            </div>
+            <div class="aspect-video bg-black flex-grow relative overflow-hidden rounded-md border border-slate-700">
+                <canvas id="gameCanvas" class="w-full h-full"></canvas>
+                <div id="hud" class="absolute bottom-2 left-2 text-white bg-black/60 p-2 rounded-md text-xs">
+                    <p>CONTROLS: WASD/Arrows (Move), MOUSE (Turn/Aim), CLICK (Fire Sonic Burst)</p>
+                    <p id="stanowski-status">STATUS: Reporting live from the front line...</p>
+                </div>
+                 <div class="absolute top-2 right-2 p-1 bg-black/60 rounded-md text-xs">
+                    <p id="fpsCounter">FPS: --</p>
+                </div>
+            </div>
+             <div class="mt-3 p-3 bg-slate-700/50 rounded-md border border-slate-600">
+                <h3 class="text-md font-semibold mb-1 text-pink-400">Current Scene Assessment:</h3>
+                <p class="text-sm text-slate-300">Stanowski is embedded with Mobile Infantry units engaging a massive Class-5 bioform codenamed "FLAMINGO-SHOGGOTH". Creature exhibits extreme aggression, has neutralized one trooper, and is emitting high-frequency vocalizations. Objective: Document and survive.</p>
+            </div>
+        </section>
+
+        <!-- Alien General & FBI Section -->
+        <section id="intel-briefing-section" class="lg:w-2/5 w-full bg-slate-800 p-4 rounded-lg shadow-xl flex flex-col min-h-[450px] lg:min-h-0 border-2 border-slate-700">
+            <h2 class="text-xl font-semibold text-sky-400 mb-3">Intel Update: Extraterrestrial Communique</h2>
+            
+            <div class="flex-grow flex flex-col gap-4">
+                <div class="bg-slate-900/70 p-3 rounded-lg border-2 border-sky-500 flex-grow flex flex-col items-center justify-center">
+                    <p class="text-center text-sky-300 mb-2 text-xs">-- INCOMING TRANSMISSION: XYLOS SECTOR / URGENT --</p>
+                    <div class="w-full max-w-lg aspect-[16/10] bg-black rounded-md overflow-hidden shadow-2xl border-2 border-sky-600 flex items-center justify-center relative">
+                        <div class="flex flex-col items-center text-center p-4">
+                            <div class="bg-pink-700 border-4 border-dashed border-pink-400 rounded-full w-24 h-24 md:w-32 md:h-32 mb-2 flex items-center justify-center text-5xl md:text-6xl animate-pulse" title="Flamingo Alien General">🦩</div>
+                            <p class="text-pink-300 font-bold text-md md:text-lg">Grand Marshal K'Laar, Voice of the Crimson Conclave</p>
+                            <p class="text-slate-400 text-xs">(Audiovisual Feed Degradation Detected)</p>
+                        </div>
+                        <div id="alien-speech-bubble" class="absolute bottom-2 left-1/2 -translate-x-1/2 w-[95%] bg-black/85 p-2 rounded-md text-xs md:text-sm text-pink-300 border border-pink-500/70 shadow-lg">
+                            <p id="alien-dialogue" class="text-center">Your incursions into sovereign hyper-dimensional nesting strata cease NOW, primitives, or face the full migratory wrath of the Flock!</p>
+                        </div>
+                    </div>
+                    <p class="text-center text-sky-300 mt-2 text-xs">-- FRAGMENTED BROADCAST / FURTHER ANALYSIS REQUIRED --</p>
+                </div>
+
+                <div class="bg-slate-700/50 p-3 rounded-lg border border-slate-600">
+                    <h3 class="text-md font-semibold text-slate-300 mb-2">Observation Post: Joint FBI/Military Task Force</h3>
+                    <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                        <!-- Placeholder for FBI Agent -->
+                        <div class="flex flex-col items-center text-center" title="Special Agent Miller">
+                            <div class="bg-gray-600 border-2 border-dashed border-gray-400 rounded-full w-14 h-14 flex items-center justify-center">
+                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-7 h-7 text-gray-300"><path fill-rule="evenodd" d="M7.5 6a4.5 4.5 0 119 0 4.5 4.5 0 01-9 0zM3.751 20.105a8.25 8.25 0 0116.498 0 .75.75 0 01-.437.695A18.683 18.683 0 0112 22.5c-2.786 0-5.433-.608-7.812-1.7a.75.75 0 01-.437-.695z" clip-rule="evenodd" /></svg>
+                            </div>
+                            <p class="text-xs mt-1 text-slate-400">Agent Miller</p>
+                        </div>
+                        <div class="flex flex-col items-center text-center" title="Colonel Rexford">
+                             <div class="bg-green-700 border-2 border-dashed border-green-400 rounded-full w-14 h-14 flex items-center justify-center">
+                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-7 h-7 text-green-200"><path d="M12.562 3.204a23.93 23.93 0 00-7.242 2.332.75.75 0 00-.305.9A10.43 10.43 0 008.25 12.75a10.43 10.43 0 003.235 6.314.75.75 0 00.9.016 23.93 23.93 0 007.568-2.616.75.75 0 00.439-.95A9.002 9.002 0 0018 13.5c0-1.901-.586-3.658-1.597-5.11.17.03.343.053.522.065a.75.75 0 00.75-.75V3.75a.75.75 0 00-.75-.75 13.496 13.496 0 00-3.863-.201zM4.163 4.715c.17-.03.343-.053.522-.065a.75.75 0 01.75.75v3.935a.75.75 0 01-.75.75c-.179.012-.352.034-.522.065A9.002 9.002 0 016 10.5c0 1.901.586 3.658 1.597 5.11-.17.03-.343.053-.522.065a.75.75 0 01-.75-.75v-3.935a.75.75 0 01.75-.75c.179-.012.352-.034.522-.065A9.002 9.002 0 014.5 7.5c0-1.215.251-2.364.695-3.415a.75.75 0 01.903-.503.75.75 0 00-.935.133z"/></svg>
+                            </div>
+                            <p class="text-xs mt-1 text-slate-400">Col. Rexford</p>
+                        </div>
+                        <div class="flex flex-col items-center text-center" title="Dr. Aris Thorne (Xenolinguist)">
+                             <div class="bg-sky-700 border-2 border-dashed border-sky-400 rounded-full w-14 h-14 flex items-center justify-center">
+                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-7 h-7 text-sky-200"><path d="M11.25 4.533A9.707 9.707 0 006 3a9.735 9.735 0 00-3.25.555.75.75 0 00-.5.707v14.5a.75.75 0 00.5.707A9.735 9.735 0 006 21a9.707 9.707 0 005.25-1.533v-1.267a7.5 7.5 0 01-3.75-.866v- preparazione.058a7.5 7.5 0 013.75.866V12.75a7.5 7.5 0 01-3.75-.866V11.83a7.5 7.5 0 013.75.866V6.318a7.5 7.5 0 01-3.75-.866V5.4a7.5 7.5 0 013.75.866V4.533zM12.75 4.533A9.707 9.707 0 0118 3a9.735 9.735 0 013.25.555.75.75 0 01.5.707v14.5a.75.75 0 01-.5.707A9.735 9.735 0 0118 21a9.707 9.707 0 01-5.25-1.533v-1.267a7.5 7.5 0 003.75-.866V18.17a7.5 7.5 0 00-3.75.866v-3.584a7.5 7.5 0 003.75-.866V11.83a7.5 7.5 0 00-3.75.866V6.318a7.5 7.5 0 003.75-.866V5.4a7.5 7.5 0 00-3.75.866V4.533z" /></svg>
+                            </div>
+                            <p class="text-xs mt-1 text-slate-400">Dr. Thorne</p>
+                        </div>
+                         <div class="flex flex-col items-center text-center opacity-50" title="Redacted">
+                             <div class="bg-slate-600 border-2 border-dashed border-slate-400 rounded-full w-14 h-14 flex items-center justify-center">
+                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-7 h-7 text-slate-300"><path fill-rule="evenodd" d="M2.25 12c0-5.385 4.365-9.75 9.75-9.75s9.75 4.365 9.75 9.75-4.365 9.75-9.75 9.75S2.25 17.385 2.25 12zm11.378-3.917c-.89-.777-2.366-.777-3.255 0a.75.75 0 01-.988-1.129c1.454-1.272 3.79-1.272 5.244 0a.75.75 0 01-.989 1.13zM10.5 15a1.5 1.5 0 113 0 1.5 1.5 0 01-3 0zm3.75-1.5a.75.75 0 000-1.5h-3a.75.75 0 000 1.5h3z" clip-rule="evenodd" /></svg>
+                            </div>
+                            <p class="text-xs mt-1 text-slate-400">[REDACTED]</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <script>
+        // Common color definitions
+        const COLORS = {
+            wall: '#6B8E23', // OliveDrab
+            wallDark: '#556B2F', // DarkOliveGreen
+            floor: '#A0522D', // Sienna
+            ceiling: '#465069', // Dark Slate Gray variant
+            trooper: '#2E8B57', // SeaGreen
+            flamingoShoggoth: '#FF1493', // DeepPink
+            flamingoBeak: '#FF8C00', // DarkOrange
+            heldSoldier: '#808080', // Gray
+            bullet: '#FFFF00', // Yellow
+            explosion: '#FF4500', // OrangeRed
+            stanowskiMic: '#C0C0C0' // Silver
+        };
+
+        // Part 2: Alien General Dialogue
+        const alienDialogues = [
+            "Your primitive armaments are an insult to the vastness of the Crimson Conclave!",
+            "The Shoggoth-Avian synthesis is perfection! You are but fleeting biological noise!",
+            "This 'Stanowski' unit... its transmissions are... oddly compelling. A curious specimen.",
+            "Every squawk of your defiance echoes through the void, amusing and pathetic.",
+            "The Great Pink Nebulae will birth a thousand more flocks! Your world is but a speck."
+        ];
+        let currentDialogueIndex = 0;
+        const alienDialogueElement = document.getElementById('alien-dialogue');
+        if (alienDialogueElement) {
+            setInterval(() => {
+                currentDialogueIndex = (currentDialogueIndex + 1) % alienDialogues.length;
+                alienDialogueElement.textContent = alienDialogues[currentDialogueIndex];
+            }, 8000);
+        }
+
+        // Part 1: Doom Clone Game Logic
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const hudStatus = document.getElementById('stanowski-status');
+        const fpsCounter = document.getElementById('fpsCounter');
+
+        let canvasWidth, canvasHeight;
+
+        const map = [
+            [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
+            [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+            [1,0,1,1,1,0,0,1,0,0,0,1,0,0,1,1,1,0,0,1],
+            [1,0,1,0,0,0,0,1,0,0,0,1,0,0,0,0,1,0,0,1],
+            [1,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,1], // Central open area for Flamingo
+            [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1], // Central open area
+            [1,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,1], // Central open area
+            [1,0,1,0,0,0,0,1,0,0,0,1,0,0,0,0,1,0,0,1],
+            [1,0,1,1,1,0,0,1,1,1,1,1,0,0,1,1,1,0,0,1],
+            [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+            [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
+        ];
+        const mapWidth = map[0].length;
+        const mapHeight = map.length;
+        const TILE_SIZE = 64; 
+
+        const player = {
+            x: TILE_SIZE * 1.5, // Start near an edge
+            y: TILE_SIZE * (mapHeight - 2.5), // Start near bottom edge
+            angle: -Math.PI / 2, 
+            fov: Math.PI / 2.8, // Slightly narrower FOV for more 'focused' view
+            speed: 2.5,
+            turnSpeed: 0.04,
+            strafeSpeed: 2
+        };
+
+        const sprites = [
+            { id: 'flamingo', x: TILE_SIZE * 10, y: TILE_SIZE * 4.5, type: 'flamingo_shoggoth', size: 2.2, health: 1000, maxHealth: 1000, description: "Flamingo Shoggoth", color: COLORS.flamingoShoggoth, parts: [
+                { type: 'beak', offset_x: 0, offset_y: -0.45, size_x: 0.4, size_y: 0.25, color: COLORS.flamingoBeak, description: "Screaming Beak" },
+                { type: 'body', offset_x: 0, offset_y: 0, size_x: 1, size_y: 1, color: COLORS.flamingoShoggoth, description: "Main Body" },
+                { type: 'appendage_soldier', offset_x: 0.6, offset_y: 0.15, size_x: 0.45, size_y: 0.45, color: COLORS.heldSoldier, description: "Captured Trooper" }
+            ]},
+            { id: 'trooper1', x: TILE_SIZE * 8, y: TILE_SIZE * 6, type: 'trooper', size: 0.6, health: 100, maxHealth: 100, description: "Trooper Alpha", color: COLORS.trooper },
+            { id: 'trooper2', x: TILE_SIZE * 12, y: TILE_SIZE * 6, type: 'trooper', size: 0.6, health: 100, maxHealth: 100, description: "Trooper Bravo", color: COLORS.trooper },
+            { id: 'trooper3', x: TILE_SIZE * 9, y: TILE_SIZE * 3, type: 'trooper', size: 0.6, health: 100, maxHealth: 100, description: "Trooper Charlie", color: COLORS.trooper },
+            { id: 'trooper4', x: TILE_SIZE * 11, y: TILE_SIZE * 3, type: 'trooper', size: 0.6, health: 100, maxHealth: 100, description: "Trooper Delta", color: COLORS.trooper },
+        ];
+
+        const bullets = [];
+        const explosions = [];
+
+        const keys = { w: false, a: false, s: false, d: false, arrowUp: false, arrowLeft: false, arrowDown: false, arrowRight: false };
+        let isMouseLookActive = false;
+
+        function resizeCanvas() {
+            const gameArea = canvas.parentElement;
+            canvas.width = gameArea.clientWidth;
+            canvas.height = gameArea.clientHeight;
+            canvasWidth = canvas.width;
+            canvasHeight = canvas.height;
+        }
+
+        window.addEventListener('resize', resizeCanvas);
+        
+        document.addEventListener('keydown', (e) => {
+            const key = e.key.toLowerCase();
+            if (key === 'w' || key === 'arrowup') keys.w = true;
+            if (key === 's' || key === 'arrowdown') keys.s = true;
+            if (key === 'a') keys.a = true; 
+            if (key === 'd') keys.d = true; 
+            if (key === 'arrowleft') keys.arrowLeft = true;
+            if (key === 'arrowright') keys.arrowRight = true;
+        });
+
+        document.addEventListener('keyup', (e) => {
+            const key = e.key.toLowerCase();
+            if (key === 'w' || key === 'arrowup') keys.w = false;
+            if (key === 's' || key === 'arrowdown') keys.s = false;
+            if (key === 'a') keys.a = false;
+            if (key === 'd') keys.d = false;
+            if (key === 'arrowleft') keys.arrowLeft = false;
+            if (key === 'arrowright') keys.arrowRight = false;
+        });
+
+        canvas.addEventListener('click', () => {
+            if (!document.pointerLockElement && canvas.requestPointerLock) {
+                canvas.requestPointerLock();
+            } else {
+                shoot();
+            }
+        });
+        
+        document.addEventListener('pointerlockchange', () => {
+            isMouseLookActive = document.pointerLockElement === canvas;
+            if (hudStatus) {
+               hudStatus.textContent = isMouseLookActive ? "STATUS: Mouse look active. Reporting..." : "STATUS: Click game to enable mouse aim. Reporting...";
+            }
+        }, false);
+
+        canvas.addEventListener('mousemove', (e) => {
+            if (isMouseLookActive) {
+                player.angle += e.movementX * 0.0025; // Mouse sensitivity
+            }
+        });
+
+        function shoot() {
+            bullets.push({
+                x: player.x + Math.cos(player.angle) * (TILE_SIZE/4), // originate slightly ahead
+                y: player.y + Math.sin(player.angle) * (TILE_SIZE/4),
+                angle: player.angle,
+                speed: 15, // Faster bullets
+                range: TILE_SIZE * 15,
+                traveled: 0,
+                damage: 35
+            });
+            const micIndicator = document.getElementById('weapon-indicator');
+            if (micIndicator) { // Check if element exists
+                micIndicator.classList.add('animate-ping-once', 'text-yellow-300');
+                setTimeout(() => micIndicator.classList.remove('animate-ping-once', 'text-yellow-300'), 300);
+            }
+        }
+        
+        function updatePlayer() {
+            let moveX = 0;
+            let moveY = 0;
+
+            if (keys.w || keys.arrowUp) {
+                moveX += Math.cos(player.angle) * player.speed;
+                moveY += Math.sin(player.angle) * player.speed;
+            }
+            if (keys.s || keys.arrowDown) {
+                moveX -= Math.cos(player.angle) * player.speed;
+                moveY -= Math.sin(player.angle) * player.speed;
+            }
+            if (keys.a) { 
+                moveX += Math.cos(player.angle - Math.PI / 2) * player.strafeSpeed;
+                moveY += Math.sin(player.angle - Math.PI / 2) * player.strafeSpeed;
+            }
+            if (keys.d) { 
+                moveX += Math.cos(player.angle + Math.PI / 2) * player.strafeSpeed;
+                moveY += Math.sin(player.angle + Math.PI / 2) * player.strafeSpeed;
+            }
+
+            if (keys.arrowLeft && !isMouseLookActive) player.angle -= player.turnSpeed;
+            if (keys.arrowRight && !isMouseLookActive) player.angle += player.turnSpeed;
+            player.angle = (player.angle + 2 * Math.PI) % (2 * Math.PI);
+            
+            const nextX = player.x + moveX;
+            const nextY = player.y + moveY;
+            const wallMargin = TILE_SIZE / 4; // Player collision radius
+
+            // Check X movement
+            const mapTileX_X = Math.floor((nextX + Math.sign(moveX) * wallMargin) / TILE_SIZE);
+            const mapTileY_X = Math.floor(player.y / TILE_SIZE);
+            if (!map[mapTileY_X] || map[mapTileY_X][mapTileX_X] !== 1) {
+                player.x = nextX;
+            }
+            // Check Y movement
+            const mapTileX_Y = Math.floor(player.x / TILE_SIZE);
+            const mapTileY_Y = Math.floor((nextY + Math.sign(moveY) * wallMargin) / TILE_SIZE);
+             if (!map[mapTileY_Y] || map[mapTileY_Y][mapTileX_Y] !== 1) {
+                player.y = nextY;
+            }
+        }
+        
+        function updateBullets() {
+            for (let i = bullets.length - 1; i >= 0; i--) {
+                const bullet = bullets[i];
+                bullet.x += Math.cos(bullet.angle) * bullet.speed;
+                bullet.y += Math.sin(bullet.angle) * bullet.speed;
+                bullet.traveled += bullet.speed;
+
+                if (bullet.traveled > bullet.range) {
+                    bullets.splice(i, 1);
+                    continue;
+                }
+
+                const tileX = Math.floor(bullet.x / TILE_SIZE);
+                const tileY = Math.floor(bullet.y / TILE_SIZE);
+                if (tileY < 0 || tileY >= mapHeight || tileX < 0 || tileX >= mapWidth || (map[tileY] && map[tileY][tileX] === 1)) {
+                    bullets.splice(i, 1);
+                    explosions.push({ x: bullet.x, y: bullet.y, radius: 10, life: 20, color: COLORS.explosion });
+                    continue;
+                }
+
+                for (let j = sprites.length - 1; j >= 0; j--) {
+                    const sprite = sprites[j];
+                    if (sprite.health <= 0 && sprite.type !== 'flamingo_shoggoth') continue; // Don't hit dead troopers
+
+                    const dist = Math.hypot(bullet.x - sprite.x, bullet.y - sprite.y);
+                    if (dist < (sprite.size * TILE_SIZE / 3)) { // Collision radius
+                        bullets.splice(i, 1);
+                        explosions.push({ x: sprite.x, y: sprite.y, radius: 25, life: 30, color: COLORS.explosion });
+                        sprite.health -= bullet.damage;
+                        sprite.lastHitTime = Date.now(); // For visual feedback
+                        if (sprite.health <= 0 && sprite.type !== 'flamingo_shoggoth') {
+                            // Trooper "death" - could make them fall or disappear
+                            sprite.color = '#555555'; // Change color to indicate neutralized
+                        }
+                        break; 
+                    }
+                }
+            }
+        }
+
+        function updateExplosions() {
+            for (let i = explosions.length - 1; i >= 0; i--) {
+                explosions[i].life--;
+                explosions[i].radius += 0.8;
+                if (explosions[i].life <= 0) explosions.splice(i, 1);
+            }
+        }
+        
+        function hexToRgb(hex) {
+            const bigint = parseInt(hex.slice(1), 16);
+            return { r: (bigint >> 16) & 255, g: (bigint >> 8) & 255, b: bigint & 255 };
+        }
+
+        function drawScene() {
+            ctx.fillStyle = COLORS.ceiling;
+            ctx.fillRect(0, 0, canvasWidth, canvasHeight / 2);
+            ctx.fillStyle = COLORS.floor;
+            ctx.fillRect(0, canvasHeight / 2, canvasWidth, canvasHeight / 2);
+
+            const numRays = canvasWidth;
+            const angleStep = player.fov / numRays;
+            const zBuffer = new Array(numRays);
+
+            for (let i = 0; i < numRays; i++) {
+                let rayAngle = player.angle - player.fov / 2 + i * angleStep;
+                rayAngle = (rayAngle + 2 * Math.PI) % (2 * Math.PI);
+
+                let distToWall = 0, hitWall = false, hitBoundary = false;
+                const eyeX = Math.cos(rayAngle), eyeY = Math.sin(rayAngle);
+                let mapX = Math.floor(player.x / TILE_SIZE), mapY = Math.floor(player.y / TILE_SIZE);
+                let distSideX, distSideY, deltaDistX = Math.abs(1 / eyeX), deltaDistY = Math.abs(1 / eyeY), stepX, stepY;
+
+                if (eyeX < 0) { stepX = -1; distSideX = (player.x - mapX * TILE_SIZE) * deltaDistX; } 
+                else { stepX = 1; distSideX = (mapX * TILE_SIZE + TILE_SIZE - player.x) * deltaDistX; }
+                if (eyeY < 0) { stepY = -1; distSideY = (player.y - mapY * TILE_SIZE) * deltaDistY; } 
+                else { stepY = 1; distSideY = (mapY * TILE_SIZE + TILE_SIZE - player.y) * deltaDistY; }
+                
+                while (!hitWall && distToWall < TILE_SIZE * 25) {
+                    if (distSideX < distSideY) { distSideX += deltaDistX; mapX += stepX; distToWall = distSideX; hitBoundary = false; } 
+                    else { distSideY += deltaDistY; mapY += stepY; distToWall = distSideY; hitBoundary = true; }
+                    if (mapX < 0 || mapX >= mapWidth || mapY < 0 || mapY >= mapHeight || (map[mapY] && map[mapY][mapX] === 1) ) {
+                        hitWall = true;
+                        if (mapX < 0 || mapX >= mapWidth || mapY < 0 || mapY >= mapHeight) distToWall = TILE_SIZE * 25; // Hit edge of map
+                    }
+                }
+                
+                const correctedDist = distToWall * Math.cos(player.angle - rayAngle);
+                zBuffer[i] = correctedDist;
+                const wallHeight = Math.min(canvasHeight, (TILE_SIZE / correctedDist) * (canvasHeight / 1.5) / Math.tan(player.fov / 2));
+                
+                const wallTop = (canvasHeight / 2) - (wallHeight / 2);
+                const baseWallColor = hitBoundary ? hexToRgb(COLORS.wallDark) : hexToRgb(COLORS.wall);
+                const fogFactor = Math.min(1, correctedDist / (TILE_SIZE * 15));
+                const ceilingColorRgb = hexToRgb(COLORS.ceiling);
+                ctx.fillStyle = `rgb(
+                    ${baseWallColor.r * (1-fogFactor) + ceilingColorRgb.r * fogFactor},
+                    ${baseWallColor.g * (1-fogFactor) + ceilingColorRgb.g * fogFactor},
+                    ${baseWallColor.b * (1-fogFactor) + ceilingColorRgb.b * fogFactor}
+                )`;
+                ctx.fillRect(i, wallTop, 1, wallHeight);
+            }
+
+            const visibleSprites = [];
+            for (const sprite of sprites) {
+                const dx = sprite.x - player.x, dy = sprite.y - player.y;
+                const spriteDist = Math.hypot(dx, dy);
+                let spriteAngle = (Math.atan2(dy, dx) - player.angle + 2*Math.PI) % (2*Math.PI);
+                if (spriteAngle > Math.PI) spriteAngle -= 2*Math.PI;
+
+                if (Math.abs(spriteAngle) < player.fov / 2 + 0.2 && spriteDist > TILE_SIZE/2) { // Avoid drawing if too close or behind
+                    visibleSprites.push({ ...sprite, dist: spriteDist, angle: spriteAngle });
+                }
+            }
+            visibleSprites.sort((a, b) => b.dist - a.dist);
+
+            for (const sprite of visibleSprites) {
+                const spriteScreenX = Math.tan(sprite.angle) * (canvasWidth / 2) + (canvasWidth / 2);
+                const spriteHeight = (TILE_SIZE * sprite.size / sprite.dist) * (canvasHeight / 1.5) / Math.tan(player.fov / 2);
+                const spriteWidth = spriteHeight * (sprite.type === 'flamingo_shoggoth' ? 1.2 : 0.8); // Flamingos are wider
+                
+                const spriteTopY = (canvasHeight / 2) - (spriteHeight / 2);
+                const spriteLeftX = spriteScreenX - (spriteWidth / 2);
+
+                const startCol = Math.max(0, Math.floor(spriteLeftX));
+                const endCol = Math.min(numRays - 1, Math.floor(spriteLeftX + spriteWidth));
+
+                for (let col = startCol; col < endCol; col++) {
+                    if (sprite.dist < zBuffer[col]) { // Occlusion check for this column
+                        const isHit = sprite.lastHitTime && (Date.now() - sprite.lastHitTime < 150); // Flicker duration
+                        const baseColor = isHit ? '#FFFFFF' : sprite.color; // Flash white on hit
+
+                        if (sprite.type === 'flamingo_shoggoth') {
+                            sprite.parts.forEach(part => {
+                                const partSizeX = spriteWidth * part.size_x;
+                                const partSizeY = spriteHeight * part.size_y;
+                                const partColOffset = (spriteWidth * part.offset_x - partSizeX / 2) / spriteWidth * (endCol - startCol);
+                                const currentPartCol = col - startCol;
+                                
+                                if (currentPartCol >= partColOffset && currentPartCol < partColOffset + (partSizeX / spriteWidth * (endCol - startCol))) {
+                                    const partTopY = spriteTopY + spriteHeight * part.offset_y - partSizeY / 2;
+                                    ctx.fillStyle = isHit ? '#FFFFFF' : part.color;
+                                    ctx.fillRect(col, partTopY, 1, partSizeY);
+                                }
+                            });
+                        } else { // Trooper
+                             ctx.fillStyle = (sprite.health <=0) ? '#4A4A4A' : baseColor; // Dark gray if neutralized
+                             ctx.fillRect(col, spriteTopY, 1, spriteHeight);
+                        }
+                    }
+                }
+                 // Health bar for sprites (above them)
+                if (sprite.health > 0 && sprite.health < sprite.maxHealth) {
+                    const healthBarWidth = spriteWidth * 0.8;
+                    const healthBarHeight = 8;
+                    const healthBarX = spriteLeftX + (spriteWidth - healthBarWidth) / 2;
+                    const healthBarY = spriteTopY - healthBarHeight - 5;
+                    const healthPercentage = sprite.health / sprite.maxHealth;
+                    if (healthBarX + healthBarWidth < canvasWidth && healthBarX > 0 && healthBarY > 0 && healthBarY + healthBarHeight < canvasHeight) { // Check if onscreen
+                        ctx.fillStyle = 'rgba(0,0,0,0.5)';
+                        ctx.fillRect(healthBarX -1, healthBarY -1, healthBarWidth + 2, healthBarHeight + 2);
+                        ctx.fillStyle = 'red';
+                        ctx.fillRect(healthBarX, healthBarY, healthBarWidth, healthBarHeight);
+                        ctx.fillStyle = 'green';
+                        ctx.fillRect(healthBarX, healthBarY, healthBarWidth * healthPercentage, healthBarHeight);
+                    }
+                }
+            }
+
+            for (const bullet of bullets) {
+                // Similar projection logic as sprites for drawing bullets
+                // Simplified: draw as small dots, not full 3D objects
+            }
+            for (const explosion of explosions) {
+                // Similar projection
+            }
+            
+            // Draw "Microphone" weapon (Stanowski's camera/reporter gear)
+            const micWidth = canvasWidth / 12;
+            const micHeight = canvasHeight / 6;
+            const bobX = Math.sin(Date.now()*0.002) * (canvasWidth/100);
+            const bobY = Math.cos(Date.now()*0.004) * (canvasHeight/150);
+            ctx.fillStyle = COLORS.stanowskiMic;
+            ctx.fillRect(canvasWidth * 0.6 + bobX, canvasHeight - micHeight + bobY, micWidth, micHeight);
+            ctx.fillStyle = '#555555'; // Darker part of mic
+            ctx.fillRect(canvasWidth * 0.6 + micWidth/3 + bobX, canvasHeight - micHeight - 10 + bobY, micWidth / 3, 10); // Mic top
+        }
+        
+        let lastTime = 0, frameCount = 0, lastFpsUpdate = 0;
+
+        function gameLoop(timestamp) {
+            const deltaTime = timestamp - lastTime;
+            lastTime = timestamp;
+
+            frameCount++;
+            if (timestamp - lastFpsUpdate > 1000) {
+                if(fpsCounter) fpsCounter.textContent = `FPS: ${frameCount}`;
+                frameCount = 0;
+                lastFpsUpdate = timestamp;
+            }
+
+            updatePlayer();
+            updateBullets();
+            updateExplosions();
+            
+            // Animate Flamingo parts
+            const flamingo = sprites.find(s => s.type === 'flamingo_shoggoth');
+            if (flamingo) {
+                const timeFactor = Date.now() * 0.0015;
+                flamingo.parts[0].offset_x = Math.sin(timeFactor) * 0.05; // Beak wiggle
+                flamingo.parts[2].offset_x = 0.6 + Math.cos(timeFactor * 0.7) * 0.08; // Held soldier sway
+                flamingo.parts[2].offset_y = 0.15 + Math.sin(timeFactor * 0.5) * 0.05;
+            }
+
+            ctx.clearRect(0, 0, canvasWidth, canvasHeight);
+            drawScene();
+            requestAnimationFrame(gameLoop);
+        }
+        
+        // Initial setup
+        resizeCanvas(); 
+        requestAnimationFrame(gameLoop);
+
+    </script>
+
+</body>
+</html>

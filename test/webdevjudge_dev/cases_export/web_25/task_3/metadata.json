@@ -1,0 +1,9 @@
+{
+  "web_id": "web_25",
+  "task_id": 3,
+  "task_type": "dynamic",
+  "instruction": "Task: Click a 'Reset Level' button\nExpected Result: The current level's grid is restored to its initial configuration, and any progress within that specific level (e.g., score changes from initial state of level) is cleared.\n\nNote: The task is only considered successful if the expected result is achieved; otherwise, it is deemed infeasible.",
+  "max_steps": 15,
+  "expected": "The current level's grid is restored to its initial configuration, and any progress within that specific level (e.g., score changes from initial state of level) is cleared.",
+  "label": 0
+}

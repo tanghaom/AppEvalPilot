@@ -1,0 +1,750 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bank Admin Panel</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Custom scrollbar for better aesthetics (optional) */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #f1f1f1;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #cbd5e1; /* slate-300 */
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8; /* slate-500 */
+        }
+        /* Basic styles for modal transitions (optional) */
+        .modal-enter {
+            opacity: 0;
+            transform: scale(0.95);
+        }
+        .modal-enter-active {
+            opacity: 1;
+            transform: scale(1);
+            transition: opacity 300ms, transform 300ms;
+        }
+        .modal-leave {
+            opacity: 1;
+            transform: scale(1);
+        }
+        .modal-leave-active {
+            opacity: 0;
+            transform: scale(0.95);
+            transition: opacity 300ms, transform 300ms;
+        }
+        /* Active sidebar link style */
+        .sidebar-link.active {
+            background-color: #0284c7; /* sky-600 */
+            color: white;
+        }
+    </style>
+</head>
+<body class="bg-slate-100 font-sans antialiased">
+    <div class="flex h-screen">
+        <!-- Sidebar -->
+        <nav class="w-64 bg-slate-800 text-slate-100 p-5 space-y-6 shrink-0">
+            <div class="text-3xl font-bold text-sky-400">BankAdmin</div>
+            <ul class="space-y-2">
+                <li><a href="#" class="sidebar-link block py-2.5 px-4 rounded transition duration-200 hover:bg-slate-700 hover:text-white" data-view="dashboard">Dashboard</a></li>
+                <li><a href="#" class="sidebar-link block py-2.5 px-4 rounded transition duration-200 hover:bg-slate-700 hover:text-white" data-view="customers">Customers</a></li>
+                <li><a href="#" class="sidebar-link block py-2.5 px-4 rounded transition duration-200 hover:bg-slate-700 hover:text-white" data-view="accounts">Accounts</a></li>
+                <li><a href="#" class="sidebar-link block py-2.5 px-4 rounded transition duration-200 hover:bg-slate-700 hover:text-white" data-view="transfers">Transfer Funds</a></li>
+                <li><a href="#" class="sidebar-link block py-2.5 px-4 rounded transition duration-200 hover:bg-slate-700 hover:text-white" data-view="transactions">Transaction Log</a></li>
+            </ul>
+        </nav>
+
+        <!-- Main Content -->
+        <main class="flex-1 p-6 sm:p-8 lg:p-10 overflow-y-auto">
+            <div id="alert-container" class="mb-4"></div>
+            <div id="content-area">
+                <!-- Content will be dynamically injected here -->
+            </div>
+        </main>
+    </div>
+
+    <!-- Modal Container -->
+    <div id="modalBackdrop" class="fixed inset-0 bg-gray-900 bg-opacity-50 hidden z-40 transition-opacity duration-300 ease-in-out"></div>
+    <div id="genericModal" class="fixed inset-0 flex items-center justify-center p-4 hidden z-50 modal-enter">
+        <div class="bg-white rounded-lg shadow-xl w-full max-w-md transform transition-all duration-300 ease-in-out">
+            <div class="flex justify-between items-center p-4 border-b border-slate-200">
+                <h3 class="text-xl font-semibold text-slate-800" id="modalTitle">Modal Title</h3>
+                <button id="closeModalButton" class="text-slate-400 hover:text-slate-600">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                </button>
+            </div>
+            <div class="p-6" id="modalBody">
+                <!-- Modal content goes here -->
+            </div>
+            <div class="px-6 py-4 bg-slate-50 rounded-b-lg flex justify-end space-x-3" id="modalFooter">
+                <!-- Modal buttons go here -->
+            </div>
+        </div>
+    </div>
+
+<script>
+    const state = {
+        customers: [
+            { id: 'CUST001', name: 'Alice Wonderland', email: 'alice@example.com', phone: '123-456-7890', address: '123 Fantasy Lane', createdAt: new Date().toISOString() },
+            { id: 'CUST002', name: 'Bob The Builder', email: 'bob@example.com', phone: '987-654-3210', address: '456 Construction Ave', createdAt: new Date().toISOString() }
+        ],
+        accounts: [
+            { accountNumber: 'ACC00001', customerId: 'CUST001', balance: 5000.00, currency: 'USD', createdAt: new Date().toISOString() },
+            { accountNumber: 'ACC00002', customerId: 'CUST002', balance: 10000.00, currency: 'USD', createdAt: new Date().toISOString() }
+        ],
+        transactions: [], // Will store { id, type, amount, fromAccount, toAccount, timestamp, description }
+        currentView: 'dashboard',
+        nextCustomerId: 3,
+        nextAccountNumber: 3,
+        nextTransactionId: 1,
+    };
+
+    // Utility Functions
+    const generateId = (prefix, nextId) => `${prefix}${String(nextId).padStart(3, '0')}`;
+    const formatCurrency = (amount, currency = 'USD') => new Intl.NumberFormat('en-US', { style: 'currency', currency: currency }).format(amount);
+    const formatDate = (dateString) => new Date(dateString).toLocaleString('en-US', { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+
+    const contentArea = document.getElementById('content-area');
+    const alertContainer = document.getElementById('alert-container');
+    const modalBackdrop = document.getElementById('modalBackdrop');
+    const genericModal = document.getElementById('genericModal');
+    const modalTitle = document.getElementById('modalTitle');
+    const modalBody = document.getElementById('modalBody');
+    const modalFooter = document.getElementById('modalFooter');
+    const closeModalButton = document.getElementById('closeModalButton');
+
+    function showAlert(message, type = 'success') {
+        const alertTypeClasses = type === 'success' 
+            ? 'bg-green-100 border-green-400 text-green-700' 
+            : 'bg-red-100 border-red-400 text-red-700';
+        const alertDiv = document.createElement('div');
+        alertDiv.className = `border px-4 py-3 rounded-md relative ${alertTypeClasses} shadow-sm`;
+        alertDiv.setAttribute('role', 'alert');
+        alertDiv.innerHTML = `<span class="block sm:inline">${message}</span>`;
+        
+        alertContainer.innerHTML = ''; // Clear previous alerts
+        alertContainer.appendChild(alertDiv);
+        
+        setTimeout(() => {
+            if (alertDiv.parentNode === alertContainer) {
+                 alertContainer.removeChild(alertDiv);
+            }
+        }, 5000);
+    }
+
+    function showModal(title, bodyContent, footerButtons) {
+        modalTitle.textContent = title;
+        modalBody.innerHTML = bodyContent;
+        modalFooter.innerHTML = ''; // Clear previous buttons
+
+        footerButtons.forEach(btnConfig => {
+            const button = document.createElement('button');
+            button.textContent = btnConfig.text;
+            button.className = btnConfig.classes;
+            button.addEventListener('click', btnConfig.onClick);
+            modalFooter.appendChild(button);
+        });
+        
+        modalBackdrop.classList.remove('hidden');
+        modalBackdrop.classList.add('opacity-100');
+        genericModal.classList.remove('hidden');
+        genericModal.classList.remove('modal-enter'); // remove if already there
+        void genericModal.offsetWidth; // Trigger reflow
+        genericModal.classList.add('modal-enter-active');
+    }
+
+    function hideModal() {
+        genericModal.classList.remove('modal-enter-active');
+        genericModal.classList.add('modal-leave-active');
+        modalBackdrop.classList.remove('opacity-100');
+        modalBackdrop.classList.add('opacity-0');
+
+        setTimeout(() => {
+            genericModal.classList.add('hidden');
+            genericModal.classList.remove('modal-leave-active');
+            modalBackdrop.classList.add('hidden');
+            modalBackdrop.classList.remove('opacity-0');
+        }, 300); // Match transition duration
+    }
+    
+    closeModalButton.addEventListener('click', hideModal);
+    modalBackdrop.addEventListener('click', hideModal); // Close on backdrop click
+
+
+    function addTransaction(type, amount, toAccount, fromAccount = null, description = '') {
+        const transaction = {
+            id: generateId('TXN', state.nextTransactionId++),
+            type,
+            amount,
+            toAccount,
+            fromAccount,
+            timestamp: new Date().toISOString(),
+            description: description || `${type.charAt(0).toUpperCase() + type.slice(1)}`,
+        };
+        state.transactions.unshift(transaction); // Add to beginning for recent first
+    }
+
+    // --- Render Functions for Views ---
+    function renderDashboardView() {
+        const totalBalance = state.accounts.reduce((sum, acc) => sum + acc.balance, 0);
+        contentArea.innerHTML = `
+            <h1 class="text-3xl font-semibold text-slate-800 mb-8">Dashboard</h1>
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                <div class="bg-white shadow-lg rounded-xl p-6">
+                    <div class="flex items-center">
+                        <div class="p-3 rounded-full bg-sky-100 text-sky-600 mr-4">
+                            <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"></path></svg>
+                        </div>
+                        <div>
+                            <p class="text-sm font-medium text-slate-500 truncate">Total Customers</p>
+                            <p class="mt-1 text-3xl font-semibold text-slate-900">${state.customers.length}</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="bg-white shadow-lg rounded-xl p-6">
+                    <div class="flex items-center">
+                        <div class="p-3 rounded-full bg-green-100 text-green-600 mr-4">
+                             <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"></path></svg>
+                        </div>
+                        <div>
+                            <p class="text-sm font-medium text-slate-500 truncate">Total Accounts</p>
+                            <p class="mt-1 text-3xl font-semibold text-slate-900">${state.accounts.length}</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="bg-white shadow-lg rounded-xl p-6">
+                    <div class="flex items-center">
+                        <div class="p-3 rounded-full bg-indigo-100 text-indigo-600 mr-4">
+                            <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"></path></svg>
+                        </div>
+                        <div>
+                            <p class="text-sm font-medium text-slate-500 truncate">Total Balance</p>
+                            <p class="mt-1 text-3xl font-semibold text-slate-900">${formatCurrency(totalBalance)}</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="bg-white shadow-lg rounded-xl p-6">
+                    <div class="flex items-center">
+                        <div class="p-3 rounded-full bg-amber-100 text-amber-600 mr-4">
+                            <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+                        </div>
+                        <div>
+                            <p class="text-sm font-medium text-slate-500 truncate">Total Transactions</p>
+                            <p class="mt-1 text-3xl font-semibold text-slate-900">${state.transactions.length}</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="mt-8 bg-white shadow-lg rounded-xl p-6">
+                <h2 class="text-xl font-semibold text-slate-700 mb-4">Recent Activity (Placeholder)</h2>
+                 <div class="bg-gray-200 border-2 border-dashed rounded-xl w-full h-48 flex items-center justify-center text-gray-400">
+                    Chart/Graph Placeholder
+                 </div>
+            </div>
+        `;
+    }
+
+    function renderManageCustomersView() {
+        contentArea.innerHTML = `
+            <h1 class="text-3xl font-semibold text-slate-800 mb-8">Manage Customers</h1>
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                <div class="lg:col-span-1">
+                    <div class="bg-white shadow-lg rounded-xl p-6">
+                        <h2 class="text-xl font-semibold text-slate-700 mb-4">Create New Customer</h2>
+                        <form id="createCustomerForm" class="space-y-4">
+                            <div>
+                                <label for="customerName" class="block text-sm font-medium text-slate-700 mb-1">Full Name</label>
+                                <input type="text" id="customerName" name="customerName" required class="mt-1 block w-full px-3 py-2 bg-white border border-slate-300 rounded-md text-sm shadow-sm placeholder-slate-400 focus:outline-none focus:border-sky-500 focus:ring-1 focus:ring-sky-500">
+                            </div>
+                            <div>
+                                <label for="customerEmail" class="block text-sm font-medium text-slate-700 mb-1">Email</label>
+                                <input type="email" id="customerEmail" name="customerEmail" required class="mt-1 block w-full px-3 py-2 bg-white border border-slate-300 rounded-md text-sm shadow-sm placeholder-slate-400 focus:outline-none focus:border-sky-500 focus:ring-1 focus:ring-sky-500">
+                            </div>
+                            <div>
+                                <label for="customerPhone" class="block text-sm font-medium text-slate-700 mb-1">Phone</label>
+                                <input type="tel" id="customerPhone" name="customerPhone" class="mt-1 block w-full px-3 py-2 bg-white border border-slate-300 rounded-md text-sm shadow-sm placeholder-slate-400 focus:outline-none focus:border-sky-500 focus:ring-1 focus:ring-sky-500">
+                            </div>
+                            <div>
+                                <label for="customerAddress" class="block text-sm font-medium text-slate-700 mb-1">Address</label>
+                                <textarea id="customerAddress" name="customerAddress" rows="3" class="mt-1 block w-full px-3 py-2 bg-white border border-slate-300 rounded-md text-sm shadow-sm placeholder-slate-400 focus:outline-none focus:border-sky-500 focus:ring-1 focus:ring-sky-500"></textarea>
+                            </div>
+                            <button type="submit" class="w-full inline-flex items-center justify-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-sky-600 hover:bg-sky-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-sky-500">Create Customer</button>
+                        </form>
+                    </div>
+                </div>
+                <div class="lg:col-span-2">
+                    <div class="bg-white shadow-lg rounded-xl p-6">
+                        <h2 class="text-xl font-semibold text-slate-700 mb-4">Customer List</h2>
+                        <div class="overflow-x-auto">
+                            <table class="min-w-full divide-y divide-slate-200">
+                                <thead class="bg-slate-50">
+                                    <tr>
+                                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">ID</th>
+                                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Name</th>
+                                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Email</th>
+                                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Joined</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="customerListTableBody" class="bg-white divide-y divide-slate-200">
+                                    ${state.customers.map(cust => `
+                                        <tr>
+                                            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-slate-900">${cust.id}</td>
+                                            <td class="px-6 py-4 whitespace-nowrap text-sm text-slate-700">${cust.name}</td>
+                                            <td class="px-6 py-4 whitespace-nowrap text-sm text-slate-700">${cust.email}</td>
+                                            <td class="px-6 py-4 whitespace-nowrap text-sm text-slate-500">${formatDate(cust.createdAt)}</td>
+                                        </tr>
+                                    `).join('')}
+                                    ${state.customers.length === 0 ? '<tr><td colspan="4" class="px-6 py-4 text-center text-sm text-slate-500">No customers found.</td></tr>' : ''}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+        document.getElementById('createCustomerForm').addEventListener('submit', handleCreateCustomer);
+    }
+
+    function renderManageAccountsView() {
+        const customerOptions = state.customers.map(c => `<option value="${c.id}">${c.name} (${c.id})</option>`).join('');
+        contentArea.innerHTML = `
+            <h1 class="text-3xl font-semibold text-slate-800 mb-8">Manage Accounts</h1>
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                <div class="lg:col-span-1">
+                    <div class="bg-white shadow-lg rounded-xl p-6">
+                        <h2 class="text-xl font-semibold text-slate-700 mb-4">Open New Account</h2>
+                        <form id="openAccountForm" class="space-y-4">
+                            <div>
+                                <label for="selectCustomer" class="block text-sm font-medium text-slate-700 mb-1">Customer</label>
+                                <select id="selectCustomer" name="selectCustomer" required class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-slate-300 focus:outline-none focus:ring-sky-500 focus:border-sky-500 sm:text-sm rounded-md">
+                                    <option value="">Select a customer</option>
+                                    ${customerOptions}
+                                </select>
+                            </div>
+                            <div>
+                                <label for="initialDeposit" class="block text-sm font-medium text-slate-700 mb-1">Initial Deposit (USD)</label>
+                                <input type="number" id="initialDeposit" name="initialDeposit" min="0" step="0.01" value="0" required class="mt-1 block w-full px-3 py-2 bg-white border border-slate-300 rounded-md text-sm shadow-sm placeholder-slate-400 focus:outline-none focus:border-sky-500 focus:ring-1 focus:ring-sky-500">
+                            </div>
+                            <button type="submit" class="w-full inline-flex items-center justify-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-sky-600 hover:bg-sky-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-sky-500">Open Account</button>
+                        </form>
+                    </div>
+                </div>
+                <div class="lg:col-span-2">
+                    <div class="bg-white shadow-lg rounded-xl p-6">
+                        <h2 class="text-xl font-semibold text-slate-700 mb-4">Account List</h2>
+                        <div class="overflow-x-auto">
+                            <table class="min-w-full divide-y divide-slate-200">
+                                <thead class="bg-slate-50">
+                                    <tr>
+                                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Account #</th>
+                                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Customer</th>
+                                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Balance</th>
+                                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="accountListTableBody" class="bg-white divide-y divide-slate-200">
+                                    ${state.accounts.map(acc => {
+                                        const customer = state.customers.find(c => c.id === acc.customerId);
+                                        return `
+                                            <tr>
+                                                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-slate-900">${acc.accountNumber}</td>
+                                                <td class="px-6 py-4 whitespace-nowrap text-sm text-slate-700">${customer ? customer.name : 'N/A'}</td>
+                                                <td class="px-6 py-4 whitespace-nowrap text-sm text-slate-700">${formatCurrency(acc.balance)}</td>
+                                                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-2">
+                                                    <button class="action-btn deposit-btn text-xs px-3 py-1.5 rounded-md text-green-700 bg-green-100 hover:bg-green-200" data-account="${acc.accountNumber}">Deposit</button>
+                                                    <button class="action-btn withdraw-btn text-xs px-3 py-1.5 rounded-md text-red-700 bg-red-100 hover:bg-red-200" data-account="${acc.accountNumber}">Withdraw</button>
+                                                </td>
+                                            </tr>
+                                        `;
+                                    }).join('')}
+                                    ${state.accounts.length === 0 ? '<tr><td colspan="4" class="px-6 py-4 text-center text-sm text-slate-500">No accounts found.</td></tr>' : ''}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+        document.getElementById('openAccountForm').addEventListener('submit', handleOpenAccount);
+        // Event listeners for deposit/withdraw buttons will be handled by event delegation on contentArea
+    }
+
+    function renderTransferFundsView() {
+        const accountOptions = state.accounts.map(acc => {
+            const customer = state.customers.find(c => c.id === acc.customerId);
+            return `<option value="${acc.accountNumber}">${acc.accountNumber} (${customer ? customer.name : 'N/A'} - ${formatCurrency(acc.balance)})</option>`;
+        }).join('');
+
+        contentArea.innerHTML = `
+            <h1 class="text-3xl font-semibold text-slate-800 mb-8">Transfer Funds</h1>
+            <div class="max-w-lg mx-auto bg-white shadow-lg rounded-xl p-6">
+                <form id="transferFundsForm" class="space-y-4">
+                    <div>
+                        <label for="fromAccount" class="block text-sm font-medium text-slate-700 mb-1">From Account</label>
+                        <select id="fromAccount" name="fromAccount" required class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-slate-300 focus:outline-none focus:ring-sky-500 focus:border-sky-500 sm:text-sm rounded-md">
+                            <option value="">Select source account</option>
+                            ${accountOptions}
+                        </select>
+                    </div>
+                    <div>
+                        <label for="toAccount" class="block text-sm font-medium text-slate-700 mb-1">To Account</label>
+                        <select id="toAccount" name="toAccount" required class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-slate-300 focus:outline-none focus:ring-sky-500 focus:border-sky-500 sm:text-sm rounded-md">
+                            <option value="">Select destination account</option>
+                            ${accountOptions}
+                        </select>
+                    </div>
+                    <div>
+                        <label for="transferAmount" class="block text-sm font-medium text-slate-700 mb-1">Amount (USD)</label>
+                        <input type="number" id="transferAmount" name="transferAmount" min="0.01" step="0.01" required class="mt-1 block w-full px-3 py-2 bg-white border border-slate-300 rounded-md text-sm shadow-sm placeholder-slate-400 focus:outline-none focus:border-sky-500 focus:ring-1 focus:ring-sky-500">
+                    </div>
+                    <div>
+                        <label for="transferDescription" class="block text-sm font-medium text-slate-700 mb-1">Description (Optional)</label>
+                        <input type="text" id="transferDescription" name="transferDescription" class="mt-1 block w-full px-3 py-2 bg-white border border-slate-300 rounded-md text-sm shadow-sm placeholder-slate-400 focus:outline-none focus:border-sky-500 focus:ring-1 focus:ring-sky-500">
+                    </div>
+                    <button type="submit" class="w-full inline-flex items-center justify-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-sky-600 hover:bg-sky-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-sky-500">Transfer Funds</button>
+                </form>
+            </div>
+        `;
+        document.getElementById('transferFundsForm').addEventListener('submit', handleTransferFunds);
+    }
+
+    function renderTransactionLogView() {
+        const recentTransactions = state.transactions.slice(0, 10); // Already unshifted, so first 10 are latest
+        contentArea.innerHTML = `
+            <h1 class="text-3xl font-semibold text-slate-800 mb-8">Transaction Log</h1>
+            <div class="bg-white shadow-lg rounded-xl p-6">
+                <h2 class="text-xl font-semibold text-slate-700 mb-4">Recent Transactions (Last 10)</h2>
+                <div class="overflow-x-auto">
+                    <table class="min-w-full divide-y divide-slate-200">
+                        <thead class="bg-slate-50">
+                            <tr>
+                                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">ID</th>
+                                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Date</th>
+                                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Type</th>
+                                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Amount</th>
+                                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Details</th>
+                            </tr>
+                        </thead>
+                        <tbody class="bg-white divide-y divide-slate-200">
+                            ${recentTransactions.map(tx => `
+                                <tr>
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-slate-900">${tx.id}</td>
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-slate-500">${formatDate(tx.timestamp)}</td>
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-slate-700">
+                                        <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                                            tx.type === 'deposit' ? 'bg-green-100 text-green-800' :
+                                            tx.type === 'withdrawal' ? 'bg-red-100 text-red-800' :
+                                            'bg-sky-100 text-sky-800'
+                                        }">
+                                            ${tx.type.charAt(0).toUpperCase() + tx.type.slice(1)}
+                                        </span>
+                                    </td>
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-slate-700 ${tx.type === 'withdrawal' || (tx.type === 'transfer' && tx.fromAccount) ? 'text-red-600' : 'text-green-600'}">
+                                        ${formatCurrency(tx.amount)}
+                                    </td>
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-slate-700">
+                                        ${tx.type === 'deposit' ? `To: ${tx.toAccount}` : ''}
+                                        ${tx.type === 'withdrawal' ? `From: ${tx.toAccount}` : ''} <!-- toAccount is the source for withdrawal -->
+                                        ${tx.type === 'transfer' ? `From: ${tx.fromAccount} To: ${tx.toAccount}` : ''}
+                                        ${tx.description ? `<br><em class="text-xs text-slate-500">${tx.description}</em>` : ''}
+                                    </td>
+                                </tr>
+                            `).join('')}
+                            ${recentTransactions.length === 0 ? '<tr><td colspan="5" class="px-6 py-4 text-center text-sm text-slate-500">No transactions yet.</td></tr>' : ''}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        `;
+    }
+
+    // --- Event Handlers ---
+    function handleCreateCustomer(event) {
+        event.preventDefault();
+        const form = event.target;
+        const name = form.customerName.value.trim();
+        const email = form.customerEmail.value.trim();
+        const phone = form.customerPhone.value.trim();
+        const address = form.customerAddress.value.trim();
+
+        if (!name || !email) {
+            showAlert('Name and Email are required.', 'error');
+            return;
+        }
+        if (state.customers.some(c => c.email === email)) {
+            showAlert('Customer with this email already exists.', 'error');
+            return;
+        }
+
+        const newCustomer = {
+            id: generateId('CUST', state.nextCustomerId++),
+            name, email, phone, address,
+            createdAt: new Date().toISOString()
+        };
+        state.customers.push(newCustomer);
+        showAlert('Customer created successfully!', 'success');
+        form.reset();
+        renderApp(); // Re-render current view (Customers)
+    }
+
+    function handleOpenAccount(event) {
+        event.preventDefault();
+        const form = event.target;
+        const customerId = form.selectCustomer.value;
+        const initialDeposit = parseFloat(form.initialDeposit.value);
+
+        if (!customerId) {
+            showAlert('Please select a customer.', 'error');
+            return;
+        }
+        if (isNaN(initialDeposit) || initialDeposit < 0) {
+            showAlert('Initial deposit must be a non-negative number.', 'error');
+            return;
+        }
+
+        const newAccount = {
+            accountNumber: generateId('ACC', state.nextAccountNumber++),
+            customerId,
+            balance: initialDeposit,
+            currency: 'USD',
+            createdAt: new Date().toISOString()
+        };
+        state.accounts.push(newAccount);
+        
+        if (initialDeposit > 0) {
+            addTransaction('deposit', initialDeposit, newAccount.accountNumber, null, 'Initial account deposit');
+        }
+        
+        showAlert(`Account ${newAccount.accountNumber} opened successfully!`, 'success');
+        form.reset();
+        renderApp(); // Re-render current view (Accounts)
+    }
+
+    function openDepositModal(accountNumber) {
+        const account = state.accounts.find(acc => acc.accountNumber === accountNumber);
+        if (!account) return;
+
+        const bodyContent = `
+            <p class="text-sm text-slate-600 mb-4">Depositing to Account: <strong>${accountNumber}</strong><br>Current Balance: <strong>${formatCurrency(account.balance)}</strong></p>
+            <form id="depositForm" class="space-y-3">
+                <div>
+                    <label for="depositAmount" class="block text-sm font-medium text-slate-700 mb-1">Amount (USD)</label>
+                    <input type="number" id="depositAmount" name="depositAmount" min="0.01" step="0.01" required class="mt-1 block w-full px-3 py-2 bg-white border border-slate-300 rounded-md text-sm shadow-sm placeholder-slate-400 focus:outline-none focus:border-sky-500 focus:ring-1 focus:ring-sky-500">
+                </div>
+            </form>
+        `;
+        const footerButtons = [
+            { text: 'Cancel', classes: 'px-4 py-2 bg-slate-200 text-slate-800 rounded-md hover:bg-slate-300 text-sm font-medium', onClick: hideModal },
+            { text: 'Confirm Deposit', classes: 'px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 text-sm font-medium', onClick: () => handleDepositSubmit(accountNumber) }
+        ];
+        showModal(`Deposit to ${accountNumber}`, bodyContent, footerButtons);
+    }
+
+    function handleDepositSubmit(accountNumber) {
+        const amountInput = document.getElementById('depositAmount');
+        const amount = parseFloat(amountInput.value);
+
+        if (isNaN(amount) || amount <= 0) {
+            showAlert('Please enter a valid positive amount.', 'error');
+            // Modal remains open for correction, or re-render modal body with error
+            const errorP = document.createElement('p');
+            errorP.className = 'text-red-500 text-xs mt-1';
+            errorP.textContent = 'Invalid amount.';
+            if (amountInput.nextSibling && amountInput.nextSibling.tagName === 'P') {
+                amountInput.nextSibling.remove();
+            }
+            amountInput.parentNode.appendChild(errorP);
+            return;
+        }
+
+        const account = state.accounts.find(acc => acc.accountNumber === accountNumber);
+        account.balance += amount;
+        addTransaction('deposit', amount, accountNumber, null, 'Customer deposit');
+        
+        showAlert(`Deposited ${formatCurrency(amount)} to ${accountNumber}.`, 'success');
+        hideModal();
+        renderApp(); // Re-render current view
+    }
+
+    function openWithdrawModal(accountNumber) {
+        const account = state.accounts.find(acc => acc.accountNumber === accountNumber);
+        if (!account) return;
+
+        const bodyContent = `
+            <p class="text-sm text-slate-600 mb-4">Withdrawing from Account: <strong>${accountNumber}</strong><br>Current Balance: <strong>${formatCurrency(account.balance)}</strong></p>
+            <form id="withdrawForm" class="space-y-3">
+                 <div>
+                    <label for="withdrawAmount" class="block text-sm font-medium text-slate-700 mb-1">Amount (USD)</label>
+                    <input type="number" id="withdrawAmount" name="withdrawAmount" min="0.01" step="0.01" max="${account.balance}" required class="mt-1 block w-full px-3 py-2 bg-white border border-slate-300 rounded-md text-sm shadow-sm placeholder-slate-400 focus:outline-none focus:border-sky-500 focus:ring-1 focus:ring-sky-500">
+                </div>
+            </form>
+        `;
+        const footerButtons = [
+            { text: 'Cancel', classes: 'px-4 py-2 bg-slate-200 text-slate-800 rounded-md hover:bg-slate-300 text-sm font-medium', onClick: hideModal },
+            { text: 'Confirm Withdrawal', classes: 'px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 text-sm font-medium', onClick: () => handleWithdrawSubmit(accountNumber) }
+        ];
+        showModal(`Withdraw from ${accountNumber}`, bodyContent, footerButtons);
+    }
+
+    function handleWithdrawSubmit(accountNumber) {
+        const amountInput = document.getElementById('withdrawAmount');
+        const amount = parseFloat(amountInput.value);
+        const account = state.accounts.find(acc => acc.accountNumber === accountNumber);
+
+        if (isNaN(amount) || amount <= 0) {
+            showAlert('Please enter a valid positive amount.', 'error');
+            const errorP = document.createElement('p'); // Similar error display as deposit
+            errorP.className = 'text-red-500 text-xs mt-1';
+            errorP.textContent = 'Invalid amount.';
+            if (amountInput.nextSibling && amountInput.nextSibling.tagName === 'P') {
+                amountInput.nextSibling.remove();
+            }
+            amountInput.parentNode.appendChild(errorP);
+            return;
+        }
+        if (amount > account.balance) {
+            showAlert('Insufficient funds.', 'error');
+            const errorP = document.createElement('p');
+            errorP.className = 'text-red-500 text-xs mt-1';
+            errorP.textContent = 'Insufficient funds.';
+            if (amountInput.nextSibling && amountInput.nextSibling.tagName === 'P') {
+                amountInput.nextSibling.remove();
+            }
+            amountInput.parentNode.appendChild(errorP);
+            return;
+        }
+
+        account.balance -= amount;
+        addTransaction('withdrawal', amount, accountNumber, null, 'Customer withdrawal'); // For withdrawal, 'toAccount' is the source
+        
+        showAlert(`Withdrew ${formatCurrency(amount)} from ${accountNumber}.`, 'success');
+        hideModal();
+        renderApp();
+    }
+
+    function handleTransferFunds(event) {
+        event.preventDefault();
+        const form = event.target;
+        const fromAccNum = form.fromAccount.value;
+        const toAccNum = form.toAccount.value;
+        const amount = parseFloat(form.transferAmount.value);
+        const description = form.transferDescription.value.trim();
+
+        if (!fromAccNum || !toAccNum) {
+            showAlert('Please select both source and destination accounts.', 'error');
+            return;
+        }
+        if (fromAccNum === toAccNum) {
+            showAlert('Cannot transfer to the same account.', 'error');
+            return;
+        }
+        if (isNaN(amount) || amount <= 0) {
+            showAlert('Please enter a valid positive amount to transfer.', 'error');
+            return;
+        }
+
+        const fromAccount = state.accounts.find(acc => acc.accountNumber === fromAccNum);
+        const toAccount = state.accounts.find(acc => acc.accountNumber === toAccNum);
+
+        if (!fromAccount || !toAccount) { // Should not happen if dropdowns are correct
+            showAlert('Invalid account selected.', 'error');
+            return;
+        }
+        if (amount > fromAccount.balance) {
+            showAlert(`Insufficient funds in account ${fromAccNum}.`, 'error');
+            return;
+        }
+
+        fromAccount.balance -= amount;
+        toAccount.balance += amount;
+        addTransaction('transfer', amount, toAccNum, fromAccNum, description || `Transfer from ${fromAccNum} to ${toAccNum}`);
+        
+        showAlert(`Successfully transferred ${formatCurrency(amount)} from ${fromAccNum} to ${toAccNum}.`, 'success');
+        form.reset();
+        renderApp(); // Re-render transfer view, or navigate to transactions
+    }
+
+
+    // --- App Navigation and Initialization ---
+    function setActiveLink(view) {
+        document.querySelectorAll('.sidebar-link').forEach(link => {
+            link.classList.remove('active');
+            if (link.dataset.view === view) {
+                link.classList.add('active');
+            }
+        });
+    }
+
+    function renderApp() {
+        setActiveLink(state.currentView);
+        alertContainer.innerHTML = ''; // Clear alerts on view change
+
+        switch (state.currentView) {
+            case 'dashboard':
+                renderDashboardView();
+                break;
+            case 'customers':
+                renderManageCustomersView();
+                break;
+            case 'accounts':
+                renderManageAccountsView();
+                break;
+            case 'transfers':
+                renderTransferFundsView();
+                break;
+            case 'transactions':
+                renderTransactionLogView();
+                break;
+            default:
+                renderDashboardView();
+        }
+    }
+
+    function navigateTo(view) {
+        state.currentView = view;
+        renderApp();
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+        // Sidebar navigation
+        document.querySelectorAll('.sidebar-link').forEach(link => {
+            link.addEventListener('click', (e) => {
+                e.preventDefault();
+                navigateTo(e.target.dataset.view);
+            });
+        });
+
+        // Event delegation for dynamic content (e.g., buttons in tables)
+        contentArea.addEventListener('click', (event) => {
+            if (event.target.classList.contains('deposit-btn')) {
+                const accountNumber = event.target.dataset.account;
+                openDepositModal(accountNumber);
+            } else if (event.target.classList.contains('withdraw-btn')) {
+                const accountNumber = event.target.dataset.account;
+                openWithdrawModal(accountNumber);
+            }
+        });
+
+        // Initial render
+        if (state.transactions.length === 0) { // Add some initial transactions for demo
+            addTransaction('deposit', 200, 'ACC00001', null, 'System init deposit');
+            addTransaction('deposit', 350, 'ACC00002', null, 'System init deposit');
+            if(state.accounts.length > 1 && state.accounts[0].balance >= 50) {
+                state.accounts[0].balance -= 50;
+                state.accounts[1].balance += 50;
+                addTransaction('transfer', 50, 'ACC00002', 'ACC00001', 'Initial system transfer');
+            }
+        }
+        renderApp();
+    });
+
+</script>
+</body>
+</html>

@@ -1,0 +1,9 @@
+{
+  "web_id": "web_12",
+  "task_id": 1,
+  "task_type": "dynamic",
+  "instruction": "Task: Click the favourite icon on a resource card in the Resource Hub\nExpected Result: The favourite icon toggles its state (e.g., filled/unfilled) and the resource is visually marked/unmarked as a favourite.\n\nNote: The task is only considered successful if the expected result is achieved; otherwise, it is deemed infeasible.",
+  "max_steps": 15,
+  "expected": "The favourite icon toggles its state (e.g., filled/unfilled) and the resource is visually marked/unmarked as a favourite.",
+  "label": 1
+}

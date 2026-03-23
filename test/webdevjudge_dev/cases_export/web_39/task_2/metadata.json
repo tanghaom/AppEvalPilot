@@ -1,0 +1,9 @@
+{
+  "web_id": "web_39",
+  "task_id": 2,
+  "task_type": "dynamic",
+  "instruction": "Task: Press the designated key to move the falling tetromino to the left\nExpected Result: The tetromino moves one grid unit to the left, provided there is empty space and it's within game boundaries.\n\nNote: The task is only considered successful if the expected result is achieved; otherwise, it is deemed infeasible.",
+  "max_steps": 15,
+  "expected": "The tetromino moves one grid unit to the left, provided there is empty space and it's within game boundaries.",
+  "label": 1
+}

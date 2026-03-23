@@ -1,0 +1,1154 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Circuit Schematic Editor</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body { overflow: hidden; } /* Prevent page scrollbars */
+        .component-port-hover { fill: #0284C7; /* sky-600 */ } /* For port hover effect */
+        .component-port-connected { fill: #10B981; /* emerald-500 */ }
+        .snap-line { stroke: #FACC15; /* yellow-400 */ stroke-dasharray: 3,3; stroke-width: 0.5px; }
+
+        /* Custom scrollbar for component library (if needed and it overflows) */
+        .component-list::-webkit-scrollbar { width: 8px; }
+        .component-list::-webkit-scrollbar-track { background: #334155; /* slate-700 */ }
+        .component-list::-webkit-scrollbar-thumb { background: #475569; /* slate-600 */ border-radius: 4px; }
+        .component-list::-webkit-scrollbar-thumb:hover { background: #64748B; /* slate-500 */ }
+    </style>
+</head>
+<body class="bg-slate-900 text-slate-100 flex flex-col h-screen select-none">
+
+    <!-- Toolbar -->
+    <div id="toolbar" class="bg-slate-800 p-2 flex items-center space-x-2 border-b border-slate-700">
+        <button id="btn-place-component" title="Place Component (I)" class="p-2 hover:bg-sky-600 rounded"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg></button>
+        <button id="btn-draw-wire" title="Draw Wire (W)" class="p-2 hover:bg-sky-600 rounded"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"></path><path d="M12 5l7 7-7 7"></path></svg></button>
+        <button id="btn-add-text" title="Add Text (T)" class="p-2 hover:bg-sky-600 rounded"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"></path><path d="M12.5 8.5L15.5 11.5"></path></svg></button>
+        <div class="w-px h-6 bg-slate-600"></div>
+        <button id="btn-undo" title="Undo (U)" class="p-2 hover:bg-sky-600 rounded"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 7v6h-6"></path><path d="M3 17a9 9 0 0 1 9-9 9 9 0 0 1 6 2.3l3 2.7"></path></svg></button>
+        <button id="btn-redo" title="Redo (Shift+U)" class="p-2 hover:bg-sky-600 rounded"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7v6h6"></path><path d="M21 17a9 9 0 0 0-9-9 9 9 0 0 0-6 2.3l-3 2.7"></path></svg></button>
+        <div class="w-px h-6 bg-slate-600"></div>
+        <button id="btn-delete" title="Delete (Del/Backspace)" class="p-2 hover:bg-red-600 rounded"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg></button>
+    </div>
+
+    <!-- Main Content Area -->
+    <div class="flex flex-1 overflow-hidden">
+        <!-- Canvas Area -->
+        <div id="canvas-container" class="flex-1 relative bg-slate-800 cursor-crosshair">
+            <svg id="schematic-canvas" width="100%" height="100%">
+                <defs>
+                    <!-- Grid pattern will be drawn dynamically by JS for better zoom control -->
+                </defs>
+                <g id="grid-layer"></g>
+                <g id="wires-layer"></g>
+                <g id="components-layer"></g>
+                <g id="annotations-layer"></g>
+                <g id="temp-elements-layer"></g> <!-- For previews, selection boxes -->
+            </svg>
+        </div>
+
+        <!-- Properties Panel -->
+        <div id="properties-panel" class="w-64 bg-slate-800 border-l border-slate-700 p-4 space-y-4 overflow-y-auto">
+            <h3 class="text-lg font-semibold text-sky-400">Properties</h3>
+            <div id="properties-content" class="text-sm">
+                <p class="text-slate-400">Select an item to see its properties.</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Status Bar -->
+    <div id="status-bar" class="bg-slate-800 p-2 text-xs flex justify-between border-t border-slate-700">
+        <span id="status-message">Ready</span>
+        <span id="coords-display">X: 0, Y: 0</span>
+    </div>
+
+    <!-- Component Library Dialog -->
+    <div id="component-library-dialog" class="hidden fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+        <div class="bg-slate-800 p-6 rounded-lg shadow-xl w-full max-w-md border border-slate-600">
+            <div class="flex justify-between items-center mb-4">
+                <h2 class="text-xl font-semibold text-sky-400">Component Library</h2>
+                <button id="close-component-dialog" class="p-1 hover:text-red-400">&times;</button>
+            </div>
+            <input type="text" id="component-search" placeholder="Search components..." class="w-full p-2 mb-4 bg-slate-700 border border-slate-600 rounded focus:ring-sky-500 focus:border-sky-500">
+            <div id="component-list" class="max-h-64 overflow-y-auto space-y-1 component-list">
+                <!-- Component items will be populated by JS -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Text Input Modal -->
+    <div id="text-input-modal" class="hidden fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+        <div class="bg-slate-800 p-6 rounded-lg shadow-xl w-full max-w-sm border border-slate-600">
+            <h2 id="text-input-title" class="text-xl font-semibold text-sky-400 mb-4">Enter Text</h2>
+            <input type="text" id="text-modal-input" class="w-full p-2 mb-4 bg-slate-700 border border-slate-600 rounded focus:ring-sky-500 focus:border-sky-500">
+            <div class="flex justify-end space-x-2">
+                <button id="text-modal-cancel" class="px-4 py-2 bg-slate-600 hover:bg-slate-500 rounded">Cancel</button>
+                <button id="text-modal-ok" class="px-4 py-2 bg-sky-600 hover:bg-sky-500 rounded">OK</button>
+            </div>
+        </div>
+    </div>
+
+
+    <script>
+        // --- CONFIGURATION ---
+        const GRID_SIZE = 10;
+        const MIN_ZOOM = 0.1;
+        const MAX_ZOOM = 10;
+        const ZOOM_SENSITIVITY = 0.001;
+        const PORT_SNAP_RADIUS = 8; // In screen pixels for snapping
+        const PORT_RADIUS = 4; // Visual radius of port in world units
+
+        const COMPONENT_COLORS = {
+            stroke: 'stroke-sky-400',
+            fill: 'fill-slate-800', // Match canvas bg to appear "hollow"
+            label: 'fill-slate-100 text-xs',
+            value: 'fill-slate-100 text-xs font-semibold',
+            port: 'fill-sky-700 hover:fill-sky-500',
+            portConnected: 'fill-emerald-500',
+        };
+        const WIRE_COLOR = 'stroke-emerald-400';
+        const SELECTION_COLOR = 'stroke-yellow-400';
+        const JUNCTION_COLOR = 'fill-emerald-400';
+
+        // --- DOM ELEMENTS ---
+        const svgCanvas = document.getElementById('schematic-canvas');
+        const gridLayer = document.getElementById('grid-layer');
+        const componentsLayer = document.getElementById('components-layer');
+        const wiresLayer = document.getElementById('wires-layer');
+        const annotationsLayer = document.getElementById('annotations-layer');
+        const tempElementsLayer = document.getElementById('temp-elements-layer');
+        const propertiesPanelContent = document.getElementById('properties-content');
+        const statusMessage = document.getElementById('status-message');
+        const coordsDisplay = document.getElementById('coords-display');
+        const componentLibraryDialog = document.getElementById('component-library-dialog');
+        const componentList = document.getElementById('component-list');
+        const componentSearchInput = document.getElementById('component-search');
+        const textInputModal = document.getElementById('text-input-modal');
+        const textInputTitle = document.getElementById('text-input-title');
+        const textModalInput = document.getElementById('text-modal-input');
+
+        // --- STATE ---
+        let state = {
+            components: [],
+            wires: [],
+            annotations: [],
+            viewTransform: { x: 0, y: 0, scale: 1 },
+            currentMode: 'select', // 'select', 'place_component', 'draw_wire', 'add_text'
+            componentToPlace: null, // Definition of component being placed
+            placementGhost: { x: 0, y: 0, rotation: 0, mirrored: false },
+            currentWirePoints: [],
+            selectedItemIds: [], // Array of IDs {type: 'component'/'wire'/'annotation', id: '...'}
+            isPanning: false,
+            lastPanPosition: { x: 0, y: 0 },
+            gridSize: GRID_SIZE,
+            nextId: 0,
+            undoStack: [],
+            redoStack: [],
+        };
+
+        // --- UTILS ---
+        const generateId = () => `id-${state.nextId++}`;
+        const snapToGrid = (value) => Math.round(value / state.gridSize) * state.gridSize;
+
+        function screenToWorld(screenX, screenY) {
+            const svgRect = svgCanvas.getBoundingClientRect();
+            // Convert screen coordinates to SVG's coordinate system (before its own transforms)
+            let pt = svgCanvas.createSVGPoint();
+            pt.x = screenX - svgRect.left;
+            pt.y = screenY - svgRect.top;
+            
+            // If svgCanvas itself has a CTM (it shouldn't if we use a main group for pan/zoom)
+            // For simplicity, assume main pan/zoom is on a <g> element or handled by viewTransform manually
+            // So, apply inverse of our viewTransform
+            return {
+                x: (pt.x - state.viewTransform.x) / state.viewTransform.scale,
+                y: (pt.y - state.viewTransform.y) / state.viewTransform.scale
+            };
+        }
+
+        function worldToScreen(worldX, worldY) {
+            const svgRect = svgCanvas.getBoundingClientRect();
+            return {
+                x: worldX * state.viewTransform.scale + state.viewTransform.x + svgRect.left,
+                y: worldY * state.viewTransform.scale + state.viewTransform.y + svgRect.top
+            };
+        }
+        
+        function getTransformedPortPosition(component, portDef) {
+            let { x: relX, y: relY } = portDef;
+            
+            // Apply mirroring first if component is mirrored (about Y axis for horizontal flip)
+            if (component.mirrored) {
+                relX = -relX;
+            }
+
+            // Apply rotation
+            const angleRad = (component.rotation || 0) * Math.PI / 180;
+            const cosA = Math.cos(angleRad);
+            const sinA = Math.sin(angleRad);
+            
+            const rotatedX = relX * cosA - relY * sinA;
+            const rotatedY = relX * sinA + relY * cosA;
+
+            return {
+                x: component.x + rotatedX,
+                y: component.y + rotatedY
+            };
+        }
+
+        // --- HISTORY (UNDO/REDO) ---
+        const historyManager = {
+            addState: () => {
+                state.undoStack.push(JSON.stringify({ 
+                    components: state.components, 
+                    wires: state.wires, 
+                    annotations: state.annotations,
+                    nextId: state.nextId 
+                }));
+                state.redoStack = []; // Clear redo stack on new action
+                updateToolbarButtons();
+            },
+            undo: () => {
+                if (state.undoStack.length > 0) {
+                    const prevState = JSON.parse(state.undoStack.pop());
+                    state.redoStack.push(JSON.stringify({ 
+                        components: state.components, 
+                        wires: state.wires, 
+                        annotations: state.annotations,
+                        nextId: state.nextId
+                    }));
+                    Object.assign(state, prevState); // Restore state
+                    clearSelection();
+                    renderAll();
+                    updateToolbarButtons();
+                    setStatus('Undo complete.');
+                }
+            },
+            redo: () => {
+                if (state.redoStack.length > 0) {
+                    const nextState = JSON.parse(state.redoStack.pop());
+                    state.undoStack.push(JSON.stringify({ 
+                        components: state.components, 
+                        wires: state.wires, 
+                        annotations: state.annotations,
+                        nextId: state.nextId
+                    }));
+                    Object.assign(state, nextState); // Restore state
+                    clearSelection();
+                    renderAll();
+                    updateToolbarButtons();
+                    setStatus('Redo complete.');
+                }
+            }
+        };
+
+
+        // --- COMPONENT DEFINITIONS ---
+        const COMPONENT_DEFS = {
+            resistor: {
+                label: 'Resistor',
+                type: 'resistor',
+                size: { width: 40, height: 12 },
+                defaultProperties: { value: '1k', name: '' },
+                ports: [ { id: 'p1', x: -20, y: 0 }, { id: 'p2', x: 20, y: 0 } ],
+                renderFn: (comp) => [
+                    { tag: 'line', attrs: { x1: -20, y1: 0, x2: -12, y2: 0, class: COMPONENT_COLORS.stroke } },
+                    { tag: 'rect', attrs: { x: -12, y: -6, width: 24, height: 12, class: `${COMPONENT_COLORS.fill} ${COMPONENT_COLORS.stroke}` } },
+                    { tag: 'line', attrs: { x1: 12, y1: 0, x2: 20, y2: 0, class: COMPONENT_COLORS.stroke } },
+                    { tag: 'text', attrs: { x: 0, y: -10, 'text-anchor': 'middle', class: COMPONENT_COLORS.label }, content: comp.properties.name || comp.id },
+                    { tag: 'text', attrs: { x: 0, y: 18, 'text-anchor': 'middle', class: COMPONENT_COLORS.value }, content: comp.properties.value },
+                ]
+            },
+            capacitor: {
+                label: 'Capacitor',
+                type: 'capacitor',
+                size: { width: 25, height: 20 },
+                defaultProperties: { value: '1uF', name: '' },
+                ports: [ { id: 'p1', x: -12, y: 0 }, { id: 'p2', x: 12, y: 0 } ],
+                renderFn: (comp) => [
+                    { tag: 'line', attrs: { x1: -12, y1: 0, x2: -2, y2: 0, class: COMPONENT_COLORS.stroke } },
+                    { tag: 'line', attrs: { x1: -2, y1: -10, x2: -2, y2: 10, class: COMPONENT_COLORS.stroke } },
+                    { tag: 'line', attrs: { x1: 2, y1: -10, x2: 2, y2: 10, class: COMPONENT_COLORS.stroke } },
+                    { tag: 'line', attrs: { x1: 2, y1: 0, x2: 12, y2: 0, class: COMPONENT_COLORS.stroke } },
+                    { tag: 'text', attrs: { x: 0, y: -14, 'text-anchor': 'middle', class: COMPONENT_COLORS.label }, content: comp.properties.name || comp.id },
+                    { tag: 'text', attrs: { x: 0, y: 19, 'text-anchor': 'middle', class: COMPONENT_COLORS.value }, content: comp.properties.value },
+                ]
+            },
+            vsource: {
+                label: 'Voltage Source',
+                type: 'vsource',
+                size: { width: 20, height: 40 }, // Radius 20
+                defaultProperties: { value: '5V', name: '' },
+                ports: [ { id: 'p_plus', x: 0, y: -20 }, { id: 'p_minus', x: 0, y: 20 } ],
+                renderFn: (comp) => [
+                    { tag: 'circle', attrs: { cx: 0, cy: 0, r: 20, class: `${COMPONENT_COLORS.fill} ${COMPONENT_COLORS.stroke}` } },
+                    { tag: 'line', attrs: { x1: 0, y1: -20, x2: 0, y2: -26, class: COMPONENT_COLORS.stroke } }, // Top lead
+                    { tag: 'line', attrs: { x1: 0, y1: 20, x2: 0, y2: 26, class: COMPONENT_COLORS.stroke } }, // Bottom lead
+                    { tag: 'line', attrs: { x1: -8, y1: -8, x2: 8, y2: -8, class: COMPONENT_COLORS.stroke } }, // Plus
+                    { tag: 'line', attrs: { x1: 0, y1: -14, x2: 0, y2: -2, class: COMPONENT_COLORS.stroke } },   // Plus (vertical)
+                    { tag: 'line', attrs: { x1: -8, y1: 8, x2: 8, y2: 8, class: COMPONENT_COLORS.stroke } },   // Minus
+                    { tag: 'text', attrs: { x: 25, y: 0, 'text-anchor': 'start', 'dominant-baseline': 'middle', class: COMPONENT_COLORS.label }, content: comp.properties.name || comp.id },
+                    { tag: 'text', attrs: { x: 25, y: 15, 'text-anchor': 'start', 'dominant-baseline': 'middle', class: COMPONENT_COLORS.value }, content: comp.properties.value },
+                ]
+            },
+            gnd: {
+                label: 'Ground',
+                type: 'gnd',
+                size: { width: 20, height: 20 },
+                defaultProperties: { name: 'GND' },
+                ports: [ { id: 'p1', x: 0, y: -10 } ], // Connection point at top center
+                renderFn: (comp) => [
+                    { tag: 'line', attrs: { x1: 0, y1: -10, x2: 0, y2: 0, class: COMPONENT_COLORS.stroke } },
+                    { tag: 'line', attrs: { x1: -10, y1: 0, x2: 10, y2: 0, class: COMPONENT_COLORS.stroke } },
+                    { tag: 'line', attrs: { x1: -6, y1: 5, x2: 6, y2: 5, class: COMPONENT_COLORS.stroke } },
+                    { tag: 'line', attrs: { x1: -3, y1: 10, x2: 3, y2: 10, class: COMPONENT_COLORS.stroke } },
+                    { tag: 'text', attrs: { x: 0, y: -15, 'text-anchor': 'middle', class: COMPONENT_COLORS.label }, content: comp.properties.name },
+                ]
+            },
+            mosfet_n: {
+                label: 'N-MOSFET',
+                type: 'mosfet_n',
+                size: { width: 30, height: 40 },
+                defaultProperties: { model: 'default_nmos', name: '' },
+                ports: [ { id: 'D', x: 0, y: -20 }, { id: 'G', x: -20, y: 0 }, { id: 'S', x: 0, y: 20 } ],
+                renderFn: (comp) => [
+                    // Drain
+                    { tag: 'line', attrs: { x1: 0, y1: -20, x2: 0, y2: -10, class: COMPONENT_COLORS.stroke } },
+                    // Source
+                    { tag: 'line', attrs: { x1: 0, y1: 20, x2: 0, y2: 10, class: COMPONENT_COLORS.stroke } },
+                    // Gate
+                    { tag: 'line', attrs: { x1: -20, y1: 0, x2: -10, y2: 0, class: COMPONENT_COLORS.stroke } },
+                    { tag: 'line', attrs: { x1: -10, y1: -15, x2: -10, y2: 15, class: COMPONENT_COLORS.stroke } }, // Gate vertical bar
+                    // Channel Body
+                    { tag: 'line', attrs: { x1: -10, y1: -10, x2: 0, y2: -10, class: COMPONENT_COLORS.stroke } }, // D plate
+                    { tag: 'line', attrs: { x1: -10, y1: 0, x2: 0, y2: 0, class: COMPONENT_COLORS.stroke } },   // Mid plate
+                    { tag: 'line', attrs: { x1: -10, y1: 10, x2: 0, y2: 10, class: COMPONENT_COLORS.stroke } },   // S plate
+                    // Arrow (N-MOSFET points inward on source side to bulk)
+                    { tag: 'polygon', attrs: { points: "0,0 -5,5 0,10", class: `${COMPONENT_COLORS.stroke} ${COMPONENT_COLORS.fill}` } },
+                    { tag: 'text', attrs: { x: 5, y: -18, 'text-anchor': 'start', class: COMPONENT_COLORS.label }, content: 'D' },
+                    { tag: 'text', attrs: { x: -23, y: -3, 'text-anchor': 'end', class: COMPONENT_COLORS.label }, content: 'G' },
+                    { tag: 'text', attrs: { x: 5, y: 18, 'text-anchor': 'start', class: COMPONENT_COLORS.label }, content: 'S' },
+                    { tag: 'text', attrs: { x: 0, y: 28, 'text-anchor': 'middle', class: COMPONENT_COLORS.label }, content: comp.properties.name || comp.id },
+                    { tag: 'text', attrs: { x: 0, y: -28, 'text-anchor': 'middle', class: COMPONENT_COLORS.value }, content: comp.properties.model },
+                ]
+            }
+        };
+
+        // --- RENDERING ---
+        function createSVGElement(tag, attrs = {}, content = null) {
+            const el = document.createElementNS('http://www.w3.org/2000/svg', tag);
+            for (const key in attrs) {
+                el.setAttribute(key, attrs[key]);
+            }
+            if (content) {
+                el.textContent = content;
+            }
+            return el;
+        }
+
+        function renderGrid() {
+            gridLayer.innerHTML = ''; // Clear previous grid
+            const { x: panX, y: panY, scale } = state.viewTransform;
+            const { width, height } = svgCanvas.getBoundingClientRect();
+
+            const scaledGridSize = state.gridSize * scale;
+            if (scaledGridSize < 5) return; // Don't draw if grid is too small
+
+            const startX = Math.floor(-panX / scaledGridSize) * state.gridSize;
+            const startY = Math.floor(-panY / scaledGridSize) * state.gridSize;
+            const endX = (width - panX) / scale;
+            const endY = (height - panY) / scale;
+
+            for (let x = startX; x < endX; x += state.gridSize) {
+                const line = createSVGElement('line', {
+                    x1: x, y1: startY, x2: x, y2: endY,
+                    class: 'stroke-slate-700', 'stroke-width': 0.5 / scale // Adjust stroke width with zoom
+                });
+                gridLayer.appendChild(line);
+            }
+            for (let y = startY; y < endY; y += state.gridSize) {
+                const line = createSVGElement('line', {
+                    x1: startX, y1: y, x2: endX, y2: y,
+                    class: 'stroke-slate-700', 'stroke-width': 0.5 / scale
+                });
+                gridLayer.appendChild(line);
+            }
+        }
+        
+        function renderComponents() {
+            componentsLayer.innerHTML = '';
+            state.components.forEach(comp => {
+                const g = createSVGElement('g', {
+                    id: comp.id,
+                    transform: `translate(${comp.x} ${comp.y}) rotate(${comp.rotation || 0}) scale(${comp.mirrored ? -1 : 1} 1)`,
+                    class: 'component cursor-pointer',
+                    'data-id': comp.id,
+                    'data-type': 'component'
+                });
+
+                const def = COMPONENT_DEFS[comp.type];
+                if (def && def.renderFn) {
+                    def.renderFn(comp).forEach(elDesc => {
+                        g.appendChild(createSVGElement(elDesc.tag, elDesc.attrs, elDesc.content));
+                    });
+                }
+
+                // Render ports for interaction and visual feedback
+                if(def && def.ports) {
+                    def.ports.forEach(portDef => {
+                        const isConnected = isPortConnected(comp.id, portDef.id);
+                        const portCircle = createSVGElement('circle', {
+                            cx: portDef.x, cy: portDef.y, r: PORT_RADIUS,
+                            class: `component-port ${isConnected ? COMPONENT_COLORS.portConnected : COMPONENT_COLORS.port}`,
+                            'data-component-id': comp.id,
+                            'data-port-id': portDef.id
+                        });
+                        g.appendChild(portCircle);
+                    });
+                }
+                componentsLayer.appendChild(g);
+            });
+        }
+
+        function renderWires() {
+            wiresLayer.innerHTML = '';
+            state.wires.forEach(wire => {
+                if (wire.points.length < 2) return;
+                const pathData = wire.points.map((p, i) => (i === 0 ? 'M' : 'L') + `${p.x} ${p.y}`).join(' ');
+                const wirePath = createSVGElement('path', {
+                    d: pathData,
+                    class: `${WIRE_COLOR} fill-none`,
+                    'stroke-width': 1.5 / state.viewTransform.scale, // Make wires appear constant width
+                    'data-id': wire.id,
+                    'data-type': 'wire',
+                    'class': 'wire cursor-pointer'
+                });
+                wiresLayer.appendChild(wirePath);
+
+                // Render junctions
+                wire.points.forEach(p => {
+                    if (isJunctionPoint(p, wire.id)) {
+                        const junctionDot = createSVGElement('circle', {
+                            cx: p.x, cy: p.y, r: (PORT_RADIUS * 0.75) / state.viewTransform.scale,
+                            class: JUNCTION_COLOR
+                        });
+                        wiresLayer.appendChild(junctionDot);
+                    }
+                });
+            });
+        }
+        
+        function renderAnnotations() {
+            annotationsLayer.innerHTML = '';
+            state.annotations.forEach(anno => {
+                const textEl = createSVGElement('text', {
+                    x: anno.x, y: anno.y,
+                    class: `${COMPONENT_COLORS.label} cursor-pointer`,
+                    'font-size': `${12 / state.viewTransform.scale}px`, // Make text size somewhat constant
+                    'data-id': anno.id,
+                    'data-type': 'annotation'
+                }, anno.text);
+                annotationsLayer.appendChild(textEl);
+            });
+        }
+
+        function renderSelectionHighlights() {
+            // First, clear any existing highlights in tempElementsLayer specifically for selection
+            Array.from(tempElementsLayer.querySelectorAll('.selection-highlight')).forEach(el => el.remove());
+
+            state.selectedItemIds.forEach(sel => {
+                if (sel.type === 'component') {
+                    const comp = state.components.find(c => c.id === sel.id);
+                    if (comp) {
+                        const def = COMPONENT_DEFS[comp.type];
+                        const size = def.size;
+                        const padding = 5; // Padding for the selection box
+                        // Bounding box must account for rotation and mirroring. Simpler: use component's own path extents.
+                        // For now, an approximate rectangle based on size.
+                        const w = size.width + padding * 2;
+                        const h = size.height + padding * 2;
+                        const rect = createSVGElement('rect', {
+                            x: comp.x - w/2, y: comp.y - h/2, // This needs to be transformed if using world coordinates on a static rect
+                            width: w, height: h,
+                            class: `${SELECTION_COLOR} fill-none stroke-2 selection-highlight`,
+                            'stroke-dasharray': '4,4',
+                            transform: `rotate(${comp.rotation || 0}, ${comp.x}, ${comp.y})`, // Rotate around component center
+                            style: `vector-effect: non-scaling-stroke;` // Keep stroke width constant
+                        });
+                         // If mirroring, the selection box itself doesn't need to mirror, just its position if calculation is based on non-mirrored coordinates
+                        tempElementsLayer.appendChild(rect);
+                    }
+                } else if (sel.type === 'wire') {
+                    const wire = state.wires.find(w => w.id === sel.id);
+                    if (wire && wire.points.length > 1) {
+                        const pathData = wire.points.map((p, i) => (i === 0 ? 'M' : 'L') + `${p.x} ${p.y}`).join(' ');
+                        const highlightPath = createSVGElement('path', {
+                            d: pathData,
+                            class: `${SELECTION_COLOR} fill-none stroke-4 selection-highlight`,
+                            'stroke-linecap': 'round', 'stroke-linejoin': 'round',
+                             style: `vector-effect: non-scaling-stroke;`
+                        });
+                        tempElementsLayer.appendChild(highlightPath);
+                    }
+                } else if (sel.type === 'annotation') {
+                    const anno = state.annotations.find(a => a.id === sel.id);
+                    if (anno) {
+                        // Get bounding box of text for highlight
+                        const textForBBox = createSVGElement('text', {x: anno.x, y: anno.y, class: COMPONENT_COLORS.label}, anno.text);
+                        annotationsLayer.appendChild(textForBBox); // Temporarily add to get bbox
+                        const bbox = textForBBox.getBBox();
+                        textForBBox.remove();
+
+                        const rect = createSVGElement('rect', {
+                            x: bbox.x - 2, y: bbox.y - 2, width: bbox.width + 4, height: bbox.height + 4,
+                            class: `${SELECTION_COLOR} fill-none stroke-1 selection-highlight`,
+                            style: `vector-effect: non-scaling-stroke;`
+                        });
+                        tempElementsLayer.appendChild(rect);
+                    }
+                }
+            });
+        }
+
+        function renderAll() {
+            // Apply main transform for pan and zoom
+            const transform = `translate(${state.viewTransform.x} ${state.viewTransform.y}) scale(${state.viewTransform.scale})`;
+            [gridLayer, componentsLayer, wiresLayer, annotationsLayer, tempElementsLayer].forEach(layer => {
+                layer.setAttribute('transform', transform);
+            });
+
+            renderGrid();
+            renderComponents();
+            renderWires();
+            renderAnnotations();
+            renderSelectionHighlights(); // This needs to be intelligent about its layer
+            updatePropertiesPanel();
+        }
+
+        // --- CANVAS INTERACTION (PAN, ZOOM) ---
+        svgCanvas.addEventListener('wheel', (e) => {
+            e.preventDefault();
+            const svgRect = svgCanvas.getBoundingClientRect();
+            const mouseX = e.clientX - svgRect.left;
+            const mouseY = e.clientY - svgRect.top;
+
+            const oldScale = state.viewTransform.scale;
+            const newScale = Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, oldScale - e.deltaY * ZOOM_SENSITIVITY * oldScale));
+            
+            // Zoom towards mouse cursor
+            state.viewTransform.x = mouseX - (mouseX - state.viewTransform.x) * (newScale / oldScale);
+            state.viewTransform.y = mouseY - (mouseY - state.viewTransform.y) * (newScale / oldScale);
+            state.viewTransform.scale = newScale;
+            
+            renderAll();
+        });
+
+        svgCanvas.addEventListener('mousedown', (e) => {
+            if (e.button === 1) { // Middle mouse button
+                state.isPanning = true;
+                state.lastPanPosition = { x: e.clientX, y: e.clientY };
+                svgCanvas.style.cursor = 'grabbing';
+                e.preventDefault();
+            } else if (e.button === 0) { // Left mouse button
+                const worldPos = screenToWorld(e.clientX, e.clientY);
+                const snappedPos = { x: snapToGrid(worldPos.x), y: snapToGrid(worldPos.y) };
+                
+                handleLeftClick(snappedPos, e);
+            }
+        });
+
+        svgCanvas.addEventListener('mousemove', (e) => {
+            const worldPos = screenToWorld(e.clientX, e.clientY);
+            const snappedPos = { x: snapToGrid(worldPos.x), y: snapToGrid(worldPos.y) };
+            coordsDisplay.textContent = `X: ${snappedPos.x.toFixed(0)}, Y: ${snappedPos.y.toFixed(0)} | Zoom: ${state.viewTransform.scale.toFixed(2)}`;
+
+            if (state.isPanning) {
+                const dx = e.clientX - state.lastPanPosition.x;
+                const dy = e.clientY - state.lastPanPosition.y;
+                state.viewTransform.x += dx;
+                state.viewTransform.y += dy;
+                state.lastPanPosition = { x: e.clientX, y: e.clientY };
+                renderAll();
+            } else if (state.currentMode === 'place_component' && state.componentToPlace) {
+                state.placementGhost.x = snappedPos.x;
+                state.placementGhost.y = snappedPos.y;
+                renderPlacementGhost();
+            } else if (state.currentMode === 'draw_wire' && state.currentWirePoints.length > 0) {
+                renderWirePreview(snappedPos);
+            } else if (state.currentMode === 'select' && e.buttons === 1 && state.selectedItemIds.length > 0) { // Dragging selected items
+                // For simplicity, only move the first selected item to demonstrate.
+                // Proper multi-item move needs to track initial positions and deltas.
+                // This will be handled by the handleLeftClick logic on mousedown (start drag) and mousemove (drag)
+            }
+        });
+
+        svgCanvas.addEventListener('mouseup', (e) => {
+            if (e.button === 1 && state.isPanning) {
+                state.isPanning = false;
+                svgCanvas.style.cursor = 'crosshair'; // Or current mode cursor
+            }
+        });
+        
+        svgCanvas.addEventListener('mouseleave', () => {
+            if (state.isPanning) { // If mouse leaves canvas while panning, stop panning
+                state.isPanning = false;
+                svgCanvas.style.cursor = 'crosshair';
+            }
+            // Clear ghost if placing component
+            if (state.currentMode === 'place_component') {
+                 clearTempElements(); // Clears placement ghost
+            }
+             // Clear wire preview if drawing wire
+            if (state.currentMode === 'draw_wire') {
+                clearTempElements(); // Clears wire preview
+            }
+        });
+
+
+        // --- MODE HANDLING & ACTIONS ---
+        function setMode(mode) {
+            state.currentMode = mode;
+            setStatus(`Mode: ${mode}`);
+            clearTempElements(); // Clear ghosts/previews
+            if (mode === 'select') {
+                svgCanvas.style.cursor = 'default';
+            } else if (mode === 'draw_wire') {
+                svgCanvas.style.cursor = 'crosshair';
+                state.currentWirePoints = [];
+            } else if (mode === 'place_component') {
+                svgCanvas.style.cursor = 'crosshair';
+            } else if (mode === 'add_text') {
+                svgCanvas.style.cursor = 'text';
+            }
+        }
+
+        function handleLeftClick(snappedPos, event) {
+            const targetElement = event.target.closest('[data-id]');
+            const clickedPortElement = event.target.closest('.component-port');
+
+            if (state.currentMode === 'select') {
+                if (targetElement) {
+                    const id = targetElement.dataset.id;
+                    const type = targetElement.dataset.type;
+                    if (event.shiftKey) {
+                        toggleSelection({ type, id });
+                    } else {
+                        selectItem({ type, id }, false);
+                    }
+                } else {
+                    clearSelection();
+                }
+            } else if (state.currentMode === 'place_component' && state.componentToPlace) {
+                placeComponent(snappedPos.x, snappedPos.y, state.placementGhost.rotation, state.placementGhost.mirrored);
+                // For multiple placements, don't exit mode. User can press Esc.
+                // For now, single placement then back to select.
+                // setMode('select'); 
+            } else if (state.currentMode === 'draw_wire') {
+                let portSnap = findPortAtScreenPos(event.clientX, event.clientY);
+                let currentPoint = portSnap ? portSnap.worldPos : snappedPos;
+                
+                if (state.currentWirePoints.length === 0) { // Start wire
+                    state.currentWirePoints.push(currentPoint);
+                    if (portSnap) state.currentWirePoints[0].connectedPort = { componentId: portSnap.componentId, portId: portSnap.portId };
+                } else { // Continue or end wire
+                    const prevPoint = state.currentWirePoints[state.currentWirePoints.length - 1];
+                    // Orthogonal routing: add intermediate point
+                    if (Math.abs(currentPoint.x - prevPoint.x) > Math.abs(currentPoint.y - prevPoint.y)) { // Prefer horizontal
+                        state.currentWirePoints.push({ x: currentPoint.x, y: prevPoint.y });
+                    } else { // Prefer vertical
+                        state.currentWirePoints.push({ x: prevPoint.x, y: currentPoint.y });
+                    }
+                    state.currentWirePoints.push(currentPoint); // Add final point
+                    if (portSnap) state.currentWirePoints[state.currentWirePoints.length-1].connectedPort = { componentId: portSnap.componentId, portId: portSnap.portId };
+
+                    // End wire if snapped to a port or double click (double click not implemented here yet, use Esc)
+                    if (portSnap || event.detail === 2) { // event.detail for double click
+                        finishWire();
+                    }
+                }
+            } else if (state.currentMode === 'add_text') {
+                promptForText("Enter annotation text:", "", (text) => {
+                    if (text) addAnnotation(text, snappedPos.x, snappedPos.y);
+                    setMode('select');
+                });
+            }
+            renderAll();
+        }
+        
+        function findPortAtScreenPos(screenX, screenY) {
+            const worldClickPos = screenToWorld(screenX, screenY);
+            let closestPort = null;
+            let minDistance = Infinity;
+
+            for (const comp of state.components) {
+                const def = COMPONENT_DEFS[comp.type];
+                if (!def || !def.ports) continue;
+
+                for (const portDef of def.ports) {
+                    const portWorldPos = getTransformedPortPosition(comp, portDef);
+                    const dist = Math.sqrt(Math.pow(portWorldPos.x - worldClickPos.x, 2) + Math.pow(portWorldPos.y - worldClickPos.y, 2));
+                    
+                    // Convert PORT_SNAP_RADIUS (screen pixels) to world units for comparison
+                    const snapRadiusWorld = PORT_SNAP_RADIUS / state.viewTransform.scale;
+
+                    if (dist < snapRadiusWorld && dist < minDistance) {
+                        minDistance = dist;
+                        closestPort = {
+                            componentId: comp.id,
+                            portId: portDef.id,
+                            worldPos: { x: snapToGrid(portWorldPos.x), y: snapToGrid(portWorldPos.y) } // Snap the port's world pos
+                        };
+                    }
+                }
+            }
+            return closestPort;
+        }
+
+        function renderPlacementGhost() {
+            clearTempElements();
+            if (!state.componentToPlace || state.currentMode !== 'place_component') return;
+
+            const def = state.componentToPlace;
+            const ghost = state.placementGhost;
+            const g = createSVGElement('g', {
+                transform: `translate(${ghost.x} ${ghost.y}) rotate(${ghost.rotation || 0}) scale(${ghost.mirrored ? -1 : 1} 1)`,
+                opacity: "0.5"
+            });
+
+            // Create a dummy component instance for rendering
+            const dummyComp = { 
+                id: 'ghost', 
+                type: def.type, 
+                properties: def.defaultProperties, 
+                x:0, y:0, // Relative to group transform
+                rotation: 0, mirrored: false // Handled by group
+            };
+
+            if (def.renderFn) {
+                def.renderFn(dummyComp).forEach(elDesc => {
+                    g.appendChild(createSVGElement(elDesc.tag, elDesc.attrs, elDesc.content));
+                });
+            }
+            tempElementsLayer.appendChild(g);
+        }
+        
+        function renderWirePreview(mousePos) {
+            clearTempElements(); // Clear previous preview
+            if (state.currentMode !== 'draw_wire' || state.currentWirePoints.length === 0) return;
+
+            let pointsToDraw = [...state.currentWirePoints];
+            const lastPoint = pointsToDraw[pointsToDraw.length - 1];
+            
+            // Orthogonal preview
+            let intermediatePoint;
+            if (Math.abs(mousePos.x - lastPoint.x) > Math.abs(mousePos.y - lastPoint.y)) { // Prefer horizontal
+                intermediatePoint = { x: mousePos.x, y: lastPoint.y };
+            } else { // Prefer vertical
+                intermediatePoint = { x: lastPoint.x, y: mousePos.y };
+            }
+            pointsToDraw.push(intermediatePoint);
+            pointsToDraw.push(mousePos); // Current mouse position (snapped)
+
+            const pathData = pointsToDraw.map((p, i) => (i === 0 ? 'M' : 'L') + `${p.x} ${p.y}`).join(' ');
+            const wirePreviewPath = createSVGElement('path', {
+                d: pathData,
+                class: `${WIRE_COLOR} fill-none opacity-50`,
+                'stroke-width': 1.5 / state.viewTransform.scale,
+                'stroke-dasharray': '5,5' // Dashed line for preview
+            });
+            tempElementsLayer.appendChild(wirePreviewPath);
+        }
+
+        function clearTempElements() {
+            tempElementsLayer.innerHTML = '';
+        }
+
+        // --- COMPONENT LOGIC ---
+        function openComponentDialog() {
+            setMode('select'); // Exit any active mode
+            populateComponentList('');
+            componentLibraryDialog.classList.remove('hidden');
+            componentSearchInput.focus();
+        }
+
+        function closeComponentDialog() {
+            componentLibraryDialog.classList.add('hidden');
+            componentSearchInput.value = '';
+        }
+
+        function populateComponentList(searchTerm) {
+            componentList.innerHTML = '';
+            const lowerSearchTerm = searchTerm.toLowerCase();
+            Object.values(COMPONENT_DEFS)
+                .filter(def => def.label.toLowerCase().includes(lowerSearchTerm))
+                .forEach(def => {
+                    const item = document.createElement('div');
+                    item.className = 'p-2 hover:bg-sky-700 rounded cursor-pointer flex items-center space-x-2';
+                    item.textContent = def.label;
+                    item.onclick = () => selectComponentForPlacement(def);
+                    
+                    // Placeholder for icon
+                    const iconPlaceholder = document.createElement('div');
+                    iconPlaceholder.className = "bg-gray-500 border-2 border-dashed rounded-md w-8 h-8";
+                    // item.prepend(iconPlaceholder); // Add icon if available
+                    
+                    componentList.appendChild(item);
+                });
+        }
+
+        function selectComponentForPlacement(compDef) {
+            state.componentToPlace = compDef;
+            state.placementGhost = { x: 0, y: 0, rotation: 0, mirrored: false };
+            setMode('place_component');
+            setStatus(`Placing ${compDef.label}. R: Rotate, M: Mirror, Click: Place, Esc: Cancel.`);
+            closeComponentDialog();
+        }
+
+        function placeComponent(x, y, rotation, mirrored) {
+            historyManager.addState(); // Save state before action
+            const newComp = {
+                id: generateId(),
+                type: state.componentToPlace.type,
+                x: x, y: y,
+                rotation: rotation || 0,
+                mirrored: mirrored || false,
+                properties: JSON.parse(JSON.stringify(state.componentToPlace.defaultProperties)) // Deep copy
+            };
+            // Auto-assign name like R1, C1 if name property is empty
+            if (newComp.properties.name === '') {
+                const typePrefix = state.componentToPlace.type.charAt(0).toUpperCase();
+                const count = state.components.filter(c => c.type === newComp.type).length + 1;
+                newComp.properties.name = `${typePrefix}${count}`;
+            }
+
+            state.components.push(newComp);
+            selectItem({ type: 'component', id: newComp.id }, true); // Select new component
+            setStatus(`Placed ${state.componentToPlace.label} ${newComp.properties.name || newComp.id}.`);
+            // Keep in placement mode for next component
+            // state.componentToPlace remains the same. Reset ghost rotation/mirror for next one.
+            state.placementGhost.rotation = 0;
+            state.placementGhost.mirrored = false;
+            renderAll();
+        }
+        
+        // --- WIRE LOGIC ---
+        function startWireMode() {
+            setMode('draw_wire');
+            clearSelection();
+            state.currentWirePoints = [];
+            setStatus('Wire mode: Click to start wire or on port. Esc to cancel.');
+        }
+
+        function finishWire() {
+            if (state.currentWirePoints.length >= 2) {
+                historyManager.addState();
+                const newWire = {
+                    id: generateId(),
+                    points: JSON.parse(JSON.stringify(state.currentWirePoints)), // Deep copy
+                    properties: { name: '' }
+                };
+                state.wires.push(newWire);
+                selectItem({type: 'wire', id: newWire.id}, true);
+            }
+            state.currentWirePoints = [];
+            clearTempElements();
+            setMode('select'); // Or keep in wire mode if desired
+            renderAll();
+        }
+        
+        function isPortConnected(componentId, portId) {
+            return state.wires.some(wire => 
+                (wire.points[0].connectedPort && wire.points[0].connectedPort.componentId === componentId && wire.points[0].connectedPort.portId === portId) ||
+                (wire.points[wire.points.length-1].connectedPort && wire.points[wire.points.length-1].connectedPort.componentId === componentId && wire.points[wire.points.length-1].connectedPort.portId === portId)
+            );
+        }
+
+        function isJunctionPoint(point, currentWireId) {
+            // Check if this point lies on another wire AND is shared by this wire.
+            // Simple check: if multiple wires share this exact coordinate (snapped).
+            let wiresSharingPoint = 0;
+            for (const wire of state.wires) {
+                if (wire.points.some(p => p.x === point.x && p.y === point.y)) {
+                    wiresSharingPoint++;
+                }
+            }
+            // A wire terminal connecting to another wire path also makes a junction.
+            // Check if this point is a start/end of one wire and mid-point of another.
+            // More robust: a point is a junction if it's an endpoint of 3+ wire segments.
+            // For now, visual cue if >1 wire uses this point.
+            return wiresSharingPoint > 1; 
+            // TODO: A more sophisticated junction detection logic is needed for true netlist generation.
+            // This simple one will create dots where wires simply cross if not careful.
+            // A true junction forms if a wire ENDS on another wire's segment, or if 3+ wires meet at an endpoint.
+        }
+
+        // --- ANNOTATION LOGIC ---
+        function startAddTextMode() {
+            setMode('add_text');
+            clearSelection();
+            setStatus('Text mode: Click to place text. Esc to cancel.');
+        }
+        
+        function addAnnotation(text, x, y) {
+            historyManager.addState();
+            const newAnnotation = {
+                id: generateId(),
+                text: text,
+                x: x, y: y,
+                properties: {} // For future use
+            };
+            state.annotations.push(newAnnotation);
+            selectItem({type: 'annotation', id: newAnnotation.id}, true);
+            renderAll();
+        }
+
+        // --- SELECTION & PROPERTIES ---
+        function selectItem(itemRef, singleSelect = true) { // itemRef = {type, id}
+            if (singleSelect) {
+                state.selectedItemIds = [itemRef];
+            } else { // Add to selection (used by shift-click, not fully implemented for multi-select actions yet)
+                if (!state.selectedItemIds.find(s => s.id === itemRef.id && s.type === itemRef.type)) {
+                    state.selectedItemIds.push(itemRef);
+                }
+            }
+            renderAll(); // Re-render for selection highlights and properties panel
+        }
+
+        function toggleSelection(itemRef) {
+            const index = state.selectedItemIds.findIndex(s => s.id === itemRef.id && s.type === itemRef.type);
+            if (index > -1) {
+                state.selectedItemIds.splice(index, 1);
+            } else {
+                state.selectedItemIds.push(itemRef);
+            }
+            renderAll();
+        }
+
+        function clearSelection() {
+            state.selectedItemIds = [];
+            renderAll();
+        }
+
+        function deleteSelectedItems() {
+            if (state.selectedItemIds.length > 0) {
+                historyManager.addState();
+                state.selectedItemIds.forEach(sel => {
+                    if (sel.type === 'component') {
+                        state.components = state.components.filter(c => c.id !== sel.id);
+                        // Also delete wires connected ONLY to this component
+                        state.wires = state.wires.filter(w => 
+                            (!w.points[0].connectedPort || w.points[0].connectedPort.componentId !== sel.id) &&
+                            (!w.points[w.points.length-1].connectedPort || w.points[w.points.length-1].connectedPort.componentId !== sel.id)
+                        );
+                    } else if (sel.type === 'wire') {
+                        state.wires = state.wires.filter(w => w.id !== sel.id);
+                    } else if (sel.type === 'annotation') {
+                        state.annotations = state.annotations.filter(a => a.id !== sel.id);
+                    }
+                });
+                clearSelection(); // Clears selectedItemIds and updates panel
+                setStatus('Deleted selected items.');
+                renderAll();
+            }
+        }
+
+        function updatePropertiesPanel() {
+            if (state.selectedItemIds.length === 1) {
+                const selection = state.selectedItemIds[0];
+                let item;
+                let itemDef;
+
+                if (selection.type === 'component') {
+                    item = state.components.find(c => c.id === selection.id);
+                    itemDef = COMPONENT_DEFS[item.type];
+                } else if (selection.type === 'wire') {
+                    item = state.wires.find(w => w.id === selection.id);
+                } else if (selection.type === 'annotation') {
+                    item = state.annotations.find(a => a.id === selection.id);
+                }
+
+                if (!item) {
+                    propertiesPanelContent.innerHTML = '<p class="text-slate-400">Item not found.</p>';
+                    return;
+                }
+                
+                propertiesPanelContent.innerHTML = ''; // Clear old content
+
+                const title = document.createElement('p');
+                title.className = 'font-medium mb-2 capitalize';
+                title.textContent = `${selection.type}: ${item.properties?.name || item.text || item.id}`;
+                propertiesPanelContent.appendChild(title);
+
+                const propsToShow = item.properties || (selection.type === 'annotation' ? { text: item.text } : {});
+                
+                for (const key in propsToShow) {
+                    const propDiv = document.createElement('div');
+                    propDiv.className = 'mb-2';
+                    
+                    const label = document.createElement('label');
+                    label.className = 'block text-xs text-slate-400 mb-1';
+                    label.textContent = key.charAt(0).toUpperCase() + key.slice(1); // Capitalize key
+                    propDiv.appendChild(label);
+
+                    const input = document.createElement('input');
+                    input.type = 'text';
+                    input.value = propsToShow[key];
+                    input.className = 'w-full p-1.5 bg-slate-700 border border-slate-600 rounded text-sm focus:ring-sky-500 focus:border-sky-500';
+                    input.onchange = (e) => {
+                        historyManager.addState(); // Save before change
+                        if (selection.type === 'annotation' && key === 'text') {
+                            item.text = e.target.value;
+                        } else {
+                            item.properties[key] = e.target.value;
+                        }
+                        renderAll(); // Re-render to reflect changes (e.g. component value text)
+                    };
+                    propDiv.appendChild(input);
+                    propertiesPanelContent.appendChild(propDiv);
+                }
+
+            } else if (state.selectedItemIds.length > 1) {
+                propertiesPanelContent.innerHTML = `<p class="text-slate-400">${state.selectedItemIds.length} items selected.</p>`;
+            } else {
+                propertiesPanelContent.innerHTML = '<p class="text-slate-400">Select an item to see its properties.</p>';
+            }
+        }
+
+        // --- KEYBOARD SHORTCUTS ---
+        document.addEventListener('keydown', (e) => {
+            if (document.activeElement.tagName === 'INPUT' || document.activeElement.tagName === 'TEXTAREA') {
+                if (e.key === 'Escape') document.activeElement.blur(); // Allow Esc to blur inputs
+                else return; // Don't process shortcuts if typing in an input
+            }
+
+            switch (e.key.toLowerCase()) {
+                case 'i': openComponentDialog(); e.preventDefault(); break;
+                case 'w': startWireMode(); e.preventDefault(); break;
+                case 't': startAddTextMode(); e.preventDefault(); break;
+                case 'u': 
+                    if (e.shiftKey) historyManager.redo();
+                    else historyManager.undo();
+                    e.preventDefault(); break;
+                case 'escape':
+                    if (state.currentMode === 'place_component' || state.currentMode === 'draw_wire' || state.currentMode === 'add_text') {
+                        setMode('select');
+                        state.currentWirePoints = [];
+                        clearTempElements();
+                        renderAll();
+                    } else {
+                        clearSelection();
+                    }
+                    e.preventDefault(); break;
+                case 'delete':
+                case 'backspace':
+                    deleteSelectedItems();
+                    e.preventDefault(); break;
+                case 'r': // Rotate
+                    if (state.currentMode === 'place_component' && state.componentToPlace) {
+                        state.placementGhost.rotation = (state.placementGhost.rotation + 90) % 360;
+                        renderPlacementGhost();
+                    } else if (state.currentMode === 'select' && state.selectedItemIds.length === 1 && state.selectedItemIds[0].type === 'component') {
+                        historyManager.addState();
+                        const comp = state.components.find(c => c.id === state.selectedItemIds[0].id);
+                        comp.rotation = (comp.rotation + 90) % 360;
+                        renderAll();
+                    }
+                    e.preventDefault(); break;
+                case 'm': // Mirror
+                    if (state.currentMode === 'place_component' && state.componentToPlace) {
+                        state.placementGhost.mirrored = !state.placementGhost.mirrored;
+                        renderPlacementGhost();
+                    } else if (state.currentMode === 'select' && state.selectedItemIds.length === 1 && state.selectedItemIds[0].type === 'component') {
+                        historyManager.addState();
+                        const comp = state.components.find(c => c.id === state.selectedItemIds[0].id);
+                        comp.mirrored = !comp.mirrored;
+                        renderAll();
+                    }
+                    e.preventDefault(); break;
+            }
+        });
+
+        // --- UI UPDATES & MISC ---
+        function setStatus(message) {
+            statusMessage.textContent = message;
+        }
+        
+        function updateToolbarButtons() {
+            document.getElementById('btn-undo').disabled = state.undoStack.length === 0;
+            document.getElementById('btn-redo').disabled = state.redoStack.length === 0;
+            document.getElementById('btn-delete').disabled = state.selectedItemIds.length === 0;
+
+            // Add Tailwind classes for disabled state
+            ['btn-undo', 'btn-redo', 'btn-delete'].forEach(id => {
+                const btn = document.getElementById(id);
+                if (btn.disabled) {
+                    btn.classList.add('opacity-50', 'cursor-not-allowed');
+                    btn.classList.remove('hover:bg-sky-600', 'hover:bg-red-600');
+                } else {
+                    btn.classList.remove('opacity-50', 'cursor-not-allowed');
+                    if(id === 'btn-delete') btn.classList.add('hover:bg-red-600');
+                    else btn.classList.add('hover:bg-sky-600');
+                }
+            });
+        }
+
+        function promptForText(title, defaultValue, callback) {
+            textInputTitle.textContent = title;
+            textModalInput.value = defaultValue;
+            textInputModal.classList.remove('hidden');
+            textModalInput.focus();
+            textModalInput.select();
+
+            const okHandler = () => {
+                callback(textModalInput.value);
+                cleanup();
+            };
+            const cancelHandler = () => {
+                callback(null); // Or defaultValue
+                cleanup();
+            };
+            const keyHandler = (e) => {
+                if (e.key === 'Enter') okHandler();
+                if (e.key === 'Escape') cancelHandler();
+            };
+
+            const cleanup = () => {
+                textInputModal.classList.add('hidden');
+                document.getElementById('text-modal-ok').removeEventListener('click', okHandler);
+                document.getElementById('text-modal-cancel').removeEventListener('click', cancelHandler);
+                textModalInput.removeEventListener('keydown', keyHandler);
+            };
+            
+            document.getElementById('text-modal-ok').addEventListener('click', okHandler, { once: true });
+            document.getElementById('text-modal-cancel').addEventListener('click', cancelHandler, { once: true });
+            textModalInput.addEventListener('keydown', keyHandler);
+        }
+
+        // --- INITIALIZATION ---
+        function init() {
+            renderAll();
+            setStatus('Editor initialized. Press I for components, W for wires.');
+            updateToolbarButtons();
+
+            // Toolbar button listeners
+            document.getElementById('btn-place-component').onclick = openComponentDialog;
+            document.getElementById('btn-draw-wire').onclick = startWireMode;
+            document.getElementById('btn-add-text').onclick = startAddTextMode;
+            document.getElementById('btn-undo').onclick = historyManager.undo;
+            document.getElementById('btn-redo').onclick = historyManager.redo;
+            document.getElementById('btn-delete').onclick = deleteSelectedItems;
+            
+            // Component Dialog listeners
+            document.getElementById('close-component-dialog').onclick = closeComponentDialog;
+            componentSearchInput.addEventListener('input', (e) => populateComponentList(e.target.value));
+            componentLibraryDialog.addEventListener('keydown', (e) => { // Allow Esc to close dialog
+                 if (e.key === 'Escape') closeComponentDialog();
+            });
+        }
+
+        init();
+
+    </script>
+</body>
+</html>

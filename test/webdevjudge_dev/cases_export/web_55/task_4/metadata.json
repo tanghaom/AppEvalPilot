@@ -1,0 +1,9 @@
+{
+  "web_id": "web_55",
+  "task_id": 4,
+  "task_type": "dynamic",
+  "instruction": "Task: Fill in required fields in the 'Request a Quote' form (e.g., product interest, quantity, contact email) and click the 'Submit' button.\nExpected Result: A confirmation message (e.g., 'Your quote request has been submitted successfully.') is displayed on the page, simulating form submission.\n\nNote: The task is only considered successful if the expected result is achieved; otherwise, it is deemed infeasible.",
+  "max_steps": 15,
+  "expected": "A confirmation message (e.g., 'Your quote request has been submitted successfully.') is displayed on the page, simulating form submission.",
+  "label": 0
+}

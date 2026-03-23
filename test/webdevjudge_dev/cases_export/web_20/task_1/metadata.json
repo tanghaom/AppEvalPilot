@@ -1,0 +1,9 @@
+{
+  "web_id": "web_20",
+  "task_id": 1,
+  "task_type": "dynamic",
+  "instruction": "Task: Enter text into the 'Name' input field for a crew member.\nExpected Result: The entered name is displayed in the 'Name' input field.\n\nNote: The task is only considered successful if the expected result is achieved; otherwise, it is deemed infeasible.",
+  "max_steps": 15,
+  "expected": "The entered name is displayed in the 'Name' input field.",
+  "label": 1
+}

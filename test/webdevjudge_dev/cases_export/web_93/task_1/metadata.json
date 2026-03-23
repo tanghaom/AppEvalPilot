@@ -1,0 +1,9 @@
+{
+  "web_id": "web_93",
+  "task_id": 1,
+  "task_type": "dynamic",
+  "instruction": "Task: Click the 'Add New Timeline Entry' button.\nExpected Result: A new, collapsed timeline entry is added to the visual timeline, displaying placeholder or empty values for its title and date. The progress bar, if implemented, may update.\n\nNote: The task is only considered successful if the expected result is achieved; otherwise, it is deemed infeasible.",
+  "max_steps": 15,
+  "expected": "A new, collapsed timeline entry is added to the visual timeline, displaying placeholder or empty values for its title and date. The progress bar, if implemented, may update.",
+  "label": 1
+}

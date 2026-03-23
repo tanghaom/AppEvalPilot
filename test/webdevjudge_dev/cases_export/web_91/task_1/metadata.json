@@ -1,0 +1,9 @@
+{
+  "web_id": "web_91",
+  "task_id": 1,
+  "task_type": "dynamic",
+  "instruction": "Task: Click a 'Generate Toast' button 4 times in rapid succession.\nExpected Result: The first (oldest) toast added is immediately removed when the fourth toast appears, due to the maximum toast limit (e.g., 3). The three remaining toasts display as a stack with visual overlap (parts/angles showing, styled by :nth-child rules). Observe and confirm the dismissal order of these three remaining toasts (i.e., whether the oldest among them disappears first, or if newer ones disappear earlier due to individual timer settings).\n\nNote: The task is only considered successful if the expected result is achieved; otherwise, it is deemed infeasible.",
+  "max_steps": 15,
+  "expected": "The first (oldest) toast added is immediately removed when the fourth toast appears, due to the maximum toast limit (e.g., 3). The three remaining toasts display as a stack with visual overlap (parts/angles showing, styled by :nth-child rules). Observe and confirm the dismissal order of these three remaining toasts (i.e., whether the oldest among them disappears first, or if newer ones disappear earlier due to individual timer settings).",
+  "label": 1
+}

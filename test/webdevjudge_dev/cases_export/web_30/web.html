@@ -1,0 +1,540 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Windsurf VS Code Clone</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Custom scrollbar for webkit browsers (Chrome, Safari) */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #1e293b; /* slate-800 */
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #38bdf8; /* sky-500 */
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #0ea5e9; /* sky-600 */
+        }
+        .file-icon::before {
+            font-family: monospace;
+            display: inline-block;
+            width: 1.5em;
+            text-align: center;
+            margin-right: 0.25em;
+        }
+        .file-icon-js::before { content: "JS"; color: #facc15; /* yellow-400 */ }
+        .file-icon-html::before { content: "HT"; color: #f97316; /* orange-500 */ }
+        .file-icon-css::before { content: "CS"; color: #3b82f6; /* blue-500 */ }
+        .file-icon-json::before { content: "{}"; color: #a855f7; /* purple-500 */ }
+        .file-icon-md::before { content: "M↓"; color: #64748b; /* slate-500 */ }
+        .file-icon-jsx::before { content: "JX"; color: #22d3ee; /* cyan-400 */ }
+        .file-icon-image::before { content: "🖼️"; } /* Using an emoji for generic image */
+        .file-icon-folder::before { content: "📁"; color: #f59e0b; /* amber-500 */ } /* Simple folder icon */
+
+        /* Forcing a specific font for a more IDE-like feel if Tailwind's default isn't quite right */
+        pre, code {
+            font-family: 'Consolas', 'Monaco', 'Menlo', monospace;
+        }
+    </style>
+</head>
+<body class="bg-slate-900 text-sky-100 flex flex-col h-screen antialiased overflow-hidden">
+
+    <!-- Main Content Area (Activity Bar + Sidebar + Editor + Panel) -->
+    <div class="flex flex-1 overflow-hidden">
+        <!-- Activity Bar -->
+        <div id="activity-bar" class="w-14 bg-sky-900 flex flex-col justify-between items-center py-3 shrink-0">
+            <div id="activity-bar-main" class="space-y-2">
+                <!-- Activity bar icons will be rendered here by JS -->
+            </div>
+            <div id="activity-bar-secondary" class="space-y-2">
+                 <!-- Bottom icons like account, settings -->
+                <button title="Account" class="activity-bar-icon w-10 h-10 flex items-center justify-center rounded hover:bg-sky-700 text-sky-300 hover:text-sky-100 focus:outline-none">
+                    <div class="w-6 h-6 bg-sky-700 border border-sky-600 rounded-full flex items-center justify-center text-xs">Ac</div>
+                </button>
+                <button title="Settings" class="activity-bar-icon w-10 h-10 flex items-center justify-center rounded hover:bg-sky-700 text-sky-300 hover:text-sky-100 focus:outline-none">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6"><path stroke-linecap="round" stroke-linejoin="round" d="M9.594 3.94c.09-.542.56-.94 1.11-.94h2.593c.55 0 1.02.398 1.11.94l.213 1.281c.063.374.313.686.646.87.074.04.147.083.22.127.324.196.72.257 1.075.124l1.217-.456a1.125 1.125 0 011.37.49l1.296 2.247a1.125 1.125 0 01-.26 1.431l-1.003.827c-.293.24-.438.613-.431.992a6.759 6.759 0 010 1.655c.007.379.138.75.43.99l1.005.828c.424.35.534.954.26 1.43l-1.298 2.247a1.125 1.125 0 01-1.369.491l-1.217-.456c-.355-.133-.75-.072-1.076.124a6.57 6.57 0 01-.22.128c-.333.183-.583.495-.646.869l-.213 1.28c-.09.543-.56.941-1.11.941h-2.594c-.55 0-1.02-.398-1.11-.94l-.213-1.281c-.063-.374-.313-.686-.646-.87-.074-.04-.147-.083-.22-.127-.324-.196-.72-.257-1.075-.124l-1.217.456a1.125 1.125 0 01-1.37-.49l-1.296-2.247a1.125 1.125 0 01.26-1.431l1.004-.827c.292-.24.437-.613.43-.992a6.759 6.759 0 010-1.655c-.007-.379-.138-.75-.43-.99l-1.004-.828a1.125 1.125 0 01-.26-1.43l1.297-2.247a1.125 1.125 0 011.37-.491l1.216.456c.356.133.751.072 1.076-.124.072-.044.146-.087.22-.128.332-.183.582-.495.646-.869l.213-1.28z" /><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+                </button>
+            </div>
+        </div>
+
+        <!-- Sidebar -->
+        <div id="sidebar" class="w-72 bg-sky-800 p-0 flex flex-col shrink-0">
+            <!-- Sidebar content will be rendered here by JS -->
+        </div>
+
+        <!-- Editor & Panel Area -->
+        <div id="editor-panel-area" class="flex-1 flex flex-col overflow-hidden">
+            <!-- Editor Group -->
+            <div id="editor-group" class="flex-1 flex flex-col bg-slate-900 overflow-hidden">
+                <!-- Tabs -->
+                <div id="editor-tabs-container" class="h-10 bg-sky-800 flex items-end shrink-0 overflow-x-auto">
+                    <!-- Editor tabs will be rendered here by JS -->
+                </div>
+                <!-- Code Area -->
+                <div id="editor-content-area" class="flex-1 p-1 overflow-y-auto">
+                    <!-- Editor content or welcome message will be rendered here by JS -->
+                </div>
+            </div>
+            <!-- Panel (Terminal, Problems, etc.) -->
+            <div id="panel" class="h-64 bg-sky-800 border-t border-sky-700 flex flex-col shrink-0">
+                <div id="panel-tabs" class="h-10 bg-sky-900 flex items-end px-2 space-x-1 shrink-0">
+                    <!-- Panel tabs will be rendered here by JS -->
+                </div>
+                <div id="panel-content" class="flex-1 p-3 overflow-y-auto text-sm">
+                    <!-- Panel content will be rendered here by JS -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Status Bar -->
+    <div id="status-bar" class="h-7 bg-teal-700 flex items-center justify-between px-3 text-xs shrink-0 text-teal-100">
+        <div class="flex items-center space-x-3">
+            <div class="flex items-center hover:bg-teal-600 px-1 rounded cursor-pointer">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4 mr-1">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M17.25 6.75L22.5 12l-5.25 5.25m-10.5 0L1.5 12l5.25-5.25m7.5-3l-4.5 16.5" />
+                </svg>
+                <span>main</span>
+            </div>
+            <div id="status-bar-sync" class="hover:bg-teal-600 px-1 rounded cursor-pointer">Sync</div>
+        </div>
+        <div class="flex items-center space-x-3">
+            <div id="status-bar-cursor" class="hover:bg-teal-600 px-1 rounded cursor-pointer">Ln 1, Col 1</div>
+            <div id="status-bar-indent" class="hover:bg-teal-600 px-1 rounded cursor-pointer">Spaces: 2</div>
+            <div id="status-bar-encoding" class="hover:bg-teal-600 px-1 rounded cursor-pointer">UTF-8</div>
+            <div id="status-bar-language" class="hover:bg-teal-600 px-1 rounded cursor-pointer">Plain Text</div>
+            <button id="toggle-panel-button" title="Toggle Panel" class="hover:bg-teal-600 px-1 rounded">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-4 h-4">
+                  <path fill-rule="evenodd" d="M2 3a1 1 0 00-1 1v1a1 1 0 001 1h16a1 1 0 001-1V4a1 1 0 00-1-1H2zm0 12a1 1 0 00-1 1v1a1 1 0 001 1h16a1 1 0 001-1v-1a1 1 0 00-1-1H2zM2 8a1 1 0 00-1 1v1a1 1 0 001 1h16a1 1 0 001-1V9a1 1 0 00-1-1H2z" clip-rule="evenodd" />
+                </svg>
+            </button>
+            <div class="hover:bg-teal-600 px-1 rounded cursor-pointer">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M14.857 17.082a23.848 23.848 0 005.454-1.31A8.967 8.967 0 0118 9.75v-.7V9A6 6 0 006 9v.75a8.967 8.967 0 01-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 01-5.714 0m5.714 0a3 3 0 11-5.714 0" />
+                </svg>
+            </div>
+        </div>
+    </div>
+
+<script>
+const App = {
+    // --- STATE ---
+    state: {
+        currentActivityView: 'explorer', // explorer, search, source_control, run_debug, extensions
+        openFiles: [], // { id, name, content, language, type }
+        activeFileId: null,
+        panel: {
+            visible: true,
+            activeTab: 'terminal', // terminal, problems, output, debug_console
+        },
+        fileSystem: {
+            id: 'root', name: 'WINDSURF_PROJECT', type: 'folder', children: [
+                { id: 'readme', name: 'README.md', type: 'file', language: 'markdown', content: `# Windsurf Project\n\nWelcome to the VS Code clone themed for windsurfers!\n\n### Features:\n- Explore files in a familiar tree structure.\n- Open multiple files in tabs.\n- A cool, breezy theme inspired by the ocean and sky.\n\n### Get Started:\n- Click on files in the Explorer to open them.\n- Try out the Terminal in the panel below.\n\nHappy coding and may the wind be with you!` },
+                { id: 'indexhtml', name: 'index.html', type: 'file', language: 'html', content: `<!DOCTYPE html>\n<html lang="en">\n<head>\n    <meta charset="UTF-8">\n    <title>Windsurf App</title>\n    <link rel="stylesheet" href="src/styles/main.css">\n</head>\n<body>\n    <header>\n        <h1>Catch the Wave!</h1>\n    </header>\n    <main>\n        <p>Ready for an awesome windsurfing session!</p>\n    </main>\n    <script src="src/app.js"></script>\n</body>\n</html>` },
+                { id: 'src-folder', name: 'src', type: 'folder', children: [
+                    { id: 'src-appjs', name: 'app.js', type: 'file', language: 'javascript', content: `console.log("Windsurf app initializing...");\n\nfunction checkWindConditions(speed) {\n    if (speed > 30) return "Too windy! Stay safe!";\n    if (speed < 10) return "Not enough wind today.";\n    return "Perfect wind! Let's go surfing!";\n}\n\nconsole.log(checkWindConditions(15));\n// Output: Perfect wind! Let's go surfing!` },
+                    { id: 'src-styles-folder', name: 'styles', type: 'folder', children: [
+                        { id: 'src-styles-maincss', name: 'main.css', type: 'file', language: 'css', content: `body {\n    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;\n    margin: 0;\n    background-color: #e0f2fe; /* sky-100 like */\n    color: #0c4a6e; /* sky-800 like */\n}\n\nheader {\n    background-color: #0ea5e9; /* sky-500 */\n    color: white;\n    padding: 1em;\n    text-align: center;\n    box-shadow: 0 2px 4px rgba(0,0,0,0.1);\n}\n\n.surfboard {\n    border: 2px solid #f59e0b; /* amber-500 */\n}` }
+                    ]},
+                    { id: 'src-components-folder', name: 'components', type: 'folder', children: [
+                        { id: 'src-components-headerjsx', name: 'Header.jsx', type: 'file', language: 'jsx', content: `import React from 'react';\n\nconst Header = ({ siteName }) => (\n    <div className="bg-teal-500 text-white p-4 shadow-md">\n        <h1 className="text-2xl font-bold">{siteName} - Windsurf Conditions</h1>\n        <p>Your guide to the perfect wave.</p>\n    </div>\n);\n\nexport default Header;` }
+                    ]}
+                ]},
+                { id: 'assets-folder', name: 'assets', type: 'folder', children: [
+                    { id: 'assets-sunsetsail', name: 'sunset-sail.jpg', type: 'file', language: 'image', content: 'Placeholder for a beautiful sunset sailing image.' },
+                    { id: 'assets-windrose', name: 'wind-rose.svg', type: 'file', language: 'image', content: 'Placeholder for a wind rose SVG icon.' },
+                ]},
+                { id: 'vscode-folder', name: '.vscode', type: 'folder', children: [
+                     { id: 'vscode-settingsjson', name: 'settings.json', type: 'file', language: 'json', content: `{\n    "editor.fontSize": 14,\n    "editor.tabSize": 2,\n    "files.autoSave": "onFocusChange",\n    "workbench.colorTheme": "Windsurf Dark Blue",\n    "windsurf.spotChecker.enabled": true\n}` }
+                ]}
+            ]
+        },
+        activityBarItems: [
+            { id: 'explorer', name: 'Explorer', iconSvg: `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6"><path stroke-linecap="round" stroke-linejoin="round" d="M3.75 9.75h16.5m-16.5 4.5h16.5m-16.5 4.5h16.5m-16.5-15h16.5a2.25 2.25 0 012.25 2.25v10.5A2.25 2.25 0 0120.25 21H3.75A2.25 2.25 0 011.5 18.75V5.25A2.25 2.25 0 013.75 3h4.5M3.75 3v1.5m0 0h4.5m0 0V3m0 0h4.5m0 0V3m0 0h4.5m0 0V3m0 0h.75M3.75 21v-1.5m0 0h4.5m0 0v1.5m0 0h4.5m0 0v1.5m0 0h4.5m0 0v1.5m0 0h.75M7.5 6.75h.75v.75H7.5V6.75zm0 4.5h.75v.75H7.5v-.75zm0 4.5h.75v.75H7.5v-.75zm4.5-9h.75v.75h-.75V6.75zm0 4.5h.75v.75h-.75v-.75zm0 4.5h.75v.75h-.75v-.75zm4.5-9h.75v.75h-.75V6.75zm0 4.5h.75v.75h-.75v-.75zm0 4.5h.75v.75h-.75v-.75z" /></svg>`},
+            { id: 'search', name: 'Search', iconSvg: `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" /></svg>` },
+            { id: 'source_control', name: 'Source Control', iconSvg: `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6"><path stroke-linecap="round" stroke-linejoin="round" d="M6 20.25h12m-7.5-3.75v3.75m3.75-3.75v3.75M9 10.5l3 3m0 0l3-3m-3 3V3.75M9 3.75h6" /></svg>` },
+            { id: 'run_debug', name: 'Run & Debug', iconSvg: `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6"><path stroke-linecap="round" stroke-linejoin="round" d="M5.25 5.653c0-.856.917-1.398 1.667-.986l11.54 6.348a1.125 1.125 0 010 1.971l-11.54 6.347a1.125 1.125 0 01-1.667-.985V5.653z" /><path stroke-linecap="round" stroke-linejoin="round" d="M21 7.5H12m0 0l-2.25-2.25M12 7.5l2.25 2.25M12 16.5h9m0 0l-2.25 2.25M21 16.5l2.25-2.25" /></svg>` },
+            { id: 'extensions', name: 'Extensions', iconSvg: `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6"><path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6A2.25 2.25 0 016 3.75h2.25A2.25 2.25 0 0110.5 6v2.25a2.25 2.25 0 01-2.25 2.25H6a2.25 2.25 0 01-2.25-2.25V6zM3.75 15.75A2.25 2.25 0 016 13.5h2.25a2.25 2.25 0 012.25 2.25V18a2.25 2.25 0 01-2.25 2.25H6a2.25 2.25 0 01-2.25-2.25v-2.25zM13.5 6a2.25 2.25 0 012.25-2.25H18A2.25 2.25 0 0120.25 6v2.25A2.25 2.25 0 0118 10.5h-2.25A2.25 2.25 0 0113.5 8.25V6zM13.5 15.75a2.25 2.25 0 012.25-2.25H18a2.25 2.25 0 012.25 2.25V18A2.25 2.25 0 0118 20.25h-2.25A2.25 2.25 0 0113.5 18v-2.25z" /></svg>` },
+        ],
+        panelTabs: [
+            { id: 'terminal', name: 'TERMINAL' },
+            { id: 'problems', name: 'PROBLEMS' },
+            { id: 'output', name: 'OUTPUT' },
+            { id: 'debug_console', name: 'DEBUG CONSOLE' },
+        ]
+    },
+
+    // --- DOM ELEMENTS ---
+    elements: {},
+
+    // --- INITIALIZATION ---
+    init() {
+        this.elements = {
+            activityBarMain: document.getElementById('activity-bar-main'),
+            sidebar: document.getElementById('sidebar'),
+            editorTabsContainer: document.getElementById('editor-tabs-container'),
+            editorContentArea: document.getElementById('editor-content-area'),
+            panel: document.getElementById('panel'),
+            panelTabs: document.getElementById('panel-tabs'),
+            panelContent: document.getElementById('panel-content'),
+            togglePanelButton: document.getElementById('toggle-panel-button'),
+            statusBarLanguage: document.getElementById('status-bar-language'),
+            statusBarCursor: document.getElementById('status-bar-cursor'),
+        };
+
+        this.elements.togglePanelButton.addEventListener('click', () => this.togglePanel());
+        
+        this.renderAll();
+        // Open README.md by default
+        const readmeFile = this.findFileById('readme', this.state.fileSystem);
+        if (readmeFile) this.openFile(readmeFile);
+    },
+
+    // --- RENDER FUNCTIONS ---
+    renderAll() {
+        this.renderActivityBar();
+        this.renderSidebar();
+        this.renderEditorTabs();
+        this.renderEditorContent();
+        this.renderPanel();
+        this.renderStatusBar();
+    },
+
+    renderActivityBar() {
+        this.elements.activityBarMain.innerHTML = '';
+        this.state.activityBarItems.forEach(item => {
+            const button = document.createElement('button');
+            button.className = `activity-bar-icon w-10 h-10 flex items-center justify-center rounded hover:bg-sky-700 focus:outline-none text-sky-300 hover:text-sky-100`;
+            button.title = item.name;
+            button.setAttribute('data-view-id', item.id);
+            button.setAttribute('aria-selected', this.state.currentActivityView === item.id);
+            if (this.state.currentActivityView === item.id) {
+                button.classList.add('bg-teal-500', 'text-white');
+            } else {
+                button.classList.remove('bg-teal-500', 'text-white');
+            }
+            button.innerHTML = item.iconSvg;
+            button.addEventListener('click', () => this.handleActivityBarClick(item.id));
+            this.elements.activityBarMain.appendChild(button);
+        });
+    },
+
+    renderSidebar() {
+        this.elements.sidebar.innerHTML = ''; // Clear previous content
+        const header = document.createElement('div');
+        header.className = 'h-10 flex items-center px-4 text-xs font-semibold text-sky-300 uppercase tracking-wider border-b border-sky-700 shrink-0';
+        
+        const contentWrapper = document.createElement('div');
+        contentWrapper.className = 'flex-1 overflow-y-auto p-2 space-y-1 text-sm';
+
+        switch (this.state.currentActivityView) {
+            case 'explorer':
+                header.textContent = 'Explorer';
+                this.elements.sidebar.appendChild(header);
+                this.elements.sidebar.appendChild(contentWrapper);
+                this.renderExplorerView(contentWrapper);
+                break;
+            case 'search':
+                header.textContent = 'Search';
+                this.elements.sidebar.appendChild(header);
+                this.elements.sidebar.appendChild(contentWrapper);
+                contentWrapper.innerHTML = `
+                    <input type="text" placeholder="Search" class="w-full bg-sky-900 border border-sky-700 rounded px-2 py-1.5 text-sky-100 focus:outline-none focus:border-teal-500 mb-2">
+                    <input type="text" placeholder="Replace" class="w-full bg-sky-900 border border-sky-700 rounded px-2 py-1.5 text-sky-100 focus:outline-none focus:border-teal-500">
+                    <div class="mt-4 text-sky-400 text-xs">Search functionality placeholder.</div>
+                `;
+                break;
+            // Add other cases for source_control, run_debug, extensions
+            default:
+                header.textContent = this.state.currentActivityView.replace('_', ' ').toUpperCase();
+                this.elements.sidebar.appendChild(header);
+                this.elements.sidebar.appendChild(contentWrapper);
+                contentWrapper.innerHTML = `<p class="text-sky-400 p-2">Content for ${this.state.currentActivityView} view.</p>`;
+        }
+    },
+
+    renderExplorerView(container) {
+        const workspaceSection = document.createElement('div');
+        workspaceSection.className = 'mb-3';
+        
+        const workspaceHeader = document.createElement('button');
+        workspaceHeader.className = 'flex items-center w-full text-left text-xs font-bold text-amber-400 hover:bg-sky-700 p-1 rounded';
+        workspaceHeader.innerHTML = `
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-4 h-4 mr-1 shrink-0 transition-transform duration-150"><path fill-rule="evenodd" d="M5.22 8.22a.75.75 0 011.06 0L10 11.94l3.72-3.72a.75.75 0 111.06 1.06l-4.25 4.25a.75.75 0 01-1.06 0L5.22 9.28a.75.75 0 010-1.06z" clip-rule="evenodd" /></svg>
+            <span>${this.state.fileSystem.name}</span>
+        `;
+        const fileListContainer = document.createElement('div');
+        fileListContainer.className = 'ml-2 space-y-0.5 pt-1'; // Indent file list
+
+        workspaceHeader.addEventListener('click', () => {
+            fileListContainer.classList.toggle('hidden');
+            workspaceHeader.querySelector('svg').classList.toggle('rotate-[-90deg]');
+        });
+        
+        this.renderFileTree(this.state.fileSystem.children, fileListContainer, 0);
+        
+        workspaceSection.appendChild(workspaceHeader);
+        workspaceSection.appendChild(fileListContainer);
+        container.appendChild(workspaceSection);
+    },
+
+    renderFileTree(items, parentElement, depth) {
+        items.forEach(item => {
+            const itemElement = document.createElement('div');
+            itemElement.className = `flex items-center hover:bg-sky-700 rounded cursor-pointer py-0.5 px-1 group`;
+            itemElement.style.paddingLeft = `${depth * 0.75 + 0.25}rem`; // Indentation
+
+            const iconClass = item.type === 'folder' ? 'file-icon-folder' : `file-icon-${item.language || 'unknown'}`;
+            
+            itemElement.innerHTML = `
+                ${item.type === 'folder' ? `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-4 h-4 mr-1.5 shrink-0 text-amber-400 transition-transform duration-150 group-data-[open=true]:rotate-90"><path fill-rule="evenodd" d="M8.22 5.22a.75.75 0 011.06 0l3.5 3.5a.75.75 0 010 1.06l-3.5 3.5a.75.75 0 01-1.06-1.06L11.19 10 8.22 7.06a.75.75 0 010-1.06z" clip-rule="evenodd" /></svg>` : `<span class="file-icon ${iconClass} w-4 h-4 mr-1.5 shrink-0 inline-block"></span>`}
+                <span class="truncate ${item.type === 'folder' ? 'text-sky-200' : 'text-sky-100'}">${item.name}</span>
+            `;
+            
+            if (item.type === 'file') {
+                itemElement.addEventListener('click', () => this.openFile(item));
+            }
+
+            parentElement.appendChild(itemElement);
+
+            if (item.type === 'folder') {
+                itemElement.setAttribute('data-open', 'false'); // Initially closed
+                const childrenContainer = document.createElement('div');
+                childrenContainer.className = 'hidden space-y-0.5'; // Sub-tree initially hidden
+                itemElement.addEventListener('click', (e) => {
+                    // Prevent opening file if folder name itself is clicked
+                    if (e.target === itemElement || e.target.parentElement === itemElement || e.target.tagName === 'SPAN') {
+                        const isOpen = childrenContainer.classList.toggle('hidden');
+                        itemElement.setAttribute('data-open', isOpen ? 'false' : 'true');
+                    }
+                });
+                this.renderFileTree(item.children || [], childrenContainer, depth + 1);
+                parentElement.appendChild(childrenContainer);
+            }
+        });
+    },
+    
+    renderEditorTabs() {
+        this.elements.editorTabsContainer.innerHTML = '';
+        this.state.openFiles.forEach(file => {
+            const tab = document.createElement('div');
+            tab.className = `h-10 flex items-center px-3 py-2 text-sm cursor-pointer border-r border-sky-900`;
+            tab.setAttribute('data-file-id', file.id);
+
+            const iconClass = `file-icon-${file.language || 'unknown'}`;
+            tab.innerHTML = `
+                <span class="file-icon ${iconClass} mr-1.5"></span>
+                <span class="mr-2 truncate max-w-[150px]">${file.name}</span>
+                <button class="close-tab-btn w-5 h-5 flex items-center justify-center rounded hover:bg-sky-600 ml-auto">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+                </button>
+            `;
+
+            if (file.id === this.state.activeFileId) {
+                tab.classList.add('bg-slate-900', 'text-sky-100'); // Active tab matches editor bg
+                tab.classList.remove('text-sky-300');
+            } else {
+                tab.classList.add('bg-sky-800', 'text-sky-300', 'hover:bg-sky-700');
+            }
+
+            tab.addEventListener('click', (e) => {
+                if (!e.target.closest('.close-tab-btn')) {
+                    this.handleTabClick(file.id);
+                }
+            });
+            tab.querySelector('.close-tab-btn').addEventListener('click', (e) => {
+                e.stopPropagation();
+                this.handleTabClose(file.id);
+            });
+            this.elements.editorTabsContainer.appendChild(tab);
+        });
+    },
+
+    renderEditorContent() {
+        this.elements.editorContentArea.innerHTML = '';
+        const activeFile = this.state.openFiles.find(f => f.id === this.state.activeFileId);
+
+        if (activeFile) {
+            if (activeFile.language === 'image') {
+                const imgPlaceholder = document.createElement('div');
+                imgPlaceholder.className = 'p-4 text-sky-400';
+                imgPlaceholder.innerHTML = `
+                    <div class="bg-slate-800 border-2 border-dashed border-sky-700 rounded-xl w-full h-64 flex flex-col items-center justify-center">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-16 h-16 text-sky-600 mb-2"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 15.75l5.159-5.159a2.25 2.25 0 013.182 0l5.159 5.159m-1.5-1.5l1.409-1.409a2.25 2.25 0 013.182 0l2.909 2.909m-18 3.75h16.5a1.5 1.5 0 001.5-1.5V6a1.5 1.5 0 00-1.5-1.5H3.75A1.5 1.5 0 002.25 6v12a1.5 1.5 0 001.5 1.5zm10.5-11.25h.008v.008h-.008V8.25zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0z" /></svg>
+                        <p class="text-lg font-semibold">${activeFile.name}</p>
+                        <p class="text-sm">${activeFile.content}</p>
+                    </div>
+                `;
+                this.elements.editorContentArea.appendChild(imgPlaceholder);
+            } else {
+                const pre = document.createElement('pre');
+                pre.className = 'p-4 text-sm leading-relaxed'; // Add padding inside pre for scrollbar space
+                const code = document.createElement('code');
+                code.className = `language-${activeFile.language || 'plaintext'} text-sky-200`;
+                code.textContent = activeFile.content;
+                pre.appendChild(code);
+                this.elements.editorContentArea.appendChild(pre);
+            }
+            this.elements.statusBarLanguage.textContent = activeFile.language ? activeFile.language.toUpperCase() : 'Plain Text';
+        } else {
+            this.renderWelcomeScreen();
+            this.elements.statusBarLanguage.textContent = 'No File Open';
+        }
+        this.elements.statusBarCursor.textContent = 'Ln 1, Col 1'; // Reset cursor pos
+    },
+
+    renderWelcomeScreen() {
+        this.elements.editorContentArea.innerHTML = `
+            <div class="flex flex-col items-center justify-center h-full p-8 text-center text-sky-300">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1" stroke="currentColor" class="w-24 h-24 text-teal-500 mb-6">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 5.25h16.5m-16.5 4.5h16.5m-16.5 4.5h16.5m-16.5 4.5h16.5M21 8.25H3m18 0V18a2.25 2.25 0 01-2.25 2.25H5.25A2.25 2.25 0 013 18V8.25m18 0H3m18 0c0-1.12-.448-2.133-1.172-2.897M3 8.25c0-1.12.448-2.133 1.172-2.897m13.656 0A2.25 2.25 0 0015.75 3H8.25a2.25 2.25 0 00-2.078 2.353M12 21a2.25 2.25 0 002.25-2.25H9.75A2.25 2.25 0 0012 21z"/>
+                    <path d="M9.5 12.5 C10.5 14.5, 13.5 14.5, 14.5 12.5 C13.5 10.5, 10.5 10.5, 9.5 12.5 M6.5 9 C7 11, 9 11, 9.5 9 C9 7, 7 7, 6.5 9 M14.5 9 C15 11, 17 11, 17.5 9 C17 7, 15 7, 14.5 9" stroke-width="0.75" fill="none" stroke="${this.state.panel.visible ? '#0d9488' : '#0e7490'}"/> <!-- Wave elements -->
+                </svg>
+                <h1 class="text-3xl font-semibold text-sky-100 mb-2">Windsurf VS Code</h1>
+                <p class="mb-6 text-sky-400">Your coding environment, inspired by the sea breeze.</p>
+                <div class="space-y-2">
+                    <button class="text-teal-400 hover:text-teal-300 text-lg">New File...</button><br>
+                    <button class="text-teal-400 hover:text-teal-300 text-lg">Open Folder...</button><br>
+                    <button class="text-teal-400 hover:text-teal-300 text-lg">Clone Git Repository...</button>
+                </div>
+                <p class="mt-8 text-sm text-sky-500">Tip: Explore files on the left or toggle the panel below.</p>
+            </div>
+        `;
+    },
+
+    renderPanel() {
+        this.elements.panel.classList.toggle('hidden', !this.state.panel.visible);
+        if (!this.state.panel.visible) return;
+
+        this.elements.panelTabs.innerHTML = '';
+        this.state.panelTabs.forEach(tab => {
+            const tabEl = document.createElement('button');
+            tabEl.className = `px-3 py-2 text-xs font-medium border-b-2 focus:outline-none`;
+            tabEl.textContent = tab.name;
+            if (tab.id === this.state.panel.activeTab) {
+                tabEl.classList.add('border-teal-400', 'text-sky-100');
+                tabEl.classList.remove('border-transparent', 'text-sky-400', 'hover:text-sky-200');
+            } else {
+                tabEl.classList.add('border-transparent', 'text-sky-400', 'hover:text-sky-200');
+            }
+            tabEl.addEventListener('click', () => this.handlePanelTabClick(tab.id));
+            this.elements.panelTabs.appendChild(tabEl);
+        });
+        this.renderPanelContent();
+    },
+
+    renderPanelContent() {
+        if (!this.state.panel.visible) return;
+        this.elements.panelContent.innerHTML = '';
+        switch (this.state.panel.activeTab) {
+            case 'terminal':
+                this.elements.panelContent.innerHTML = `
+                    <p class="text-sky-300">Windsurf Terminal</p>
+                    <p class="text-sky-400 text-xs">Type 'help' for a list of mock commands.</p>
+                    <div class="mt-2">
+                        <span class="text-teal-400">~/windsurf_project $ </span><span class="text-sky-100">ls -la</span>
+                    </div>
+                    <pre class="text-sky-200 text-xs whitespace-pre-wrap">total 8
+drwxr-xr-x 4 user staff 128 Jul 15 10:00 .
+drwxr-xr-x 3 user staff  96 Jul 15 09:30 ..
+-rw-r--r-- 1 user staff 350 Jul 15 09:45 README.md
+drwxr-xr-x 5 user staff 160 Jul 15 10:00 src
+</pre>
+                    <div class="mt-1">
+                        <span class="text-teal-400">~/windsurf_project $ </span><span class="inline-block w-2 h-3 bg-sky-100 animate-pulse ml-1"></span>
+                    </div>
+                `;
+                break;
+            case 'problems':
+                this.elements.panelContent.innerHTML = `<p class="text-sky-300">No problems have been detected in the workspace so far. Keep surfing!</p>`;
+                break;
+            case 'output':
+                this.elements.panelContent.innerHTML = `<p class="text-sky-300">Windsurf App Output:</p><p class="text-xs text-sky-400">> Initialized successfully. Ready for a coding session.</p>`;
+                break;
+            case 'debug_console':
+                this.elements.panelContent.innerHTML = `<p class="text-sky-300">Debug console is ready. Set breakpoints and start debugging your windsurf app!</p>`;
+                break;
+        }
+    },
+
+    renderStatusBar() {
+        // Language is updated in renderEditorContent
+        // Cursor position is static for now
+        // Panel toggle state (visual cue on button if desired) - handled by panel visibility
+    },
+
+    // --- EVENT HANDLERS ---
+    handleActivityBarClick(viewId) {
+        this.state.currentActivityView = viewId;
+        this.renderActivityBar(); // Re-render to update active state
+        this.renderSidebar();
+    },
+
+    handleTabClick(fileId) {
+        this.state.activeFileId = fileId;
+        this.renderEditorTabs();
+        this.renderEditorContent();
+    },
+
+    handleTabClose(fileIdToClose) {
+        const index = this.state.openFiles.findIndex(f => f.id === fileIdToClose);
+        if (index > -1) {
+            this.state.openFiles.splice(index, 1);
+            if (this.state.activeFileId === fileIdToClose) {
+                if (this.state.openFiles.length > 0) {
+                    this.state.activeFileId = this.state.openFiles[Math.max(0, index - 1)].id;
+                } else {
+                    this.state.activeFileId = null;
+                }
+            }
+        }
+        this.renderEditorTabs();
+        this.renderEditorContent();
+    },
+
+    handlePanelTabClick(tabId) {
+        this.state.panel.activeTab = tabId;
+        this.renderPanel(); // Re-render panel tabs and content
+    },
+
+    togglePanel() {
+        this.state.panel.visible = !this.state.panel.visible;
+        this.renderPanel(); // Re-render panel (will hide/show and update content)
+        // Update welcome screen SVG detail based on panel visibility (just an example of interconnectedness)
+        if (!this.state.activeFileId) this.renderWelcomeScreen();
+    },
+
+    // --- HELPER FUNCTIONS ---
+    findFileById(id, node) {
+        if (node.id === id && node.type === 'file') return node;
+        if (node.children) {
+            for (const child of node.children) {
+                const found = this.findFileById(id, child);
+                if (found) return found;
+            }
+        }
+        return null;
+    },
+
+    openFile(file) {
+        if (!this.state.openFiles.find(f => f.id === file.id)) {
+            this.state.openFiles.push(file);
+        }
+        this.state.activeFileId = file.id;
+        this.renderEditorTabs();
+        this.renderEditorContent();
+    },
+
+};
+
+document.addEventListener('DOMContentLoaded', () => App.init());
+
+</script>
+</body>
+</html>

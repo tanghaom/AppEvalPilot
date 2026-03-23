@@ -1,0 +1,9 @@
+{
+  "web_id": "web_96",
+  "task_id": 3,
+  "task_type": "dynamic",
+  "instruction": "Task: Use mouse scroll wheel (or dedicated +/- buttons) to zoom the 3D brain model.\nExpected Result: The 3D brain model zooms in or out.\n\nNote: The task is only considered successful if the expected result is achieved; otherwise, it is deemed infeasible.",
+  "max_steps": 15,
+  "expected": "The 3D brain model zooms in or out.",
+  "label": 0
+}

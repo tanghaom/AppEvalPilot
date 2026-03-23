@@ -1,0 +1,9 @@
+{
+  "web_id": "web_72",
+  "task_id": 4,
+  "task_type": "dynamic",
+  "instruction": "Task: Select a filter option (e.g., by clicking a tag like 'RPG', or choosing 'bug fixes' from a dropdown menu) to refine the displayed project updates.\nExpected Result: The list of project updates dynamically filters to show only those cards matching the selected criteria, while hiding others.\n\nNote: The task is only considered successful if the expected result is achieved; otherwise, it is deemed infeasible.",
+  "max_steps": 15,
+  "expected": "The list of project updates dynamically filters to show only those cards matching the selected criteria, while hiding others.",
+  "label": 1
+}

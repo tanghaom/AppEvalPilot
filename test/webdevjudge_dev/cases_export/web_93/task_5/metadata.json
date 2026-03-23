@@ -1,0 +1,9 @@
+{
+  "web_id": "web_93",
+  "task_id": 5,
+  "task_type": "dynamic",
+  "instruction": "Task: Click the 'Delete Entry' button within an expanded timeline entry.\nExpected Result: The entire timeline entry is removed from the visual timeline. The progress bar, if implemented, may update to reflect the removal.\n\nNote: The task is only considered successful if the expected result is achieved; otherwise, it is deemed infeasible.",
+  "max_steps": 15,
+  "expected": "The entire timeline entry is removed from the visual timeline. The progress bar, if implemented, may update to reflect the removal.",
+  "label": 1
+}

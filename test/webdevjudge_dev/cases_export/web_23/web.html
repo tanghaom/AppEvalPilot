@@ -1,0 +1,587 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ANALOG.IO - The Future, Retrofitted.</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@300;400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --color-bg: #F5F2EB; /* Parchment */
+            --color-text: #4A403A; /* Dark Sepia */
+            --color-primary-brand: #B8860B; /* DarkGoldenRod */
+            --color-secondary-brand: #556B2F; /* DarkOliveGreen */
+            --color-accent-glow: rgba(184, 134, 11, 0.5);
+            --color-border-subtle: #DCD3C8;
+            --color-terminal-bg: #1E1E1E;
+            --color-terminal-text: #32CD32; /* LimeGreen */
+            --color-terminal-user-text: #ADD8E6; /* LightBlue */
+            --color-nav-bg: rgba(245, 242, 235, 0.9); /* Parchment with alpha */
+            --color-nav-item-hover-glow: rgba(184, 134, 11, 0.6);
+
+            --font-main: 'Cormorant Garamond', serif;
+            --font-heading: 'Cormorant Garamond', serif;
+            --font-mono: 'IBM Plex Mono', monospace;
+        }
+
+        body {
+            font-family: var(--font-main);
+            background-color: var(--color-bg);
+            color: var(--color-text);
+            overflow-x: hidden; /* Prevent horizontal scroll from animations */
+        }
+
+        h1, h2, h3, h4, h5, h6 {
+            font-family: var(--font-heading);
+            font-weight: 300; /* Ultra-thin */
+        }
+        
+        .skinny-serif {
+            font-family: var(--font-main);
+            font-weight: 300;
+        }
+
+        /* Global Nav Dropdown */
+        #global-nav-dropdown {
+            transition: opacity 0.5s ease-in-out, transform 0.5s ease-in-out;
+            transform: translateY(-20px);
+            background-color: var(--color-nav-bg);
+            backdrop-filter: blur(8px); /* Holographic feel */
+            -webkit-backdrop-filter: blur(8px);
+        }
+
+        #global-nav-dropdown.nav-active {
+            opacity: 1;
+            transform: translateY(0);
+            pointer-events: auto;
+        }
+
+        .nav-item-glow {
+            position: relative;
+            transition: color 0.3s ease;
+        }
+        .nav-item-glow:hover {
+            color: var(--color-primary-brand);
+        }
+        .nav-item-glow::before {
+            content: '';
+            position: absolute;
+            bottom: -4px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 0;
+            height: 2px;
+            background: linear-gradient(90deg, transparent, var(--color-primary-brand), transparent);
+            transition: width 0.4s ease-out;
+            opacity: 0;
+        }
+        .nav-item-glow:hover::before {
+            width: 100%;
+            opacity: 1;
+            box-shadow: 0 0 8px var(--color-nav-item-hover-glow);
+        }
+
+        /* Product Gallery Animation */
+        .product-gallery-track {
+            animation: scrollGallery 30s linear infinite;
+        }
+        .product-gallery-item:hover ~ .product-gallery-track, /* This doesn't work directly for pausing parent */
+        .product-gallery-container:hover .product-gallery-track {
+            animation-play-state: paused;
+        }
+
+        @keyframes scrollGallery {
+            0% { transform: translateX(0%); }
+            100% { transform: translateX(-50%); } /* Assuming duplication for seamless scroll */
+        }
+        
+        .product-gallery-item-info {
+            transition: opacity 0.3s ease-in-out, transform 0.3s ease-in-out;
+            transform: translateY(10px);
+        }
+        .product-gallery-item:hover .product-gallery-item-info {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        /* Terminal aesthetic */
+        .terminal {
+            background-color: var(--color-terminal-bg);
+            color: var(--color-terminal-text);
+            font-family: var(--font-mono);
+            border: 1px solid var(--color-terminal-text);
+            box-shadow: 0 0 10px rgba(50, 205, 50, 0.3);
+        }
+        .terminal-input {
+            background-color: transparent;
+            border: none;
+            color: var(--color-terminal-text);
+            caret-color: var(--color-terminal-text);
+        }
+        .terminal-input:focus {
+            outline: none;
+        }
+        .terminal-prompt {
+            color: var(--color-primary-brand); /* Use a distinct color for prompt */
+        }
+        .user-message { color: var(--color-terminal-user-text); }
+        .bot-message { color: var(--color-terminal-text); }
+
+        /* Loading Screen */
+        #loading-screen {
+            background-color: var(--color-bg);
+            color: var(--color-text);
+            z-index: 100;
+        }
+        @keyframes loading-bar-animation {
+            0% { width: 0%; }
+            80% { width: 100%; } /* Hold at 100% for a bit */
+            100% { width: 100%; }
+        }
+        .animate-loading-bar {
+            animation: loading-bar-animation 1.5s ease-out forwards;
+        }
+
+        /* Custom Scrollbar for chat and reviews */
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 8px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: var(--color-terminal-bg);
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background-color: var(--color-primary-brand);
+            border-radius: 4px;
+            border: 2px solid var(--color-terminal-bg);
+        }
+        
+        /* Cursor for chat input */
+        .blinking-cursor::after {
+            content: '_';
+            animation: blink 1s step-end infinite;
+        }
+        @keyframes blink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0; }
+        }
+    </style>
+</head>
+<body class="antialiased">
+
+    <!-- Loading Screen -->
+    <div id="loading-screen" class="fixed inset-0 flex flex-col items-center justify-center transition-opacity duration-1000 ease-in-out">
+        <div class="font-mono text-xl animate-pulse skinny-serif">ANALOG.IO_SYSTEM_LOAD</div>
+        <div class="w-1/2 max-w-xs h-1 bg-[var(--color-text)] mt-4 overflow-hidden rounded">
+            <div id="loading-bar" class="h-full bg-[var(--color-primary-brand)] w-0"></div>
+        </div>
+        <p class="mt-4 text-sm font-mono">EST. 198X</p>
+    </div>
+
+    <div id="main-content" class="opacity-0">
+        <!-- Global Navigation Trigger -->
+        <header class="fixed top-0 left-0 right-0 z-50 flex justify-center pt-6">
+            <button id="nav-trigger" class="skinny-serif text-lg tracking-widest px-6 py-3 border border-[var(--color-text)] rounded-full hover:bg-[var(--color-text)] hover:text-[var(--color-bg)] transition-colors duration-300 focus:outline-none focus:ring-2 focus:ring-[var(--color-primary-brand)] focus:ring-offset-2 focus:ring-offset-[var(--color-bg)]">
+                MENU.SYS
+            </button>
+        </header>
+
+        <!-- Global Navigation Dropdown -->
+        <nav id="global-nav-dropdown" class="fixed top-0 left-0 right-0 pt-24 pb-12 opacity-0 pointer-events-none z-40 shadow-2xl">
+            <div class="container mx-auto px-6">
+                <ul class="grid grid-cols-1 md:grid-cols-3 gap-x-8 gap-y-10 text-center">
+                    <li><a href="#apparel" class="nav-item text-3xl skinny-serif nav-item-glow block py-3">APPAREL_UNIT</a></li>
+                    <li><a href="#accessories" class="nav-item text-3xl skinny-serif nav-item-glow block py-3">PERIPHERALS</a></li>
+                    <li><a href="#manifesto" class="nav-item text-3xl skinny-serif nav-item-glow block py-3">OUR_CODE</a></li>
+                    <li><a href="#support" class="nav-item text-3xl skinny-serif nav-item-glow block py-3">SYSTEM_SUPPORT</a></li>
+                    <li><a href="#broadcasts" class="nav-item text-3xl skinny-serif nav-item-glow block py-3">BROADCASTS</a></li>
+                    <li><a href="#interface" class="nav-item text-3xl skinny-serif nav-item-glow block py-3">CONNECT_INTERFACE</a></li>
+                </ul>
+            </div>
+        </nav>
+
+        <!-- Main Page Content -->
+        <div class="pt-32 md:pt-48 pb-20">
+            <!-- Bold Centered Header -->
+            <section class="text-center mb-20 md:mb-32 px-4">
+                <h1 class="text-6xl md:text-8xl lg:text-9xl skinny-serif leading-none tracking-tighter">
+                    ANALOG<span class="text-[var(--color-primary-brand)]">.</span>IO
+                </h1>
+                <p class="mt-4 text-xl md:text-2xl skinny-serif text-[var(--color-secondary-brand)] tracking-wider">
+                    The Future<span class="text-[var(--color-primary-brand)]">,</span> Retrofitted<span class="text-[var(--color-primary-brand)]">.</span>
+                </p>
+            </section>
+
+            <!-- Hero Product -->
+            <section id="apparel" class="container mx-auto px-6 mb-20 md:mb-32">
+                <div class="grid md:grid-cols-5 gap-8 items-center">
+                    <div class="md:col-span-3">
+                        <div class="bg-[var(--color-border-subtle)] border-2 border-dashed border-[var(--color-text)] rounded-xl aspect-[4/3] flex items-center justify-center">
+                           <p class="text-2xl skinny-serif text-[var(--color-text)] opacity-50">Mainframe_Jacket_v2.obj</p>
+                        </div>
+                    </div>
+                    <div class="md:col-span-2 text-left md:pl-8">
+                        <h2 class="text-4xl md:text-5xl skinny-serif mb-4">The Mainframe Jacket</h2>
+                        <p class="text-lg skinny-serif mb-6 leading-relaxed">
+                            Engineered for the modern architect of digital realms. A shell that speaks in hushed tones of processing power and timeless design. Crafted with precision, for those who build tomorrow.
+                        </p>
+                        <p class="font-mono text-sm text-[var(--color-secondary-brand)] mb-6">SPEC: AeroWeave_Composite / QuantumThread_Lining / NeuralNet_Interface_Port (optional)</p>
+                        <a href="#" class="inline-block skinny-serif text-lg bg-[var(--color-primary-brand)] text-[var(--color-bg)] px-8 py-3 rounded-sm hover:opacity-80 transition-opacity duration-300">
+                            ACCESS_DESIGN_FILES &gt;
+                        </a>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Product Grid (Bento-style) -->
+            <section id="accessories" class="container mx-auto px-6 mb-20 md:mb-32">
+                <h3 class="text-4xl md:text-5xl skinny-serif text-center mb-12 md:mb-16">SYSTEM_COMPONENTS_</h3>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6 md:gap-8">
+                    <!-- Product 1 -->
+                    <div class="group rounded-xl border border-[var(--color-border-subtle)] p-6 hover:shadow-2xl hover:border-[var(--color-primary-brand)] transition-all duration-300">
+                        <div class="product-gallery-container overflow-hidden rounded-lg mb-4 relative h-64">
+                            <div class="product-gallery-track flex w-[200%]"> <!-- Duplicated for seamless scroll illusion -->
+                                <div class="product-gallery-item w-1/2 flex-shrink-0 h-64 bg-gray-200 border-2 border-dashed rounded-lg flex items-center justify-center mr-4 relative">
+                                    <p class="text-xl skinny-serif text-gray-500">Logic_Board_Tee_Front.png</p>
+                                    <div class="product-gallery-item-info absolute inset-0 bg-[var(--color-bg)] bg-opacity-80 p-4 opacity-0 flex flex-col justify-center items-center text-center backdrop-blur-sm">
+                                        <h4 class="text-xl skinny-serif font-semibold">Logic Board Tee</h4>
+                                        <p class="text-sm font-mono mt-1">100% Organic Silicon-Washed Cotton</p>
+                                        <p class="text-lg skinny-serif mt-2 text-[var(--color-primary-brand)]">65.00 UNITS</p>
+                                    </div>
+                                </div>
+                                <div class="product-gallery-item w-1/2 flex-shrink-0 h-64 bg-gray-300 border-2 border-dashed rounded-lg flex items-center justify-center mr-4 relative">
+                                    <p class="text-xl skinny-serif text-gray-500">Logic_Board_Tee_Back.png</p>
+                                    <div class="product-gallery-item-info absolute inset-0 bg-[var(--color-bg)] bg-opacity-80 p-4 opacity-0 flex flex-col justify-center items-center text-center backdrop-blur-sm">
+                                        <h4 class="text-xl skinny-serif font-semibold">Logic Board Tee</h4>
+                                        <p class="text-sm font-mono mt-1">Detail: Solder-point print</p>
+                                        <p class="text-lg skinny-serif mt-2 text-[var(--color-primary-brand)]">65.00 UNITS</p>
+                                    </div>
+                                </div>
+                                <!-- Duplicate set for seamless scroll -->
+                                <div class="product-gallery-item w-1/2 flex-shrink-0 h-64 bg-gray-200 border-2 border-dashed rounded-lg flex items-center justify-center mr-4 relative">
+                                    <p class="text-xl skinny-serif text-gray-500">Logic_Board_Tee_Front.png</p>
+                                </div>
+                                <div class="product-gallery-item w-1/2 flex-shrink-0 h-64 bg-gray-300 border-2 border-dashed rounded-lg flex items-center justify-center mr-4 relative">
+                                    <p class="text-xl skinny-serif text-gray-500">Logic_Board_Tee_Back.png</p>
+                                </div>
+                            </div>
+                        </div>
+                        <h4 class="text-2xl skinny-serif mb-2">Logic Board Tee</h4>
+                        <p class="text-sm skinny-serif text-[var(--color-secondary-brand)] mb-3">Wear the architecture of thought.</p>
+                        <button class="toggle-reviews-btn font-mono text-xs text-[var(--color-primary-brand)] hover:underline">VIEW_REVIEWS_LOG &gt;</button>
+                        <div class="reviews-section hidden mt-4 p-4 terminal max-h-60 overflow-y-auto custom-scrollbar">
+                            <p><span class="terminal-prompt">kernel_msg:</span> Displaying reviews for Logic_Board_Tee...</p>
+                            <div class="mt-2 space-y-2 text-sm">
+                                <p><span class="text-amber-400">User_0x42:</span> This tee has excellent cache performance. 5/5.</p>
+                                <p><span class="text-amber-400">SyntaxEra:</span> Finally, clothing that aligns with my coding style. Clean lines.</p>
+                                <p><span class="text-amber-400">BitShiftBeauty:</span> So comfortable, I can debug for hours. Highly recommend.</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Product 2 -->
+                    <div class="group rounded-xl border border-[var(--color-border-subtle)] p-6 hover:shadow-2xl hover:border-[var(--color-primary-brand)] transition-all duration-300">
+                        <div class="product-gallery-container overflow-hidden rounded-lg mb-4 relative h-64">
+                             <div class="product-gallery-track flex w-[200%]" style="animation-delay: -5s;"> <!-- Offset animation -->
+                                <div class="product-gallery-item w-1/2 flex-shrink-0 h-64 bg-gray-200 border-2 border-dashed rounded-lg flex items-center justify-center mr-4 relative">
+                                    <p class="text-xl skinny-serif text-gray-500">DataStream_Scarf_Pattern.tiff</p>
+                                    <div class="product-gallery-item-info absolute inset-0 bg-[var(--color-bg)] bg-opacity-80 p-4 opacity-0 flex flex-col justify-center items-center text-center backdrop-blur-sm">
+                                        <h4 class="text-xl skinny-serif font-semibold">DataStream Scarf</h4>
+                                        <p class="text-sm font-mono mt-1">Woven Binary Code Pattern</p>
+                                        <p class="text-lg skinny-serif mt-2 text-[var(--color-primary-brand)]">80.00 UNITS</p>
+                                    </div>
+                                </div>
+                                <div class="product-gallery-item w-1/2 flex-shrink-0 h-64 bg-gray-300 border-2 border-dashed rounded-lg flex items-center justify-center mr-4 relative">
+                                    <p class="text-xl skinny-serif text-gray-500">DataStream_Scarf_Detail.tiff</p>
+                                    <div class="product-gallery-item-info absolute inset-0 bg-[var(--color-bg)] bg-opacity-80 p-4 opacity-0 flex flex-col justify-center items-center text-center backdrop-blur-sm">
+                                        <h4 class="text-xl skinny-serif font-semibold">DataStream Scarf</h4>
+                                        <p class="text-sm font-mono mt-1">Microfiber, Anti-aliased Edges</p>
+                                        <p class="text-lg skinny-serif mt-2 text-[var(--color-primary-brand)]">80.00 UNITS</p>
+                                    </div>
+                                </div>
+                                 <!-- Duplicate set -->
+                                <div class="product-gallery-item w-1/2 flex-shrink-0 h-64 bg-gray-200 border-2 border-dashed rounded-lg flex items-center justify-center mr-4 relative">
+                                    <p class="text-xl skinny-serif text-gray-500">DataStream_Scarf_Pattern.tiff</p>
+                                </div>
+                                <div class="product-gallery-item w-1/2 flex-shrink-0 h-64 bg-gray-300 border-2 border-dashed rounded-lg flex items-center justify-center mr-4 relative">
+                                    <p class="text-xl skinny-serif text-gray-500">DataStream_Scarf_Detail.tiff</p>
+                                </div>
+                            </div>
+                        </div>
+                        <h4 class="text-2xl skinny-serif mb-2">DataStream Scarf</h4>
+                        <p class="text-sm skinny-serif text-[var(--color-secondary-brand)] mb-3">Flow with the information age.</p>
+                        <button class="toggle-reviews-btn font-mono text-xs text-[var(--color-primary-brand)] hover:underline">VIEW_REVIEWS_LOG &gt;</button>
+                        <div class="reviews-section hidden mt-4 p-4 terminal max-h-60 overflow-y-auto custom-scrollbar">
+                            <p><span class="terminal-prompt">kernel_msg:</span> Displaying reviews for DataStream_Scarf...</p>
+                            <div class="mt-2 space-y-2 text-sm">
+                                <p><span class="text-amber-400">CypherChic:</span> The pattern is subtle yet striking. Love it.</p>
+                                <p><span class="text-amber-400">PacketSniffer007:</span> Keeps my neck warm during late-night coding sessions. Secure purchase.</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Product 3 -->
+                    <div class="group rounded-xl border border-[var(--color-border-subtle)] p-6 hover:shadow-2xl hover:border-[var(--color-primary-brand)] transition-all duration-300">
+                         <div class="product-gallery-container overflow-hidden rounded-lg mb-4 relative h-64">
+                             <div class="product-gallery-track flex w-[200%]" style="animation-delay: -10s;"> <!-- Offset animation -->
+                                <div class="product-gallery-item w-1/2 flex-shrink-0 h-64 bg-gray-200 border-2 border-dashed rounded-lg flex items-center justify-center mr-4 relative">
+                                    <p class="text-xl skinny-serif text-gray-500">PixelGrid_Socks_Pair.png</p>
+                                    <div class="product-gallery-item-info absolute inset-0 bg-[var(--color-bg)] bg-opacity-80 p-4 opacity-0 flex flex-col justify-center items-center text-center backdrop-blur-sm">
+                                        <h4 class="text-xl skinny-serif font-semibold">PixelGrid Socks</h4>
+                                        <p class="text-sm font-mono mt-1">8-bit Comfort Weave</p>
+                                        <p class="text-lg skinny-serif mt-2 text-[var(--color-primary-brand)]">25.00 UNITS</p>
+                                    </div>
+                                </div>
+                                <div class="product-gallery-item w-1/2 flex-shrink-0 h-64 bg-gray-300 border-2 border-dashed rounded-lg flex items-center justify-center mr-4 relative">
+                                    <p class="text-xl skinny-serif text-gray-500">PixelGrid_Socks_Texture.png</p>
+                                    <div class="product-gallery-item-info absolute inset-0 bg-[var(--color-bg)] bg-opacity-80 p-4 opacity-0 flex flex-col justify-center items-center text-center backdrop-blur-sm">
+                                        <h4 class="text-xl skinny-serif font-semibold">PixelGrid Socks</h4>
+                                        <p class="text-sm font-mono mt-1">Rendered for maximum foot-feel.</p>
+                                        <p class="text-lg skinny-serif mt-2 text-[var(--color-primary-brand)]">25.00 UNITS</p>
+                                    </div>
+                                </div>
+                                <!-- Duplicate set -->
+                                <div class="product-gallery-item w-1/2 flex-shrink-0 h-64 bg-gray-200 border-2 border-dashed rounded-lg flex items-center justify-center mr-4 relative">
+                                    <p class="text-xl skinny-serif text-gray-500">PixelGrid_Socks_Pair.png</p>
+                                </div>
+                                <div class="product-gallery-item w-1/2 flex-shrink-0 h-64 bg-gray-300 border-2 border-dashed rounded-lg flex items-center justify-center mr-4 relative">
+                                    <p class="text-xl skinny-serif text-gray-500">PixelGrid_Socks_Texture.png</p>
+                                </div>
+                            </div>
+                        </div>
+                        <h4 class="text-2xl skinny-serif mb-2">PixelGrid Socks</h4>
+                        <p class="text-sm skinny-serif text-[var(--color-secondary-brand)] mb-3">Foundation for any digital native.</p>
+                        <button class="toggle-reviews-btn font-mono text-xs text-[var(--color-primary-brand)] hover:underline">VIEW_REVIEWS_LOG &gt;</button>
+                        <div class="reviews-section hidden mt-4 p-4 terminal max-h-60 overflow-y-auto custom-scrollbar">
+                            <p><span class="terminal-prompt">kernel_msg:</span> Displaying reviews for PixelGrid_Socks...</p>
+                            <div class="mt-2 space-y-2 text-sm">
+                                <p><span class="text-amber-400">RetroGamer99:</span> My feet have never felt so... resolutionary! Perfect.</p>
+                                <p><span class="text-amber-400">ConsoleCowboy:</span> Comfortable and they don't glitch. A must-have.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Manifesto Section (Example) -->
+            <section id="manifesto" class="container mx-auto px-6 py-16 md:py-24 bg-[var(--color-border-subtle)] rounded-xl text-center">
+                <h2 class="text-4xl md:text-6xl skinny-serif mb-8">OUR_CODE_OF_CONDUCT_</h2>
+                <p class="text-lg md:text-xl skinny-serif max-w-3xl mx-auto leading-relaxed mb-6">
+                    We believe in the elegance of the early digital age. In precision, in purpose, in design that endures. Our garments are not mere clothing; they are extensions of a philosophy. Built for thinkers, dreamers, and the architects of the next epoch.
+                </p>
+                <p class="font-mono text-sm text-[var(--color-secondary-brand)]">// ANALOG.IO: Human_Interface_Division</p>
+            </section>
+
+        </div> <!-- End Main Page Content -->
+
+        <!-- Chat App Trigger -->
+        <button id="chat-trigger" class="fixed bottom-6 right-6 bg-[var(--color-primary-brand)] text-[var(--color-bg)] w-16 h-16 rounded-full shadow-xl flex items-center justify-center focus:outline-none focus:ring-2 focus:ring-[var(--color-primary-brand)] focus:ring-offset-2 focus:ring-offset-[var(--color-bg)] z-50 hover:scale-110 transition-transform">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-8 h-8">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M7.5 8.25h9m-9 3H12m-6.75 3h9m-9 3H12zm0 0H3.375c-.621 0-1.125-.504-1.125-1.125V14.25M17.25 8.25v14.25M6 18v-1.5m0-.5V3.375c0-.621.504-1.125 1.125-1.125h11.25c.621 0 1.125.504 1.125 1.125v14.25c0 .621-.504 1.125-1.125 1.125h-1.125" />
+            </svg>
+        </button>
+
+        <!-- Chat App Modal -->
+        <div id="chat-modal" class="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm flex items-center justify-center p-4 z-[60] opacity-0 pointer-events-none transition-opacity duration-300">
+            <div id="chat-window" class="terminal w-full max-w-lg h-[70vh] max-h-[500px] p-0 flex flex-col rounded-lg shadow-2xl transform scale-95 transition-transform duration-300">
+                <div class="p-3 border-b border-[var(--color-terminal-text)] flex justify-between items-center">
+                    <h3 class="text-lg font-mono">A.IO_HELPDESK_INTERFACE</h3>
+                    <button id="close-chat-btn" class="text-[var(--color-terminal-text)] hover:text-red-500 transition-colors">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-6 h-6">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                    </button>
+                </div>
+                <div id="chat-messages" class="flex-grow p-3 space-y-2 overflow-y-auto custom-scrollbar text-sm">
+                    <!-- Messages will be appended here -->
+                    <p class="bot-message"><span class="terminal-prompt">A.IO_BOT:&gt;</span> Connection established. Welcome to ANALOG.IO support. How may I assist your core functions today?</p>
+                </div>
+                <div class="p-3 border-t border-[var(--color-terminal-text)]">
+                    <form id="chat-form" class="flex items-center">
+                        <span class="terminal-prompt mr-2 text-sm">USER:&gt;</span>
+                        <input type="text" id="chat-input" class="terminal-input flex-grow text-sm focus:outline-none" placeholder="Type command or query..." autocomplete="off">
+                        <button type="submit" class="ml-2 text-[var(--color-terminal-text)] hover:text-[var(--color-primary-brand)] transition-colors text-sm">SEND</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <footer class="text-center py-12 border-t border-[var(--color-border-subtle)] mt-16 md:mt-24">
+            <p class="skinny-serif text-sm">&copy; 2084 ANALOG.IO Corporation. All rights reserved.</p>
+            <p class="font-mono text-xs text-[var(--color-secondary-brand)] mt-1">Interface v3.14 // Rendered with Human Ingenuity</p>
+        </footer>
+    </div>
+
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            // --- Loading Screen ---
+            const loadingScreen = document.getElementById('loading-screen');
+            const loadingBar = document.getElementById('loading-bar');
+            const mainContent = document.getElementById('main-content');
+
+            // Start main content hidden
+            if (mainContent) mainContent.style.opacity = '0';
+
+            // Simulate loading
+            if (loadingBar) loadingBar.classList.add('animate-loading-bar');
+            
+            setTimeout(() => {
+                if (loadingScreen) {
+                    loadingScreen.classList.add('opacity-0');
+                    setTimeout(() => {
+                        loadingScreen.style.display = 'none';
+                        if (mainContent) {
+                            mainContent.style.opacity = '1';
+                            mainContent.classList.add('transition-opacity', 'duration-1000', 'ease-in-out');
+                        }
+                    }, 1000); // Match loading screen opacity transition
+                }
+            }, 1800); // After loading bar animation
+
+            // --- Global Navigation ---
+            const navTrigger = document.getElementById('nav-trigger');
+            const navDropdown = document.getElementById('global-nav-dropdown');
+            let navOpen = false;
+
+            if (navTrigger && navDropdown) {
+                const toggleNav = () => {
+                    navOpen = !navOpen;
+                    if (navOpen) {
+                        navDropdown.classList.add('nav-active');
+                        navDropdown.classList.remove('opacity-0', 'pointer-events-none');
+                    } else {
+                        navDropdown.classList.remove('nav-active');
+                        navDropdown.classList.add('opacity-0');
+                        // Delay pointer-events-none to allow animation to finish
+                        setTimeout(() => {
+                           if(!navOpen) navDropdown.classList.add('pointer-events-none');
+                        }, 500);
+                    }
+                };
+                
+                navTrigger.addEventListener('click', toggleNav);
+
+                // Close nav when clicking a nav link (for single page app behavior)
+                navDropdown.querySelectorAll('a').forEach(link => {
+                    link.addEventListener('click', () => {
+                        if (navOpen) toggleNav();
+                        // Smooth scroll for internal links
+                        const targetId = link.getAttribute('href');
+                        if (targetId && targetId.startsWith('#')) {
+                            const targetElement = document.querySelector(targetId);
+                            if (targetElement) {
+                                targetElement.scrollIntoView({ behavior: 'smooth' });
+                            }
+                        }
+                    });
+                });
+                
+                // Close nav when clicking outside
+                document.addEventListener('click', (event) => {
+                    if (navOpen && !navDropdown.contains(event.target) && !navTrigger.contains(event.target)) {
+                        toggleNav();
+                    }
+                });
+            }
+
+            // --- Product Reviews Toggle ---
+            const reviewToggleButtons = document.querySelectorAll('.toggle-reviews-btn');
+            reviewToggleButtons.forEach(button => {
+                button.addEventListener('click', () => {
+                    const reviewSection = button.nextElementSibling;
+                    if (reviewSection && reviewSection.classList.contains('reviews-section')) {
+                        reviewSection.classList.toggle('hidden');
+                        button.textContent = reviewSection.classList.contains('hidden') ? 'VIEW_REVIEWS_LOG >' : 'HIDE_REVIEWS_LOG <';
+                    }
+                });
+            });
+
+            // --- Chat App ---
+            const chatTrigger = document.getElementById('chat-trigger');
+            const chatModal = document.getElementById('chat-modal');
+            const chatWindow = document.getElementById('chat-window');
+            const closeChatBtn = document.getElementById('close-chat-btn');
+            const chatForm = document.getElementById('chat-form');
+            const chatInput = document.getElementById('chat-input');
+            const chatMessages = document.getElementById('chat-messages');
+
+            const openChat = () => {
+                chatModal.classList.remove('opacity-0', 'pointer-events-none');
+                chatWindow.classList.remove('scale-95');
+                chatInput.focus();
+            };
+
+            const closeChat = () => {
+                chatWindow.classList.add('scale-95');
+                chatModal.classList.add('opacity-0');
+                setTimeout(() => chatModal.classList.add('pointer-events-none'), 300);
+            };
+
+            if (chatTrigger) chatTrigger.addEventListener('click', openChat);
+            if (closeChatBtn) closeChatBtn.addEventListener('click', closeChat);
+            if (chatModal) { // Close on escape key or click outside
+                 chatModal.addEventListener('click', (event) => {
+                    if (event.target === chatModal) closeChat();
+                });
+                document.addEventListener('keydown', (event) => {
+                    if (event.key === 'Escape' && !chatModal.classList.contains('pointer-events-none')) {
+                        closeChat();
+                    }
+                });
+            }
+
+            const addChatMessage = (message, type = 'bot') => {
+                const p = document.createElement('p');
+                p.classList.add(type === 'user' ? 'user-message' : 'bot-message');
+                if (type === 'user') {
+                    p.innerHTML = `<span class="terminal-prompt">USER:&gt;</span> ${message}`;
+                } else {
+                    p.innerHTML = `<span class="terminal-prompt">A.IO_BOT:&gt;</span> ${message}`;
+                }
+                chatMessages.appendChild(p);
+                chatMessages.scrollTop = chatMessages.scrollHeight; // Auto-scroll
+            };
+
+            if (chatForm) {
+                chatForm.addEventListener('submit', (e) => {
+                    e.preventDefault();
+                    const userMessage = chatInput.value.trim();
+                    if (userMessage) {
+                        addChatMessage(userMessage, 'user');
+                        chatInput.value = '';
+                        // Simulate bot response
+                        setTimeout(() => {
+                            let botResponse = "Processing query...";
+                            if (userMessage.toLowerCase().includes("hello") || userMessage.toLowerCase().includes("hi")) {
+                                botResponse = "Greetings, User. All systems nominal.";
+                            } else if (userMessage.toLowerCase().includes("product") || userMessage.toLowerCase().includes("item")) {
+                                botResponse = "For product specifications, please consult the relevant .DAT file on the product page or specify model number.";
+                            } else if (userMessage.toLowerCase().includes("help") || userMessage.toLowerCase().includes("support")) {
+                                botResponse = "System support is available. Please state the nature of your query or error code.";
+                            } else if (userMessage.toLowerCase().includes("bye") || userMessage.toLowerCase().includes("exit")) {
+                                botResponse = "Acknowledged. Terminating connection. Have an efficient day cycle.";
+                            } else {
+                                botResponse = "Your query has been logged. A human_analog_operator may connect if further assistance is required. Standby.";
+                            }
+                            addChatMessage(botResponse, 'bot');
+                        }, 1000 + Math.random() * 1000);
+                    }
+                });
+            }
+            
+            // --- Product Gallery Items ---
+            // The CSS handles the hover effects for product gallery (slowdown and info fade-in)
+            // No specific JS needed for that beyond the initial animation setup in CSS.
+
+            // --- Add blinking cursor to chat input when focused ---
+            if (chatInput) {
+                chatInput.addEventListener('focus', () => chatInput.classList.add('blinking-cursor'));
+                chatInput.addEventListener('blur', () => chatInput.classList.remove('blinking-cursor'));
+            }
+
+        });
+    </script>
+
+</body>
+</html>

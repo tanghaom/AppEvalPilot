@@ -1,0 +1,9 @@
+{
+  "web_id": "web_30",
+  "task_id": 3,
+  "task_type": "dynamic",
+  "instruction": "Task: Click a 'New File' button/icon.\nExpected Result: The editor pane is cleared, a new (untitled) file is added to the simulated file explorer, and becomes the active file.\n\nNote: The task is only considered successful if the expected result is achieved; otherwise, it is deemed infeasible.",
+  "max_steps": 15,
+  "expected": "The editor pane is cleared, a new (untitled) file is added to the simulated file explorer, and becomes the active file.",
+  "label": 0
+}

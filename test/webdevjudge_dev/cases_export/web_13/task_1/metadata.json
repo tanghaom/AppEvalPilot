@@ -1,0 +1,9 @@
+{
+  "web_id": "web_13",
+  "task_id": 1,
+  "task_type": "dynamic",
+  "instruction": "Task: Click on a vehicle node on the assembly line\nExpected Result: A display (e.g., modal, panel) appears showing the error details for the selected vehicle. If there are multiple errors, this display should be scrollable.\n\nNote: The task is only considered successful if the expected result is achieved; otherwise, it is deemed infeasible.",
+  "max_steps": 15,
+  "expected": "A display (e.g., modal, panel) appears showing the error details for the selected vehicle. If there are multiple errors, this display should be scrollable.",
+  "label": 1
+}

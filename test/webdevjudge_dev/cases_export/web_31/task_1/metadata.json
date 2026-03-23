@@ -1,0 +1,9 @@
+{
+  "web_id": "web_31",
+  "task_id": 1,
+  "task_type": "dynamic",
+  "instruction": "Task: Type a message into the input field and click the 'Send' button (or press Enter).\nExpected Result: Message appears in the active conversation area.\n\nNote: The task is only considered successful if the expected result is achieved; otherwise, it is deemed infeasible.",
+  "max_steps": 15,
+  "expected": "Message appears in the active conversation area.",
+  "label": 1
+}

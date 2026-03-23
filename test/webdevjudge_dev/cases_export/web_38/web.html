@@ -1,0 +1,591 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Streaming Platform</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        'brand-primary': '#1E293B', // slate-800
+                        'brand-secondary': '#334155', // slate-700
+                        'brand-background': '#0F172A', // slate-900
+                        'brand-text': '#F1F5F9', // slate-100
+                        'brand-text-secondary': '#94A3B8', // slate-400
+                        'brand-accent': '#A855F7', // purple-500
+                        'brand-accent-hover': '#9333EA', // purple-600
+                        'brand-success': '#10B981', // emerald-500
+                        'brand-success-hover': '#059669', // emerald-600
+                        'brand-info': '#0EA5E9', // sky-500
+                        'brand-info-hover': '#0284C7', // sky-600
+                        'brand-danger': '#F43F5E', // rose-500
+                        'brand-danger-hover': '#E11D48', // rose-600
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        /* Custom scrollbar for a more polished look */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #1e293b; /* slate-800 */
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #475569; /* slate-600 */
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #64748b; /* slate-500 */
+        }
+        .modal-hidden { display: none !important; }
+    </style>
+</head>
+<body class="bg-brand-background text-brand-text min-h-screen font-sans">
+
+    <div id="app-container">
+        <!-- Navigation Bar -->
+        <nav class="bg-brand-primary px-4 sm:px-6 py-3 shadow-md">
+            <div class="flex items-center justify-between">
+                <!-- Left section -->
+                <div class="flex items-center space-x-4">
+                    <span id="logo-text" class="text-2xl font-bold text-brand-accent">StreamPlatform</span>
+                    <div class="relative hidden sm:block">
+                        <div class="flex items-center bg-brand-secondary rounded-lg px-3 py-1.5">
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="h-5 w-5 text-brand-text-secondary">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z" />
+                            </svg>
+                            <input
+                                type="text"
+                                id="search-query-input"
+                                placeholder="Search streams..."
+                                class="bg-transparent border-none focus:outline-none text-sm ml-2 w-48 md:w-64 text-brand-text placeholder-brand-text-secondary"
+                            />
+                        </div>
+                    </div>
+                    <a href="#" id="top-streamers-link" class="px-3 py-1.5 bg-brand-accent hover:bg-brand-accent-hover rounded text-sm transition-colors whitespace-nowrap" data-lang-key="topStreamers">
+                        Top Streamers
+                    </a>
+                </div>
+
+                <!-- Right section -->
+                <div class="flex items-center space-x-2 sm:space-x-4">
+                    <button
+                        id="lang-toggle-btn"
+                        class="bg-brand-secondary px-2.5 py-1.5 rounded text-sm hover:bg-slate-600 transition-colors"
+                    >
+                        RU
+                    </button>
+
+                    <div id="auth-buttons" class="flex items-center space-x-2 sm:space-x-3">
+                        <button
+                            id="login-btn-nav"
+                            class="bg-brand-success px-3 py-1.5 rounded text-sm hover:bg-brand-success-hover transition-colors whitespace-nowrap"
+                            data-lang-key="login"
+                        >
+                            Login
+                        </button>
+                        <button
+                            id="register-btn-nav"
+                            class="bg-brand-info px-3 py-1.5 rounded text-sm hover:bg-brand-info-hover transition-colors whitespace-nowrap"
+                            data-lang-key="register"
+                        >
+                            Sign Up
+                        </button>
+                    </div>
+
+                    <div id="user-info" class="hidden items-center relative">
+                        <div class="flex items-center space-x-3 sm:space-x-4">
+                            <div class="text-sm hidden md:block">
+                                <span class="text-brand-text-secondary" data-lang-key="balance">Balance:</span>
+                                <span id="user-balance" class="text-emerald-400">$1000</span>
+                            </div>
+                            <button
+                                id="user-menu-btn"
+                                class="flex items-center space-x-1 bg-brand-secondary px-3 py-1.5 rounded hover:bg-slate-600 transition-colors"
+                            >
+                                <span id="username-display" class="text-sm">username</span>
+                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="h-4 w-4 transition-transform duration-200" id="user-menu-chevron">
+                                  <path stroke-linecap="round" stroke-linejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
+                                </svg>
+                            </button>
+                        </div>
+                        
+                        <!-- Dropdown Menu -->
+                        <div id="user-menu-dropdown" class="modal-hidden absolute right-0 mt-2 w-56 bg-brand-primary rounded-lg shadow-xl py-1 z-50 border border-brand-secondary">
+                            <a href="#" class="block px-4 py-2 text-sm hover:bg-brand-secondary transition-colors" data-lang-key="myStream">My Stream</a>
+                            <a href="#" class="block px-4 py-2 text-sm hover:bg-brand-secondary transition-colors" data-lang-key="guide">Guide</a>
+                            <a href="#" class="block px-4 py-2 text-sm hover:bg-brand-secondary transition-colors" data-lang-key="withdraw">Withdraw</a>
+                            <a href="#" class="block px-4 py-2 text-sm hover:bg-brand-secondary transition-colors" data-lang-key="settings">Settings</a>
+                            <a href="#" class="block px-4 py-2 text-sm hover:bg-brand-secondary transition-colors" data-lang-key="referral">Referral Program</a>
+                            <a href="#" class="block px-4 py-2 text-sm hover:bg-brand-secondary transition-colors" data-lang-key="topUp">Top Up Balance</a>
+                            <div class="my-1 border-t border-brand-secondary"></div>
+                            <button
+                                id="logout-btn"
+                                class="block w-full text-left px-4 py-2 text-sm text-rose-400 hover:bg-brand-secondary hover:text-rose-300 transition-colors"
+                                data-lang-key="logout"
+                            >
+                                Logout
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </nav>
+
+        <!-- Login Modal -->
+        <div id="login-modal" class="modal-hidden fixed inset-0 z-50 bg-black bg-opacity-75 flex items-center justify-center p-4">
+            <div class="bg-brand-primary p-6 rounded-lg shadow-xl w-full max-w-sm">
+                <h2 class="text-xl font-semibold mb-4" data-lang-key="login">Login</h2>
+                <form id="login-form" class="space-y-4">
+                    <div>
+                        <label class="block mb-1 text-sm font-medium text-brand-text-secondary" data-lang-key="username">Username</label>
+                        <input
+                            type="text"
+                            id="login-username"
+                            required
+                            class="w-full px-3 py-2 bg-brand-secondary rounded text-sm focus:outline-none focus:ring-2 focus:ring-brand-success border border-transparent focus:border-brand-success"
+                        />
+                    </div>
+                    <div>
+                        <label class="block mb-1 text-sm font-medium text-brand-text-secondary" data-lang-key="password">Password</label>
+                        <input
+                            type="password"
+                            id="login-password"
+                            required
+                            class="w-full px-3 py-2 bg-brand-secondary rounded text-sm focus:outline-none focus:ring-2 focus:ring-brand-success border border-transparent focus:border-brand-success"
+                        />
+                    </div>
+                    <div class="flex justify-end space-x-3 pt-2">
+                        <button
+                            type="button"
+                            id="login-modal-close-btn"
+                            class="px-4 py-2 bg-brand-secondary rounded text-sm hover:bg-slate-600 transition-colors"
+                            data-lang-key="close"
+                        >
+                            Close
+                        </button>
+                        <button
+                            type="submit"
+                            class="px-4 py-2 bg-brand-success rounded text-sm hover:bg-brand-success-hover transition-colors"
+                            data-lang-key="submit"
+                        >
+                            OK
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Register Modal -->
+        <div id="register-modal" class="modal-hidden fixed inset-0 z-50 bg-black bg-opacity-75 flex items-center justify-center p-4">
+            <div class="bg-brand-primary p-6 rounded-lg shadow-xl w-full max-w-sm">
+                <h2 class="text-xl font-semibold mb-4" data-lang-key="register">Sign Up</h2>
+                <form id="register-form" class="space-y-4">
+                    <div>
+                        <label class="block mb-1 text-sm font-medium text-brand-text-secondary" data-lang-key="username">Username</label>
+                        <input
+                            type="text"
+                            id="register-username"
+                            required
+                            class="w-full px-3 py-2 bg-brand-secondary rounded text-sm focus:outline-none focus:ring-2 focus:ring-brand-info border border-transparent focus:border-brand-info"
+                        />
+                    </div>
+                    <div>
+                        <label class="block mb-1 text-sm font-medium text-brand-text-secondary" data-lang-key="password">Password</label>
+                        <input
+                            type="password"
+                            id="register-password"
+                            required
+                            class="w-full px-3 py-2 bg-brand-secondary rounded text-sm focus:outline-none focus:ring-2 focus:ring-brand-info border border-transparent focus:border-brand-info"
+                        />
+                    </div>
+                    <div class="flex justify-end space-x-3 pt-2">
+                        <button
+                            type="button"
+                            id="register-modal-close-btn"
+                            class="px-4 py-2 bg-brand-secondary rounded text-sm hover:bg-slate-600 transition-colors"
+                            data-lang-key="close"
+                        >
+                            Close
+                        </button>
+                        <button
+                            type="submit"
+                            class="px-4 py-2 bg-brand-info rounded text-sm hover:bg-brand-info-hover transition-colors"
+                            data-lang-key="submit"
+                        >
+                            OK
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Main Content Area -->
+        <main class="px-4 sm:px-6 py-6">
+            <h1 class="text-2xl font-semibold mb-4" data-lang-key="featuredStreams">Featured Streams</h1>
+            <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+                <!-- Example Stream Card -->
+                <div class="bg-brand-primary rounded-lg shadow-lg overflow-hidden transform hover:scale-105 transition-transform duration-300">
+                    <div class="bg-slate-700 aspect-video flex items-center justify-center">
+                       <div class="bg-slate-600 border-2 border-dashed border-slate-500 rounded-xl w-24 h-24 flex items-center justify-center text-slate-400 text-sm">Stream Preview</div>
+                    </div>
+                    <div class="p-4">
+                        <h3 class="font-semibold text-lg mb-1 truncate" title="Awesome Stream Title">Awesome Stream Title</h3>
+                        <p class="text-sm text-brand-text-secondary mb-1">StreamerName</p>
+                        <div class="flex items-center justify-between text-xs text-brand-text-secondary">
+                            <span><span class="text-emerald-400 font-medium" data-lang-key="online">Online</span> &bull; 1.2k <span data-lang-key="viewers">Views</span></span>
+                            <a href="#" class="px-3 py-1 bg-brand-accent hover:bg-brand-accent-hover rounded text-xs transition-colors" data-lang-key="goToStream">Watch</a>
+                        </div>
+                    </div>
+                </div>
+                <!-- Repeat stream cards as needed -->
+                <div class="bg-brand-primary rounded-lg shadow-lg overflow-hidden transform hover:scale-105 transition-transform duration-300">
+                    <div class="bg-slate-700 aspect-video flex items-center justify-center">
+                       <div class="bg-slate-600 border-2 border-dashed border-slate-500 rounded-xl w-24 h-24 flex items-center justify-center text-slate-400 text-sm">Stream Preview</div>
+                    </div>
+                    <div class="p-4">
+                        <h3 class="font-semibold text-lg mb-1 truncate" title="Gaming Marathon Extravaganza">Gaming Marathon Extravaganza</h3>
+                        <p class="text-sm text-brand-text-secondary mb-1">ProGamer123</p>
+                        <div class="flex items-center justify-between text-xs text-brand-text-secondary">
+                            <span><span class="text-emerald-400 font-medium" data-lang-key="online">Online</span> &bull; 5.8k <span data-lang-key="viewers">Views</span></span>
+                            <a href="#" class="px-3 py-1 bg-brand-accent hover:bg-brand-accent-hover rounded text-xs transition-colors" data-lang-key="goToStream">Watch</a>
+                        </div>
+                    </div>
+                </div>
+                <div class="bg-brand-primary rounded-lg shadow-lg overflow-hidden transform hover:scale-105 transition-transform duration-300">
+                    <div class="bg-slate-700 aspect-video flex items-center justify-center">
+                       <div class="bg-slate-600 border-2 border-dashed border-slate-500 rounded-xl w-24 h-24 flex items-center justify-center text-slate-400 text-sm">Stream Preview</div>
+                    </div>
+                    <div class="p-4">
+                        <h3 class="font-semibold text-lg mb-1 truncate" title="Chill Coding Session">Chill Coding Session</h3>
+                        <p class="text-sm text-brand-text-secondary mb-1">DevGuru</p>
+                        <div class="flex items-center justify-between text-xs text-brand-text-secondary">
+                            <span><span class="text-rose-400 font-medium" data-lang-key="offline">Offline</span> &bull; 20k <span data-lang-key="viewers">Views</span></span>
+                            <a href="#" class="px-3 py-1 bg-brand-accent hover:bg-brand-accent-hover rounded text-xs transition-colors" data-lang-key="goToStream">Watch</a>
+                        </div>
+                    </div>
+                </div>
+                 <div class="bg-brand-primary rounded-lg shadow-lg overflow-hidden transform hover:scale-105 transition-transform duration-300">
+                    <div class="bg-slate-700 aspect-video flex items-center justify-center">
+                       <div class="bg-slate-600 border-2 border-dashed border-slate-500 rounded-xl w-24 h-24 flex items-center justify-center text-slate-400 text-sm">Stream Preview</div>
+                    </div>
+                    <div class="p-4">
+                        <h3 class="font-semibold text-lg mb-1 truncate" title="Art & Creativity Hour">Art & Creativity Hour</h3>
+                        <p class="text-sm text-brand-text-secondary mb-1">PixelPerfect</p>
+                        <div class="flex items-center justify-between text-xs text-brand-text-secondary">
+                            <span><span class="text-emerald-400 font-medium" data-lang-key="online">Online</span> &bull; 980 <span data-lang-key="viewers">Views</span></span>
+                            <a href="#" class="px-3 py-1 bg-brand-accent hover:bg-brand-accent-hover rounded text-xs transition-colors" data-lang-key="goToStream">Watch</a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="bg-gray-200 border-2 border-dashed rounded-xl w-16 h-16 mt-8"></div> <!-- Placeholder image from prompt -->
+        </main>
+    </div>
+
+    <script>
+        const texts = {
+            en: {
+                myStream: "My Stream",
+                streamSettings: "Stream Settings",
+                guide: "Guide",
+                withdraw: "Withdraw",
+                settings: "Settings",
+                referral: "Referral Program",
+                topUp: "Top Up Balance",
+                balance: "Balance",
+                topStreamers: "Top Streamers",
+                search: "Search streams...",
+                online: "Online",
+                offline: "Offline",
+                viewers: "Views",
+                logout: "Logout",
+                login: "Login",
+                register: "Sign Up",
+                username: "Username",
+                password: "Password",
+                submit: "OK",
+                close: "Close",
+                goToStream: "Watch",
+                featuredStreams: "Featured Streams" 
+            },
+            ru: {
+                myStream: "Моя Трансляция",
+                streamSettings: "Настройки Трансляции",
+                guide: "Гайд",
+                withdraw: "Вывод Средств",
+                settings: "Настройки",
+                referral: "Реферальная Программа",
+                topUp: "Пополнить Баланс",
+                balance: "Баланс",
+                topStreamers: "Топ Стримеров",
+                search: "Поиск стримов...",
+                online: "Онлайн",
+                offline: "Оффлайн",
+                viewers: "Просмотры",
+                logout: "Выход",
+                login: "Вход",
+                register: "Регистрация",
+                username: "Логин",
+                password: "Пароль",
+                submit: "ОК",
+                close: "Закрыть",
+                goToStream: "Смотреть",
+                featuredStreams: "Популярные Трансляции"
+            },
+        };
+
+        // State
+        let state = {
+            language: "en",
+            isLoggedIn: false,
+            showLogin: false,
+            showRegister: false,
+            showUserMenu: false,
+            usernameInput: "", // For form inputs
+            passwordInput: "", // For form inputs
+            loggedInUsername: "User", // Default if not set
+            searchQuery: "",
+            userBalance: "1000", // Example balance
+        };
+
+        // DOM Elements
+        const dom = {
+            langToggleBtn: null,
+            searchQueryInput: null,
+            authButtonsContainer: null,
+            userInfoContainer: null,
+            loginBtnNav: null,
+            registerBtnNav: null,
+            userBalanceDisplay: null,
+            usernameDisplay: null,
+            userMenuBtn: null,
+            userMenuDropdown: null,
+            userMenuChevron: null,
+            logoutBtn: null,
+            loginModal: null,
+            loginForm: null,
+            loginUsernameInput: null,
+            loginPasswordInput: null,
+            loginModalCloseBtn: null,
+            registerModal: null,
+            registerForm: null,
+            registerUsernameInput: null,
+            registerPasswordInput: null,
+            registerModalCloseBtn: null,
+        };
+
+        function getCurrentTexts() {
+            return texts[state.language];
+        }
+
+        function updateAllTexts() {
+            const currentText = getCurrentTexts();
+            document.querySelectorAll('[data-lang-key]').forEach(el => {
+                const key = el.getAttribute('data-lang-key');
+                if (currentText[key]) {
+                    if (el.tagName === 'INPUT' && (el.type === 'text' || el.type === 'search' || el.type === 'password') && el.placeholder) {
+                         el.placeholder = currentText[key];
+                    } else if (el.tagName === 'INPUT' && (el.type === 'submit' || el.type === 'button')) {
+                        el.value = currentText[key];
+                    }
+                    else {
+                        el.textContent = currentText[key];
+                    }
+                }
+            });
+            // Specific updates
+            dom.langToggleBtn.textContent = state.language === "en" ? "RU" : "EN";
+            dom.searchQueryInput.placeholder = currentText.search;
+        }
+        
+        function renderNav() {
+            if (state.isLoggedIn) {
+                dom.authButtonsContainer.classList.add('hidden');
+                dom.userInfoContainer.classList.remove('hidden');
+                dom.userInfoContainer.classList.add('flex');
+                dom.userBalanceDisplay.textContent = `$${state.userBalance}`;
+                dom.usernameDisplay.textContent = state.loggedInUsername;
+            } else {
+                dom.authButtonsContainer.classList.remove('hidden');
+                dom.authButtonsContainer.classList.add('flex');
+                dom.userInfoContainer.classList.add('hidden');
+                dom.userInfoContainer.classList.remove('flex');
+                state.showUserMenu = false; // Ensure menu is closed on logout
+            }
+            renderUserMenu();
+        }
+
+        function renderUserMenu() {
+            if (state.showUserMenu && state.isLoggedIn) {
+                dom.userMenuDropdown.classList.remove('modal-hidden');
+                dom.userMenuChevron.style.transform = 'rotate(180deg)';
+            } else {
+                dom.userMenuDropdown.classList.add('modal-hidden');
+                dom.userMenuChevron.style.transform = 'rotate(0deg)';
+            }
+        }
+
+        function renderModals() {
+            dom.loginModal.classList.toggle('modal-hidden', !state.showLogin);
+            dom.registerModal.classList.toggle('modal-hidden', !state.showRegister);
+        }
+
+        // Event Handlers & State Changers
+        function toggleLanguage() {
+            state.language = state.language === "en" ? "ru" : "en";
+            updateAllTexts();
+        }
+
+        function openLoginModal() {
+            state.showLogin = true;
+            state.showRegister = false;
+            renderModals();
+        }
+
+        function closeLoginModal() {
+            state.showLogin = false;
+            dom.loginForm.reset(); // Clear form
+            renderModals();
+        }
+
+        function openRegisterModal() {
+            state.showRegister = true;
+            state.showLogin = false;
+            renderModals();
+        }
+
+        function closeRegisterModal() {
+            state.showRegister = false;
+            dom.registerForm.reset(); // Clear form
+            renderModals();
+        }
+        
+        function handleLogin(e) {
+            e.preventDefault();
+            // Basic validation for demonstration
+            if (!dom.loginUsernameInput.value || !dom.loginPasswordInput.value) {
+                alert(state.language === 'en' ? "Please enter username and password" : "Пожалуйста, введите имя пользователя и пароль");
+                return;
+            }
+            state.isLoggedIn = true;
+            state.loggedInUsername = dom.loginUsernameInput.value || "User";
+            state.showLogin = false;
+            dom.loginForm.reset();
+            renderNav();
+            renderModals();
+        }
+
+        function handleRegister(e) {
+            e.preventDefault();
+            if (!dom.registerUsernameInput.value || !dom.registerPasswordInput.value) {
+                alert(state.language === 'en' ? "Please enter username and password" : "Пожалуйста, введите имя пользователя и пароль");
+                return;
+            }
+            state.isLoggedIn = true;
+            state.loggedInUsername = dom.registerUsernameInput.value || "User";
+            state.showRegister = false;
+            dom.registerForm.reset();
+            renderNav();
+            renderModals();
+        }
+
+        function handleLogout() {
+            state.isLoggedIn = false;
+            state.showUserMenu = false;
+            state.loggedInUsername = "User";
+            renderNav();
+        }
+
+        function toggleUserMenu() {
+            if (!state.isLoggedIn) return;
+            state.showUserMenu = !state.showUserMenu;
+            renderUserMenu();
+        }
+
+        function handleSearchQueryChange(e) {
+            state.searchQuery = e.target.value;
+            // console.log("Search Query:", state.searchQuery); // For testing
+        }
+
+        function initApp() {
+            // Cache DOM elements
+            dom.langToggleBtn = document.getElementById('lang-toggle-btn');
+            dom.searchQueryInput = document.getElementById('search-query-input');
+            
+            dom.authButtonsContainer = document.getElementById('auth-buttons');
+            dom.loginBtnNav = document.getElementById('login-btn-nav');
+            dom.registerBtnNav = document.getElementById('register-btn-nav');
+            
+            dom.userInfoContainer = document.getElementById('user-info');
+            dom.userBalanceDisplay = document.getElementById('user-balance');
+            dom.usernameDisplay = document.getElementById('username-display');
+            dom.userMenuBtn = document.getElementById('user-menu-btn');
+            dom.userMenuDropdown = document.getElementById('user-menu-dropdown');
+            dom.userMenuChevron = document.getElementById('user-menu-chevron');
+            dom.logoutBtn = document.getElementById('logout-btn');
+
+            dom.loginModal = document.getElementById('login-modal');
+            dom.loginForm = document.getElementById('login-form');
+            dom.loginUsernameInput = document.getElementById('login-username');
+            dom.loginPasswordInput = document.getElementById('login-password');
+            dom.loginModalCloseBtn = document.getElementById('login-modal-close-btn');
+
+            dom.registerModal = document.getElementById('register-modal');
+            dom.registerForm = document.getElementById('register-form');
+            dom.registerUsernameInput = document.getElementById('register-username');
+            dom.registerPasswordInput = document.getElementById('register-password');
+            dom.registerModalCloseBtn = document.getElementById('register-modal-close-btn');
+
+            // Attach event listeners
+            dom.langToggleBtn.addEventListener('click', toggleLanguage);
+            dom.searchQueryInput.addEventListener('input', handleSearchQueryChange);
+
+            dom.loginBtnNav.addEventListener('click', openLoginModal);
+            dom.registerBtnNav.addEventListener('click', openRegisterModal);
+            
+            dom.userMenuBtn.addEventListener('click', toggleUserMenu);
+            dom.logoutBtn.addEventListener('click', handleLogout);
+
+            dom.loginForm.addEventListener('submit', handleLogin);
+            dom.loginModalCloseBtn.addEventListener('click', closeLoginModal);
+            
+            dom.registerForm.addEventListener('submit', handleRegister);
+            dom.registerModalCloseBtn.addEventListener('click', closeRegisterModal);
+
+            // Close modals if clicking outside content
+            [dom.loginModal, dom.registerModal].forEach(modal => {
+                modal.addEventListener('click', (e) => {
+                    if (e.target === modal) { // Clicked on backdrop
+                        if (state.showLogin) closeLoginModal();
+                        if (state.showRegister) closeRegisterModal();
+                    }
+                });
+            });
+            
+            // Close user menu if clicking outside
+            document.addEventListener('click', (event) => {
+                if (state.showUserMenu && !dom.userMenuBtn.contains(event.target) && !dom.userMenuDropdown.contains(event.target)) {
+                    state.showUserMenu = false;
+                    renderUserMenu();
+                }
+            });
+
+
+            // Initial render
+            updateAllTexts();
+            renderNav();
+            renderModals();
+        }
+
+        document.addEventListener('DOMContentLoaded', initApp);
+
+    </script>
+</body>
+</html>

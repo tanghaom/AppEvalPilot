@@ -1,0 +1,9 @@
+{
+  "web_id": "web_27",
+  "task_id": 1,
+  "task_type": "dynamic",
+  "instruction": "Task: Control player movement (e.g., using WASD keys) and aiming (using the mouse).\nExpected Result: The player character navigates the game environment, and the first-person camera view changes according to mouse input, allowing the player to look around freely.\n\nNote: The task is only considered successful if the expected result is achieved; otherwise, it is deemed infeasible.",
+  "max_steps": 15,
+  "expected": "The player character navigates the game environment, and the first-person camera view changes according to mouse input, allowing the player to look around freely.",
+  "label": 0
+}

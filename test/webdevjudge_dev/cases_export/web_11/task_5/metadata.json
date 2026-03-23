@@ -1,0 +1,9 @@
+{
+  "web_id": "web_11",
+  "task_id": 5,
+  "task_type": "dynamic",
+  "instruction": "Task: Click the 'Confirm' or 'Schedule Event' button.\nExpected Result: A confirmation message for the booking is shown, and the time slot may appear as booked (locally simulated).\n\nNote: The task is only considered successful if the expected result is achieved; otherwise, it is deemed infeasible.",
+  "max_steps": 15,
+  "expected": "A confirmation message for the booking is shown, and the time slot may appear as booked (locally simulated).",
+  "label": 1
+}

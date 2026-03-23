@@ -1,0 +1,404 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Neumorphic Components with Tailwind CSS</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+    <script type="module" src="https://unpkg.com/ionicons@7.1.0/dist/ionicons/ionicons.esm.js"></script>
+    <script nomodule src="https://unpkg.com/ionicons@7.1.0/dist/ionicons/ionicons.js"></script>
+    <style>
+        :root {
+            --primary-light: #8abdff;
+            --primary: #6d5dfc;
+            --primary-dark: #5b0eeb;
+            
+            --white: #FFFFFF;
+            --greyLight-1: #E4EBF5; /* Main background */
+            --greyLight-2: #c8d0e7; /* Shadow component */
+            --greyLight-3: #bec8e4; /* Muted text/placeholder */
+            --greyDark: #9baacf;   /* Icons, text */
+
+            /* Adjusted from rem to px (assuming 1rem = 10px in original example) */
+            --neumorphic-shadow-outer: 3px 3px 6px var(--greyLight-2), -2px -2px 5px var(--white);
+            --neumorphic-shadow-inner: inset 2px 2px 5px var(--greyLight-2), inset -2px -2px 5px var(--white);
+
+            --neumorphic-shadow-primary-outer: inset 2px 2px 10px var(--primary-light), 
+                                               inset -2px -2px 10px var(--primary-dark),
+                                               3px 3px 6px var(--greyLight-2), 
+                                               -2px -2px 5px var(--white);
+            --neumorphic-shadow-primary-active: inset 2px 2px 10px var(--primary-dark), 
+                                                inset -2px -2px 10px var(--primary-light);
+            
+            --neumorphic-shadow-clock-marker: inset 1px 1px 1px var(--greyLight-2), inset -1px -1px 1px var(--white);
+        }
+
+        body {
+            font-family: 'Poppins', sans-serif;
+            background-color: var(--greyLight-1);
+            color: var(--greyDark); /* Default text color */
+        }
+
+        /* Custom utility classes for neumorphic shadows */
+        .shadow-neumorphic { box-shadow: var(--neumorphic-shadow-outer); }
+        .shadow-neumorphic-inset { box-shadow: var(--neumorphic-shadow-inner); }
+        .shadow-neumorphic-primary { box-shadow: var(--neumorphic-shadow-primary-outer); }
+        .shadow-neumorphic-primary-active { box-shadow: var(--neumorphic-shadow-primary-active); }
+        
+        /* Checkbox specific styles */
+        .neumorphic-checkbox input:checked + label { box-shadow: var(--neumorphic-shadow-inner); }
+        .neumorphic-checkbox input:checked + label i { color: var(--primary); }
+        
+        /* Radio specific styles */
+        .neumorphic-radio input:checked + label { box-shadow: var(--neumorphic-shadow-inner); }
+        .neumorphic-radio input:checked + label span::after { background-color: var(--primary); }
+
+        /* Segmented control specific styles */
+        .segmented-control input:checked + label { color: var(--primary); }
+        #tab-1:checked ~ .segmented-control__color { transform: translateX(0); }
+        #tab-2:checked ~ .segmented-control__color { transform: translateX(68px); } /* Each tab is 68px wide */
+        #tab-3:checked ~ .segmented-control__color { transform: translateX(136px); }
+
+
+        .circle__back-1.animated { animation: waves 4s linear infinite; }
+        .circle__back-2.animated { animation: waves 4s linear 2s infinite; }
+        .animated.paused { animation-play-state: paused; }
+
+        @keyframes waves {
+            0% { transform: scale(1); opacity: 1; }
+            50% { opacity: 1; }
+            100% { transform: scale(2); opacity: 0; }
+        }
+    </style>
+</head>
+<body>
+    <a href="https://dribbble.com/myacode" target="_blank" class="fixed text-[2.6rem] right-8 bottom-4 text-[#EA4C89] z-50">
+        <ion-icon name="logo-dribbble"></ion-icon>
+    </a>
+
+    <div class="min-h-screen flex justify-center items-center p-4 sm:p-8">
+        <div id="components-panel" class="bg-[var(--greyLight-1)] rounded-[30px] p-[40px] shadow-neumorphic
+                                         grid grid-cols-1 md:grid-cols-[176px_190px_204px] gap-x-[50px] gap-y-[25px] items-center
+                                         w-full max-w-[750px]"> 
+
+            <!-- COLUMN 1 -->
+            <div class="neumorphic-switch flex space-x-[30px] justify-center md:col-start-1">
+                <div>
+                    <input id="switch-1" type="checkbox" class="hidden">
+                    <label for="switch-1" class="block w-[60px] h-[30px] rounded-[16px] shadow-neumorphic cursor-pointer relative transition-all duration-400 ease-in-out">
+                        <span class="absolute left-[4px] top-1/2 -translate-y-1/2 w-[21px] h-[21px] rounded-full bg-[var(--greyDark)] transition-all duration-400 ease-in-out neumorphic-switch-thumb"></span>
+                        <span class="absolute inset-0 rounded-[16px] opacity-0 transition-all duration-400 ease-in-out neumorphic-switch-bg" style="background: linear-gradient(330deg, var(--primary-dark) 0%, var(--primary) 50%, var(--primary-light) 100%);"></span>
+                    </label>
+                </div>
+                <div>
+                    <input id="switch-2" type="checkbox" class="hidden" checked>
+                    <label for="switch-2" class="block w-[60px] h-[30px] rounded-[16px] shadow-neumorphic cursor-pointer relative transition-all duration-400 ease-in-out">
+                        <span class="absolute left-[4px] top-1/2 -translate-y-1/2 w-[21px] h-[21px] rounded-full bg-[var(--greyDark)] transition-all duration-400 ease-in-out neumorphic-switch-thumb"></span>
+                        <span class="absolute inset-0 rounded-[16px] opacity-0 transition-all duration-400 ease-in-out neumorphic-switch-bg" style="background: linear-gradient(330deg, var(--primary-dark) 0%, var(--primary) 50%, var(--primary-light) 100%);"></span>
+                    </label>
+                </div>
+                <script>
+                    document.querySelectorAll('.neumorphic-switch input[type="checkbox"]').forEach(checkbox => {
+                        const label = checkbox.nextElementSibling;
+                        const thumb = label.querySelector('.neumorphic-switch-thumb');
+                        const bg = label.querySelector('.neumorphic-switch-bg');
+                        function updateSwitch() {
+                            if (checkbox.checked) {
+                                bg.style.opacity = '1';
+                                thumb.style.left = 'calc(100% - 21px - 4px)';
+                                thumb.style.backgroundColor = 'var(--greyLight-1)';
+                            } else {
+                                bg.style.opacity = '0';
+                                thumb.style.left = '4px';
+                                thumb.style.backgroundColor = 'var(--greyDark)';
+                            }
+                        }
+                        checkbox.addEventListener('change', updateSwitch);
+                        updateSwitch();
+                    });
+                </script>
+            </div>
+
+            <div class="neumorphic-checkbox flex space-x-[30px] justify-center md:col-start-1">
+                <div>
+                    <input id="checkbox-1" type="checkbox" class="hidden">
+                    <label for="checkbox-1" class="w-[28px] h-[28px] flex justify-center items-center rounded-[5px] shadow-neumorphic cursor-pointer group">
+                        <i class="material-icons text-[18px] font-bold text-[var(--greyDark)] group-hover:text-[var(--primary)] transition-colors duration-300">done</i>
+                    </label>
+                </div>
+                <div>
+                    <input id="checkbox-2" type="checkbox" class="hidden" checked>
+                    <label for="checkbox-2" class="w-[28px] h-[28px] flex justify-center items-center rounded-[5px] shadow-neumorphic cursor-pointer group">
+                         <i class="material-icons text-[18px] font-bold text-[var(--greyDark)] group-hover:text-[var(--primary)] transition-colors duration-300">done</i>
+                    </label>
+                </div>
+            </div>
+
+            <div class="neumorphic-radio flex space-x-[50px] justify-center md:col-start-1">
+                 <div>
+                    <input id="radio-1" type="radio" name="radio_group" value="1" class="hidden">
+                    <label for="radio-1" class="w-[28px] h-[28px] flex justify-center items-center rounded-full shadow-neumorphic cursor-pointer relative group">
+                        <span class="w-full h-full rounded-full flex justify-center items-center group-hover:[&>span::after]:bg-[var(--primary)]">
+                           <span class="absolute w-[14px] h-[14px] rounded-full bg-transparent transition-colors duration-300 after:content-[''] after:block after:w-full after:h-full after:rounded-full after:bg-[var(--greyDark)] after:transition-colors after:duration-300"></span>
+                        </span>
+                    </label>
+                </div>
+                <div>
+                    <input id="radio-2" type="radio" name="radio_group" value="2" class="hidden" checked>
+                    <label for="radio-2" class="w-[28px] h-[28px] flex justify-center items-center rounded-full shadow-neumorphic cursor-pointer relative group">
+                        <span class="w-full h-full rounded-full flex justify-center items-center group-hover:[&>span::after]:bg-[var(--primary)]">
+                           <span class="absolute w-[14px] h-[14px] rounded-full bg-transparent transition-colors duration-300 after:content-[''] after:block after:w-full after:h-full after:rounded-full after:bg-[var(--greyDark)] after:transition-colors after:duration-300"></span>
+                        </span>
+                    </label>
+                </div>
+            </div>
+
+            <div class="w-[150px] h-[40px] rounded-[10px] shadow-neumorphic-primary flex justify-center items-center text-[var(--greyLight-1)] bg-[var(--primary)] cursor-pointer transition-all duration-300 active:shadow-neumorphic-primary-active hover:text-[var(--white)] justify-self-center md:col-start-1">
+                <p class="text-base">Button</p>
+            </div>
+
+            <div class="w-[150px] h-[40px] rounded-[10px] shadow-neumorphic flex justify-center items-center text-[var(--greyDark)] cursor-pointer transition-all duration-300 active:shadow-neumorphic-inset hover:text-[var(--primary)] justify-self-center md:col-start-1">
+                <p class="text-base">Button</p>
+            </div>
+
+            <!-- COLUMN 2 -->
+            <div class="clock w-[120px] h-[120px] rounded-full shadow-neumorphic flex justify-center items-center relative justify-self-center md:col-start-2 md:row-span-2">
+                <div class="marker w-[calc(100%-10px)] h-[calc(100%-10px)] rounded-full relative shadow-neumorphic-inset">
+                    <span class="absolute w-[2px] h-[6px] left-1/2 -translate-x-1/2 top-[2%] rounded-[1px]" style="box-shadow: var(--neumorphic-shadow-clock-marker);"></span>
+                    <span class="absolute w-[2px] h-[6px] left-1/2 -translate-x-1/2 bottom-[2%] rounded-[1px]" style="box-shadow: var(--neumorphic-shadow-clock-marker);"></span>
+                    <span class="absolute w-[6px] h-[2px] top-1/2 -translate-y-1/2 left-[2%] rounded-[1px]" style="box-shadow: var(--neumorphic-shadow-clock-marker);"></span>
+                    <span class="absolute w-[6px] h-[2px] top-1/2 -translate-y-1/2 right-[2%] rounded-[1px]" style="box-shadow: var(--neumorphic-shadow-clock-marker);"></span>
+                    <div class="absolute w-[60%] h-[60%] top-[20%] left-[20%] rounded-full" style="box-shadow: inset 1px 1px 1px var(--greyLight-2), inset -1px -1px 1px var(--white); filter: blur(1px);"></div>
+                </div>
+                <div class="hand hours absolute w-[4px] h-[32px] bg-[var(--greyLight-3)] rounded-[2px] bottom-1/2 origin-bottom z-10"></div>
+                <div class="hand minutes absolute w-[4px] h-[46px] bg-[var(--greyDark)] rounded-[2px] bottom-1/2 origin-bottom z-10"></div>
+                <div class="hand seconds absolute w-[2px] h-[52px] bg-[var(--primary)] rounded-[2px] bottom-1/2 origin-bottom z-10"></div>
+                <div class="point absolute w-[8px] h-[8px] rounded-full bg-[var(--primary)] z-20"></div>
+            </div>
+            
+            <div class="chip w-[170px] h-[40px] rounded-[10px] shadow-neumorphic flex justify-between items-center px-1 justify-self-center md:col-start-2 md:row-start-3">
+                <div class="w-[30px] h-[30px] rounded-[10px] flex justify-center items-center text-[1.8rem] text-[var(--primary)]">
+                    <ion-icon name="color-palette-outline"></ion-icon>
+                </div>
+                <p class="text-xs text-[var(--greyDark)] grow text-center">Neumorphic Design</p> <!-- text-xs is 12px, original was 0.9rem=9px -->
+                <button class="w-[16px] h-[16px] flex text-[1.6rem] text-[var(--greyLight-3)] items-center justify-center hover:text-[var(--primary)]" onclick="this.closest('.chip').style.display='none'">
+                    <ion-icon name="close-outline"></ion-icon>
+                </button>
+            </div>
+
+            <div class="w-[90px] h-[90px] grid justify-items-center items-center justify-self-center md:col-start-2 md:row-start-4 md:row-span-2">
+                 <button class="circle__btn relative w-[60px] h-[60px] flex justify-center items-center rounded-full text-[3.2rem] text-[var(--primary)] bg-[var(--greyLight-1)] shadow-neumorphic cursor-pointer z-20 active:shadow-neumorphic-inset">
+                    <ion-icon class="pause absolute transition-opacity duration-200 ease-linear" name="pause"></ion-icon>
+                    <ion-icon class="play absolute opacity-0 transition-opacity duration-200 ease-linear" name="play"></ion-icon>
+                </button>
+                <span class="circle__back-1 animated absolute w-[60px] h-[60px] rounded-full filter blur-[1px] z-10" style="box-shadow: 4px 4px 8px var(--greyLight-2), -4px -4px 8px var(--white); background: linear-gradient(to bottom right, var(--greyLight-2) 0%, var(--white) 100%);"></span>
+                <span class="circle__back-2 animated absolute w-[60px] h-[60px] rounded-full filter blur-[1px] z-10" style="box-shadow: 4px 4px 8px var(--greyLight-2), -4px -4px 8px var(--white);"></span>
+            </div>
+
+            <!-- COLUMN 3 -->
+             <div class="segmented-control relative w-[204px] h-[40px] shadow-neumorphic rounded-[10px] flex items-center justify-self-center md:col-start-3 md:row-start-1">
+                <input type="radio" name="tabs_segmented" value="1" id="tab-1" class="hidden" checked/>
+                <label for="tab-1" class="flex-1 h-[36px] text-sm flex justify-center items-center cursor-pointer text-[var(--greyDark)] hover:text-[var(--primary)] transition-colors duration-500 z-10">Tab 1</label>
+                
+                <input type="radio" name="tabs_segmented" value="2" id="tab-2" class="hidden"/>
+                <label for="tab-2" class="flex-1 h-[36px] text-sm flex justify-center items-center cursor-pointer text-[var(--greyDark)] hover:text-[var(--primary)] transition-colors duration-500 z-10">Tab 2</label>
+                
+                <input type="radio" name="tabs_segmented" value="3" id="tab-3" class="hidden"/>
+                <label for="tab-3" class="flex-1 h-[36px] text-sm flex justify-center items-center cursor-pointer text-[var(--greyDark)] hover:text-[var(--primary)] transition-colors duration-500 z-10">Tab 3</label>
+                
+                <div class="segmented-control__color absolute h-[34px] w-[62px] ml-[3px] rounded-[8px] shadow-neumorphic-inset transition-transform duration-300 ease-[cubic-bezier(0.645,0.045,0.355,1)]"></div>
+            </div>
+            
+            <div class="search relative flex items-center justify-self-center md:col-start-3 md:row-start-2">
+                <input type="text" class="search__input w-[204px] h-[40px] border-none rounded-[10px] text-sm pl-[38px] pr-[10px] shadow-neumorphic-inset bg-transparent font-inherit text-[var(--greyDark)] placeholder:text-[var(--greyLight-3)] focus:outline-none focus:shadow-neumorphic" placeholder="Search...">
+                <div class="search__icon absolute left-[10px] h-[20px] text-[2rem] flex items-center text-[var(--greyDark)] transition-colors duration-300 pointer-events-none">
+                    <ion-icon name="search"></ion-icon>
+                </div>
+                <script>
+                    const searchInputEl = document.querySelector('.search__input');
+                    const searchIconEl = searchInputEl.nextElementSibling;
+                    searchInputEl.addEventListener('focus', () => searchIconEl.style.color = 'var(--primary)');
+                    searchInputEl.addEventListener('blur', () => searchIconEl.style.color = 'var(--greyDark)');
+                </script>
+            </div>
+
+            <div class="form justify-self-center md:col-start-3 md:row-start-3">
+                <input type="text" class="form__input w-[204px] h-[40px] border-none rounded-[10px] text-sm px-[14px] shadow-neumorphic-inset bg-transparent font-inherit text-[var(--greyDark)] placeholder:text-[var(--greyLight-3)] focus:outline-none focus:shadow-neumorphic" placeholder="Type anything...">
+            </div>
+
+            <div class="icons flex justify-between w-[204px] items-center justify-self-center md:col-start-3 md:row-start-4">
+                <button class="w-[40px] h-[40px] rounded-full shadow-neumorphic flex justify-center items-center text-[2rem] cursor-pointer text-[var(--greyDark)] transition-all duration-300 hover:text-[var(--primary)] active:shadow-neumorphic-inset active:text-[var(--primary)]">
+                    <ion-icon name="home-outline"></ion-icon>
+                </button>
+                 <button class="w-[40px] h-[40px] rounded-full shadow-neumorphic flex justify-center items-center text-[2rem] cursor-pointer text-[var(--greyDark)] transition-all duration-300 hover:text-[var(--primary)] active:shadow-neumorphic-inset active:text-[var(--primary)]">
+                    <ion-icon name="person-outline"></ion-icon>
+                </button>
+                 <button class="w-[40px] h-[40px] rounded-full shadow-neumorphic flex justify-center items-center text-[2rem] cursor-pointer text-[var(--greyDark)] transition-all duration-300 hover:text-[var(--primary)] active:shadow-neumorphic-inset active:text-[var(--primary)]">
+                    <ion-icon name="settings-outline"></ion-icon>
+                </button>
+            </div>
+            
+            <div class="slider w-[204px] justify-self-center md:col-start-3 md:row-start-5">
+                <div class="slider__box relative w-full h-[10px] cursor-pointer shadow-neumorphic-inset rounded-[10px] flex items-center">
+                    <span class="slider__color absolute h-full left-0 rounded-[10px]" style="width: 50%; background: linear-gradient(-1deg, var(--primary-dark) 0%, var(--primary) 50%, var(--primary-light) 100%); z-index: 1;"></span>
+                    <span class="slider__btn absolute w-[20px] h-[20px] rounded-full bg-[var(--white)] left-[calc(50%-10px)] shadow-neumorphic z-20 flex justify-center items-center cursor-grab active:cursor-grabbing">
+                        <span class="absolute w-[8px] h-[8px] rounded-full shadow-neumorphic-inset"></span>
+                    </span>
+                    <span class="slider__tooltip absolute top-[26px] h-[25px] w-auto min-w-[30px] px-1 rounded-[6px] flex justify-center items-center text-xs text-[var(--primary)] shadow-neumorphic opacity-0 transition-opacity duration-300 pointer-events-none" style="left: calc(50% - 15px);">50%</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // JS for Clock, Play Button, Slider 
+        (function() {
+            // Clock
+            const hoursHand = document.querySelector('.clock .hours');
+            const minutesHand = document.querySelector('.clock .minutes');
+            const secondsHand = document.querySelector('.clock .seconds');
+
+            function runClock() {
+                const today = new Date();
+                let h = (today.getHours() % 12) + today.getMinutes() / 59;
+                let m = today.getMinutes();
+                let s = today.getSeconds();
+
+                h *= 30; 
+                m *= 6;  
+                s *= 6;  
+
+                rotateHand(hoursHand, h);
+                rotateHand(minutesHand, m);
+                rotateHand(secondsHand, s);
+
+                setTimeout(runClock, 500);
+            }
+
+            function rotateHand(target, val) {
+                if(target) target.style.transform = `translateY(-50%) rotate(${val}deg)`; // translateY to ensure rotation from center of base
+            }
+            if(hoursHand && minutesHand && secondsHand) { //Initialize hand positions correctly
+                 [hoursHand, minutesHand, secondsHand].forEach(hand => {
+                    if(hand) {
+                        hand.style.transformOrigin = 'center bottom';
+                        hand.style.bottom = '50%'; // Start from center
+                    }
+                });
+                runClock();
+            }
+            
+            // Play Button
+            const playIcon = document.querySelector('.circle__btn .play');
+            const pauseIcon = document.querySelector('.circle__btn .pause');
+            const playBtn = document.querySelector('.circle__btn');
+            const wave1 = document.querySelector('.circle__back-1');
+            const wave2 = document.querySelector('.circle__back-2');
+
+            if (playBtn) {
+                playBtn.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    if(pauseIcon) pauseIcon.classList.toggle('opacity-0');
+                    if(playIcon) playIcon.classList.toggle('opacity-0');
+                    
+                    // Toggle between shadow-neumorphic and shadow-neumorphic-inset
+                    if (playBtn.classList.contains('shadow-neumorphic')) {
+                        playBtn.classList.remove('shadow-neumorphic');
+                        playBtn.classList.add('shadow-neumorphic-inset');
+                    } else {
+                        playBtn.classList.remove('shadow-neumorphic-inset');
+                        playBtn.classList.add('shadow-neumorphic');
+                    }
+                    
+                    if(wave1) wave1.classList.toggle('paused');
+                    if(wave2) wave2.classList.toggle('paused');
+                });
+            }
+
+            // Slider
+            const sliderContainer = document.querySelector('.slider__box');
+            const sliderBtn = document.querySelector('.slider__btn');
+            const sliderColorFill = document.querySelector('.slider__color');
+            const sliderTooltip = document.querySelector('.slider__tooltip');
+
+            function dragElement(target, btn, colorFill, tooltip) {
+                if (!target || !btn || !colorFill || !tooltip) {
+                    console.warn("Slider elements not found.");
+                    return;
+                }
+
+                let isDragging = false;
+
+                function updateSliderPosition(clientX) {
+                    let targetRect = target.getBoundingClientRect();
+                    let x = clientX - targetRect.left;
+                    
+                    let btnWidth = btn.offsetWidth;
+                    let effectiveX = x - (btnWidth / 2);
+
+                    if (effectiveX < 0) effectiveX = 0;
+                    if (effectiveX > targetRect.width - btnWidth) effectiveX = targetRect.width - btnWidth;
+                    
+                    btn.style.left = effectiveX + 'px';
+
+                    let percentPosition = ((effectiveX + btnWidth / 2) / targetRect.width) * 100;
+                    if (percentPosition < 0) percentPosition = 0;
+                    if (percentPosition > 100) percentPosition = 100;
+                    
+                    colorFill.style.width = percentPosition + "%";
+                    
+                    tooltip.style.left = (effectiveX + btnWidth / 2) - (tooltip.offsetWidth / 2) + 'px';
+                    tooltip.textContent = Math.round(percentPosition) + '%';
+                }
+                
+                function onMouseMove(e) {
+                    if (!isDragging) return;
+                    e.preventDefault();
+                    let clientX = e.clientX || (e.touches && e.touches[0].clientX);
+                    if (typeof clientX === 'undefined') return;
+                    updateSliderPosition(clientX);
+                }
+
+                function onMouseDown(e) {
+                    e.preventDefault();
+                    isDragging = true;
+                    tooltip.style.opacity = 1;
+                    document.addEventListener('mousemove', onMouseMove);
+                    document.addEventListener('touchmove', onMouseMove, { passive: false });
+                    document.addEventListener('mouseup', onMouseUp);
+                    document.addEventListener('touchend', onMouseUp);
+                }
+                
+                function onMouseUp() {
+                    if (!isDragging) return;
+                    isDragging = false;
+                    tooltip.style.opacity = 0;
+                    document.removeEventListener('mousemove', onMouseMove);
+                    document.removeEventListener('touchmove', onMouseMove);
+                    document.removeEventListener('mouseup', onMouseUp);
+                    document.removeEventListener('touchend', onMouseUp);
+                }
+
+                btn.addEventListener('mousedown', onMouseDown);
+                btn.addEventListener('touchstart', onMouseDown, { passive: false });
+
+                btn.addEventListener('mouseover', () => { if (!isDragging) tooltip.style.opacity = 1; });
+                btn.addEventListener('mouseout', () => { if (!isDragging) tooltip.style.opacity = 0; });
+                
+                target.addEventListener('click', (e) => {
+                    if (isDragging || e.target === btn || btn.contains(e.target)) return;
+                    updateSliderPosition(e.clientX);
+                    tooltip.style.opacity = 1;
+                    setTimeout(() => { if (!isDragging) tooltip.style.opacity = 0; }, 1500);
+                });
+            }
+
+            if (sliderContainer && sliderBtn && sliderColorFill && sliderTooltip) {
+                 dragElement(sliderContainer, sliderBtn, sliderColorFill, sliderTooltip);
+            }
+        })();
+    </script>
+</body>
+</html>

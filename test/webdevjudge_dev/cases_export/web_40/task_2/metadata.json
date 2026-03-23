@@ -1,0 +1,9 @@
+{
+  "web_id": "web_40",
+  "task_id": 2,
+  "task_type": "dynamic",
+  "instruction": "Task: Input a solution into a programming puzzle interface and click a 'Submit' button.\nExpected Result: The system validates the solution. If correct, a previously hidden section of the portfolio becomes visible/unlocked. If incorrect, feedback on the attempt is provided.\n\nNote: The task is only considered successful if the expected result is achieved; otherwise, it is deemed infeasible.",
+  "max_steps": 15,
+  "expected": "The system validates the solution. If correct, a previously hidden section of the portfolio becomes visible/unlocked. If incorrect, feedback on the attempt is provided.",
+  "label": 1
+}

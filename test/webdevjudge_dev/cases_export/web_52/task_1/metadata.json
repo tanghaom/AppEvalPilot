@@ -1,0 +1,9 @@
+{
+  "web_id": "web_52",
+  "task_id": 1,
+  "task_type": "dynamic",
+  "instruction": "Task: Click the 'Whisper' button\nExpected Result: The sphere's distortion effect increases, its texture-based patterns change, and the overall visuals of the 3D scene are altered.\n\nNote: The task is only considered successful if the expected result is achieved; otherwise, it is deemed infeasible.",
+  "max_steps": 15,
+  "expected": "The sphere's distortion effect increases, its texture-based patterns change, and the overall visuals of the 3D scene are altered.",
+  "label": 0
+}

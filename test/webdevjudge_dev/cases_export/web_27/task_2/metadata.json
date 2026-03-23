@@ -1,0 +1,9 @@
+{
+  "web_id": "web_27",
+  "task_id": 2,
+  "task_type": "dynamic",
+  "instruction": "Task: Fire the equipped weapon (e.g., by clicking the primary mouse button).\nExpected Result: The weapon fires, a visual/audio effect occurs, and a simulated projectile or hitscan is registered against targets (e.g., enemies, destructible objects) if aimed correctly.\n\nNote: The task is only considered successful if the expected result is achieved; otherwise, it is deemed infeasible.",
+  "max_steps": 15,
+  "expected": "The weapon fires, a visual/audio effect occurs, and a simulated projectile or hitscan is registered against targets (e.g., enemies, destructible objects) if aimed correctly.",
+  "label": 0
+}

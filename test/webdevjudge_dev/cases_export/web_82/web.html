@@ -1,0 +1,671 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NovaChat - Modern Real-Time Chat</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Custom scrollbar for webkit browsers */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #1e293b; /* slate-800 */
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #475569; /* slate-600 */
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #64748b; /* slate-500 */
+        }
+        /* Basic focus visibility for accessibility */
+        *:focus-visible {
+            outline: 2px solid #6366f1; /* indigo-500 */
+            outline-offset: 2px;
+        }
+        .message-content a {
+            color: #818cf8; /* indigo-400 */
+            text-decoration: underline;
+        }
+        .message-content a:hover {
+            text-decoration: none;
+        }
+        .message-content code {
+            background-color: #334155; /* slate-700 */
+            padding: 0.125rem 0.25rem;
+            border-radius: 0.25rem;
+            font-family: monospace;
+        }
+        .message-content pre {
+            background-color: #334155; /* slate-700 */
+            padding: 0.5rem;
+            border-radius: 0.375rem;
+            overflow-x: auto;
+        }
+        .message-content pre code {
+            padding: 0;
+            background-color: transparent;
+        }
+    </style>
+</head>
+<body class="bg-slate-900 text-slate-100 font-sans antialiased">
+
+    <div id="app-container" class="h-screen w-screen overflow-hidden">
+        <!-- Views will be rendered here by JavaScript -->
+    </div>
+
+    <!-- SVG Icons (inline for simplicity) -->
+    <div id="svg-icons" class="hidden">
+        <svg id="icon-hash" viewBox="0 0 20 20" fill="currentColor" class="w-5 h-5"><path fill-rule="evenodd" d="M9.243 3.03a1 1 0 01.727 1.213L9.53 6h2.94l.56-1.757A1 1 0 1114.97 5.03L14.41 6.787a1 1 0 01-1.212.727L10.47 6H7.53l-.56 1.757a1 1 0 11-1.94-.624L5.59 3.243a1 1 0 011.213-.727L9.53 4h2.94l-.56-1.757a1 1 0 01.727-1.213L9.243 3.03zM7.03 8l-1 3.106a1 1 0 00.623 1.143l.067.03.068.028 3.105 1a1 1 0 001.143-.624l1-3.105a1 1 0 00-.624-1.143l-.067-.03-.068-.028-3.105-1a1 1 0 00-1.143.624L7.03 8zM12.97 12l1-3.106a1 1 0 10-1.94-.624L11.47 10H8.53l.56-1.757a1 1 0 10-1.94-.624L6.59 10.757a1 1 0 00.624 1.143L9.53 12h2.94l.56 1.757a1 1 0 101.94.624L14.41 13.213a1 1 0 00-.624-1.143L12.97 12z" clip-rule="evenodd"></path></svg>
+        <svg id="icon-at" viewBox="0 0 20 20" fill="currentColor" class="w-5 h-5"><path fill-rule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clip-rule="evenodd"></path></svg>
+        <svg id="icon-user-group" viewBox="0 0 20 20" fill="currentColor" class="w-5 h-5"><path d="M13 6a3 3 0 11-6 0 3 3 0 016 0zM18 8a2 2 0 11-4 0 2 2 0 014 0zM14 15a4 4 0 00-8 0v3h8v-3zM6 8a2 2 0 11-4 0 2 2 0 014 0zM16 18v-3a5.972 5.972 0 00-.75-2.906A3.005 3.005 0 0119 15v3h-3zM4.75 12.094A5.973 5.973 0 004 15v3H1v-3a3 3 0 013.75-2.906z"></path></svg>
+        <svg id="icon-plus" viewBox="0 0 20 20" fill="currentColor" class="w-5 h-5"><path fill-rule="evenodd" d="M10 5a1 1 0 011 1v3h3a1 1 0 110 2h-3v3a1 1 0 11-2 0v-3H6a1 1 0 110-2h3V6a1 1 0 011-1z" clip-rule="evenodd"></path></svg>
+        <svg id="icon-send" viewBox="0 0 20 20" fill="currentColor" class="w-5 h-5"><path fill-rule="evenodd" d="M10.894 2.106a1 1 0 00-1.788 0l-6 14a1 1 0 001.169 1.409l5-1.429A1 1 0 0011 14.571V11a1 1 0 112 0v3.571a1 1 0 001.724.707l5 1.429a1 1 0 001.17-1.409l-6-14zM12 10a2 2 0 11-4 0 2 2 0 014 0z" clip-rule="evenodd"></path></svg>
+        <svg id="icon-paperclip" viewBox="0 0 20 20" fill="currentColor" class="w-5 h-5"><path fill-rule="evenodd" d="M8 4a3 3 0 00-3 3v4a5 5 0 0010 0V7a3 3 0 10-6 0v4a1 1 0 102 0V7a1 1 0 011-1h.008a1 1 0 01.992.992L12 7v4a3 3 0 11-6 0V7a5 5 0 0110 0v4a5 5 0 01-10 0V7a3 3 0 00-3-3z" clip-rule="evenodd"></path></svg>
+        <svg id="icon-cog" viewBox="0 0 20 20" fill="currentColor" class="w-5 h-5"><path fill-rule="evenodd" d="M11.49 3.17c-.38-1.56-2.6-1.56-2.98 0a1.532 1.532 0 01-2.286.948c-1.372-.836-2.942.734-2.106 2.106.54.886.061 2.042-.947 2.287-1.561.379-1.561 2.6 0 2.978a1.532 1.532 0 01.947 2.287c-.836 1.372.734 2.942 2.106 2.106a1.532 1.532 0 012.287.947c.379 1.561 2.6 1.561 2.978 0a1.533 1.533 0 012.287-.947c1.372.836 2.942-.734 2.106-2.106a1.533 1.533 0 01-.947-2.287c1.561-.379 1.561-2.6 0-2.978a1.532 1.532 0 01-.947-2.287c.836-1.372-.734-2.942-2.106-2.106a1.532 1.532 0 01-2.287-.947zM10 13a3 3 0 100-6 3 3 0 000 6z" clip-rule="evenodd"></path></svg>
+        <svg id="icon-logout" viewBox="0 0 20 20" fill="currentColor" class="w-5 h-5"><path fill-rule="evenodd" d="M3 3a1 1 0 00-1 1v12a1 1 0 102 0V5h10a1 1 0 100-2H3zm12.293 7.293a1 1 0 011.414 0l3 3a1 1 0 010 1.414l-3 3a1 1 0 01-1.414-1.414L16.586 13H9a1 1 0 110-2h7.586l-1.293-1.293a1 1 0 010-1.414z" clip-rule="evenodd"></path></svg>
+        <svg id="icon-dots-vertical" viewBox="0 0 20 20" fill="currentColor" class="w-5 h-5"><path d="M10 6a2 2 0 110-4 2 2 0 010 4zM10 12a2 2 0 110-4 2 2 0 010 4zM10 18a2 2 0 110-4 2 2 0 010 4z"></path></svg>
+    </div>
+
+    <script>
+        const appContainer = document.getElementById('app-container');
+        const svgIcons = document.getElementById('svg-icons');
+
+        function getIcon(name, classes = "w-5 h-5") {
+            const svgElement = svgIcons.querySelector(`#icon-${name}`);
+            if (svgElement) {
+                const icon = svgElement.cloneNode(true);
+                icon.setAttribute('class', classes + " " + (svgElement.getAttribute('class') || ''));
+                icon.removeAttribute('id');
+                return icon.outerHTML;
+            }
+            return `<span>${name.substring(0,1).toUpperCase()}</span>`; // Fallback
+        }
+        
+        // --- STATE MANAGEMENT ---
+        let appState = {
+            loggedIn: false,
+            currentUser: null, // { id, username, email, avatarUrl, statusMessage }
+            currentView: 'login', // 'login', 'register', 'chat'
+            
+            users: [ // Mock user directory
+                { id: 'user1', username: 'Alice', avatarUrl: null, online: true, statusMessage: 'Coding away!' },
+                { id: 'user2', username: 'Bob', avatarUrl: null, online: false, statusMessage: 'Offline' },
+                { id: 'user3', username: 'Charlie', avatarUrl: null, online: true, statusMessage: 'In a meeting' },
+                { id: 'user4', username: 'Diana', avatarUrl: null, online: true, statusMessage: 'Exploring new ideas' },
+                { id: 'user5', username: 'NovaDev', avatarUrl: null, online: true, statusMessage: 'Building NovaChat!'}
+            ],
+            
+            channels: [
+                { id: 'ch1', name: 'general', description: 'General chat and announcements', members: ['user1', 'user2', 'user3', 'user4', 'user5'], messages: [
+                    { id: 'msg1', userId: 'user1', content: 'Hello everyone!', timestamp: new Date(Date.now() - 1000 * 60 * 5).toISOString(), reactions: {} },
+                    { id: 'msg2', userId: 'user3', content: 'Hi Alice! Welcome to #general.', timestamp: new Date(Date.now() - 1000 * 60 * 4).toISOString(), reactions: {} },
+                ]},
+                { id: 'ch2', name: 'random', description: 'Off-topic discussions', members: ['user1', 'user3', 'user5'], messages: [
+                    { id: 'msg3', userId: 'user5', content: 'Anyone watch that new sci-fi show?', timestamp: new Date(Date.now() - 1000 * 60 * 2).toISOString(), reactions: {} },
+                ]},
+                { id: 'ch3', name: 'dev-team', description: 'Development discussions (private)', type: 'private', members: ['user1', 'user4', 'user5'], messages: [
+                     { id: 'msg4', userId: 'user4', content: 'Working on the new feature branch.', timestamp: new Date(Date.now() - 1000 * 60 * 10).toISOString(), reactions: {} },
+                ]}
+            ],
+            
+            directMessages: [
+                { otherUserId: 'user2', messages: [
+                    { id: 'dm1', userId: 'user5', content: 'Hey Bob, how are you?', timestamp: new Date(Date.now() - 1000 * 60 * 30).toISOString(), reactions: {} },
+                    { id: 'dm2', userId: 'user2', content: 'Doing good! Just busy.', timestamp: new Date(Date.now() - 1000 * 60 * 28).toISOString(), reactions: {} },
+                ]}
+            ],
+            
+            activeChat: {
+                type: 'channel', 
+                id: 'ch1', 
+            },
+
+            uiSettings: {
+                theme: 'dark',
+                notifications: true,
+                isRightSidebarOpen: true,
+            },
+
+            typingUsers: {} 
+        };
+
+        // --- UTILITY FUNCTIONS ---
+        function getUserById(userId) {
+            return appState.users.find(u => u.id === userId);
+        }
+        
+        function getChannelById(channelId) {
+            return appState.channels.find(c => c.id === channelId);
+        }
+
+        function getDMConversationByUserId(userId) {
+            return appState.directMessages.find(dm => dm.otherUserId === userId);
+        }
+
+        function formatTimestamp(isoString) {
+            const date = new Date(isoString);
+            return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        }
+        
+        function renderAvatar(userId, size = 'w-10 h-10') {
+            const user = getUserById(userId);
+            // Placeholder avatar div as requested
+            if (user && user.avatarUrl) { // If actual URL was provided
+                return `<img src="${user.avatarUrl}" alt="${user.username}" class="${size} rounded-full object-cover bg-slate-700">`;
+            }
+            const initial = user ? user.username.substring(0,1).toUpperCase() : '?';
+            return `<div class="bg-slate-700 border-2 border-slate-600 rounded-full ${size} flex items-center justify-center text-slate-300 font-semibold text-lg">
+                        ${initial}
+                    </div>`;
+        }
+
+
+        // --- RENDER FUNCTIONS ---
+        function render() {
+            if (!appState.loggedIn) {
+                if (appState.currentView === 'register') {
+                    renderRegisterScreen();
+                } else {
+                    renderLoginScreen();
+                }
+            } else {
+                renderChatLayout();
+            }
+        }
+
+        function renderLoginScreen() {
+            appContainer.innerHTML = `
+                <div class="min-h-screen flex flex-col items-center justify-center bg-slate-900 p-4">
+                    <div class="w-full max-w-md bg-slate-800 p-8 rounded-xl shadow-2xl">
+                        <h1 class="text-3xl font-bold text-center text-indigo-400 mb-2">NovaChat</h1>
+                        <p class="text-center text-slate-400 mb-8">Welcome back!</p>
+                        <form id="login-form" class="space-y-6">
+                            <div>
+                                <label for="email" class="block text-sm font-medium text-slate-300">Email or Username</label>
+                                <input type="text" id="email" name="email" value="novadev" required class="mt-1 block w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-md text-slate-100 placeholder-slate-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
+                            </div>
+                            <div>
+                                <label for="password" class="block text-sm font-medium text-slate-300">Password</label>
+                                <input type="password" id="password" name="password" value="password" required class="mt-1 block w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-md text-slate-100 placeholder-slate-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
+                            </div>
+                            <div class="flex items-center justify-between">
+                                <a href="#" class="text-sm text-indigo-400 hover:text-indigo-300">Forgot password?</a>
+                            </div>
+                            <button type="submit" class="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-slate-800 focus:ring-indigo-500">
+                                Sign In
+                            </button>
+                        </form>
+                        <p class="mt-6 text-center text-sm text-slate-400">
+                            Don't have an account? <button id="show-register" class="font-medium text-indigo-400 hover:text-indigo-300">Sign Up</button>
+                        </p>
+                    </div>
+                </div>
+            `;
+            document.getElementById('login-form').addEventListener('submit', handleLogin);
+            document.getElementById('show-register').addEventListener('click', () => {
+                appState.currentView = 'register';
+                render();
+            });
+        }
+
+        function renderRegisterScreen() {
+            appContainer.innerHTML = `
+                <div class="min-h-screen flex flex-col items-center justify-center bg-slate-900 p-4">
+                    <div class="w-full max-w-md bg-slate-800 p-8 rounded-xl shadow-2xl">
+                        <h1 class="text-3xl font-bold text-center text-indigo-400 mb-2">Create Account</h1>
+                        <p class="text-center text-slate-400 mb-8">Join NovaChat today!</p>
+                        <form id="register-form" class="space-y-6">
+                            <div>
+                                <label for="reg-username" class="block text-sm font-medium text-slate-300">Username</label>
+                                <input type="text" id="reg-username" name="username" required class="mt-1 block w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-md text-slate-100 placeholder-slate-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
+                            </div>
+                            <div>
+                                <label for="reg-email" class="block text-sm font-medium text-slate-300">Email</label>
+                                <input type="email" id="reg-email" name="email" required class="mt-1 block w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-md text-slate-100 placeholder-slate-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
+                            </div>
+                            <div>
+                                <label for="reg-password" class="block text-sm font-medium text-slate-300">Password</label>
+                                <input type="password" id="reg-password" name="password" required class="mt-1 block w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-md text-slate-100 placeholder-slate-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
+                            </div>
+                            <button type="submit" class="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-slate-800 focus:ring-indigo-500">
+                                Create Account
+                            </button>
+                        </form>
+                        <p class="mt-6 text-center text-sm text-slate-400">
+                            Already have an account? <button id="show-login" class="font-medium text-indigo-400 hover:text-indigo-300">Sign In</button>
+                        </p>
+                    </div>
+                </div>
+            `;
+            document.getElementById('register-form').addEventListener('submit', handleRegister);
+            document.getElementById('show-login').addEventListener('click', () => {
+                appState.currentView = 'login';
+                render();
+            });
+        }
+        
+        function renderChatLayout() {
+            appContainer.innerHTML = `
+                <div class="flex h-screen">
+                    <!-- Left Sidebar: Server List (Simplified) & Channel/DM List -->
+                    <div class="flex flex-col w-72 bg-slate-800 border-r border-slate-700">
+                        <!-- Workspace Header -->
+                        <div class="h-16 flex items-center justify-between px-4 border-b border-slate-700 shadow-sm">
+                            <h1 class="text-xl font-semibold text-slate-100">NovaChat HQ</h1>
+                            <button class="text-slate-400 hover:text-slate-200 p-1 rounded hover:bg-slate-700">
+                                ${getIcon('dots-vertical', 'w-5 h-5')}
+                            </button>
+                        </div>
+
+                        <!-- Channels List -->
+                        <div class="flex-grow overflow-y-auto p-3 space-y-1">
+                            <div class="px-1 mb-2 flex justify-between items-center">
+                                <h2 class="text-xs font-semibold uppercase text-slate-400">Channels</h2>
+                                <button title="Create Channel" class="text-slate-400 hover:text-slate-200 p-1 rounded hover:bg-slate-700">
+                                    ${getIcon('plus', 'w-4 h-4')}
+                                </button>
+                            </div>
+                            ${appState.channels.map(channel => `
+                                <button data-channel-id="${channel.id}" class="channel-item w-full flex items-center space-x-2 px-2 py-1.5 rounded-md hover:bg-slate-700 ${appState.activeChat.type === 'channel' && appState.activeChat.id === channel.id ? 'bg-slate-700 text-white' : 'text-slate-300'}">
+                                    ${getIcon('hash', 'w-5 h-5 text-slate-500')}
+                                    <span class="truncate">${channel.name}</span>
+                                </button>
+                            `).join('')}
+
+                            <!-- Direct Messages List -->
+                            <div class="px-1 mt-4 mb-2 flex justify-between items-center">
+                                <h2 class="text-xs font-semibold uppercase text-slate-400">Direct Messages</h2>
+                                <button title="New DM" class="text-slate-400 hover:text-slate-200 p-1 rounded hover:bg-slate-700">
+                                    ${getIcon('plus', 'w-4 h-4')}
+                                </button>
+                            </div>
+                            ${appState.directMessages.map(dm => {
+                                const otherUser = getUserById(dm.otherUserId);
+                                return `
+                                <button data-dm-userid="${dm.otherUserId}" class="dm-item w-full flex items-center space-x-2 px-2 py-1.5 rounded-md hover:bg-slate-700 ${appState.activeChat.type === 'dm' && appState.activeChat.id === dm.otherUserId ? 'bg-slate-700 text-white' : 'text-slate-300'}">
+                                    <div class="relative">
+                                        ${renderAvatar(dm.otherUserId, 'w-6 h-6')}
+                                        ${otherUser.online ? '<span class="absolute bottom-0 right-0 block h-2 w-2 rounded-full bg-green-500 ring-1 ring-slate-800"></span>' : ''}
+                                    </div>
+                                    <span class="truncate">${otherUser.username}</span>
+                                </button>
+                            `}).join('')}
+                        </div>
+
+                        <!-- User Panel -->
+                        <div class="h-20 p-3 border-t border-slate-700 bg-slate-800 flex items-center justify-between">
+                            <div class="flex items-center space-x-2">
+                                ${renderAvatar(appState.currentUser.id, 'w-10 h-10')}
+                                <div>
+                                    <p class="text-sm font-semibold text-slate-100">${appState.currentUser.username}</p>
+                                    <input type="text" id="user-status-input" class="text-xs text-slate-400 bg-transparent focus:outline-none w-full" value="${appState.currentUser.statusMessage}" placeholder="Set a status">
+                                </div>
+                            </div>
+                            <div class="flex space-x-1">
+                                <button title="Settings" class="text-slate-400 hover:text-slate-200 p-1.5 rounded hover:bg-slate-700">
+                                    ${getIcon('cog', 'w-5 h-5')}
+                                </button>
+                                <button title="Logout" id="logout-button" class="text-slate-400 hover:text-red-400 p-1.5 rounded hover:bg-slate-700">
+                                    ${getIcon('logout', 'w-5 h-5')}
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Main Chat Area -->
+                    <div class="flex-1 flex flex-col bg-slate-900 overflow-hidden">
+                        ${renderChatHeader()}
+                        ${renderMessageList()}
+                        ${renderMessageInput()}
+                    </div>
+                    
+                    <!-- Right Sidebar (Conditional) -->
+                    ${appState.uiSettings.isRightSidebarOpen ? renderRightSidebar() : ''}
+                </div>
+            `;
+            
+            // Add event listeners
+            document.querySelectorAll('.channel-item').forEach(item => item.addEventListener('click', () => handleChannelSelect(item.dataset.channelId)));
+            document.querySelectorAll('.dm-item').forEach(item => item.addEventListener('click', () => handleDMSelect(item.dataset.dmUserid)));
+            document.getElementById('message-form').addEventListener('submit', handleSendMessage);
+            document.getElementById('logout-button').addEventListener('click', handleLogout);
+            document.getElementById('user-status-input').addEventListener('change', handleStatusUpdate);
+
+            // Scroll message list to bottom
+            const messageListEl = document.getElementById('message-list');
+            if (messageListEl) messageListEl.scrollTop = messageListEl.scrollHeight;
+        }
+
+        function renderChatHeader() {
+            let headerTitle = 'Select a chat';
+            let headerSubtitle = '';
+            let iconHtml = getIcon('hash', 'w-6 h-6 text-slate-500');
+
+            if (appState.activeChat.type === 'channel' && appState.activeChat.id) {
+                const channel = getChannelById(appState.activeChat.id);
+                if (channel) {
+                    headerTitle = channel.name;
+                    headerSubtitle = `${channel.members.length} members | ${channel.description}`;
+                }
+            } else if (appState.activeChat.type === 'dm' && appState.activeChat.id) {
+                const otherUser = getUserById(appState.activeChat.id);
+                if (otherUser) {
+                    iconHtml = getIcon('at', 'w-6 h-6 text-slate-500');
+                    headerTitle = otherUser.username;
+                    headerSubtitle = otherUser.online ? 'Online' : 'Offline';
+                    if (otherUser.statusMessage) headerSubtitle += ` - ${otherUser.statusMessage}`;
+                }
+            }
+
+            return `
+                <div class="h-16 flex items-center justify-between px-6 border-b border-slate-700 bg-slate-800 shadow-sm">
+                    <div class="flex items-center space-x-3">
+                        ${iconHtml}
+                        <div>
+                            <h2 class="text-lg font-semibold text-slate-100">${headerTitle}</h2>
+                            <p class="text-xs text-slate-400 truncate max-w-xs md:max-w-md">${headerSubtitle}</p>
+                        </div>
+                    </div>
+                    <div class="flex items-center space-x-2">
+                        <button class="text-slate-400 hover:text-slate-200 p-2 rounded-full hover:bg-slate-700">
+                            ${getIcon('user-group', 'w-5 h-5')}
+                        </button>
+                        <button class="text-slate-400 hover:text-slate-200 p-2 rounded-full hover:bg-slate-700">
+                            ${getIcon('cog', 'w-5 h-5')}
+                        </button>
+                    </div>
+                </div>
+            `;
+        }
+        
+        function renderMessageList() {
+            let messages = [];
+            if (appState.activeChat.type === 'channel' && appState.activeChat.id) {
+                const channel = getChannelById(appState.activeChat.id);
+                messages = channel ? channel.messages : [];
+            } else if (appState.activeChat.type === 'dm' && appState.activeChat.id) {
+                const dm = getDMConversationByUserId(appState.activeChat.id);
+                messages = dm ? dm.messages : [];
+            }
+
+            return `
+                <div id="message-list" class="flex-1 overflow-y-auto p-6 space-y-4">
+                    ${messages.map(msg => {
+                        const sender = getUserById(msg.userId);
+                        const isCurrentUser = sender.id === appState.currentUser.id;
+                        return `
+                        <div class="flex items-start space-x-3 ${isCurrentUser ? 'justify-end' : ''}">
+                            ${!isCurrentUser ? renderAvatar(sender.id, 'w-10 h-10') : ''}
+                            <div class="max-w-lg">
+                                <div class="${isCurrentUser ? 'bg-indigo-600 text-white' : 'bg-slate-700 text-slate-200'} p-3 rounded-lg shadow">
+                                    ${!isCurrentUser ? `<p class="text-sm font-semibold mb-1">${sender.username}</p>` : ''}
+                                    <p class="text-sm message-content">${msg.content.replace(/@(\w+)/g, '<span class="text-indigo-300 font-semibold">@$1</span>')}</p>
+                                </div>
+                                <p class="text-xs text-slate-500 mt-1 ${isCurrentUser ? 'text-right' : ''}">${formatTimestamp(msg.timestamp)}</p>
+                            </div>
+                            ${isCurrentUser ? renderAvatar(sender.id, 'w-10 h-10') : ''}
+                        </div>
+                    `}).join('')}
+                     <div id="typing-indicator" class="text-sm text-slate-400 italic h-5"></div>
+                </div>
+            `;
+        }
+
+        function renderMessageInput() {
+            let placeholderText = "Message ";
+            if (appState.activeChat.type === 'channel' && appState.activeChat.id) {
+                placeholderText += `#${getChannelById(appState.activeChat.id)?.name || ''}`;
+            } else if (appState.activeChat.type === 'dm' && appState.activeChat.id) {
+                 placeholderText += `@${getUserById(appState.activeChat.id)?.username || ''}`;
+            }
+
+
+            return `
+                <div class="p-4 border-t border-slate-700 bg-slate-800">
+                    <form id="message-form" class="flex items-center space-x-3">
+                        <button type="button" title="Attach File" class="p-2 text-slate-400 hover:text-slate-200 rounded-full hover:bg-slate-700">
+                            ${getIcon('paperclip', 'w-5 h-5')}
+                        </button>
+                        <textarea id="message-input" rows="1" class="flex-1 bg-slate-700 border border-slate-600 rounded-lg px-4 py-2.5 text-sm text-slate-100 placeholder-slate-400 focus:ring-indigo-500 focus:border-indigo-500 resize-none" placeholder="${placeholderText}"></textarea>
+                        <button type="submit" title="Send Message" class="p-2.5 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 focus:ring-offset-slate-800">
+                            ${getIcon('send', 'w-5 h-5')}
+                        </button>
+                    </form>
+                </div>
+            `;
+        }
+
+        function renderRightSidebar() {
+             let title = "Channel Info";
+             let content = "<p class='text-slate-400'>No information available.</p>";
+
+            if (appState.activeChat.type === 'channel' && appState.activeChat.id) {
+                const channel = getChannelById(appState.activeChat.id);
+                if (channel) {
+                    title = `#${channel.name} Details`;
+                    content = `
+                        <p class="text-sm text-slate-300 mb-1">${channel.description}</p>
+                        <p class="text-xs text-slate-400 mb-4">${channel.type === 'private' ? 'Private Channel' : 'Public Channel'}</p>
+                        <h3 class="text-sm font-semibold text-slate-200 mb-2">Members (${channel.members.length})</h3>
+                        <ul class="space-y-2 max-h-60 overflow-y-auto">
+                            ${channel.members.map(memberId => {
+                                const member = getUserById(memberId);
+                                return `
+                                    <li class="flex items-center space-x-2">
+                                        ${renderAvatar(member.id, 'w-8 h-8')}
+                                        <div>
+                                            <p class="text-sm text-slate-200">${member.username}</p>
+                                            <p class="text-xs ${member.online ? 'text-green-400' : 'text-slate-500'}">${member.online ? 'Online' : 'Offline'}</p>
+                                        </div>
+                                    </li>
+                                `;
+                            }).join('')}
+                        </ul>
+                    `;
+                }
+            } else if (appState.activeChat.type === 'dm' && appState.activeChat.id) {
+                const otherUser = getUserById(appState.activeChat.id);
+                if (otherUser) {
+                    title = `About ${otherUser.username}`;
+                     content = `
+                        <div class="flex flex-col items-center">
+                            ${renderAvatar(otherUser.id, 'w-20 h-20')}
+                            <h3 class="text-lg font-semibold text-slate-100 mt-3">${otherUser.username}</h3>
+                            <p class="text-sm ${otherUser.online ? 'text-green-400' : 'text-slate-500'}">${otherUser.online ? 'Online' : 'Offline'}</p>
+                            <p class="text-sm text-slate-300 mt-1 text-center">${otherUser.statusMessage || 'No status message.'}</p>
+                        </div>
+                         <div class="mt-6 border-t border-slate-700 pt-4">
+                            <h4 class="text-xs font-semibold uppercase text-slate-400 mb-2">Shared Files (Placeholder)</h4>
+                            <div class="bg-gray-200 border-2 border-dashed rounded-xl w-full h-24 flex items-center justify-center text-slate-500 text-sm">
+                                No files shared yet.
+                            </div>
+                         </div>
+                    `;
+                }
+            }
+
+            return `
+                <div class="w-80 bg-slate-800 border-l border-slate-700 p-6 flex-shrink-0 overflow-y-auto">
+                    <h2 class="text-xl font-semibold text-slate-100 mb-4">${title}</h2>
+                    ${content}
+                </div>
+            `;
+        }
+
+        // --- EVENT HANDLERS ---
+        function handleLogin(event) {
+            event.preventDefault();
+            // Mock login: For demo, let's say user 'user5' (NovaDev) logs in
+            const foundUser = appState.users.find(u => u.username.toLowerCase() === 'novadev');
+            if (foundUser) {
+                appState.currentUser = { ...foundUser }; // Create a mutable copy
+                appState.loggedIn = true;
+                appState.currentView = 'chat';
+            } else {
+                alert('Mock login failed. Defaulting to NovaDev user.'); // Should not happen with current data
+                appState.currentUser = { id: 'user5', username: 'NovaDev', email: 'dev@nova.chat', avatarUrl: null, statusMessage: 'Building NovaChat!' };
+                appState.loggedIn = true;
+                appState.currentView = 'chat';
+            }
+            render();
+        }
+        
+        function handleRegister(event) {
+            event.preventDefault();
+            const username = event.target.username.value;
+            const email = event.target.email.value;
+            // Mock registration
+            const newUser = { id: `user${appState.users.length + 1}`, username, email, avatarUrl: null, statusMessage: 'Newly joined!', online: true };
+            appState.users.push(newUser);
+            appState.currentUser = { ...newUser };
+            appState.loggedIn = true;
+            appState.currentView = 'chat';
+            render();
+        }
+
+        function handleLogout() {
+            appState.loggedIn = false;
+            appState.currentUser = null;
+            appState.currentView = 'login';
+            render();
+        }
+
+        function handleChannelSelect(channelId) {
+            appState.activeChat = { type: 'channel', id: channelId };
+            render();
+        }
+
+        function handleDMSelect(userId) {
+            appState.activeChat = { type: 'dm', id: userId };
+            // If DM doesn't exist, create it (mock)
+            if (!getDMConversationByUserId(userId)) {
+                appState.directMessages.push({ otherUserId: userId, messages: [] });
+            }
+            render();
+        }
+
+        let typingTimeout;
+        function handleSendMessage(event) {
+            event.preventDefault();
+            const messageInput = document.getElementById('message-input');
+            const content = messageInput.value.trim();
+
+            if (content === '') return;
+
+            const newMessage = {
+                id: `msg${Date.now()}`,
+                userId: appState.currentUser.id,
+                content: content,
+                timestamp: new Date().toISOString(),
+                reactions: {}
+            };
+
+            if (appState.activeChat.type === 'channel' && appState.activeChat.id) {
+                const channel = getChannelById(appState.activeChat.id);
+                if (channel) channel.messages.push(newMessage);
+            } else if (appState.activeChat.type === 'dm' && appState.activeChat.id) {
+                const dm = getDMConversationByUserId(appState.activeChat.id);
+                if (dm) dm.messages.push(newMessage);
+                 // Simulate a reply from Bob after a delay if talking to Bob
+                if (appState.activeChat.id === 'user2' && appState.currentUser.id !== 'user2') {
+                    setTimeout(() => {
+                        const replyMessage = {
+                            id: `msg${Date.now() + 1}`,
+                            userId: 'user2',
+                            content: "Got it! 👍",
+                            timestamp: new Date().toISOString(),
+                            reactions: {}
+                        };
+                        dm.messages.push(replyMessage);
+                        clearTypingIndicator(appState.activeChat.id, 'dm');
+                        render(); // Re-render to show Bob's reply
+                    }, 2000);
+                     // Simulate Bob typing
+                    showTypingIndicator(getUserById('user2').username, appState.activeChat.id, 'dm');
+                }
+            }
+            
+            messageInput.value = '';
+            messageInput.style.height = 'auto'; // Reset height for textarea
+            render(); // Re-render the chat view
+        }
+
+        function handleStatusUpdate(event) {
+            const newStatus = event.target.value;
+            appState.currentUser.statusMessage = newStatus;
+            // In a real app, this would be saved to the backend
+            // For demo, update the user in the main users list as well
+            const userInList = getUserById(appState.currentUser.id);
+            if(userInList) userInList.statusMessage = newStatus;
+            // No need to re-render full app, could update just the status display if optimized
+            console.log(`Status updated to: ${newStatus}`);
+        }
+        
+        function showTypingIndicator(username, chatId, chatType) {
+            const typingIndicatorEl = document.getElementById('typing-indicator');
+            if (typingIndicatorEl) {
+                let key = chatType === 'channel' ? `ch${chatId}` : `dm${chatId}`;
+                if (!appState.typingUsers[key]) appState.typingUsers[key] = [];
+                if (!appState.typingUsers[key].includes(username)) {
+                    appState.typingUsers[key].push(username);
+                }
+
+                const usersTyping = appState.typingUsers[key];
+                if (usersTyping.length > 0) {
+                     if (usersTyping.length === 1) {
+                        typingIndicatorEl.textContent = `${usersTyping[0]} is typing...`;
+                    } else if (usersTyping.length === 2) {
+                        typingIndicatorEl.textContent = `${usersTyping.join(' and ')} are typing...`;
+                    } else {
+                        typingIndicatorEl.textContent = 'Several people are typing...';
+                    }
+                }
+
+                clearTimeout(typingTimeout);
+                typingTimeout = setTimeout(() => {
+                    clearTypingIndicator(chatId, chatType);
+                }, 3000); // Clear after 3 seconds of no typing
+            }
+        }
+        
+        function clearTypingIndicator(chatId, chatType) {
+             const typingIndicatorEl = document.getElementById('typing-indicator');
+             if (typingIndicatorEl) typingIndicatorEl.textContent = '';
+             let key = chatType === 'channel' ? `ch${chatId}` : `dm${chatId}`;
+             if (appState.typingUsers[key]) appState.typingUsers[key] = [];
+        }
+
+
+        // --- INITIALIZATION ---
+        document.addEventListener('DOMContentLoaded', () => {
+            // Simulate initial user (pre-logged in) or show login
+            // For quick demo, let's pre-login user 'user5' (NovaDev)
+            const initialUser = appState.users.find(u => u.username === 'NovaDev');
+            if (initialUser) {
+                appState.currentUser = { ...initialUser };
+                appState.loggedIn = true;
+                appState.currentView = 'chat';
+            }
+            render();
+
+            // Auto-resize textarea
+            appContainer.addEventListener('input', (e) => {
+                if (e.target.id === 'message-input' && e.target.tagName === 'TEXTAREA') {
+                    e.target.style.height = 'auto';
+                    e.target.style.height = (e.target.scrollHeight) + 'px';
+
+                    // Typing indicator simulation
+                    if (appState.activeChat.id && appState.currentUser) {
+                       showTypingIndicator(appState.currentUser.username, appState.activeChat.id, appState.activeChat.type);
+                    }
+                }
+            });
+        });
+
+    </script>
+</body>
+</html>

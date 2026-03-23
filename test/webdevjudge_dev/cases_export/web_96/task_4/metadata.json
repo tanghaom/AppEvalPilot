@@ -1,0 +1,9 @@
+{
+  "web_id": "web_96",
+  "task_id": 4,
+  "task_type": "dynamic",
+  "instruction": "Task: Activate and navigate a selected brain region's neural pathway view using designated controls (e.g., keyboard arrows or on-screen buttons).\nExpected Result: Pathway view is displayed; user navigates the simulated pathway.\n\nNote: The task is only considered successful if the expected result is achieved; otherwise, it is deemed infeasible.",
+  "max_steps": 15,
+  "expected": "Pathway view is displayed; user navigates the simulated pathway.",
+  "label": 0
+}

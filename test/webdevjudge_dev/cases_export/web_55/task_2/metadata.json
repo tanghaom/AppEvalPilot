@@ -1,0 +1,9 @@
+{
+  "web_id": "web_55",
+  "task_id": 2,
+  "task_type": "dynamic",
+  "instruction": "Task: Click on a specific product item in the product catalog.\nExpected Result: A detailed information section or modal for the selected product appears, showing its specifications, images, and description.\n\nNote: The task is only considered successful if the expected result is achieved; otherwise, it is deemed infeasible.",
+  "max_steps": 15,
+  "expected": "A detailed information section or modal for the selected product appears, showing its specifications, images, and description.",
+  "label": 1
+}

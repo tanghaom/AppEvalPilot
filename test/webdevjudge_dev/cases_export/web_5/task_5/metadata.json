@@ -1,0 +1,9 @@
+{
+  "web_id": "web_5",
+  "task_id": 5,
+  "task_type": "dynamic",
+  "instruction": "Task: Drag a resize handle (e.g., bottom-right corner) of an application window.\nExpected Result: The window's width and height change according to the drag movement.\n\nNote: The task is only considered successful if the expected result is achieved; otherwise, it is deemed infeasible.",
+  "max_steps": 15,
+  "expected": "The window's width and height change according to the drag movement.",
+  "label": 0
+}

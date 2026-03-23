@@ -1,0 +1,834 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HausFinder DE - Your Home in Germany</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&family=Open+Sans:wght@400;600&display=swap" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#1A3D6F', // Dark Blue
+                        accent: '#F39C12',  // Bright Orange
+                        'light-gray': '#F6F6F6',
+                        'dark-gray': '#333333',
+                        'neutral-white': '#FFFFFF',
+                    },
+                    fontFamily: {
+                        heading: ['Montserrat', 'sans-serif'],
+                        body: ['Open Sans', 'sans-serif'],
+                    },
+                    fontSize: {
+                        'h1': ['30px', '36px'], // Tailwind text-3xl
+                        'h2': ['24px', '32px'], // Tailwind text-2xl
+                        'h3': ['20px', '28px'], // Tailwind text-xl
+                        'body-base': ['16px', '24px'], // Tailwind text-base
+                        'body-lg': ['18px', '28px'], // Tailwind text-lg
+                    }
+                }
+            }
+        }
+    </script>
+    <style type="text/tailwindcss">
+        @layer base {
+            h1 { @apply text-h1 font-heading font-bold; }
+            h2 { @apply text-h2 font-heading font-semibold; }
+            h3 { @apply text-h3 font-heading font-medium; }
+            body { @apply text-body-base font-body; }
+            .btn { @apply px-6 py-3 rounded-lg font-semibold transition-colors duration-300; }
+            .btn-primary { @apply bg-accent text-neutral-white hover:bg-orange-600; }
+            .btn-secondary { @apply bg-primary text-neutral-white hover:bg-blue-800; }
+            .nav-link { @apply px-3 py-2 text-dark-gray hover:text-accent transition-colors duration-300; }
+            .form-input { @apply w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-accent focus:border-transparent outline-none; }
+            .form-label { @apply block text-sm font-medium text-gray-700 mb-1; }
+            .card { @apply bg-neutral-white rounded-xl shadow-lg overflow-hidden transition-all duration-300 hover:shadow-2xl; }
+            .placeholder-image { @apply bg-gray-200 border-2 border-dashed border-gray-400 rounded-xl flex items-center justify-center text-gray-500; }
+        }
+        /* Sticky header */
+        #main-header.sticky {
+            @apply fixed top-0 left-0 right-0 z-50 bg-neutral-white shadow-md animate-slideDown;
+        }
+        @keyframes slideDown {
+            from { transform: translateY(-100%); }
+            to { transform: translateY(0); }
+        }
+    </style>
+</head>
+<body class="bg-light-gray text-dark-gray">
+
+    <!-- Header -->
+    <header id="main-header" class="bg-neutral-white py-4 transition-all duration-300">
+        <div class="container mx-auto px-4 flex justify-between items-center">
+            <a href="#" class="flex items-center space-x-2 text-2xl font-heading font-bold text-primary" data-page="home">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-8 h-8 text-accent">
+                    <path d="M11.47 3.841a.75.75 0 0 1 1.06 0l8.69 8.69a.75.75 0 1 0 1.06-1.061l-8.689-8.69a2.25 2.25 0 0 0-3.182 0l-8.69 8.69a.75.75 0 1 0 1.061 1.061l8.69-8.69Z" />
+                    <path d="m12 5.432 8.159 8.159c.03.03.06.058.091.086v6.198c0 1.035-.84 1.875-1.875 1.875H15a.75.75 0 0 1-.75-.75v-4.5a.75.75 0 0 0-.75-.75h-3a.75.75 0 0 0-.75.75V21a.75.75 0 0 1-.75.75H5.625a1.875 1.875 0 0 1-1.875-1.875v-6.198a2.29 2.29 0 0 0 .091-.086L12 5.432Z" />
+                </svg>
+                <span>HausFinder DE</span>
+            </a>
+            <nav class="hidden md:flex items-center space-x-2">
+                <a href="#" class="nav-link font-semibold" data-page="home">Home</a>
+                <a href="#" class="nav-link font-semibold" data-page="properties">Properties</a>
+                <a href="#" class="nav-link font-semibold" data-page="services">Services</a>
+                <a href="#" class="nav-link font-semibold" data-page="about">About Us</a>
+                <a href="#" class="nav-link font-semibold" data-page="contact">Contact</a>
+                <div class="pl-4 flex items-center text-sm">
+                    <span class="cursor-pointer font-semibold text-primary">DE</span>
+                    <span class="mx-1">/</span>
+                    <span class="cursor-pointer text-gray-400 hover:text-accent">EN</span>
+                </div>
+            </nav>
+            <div class="md:hidden">
+                <button id="mobile-menu-button" class="text-primary">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-7 h-7">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" />
+                    </svg>
+                </button>
+            </div>
+        </div>
+        <!-- Mobile Menu -->
+        <div id="mobile-menu" class="hidden md:hidden bg-neutral-white shadow-lg absolute top-full left-0 right-0 z-40">
+            <nav class="flex flex-col items-center py-4 space-y-2">
+                <a href="#" class="nav-link font-semibold" data-page="home">Home</a>
+                <a href="#" class="nav-link font-semibold" data-page="properties">Properties</a>
+                <a href="#" class="nav-link font-semibold" data-page="services">Services</a>
+                <a href="#" class="nav-link font-semibold" data-page="about">About Us</a>
+                <a href="#" class="nav-link font-semibold" data-page="contact">Contact</a>
+                 <div class="pt-2 flex items-center text-sm">
+                    <span class="cursor-pointer font-semibold text-primary">DE</span>
+                    <span class="mx-1">/</span>
+                    <span class="cursor-pointer text-gray-400 hover:text-accent">EN</span>
+                </div>
+            </nav>
+        </div>
+    </header>
+
+    <!-- Main Content Area -->
+    <main id="app-content" class="container mx-auto px-4 py-8 min-h-[calc(100vh-200px)]">
+        <!-- Content will be rendered here by JavaScript -->
+    </main>
+
+    <!-- Footer -->
+    <footer class="bg-dark-gray text-light-gray py-12">
+        <div class="container mx-auto px-4">
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-8 mb-8">
+                <div>
+                    <h4 class="text-lg font-semibold font-heading mb-3 text-neutral-white">HausFinder DE</h4>
+                    <p class="text-sm text-gray-400">Your trusted partner for finding rental properties across Germany.</p>
+                </div>
+                <div>
+                    <h5 class="text-md font-semibold font-heading mb-3 text-neutral-white">Quick Links</h5>
+                    <ul class="space-y-2 text-sm">
+                        <li><a href="#" class="hover:text-accent" data-page="home">Home</a></li>
+                        <li><a href="#" class="hover:text-accent" data-page="properties">Properties</a></li>
+                        <li><a href="#" class="hover:text-accent" data-page="about">About Us</a></li>
+                        <li><a href="#" class="hover:text-accent" data-page="contact">Contact</a></li>
+                    </ul>
+                </div>
+                <div>
+                    <h5 class="text-md font-semibold font-heading mb-3 text-neutral-white">Legal</h5>
+                    <ul class="space-y-2 text-sm">
+                        <li><a href="#" class="hover:text-accent">Impressum</a></li>
+                        <li><a href="#" class="hover:text-accent">Datenschutzerklärung</a></li>
+                        <li><a href="#" class="hover:text-accent">Terms & Conditions</a></li>
+                        <li><a href="#" class="hover:text-accent">Cookie Policy</a></li>
+                    </ul>
+                </div>
+                <div>
+                    <h5 class="text-md font-semibold font-heading mb-3 text-neutral-white">Connect With Us</h5>
+                    <div class="flex space-x-3">
+                        <a href="#" class="text-gray-400 hover:text-accent">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="currentColor" viewBox="0 0 24 24"><path d="M4.98 3.5c0 1.381-1.11 2.5-2.48 2.5s-2.48-1.119-2.48-2.5c0-1.38 1.11-2.5 2.48-2.5s2.48 1.12 2.48 2.5zm.02 4.5h-5v16h5v-16zm7.982 0h-4.968v16h4.969v-8.399c0-4.67 6.029-5.052 6.029 0v8.399h4.988v-10.131c0-7.88-8.922-7.594-11.018-3.714v-2.155z"/></svg>
+                        </a>
+                        <a href="#" class="text-gray-400 hover:text-accent">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.85s-.012 3.584-.07 4.85c-.148 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07s-3.584-.012-4.85-.07c-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.85s.012-3.584.07-4.85c.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.85-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948s.014 3.667.072 4.947c.2 4.359 2.618 6.78 6.98 6.98 1.281.059 1.689.073 4.948.073s3.667-.014 4.947-.072c4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948s-.014-3.667-.072-4.947c-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.948-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4s1.791-4 4-4 4 1.79 4 4-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z"/></svg>
+                        </a>
+                    </div>
+                </div>
+            </div>
+            <div class="text-center text-sm text-gray-500 border-t border-gray-700 pt-8">
+                &copy; <span id="currentYear"></span> HausFinder DE. All rights reserved.
+            </div>
+        </div>
+    </footer>
+
+    <script>
+        // --- ICON DEFINITIONS (simple SVGs) ---
+        const icons = {
+            location: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-5 h-5 inline-block mr-1"><path fill-rule="evenodd" d="M9.69 18.933l.003.001C9.89 19.02 10 19 10 19s.11.02.308-.066l.002-.001.006-.003.018-.008a5.741 5.741 0 0 0 .281-.145l.002-.001L10 18.45l.287.073.002.001.018.008.006.003c.001 0 .001 0 .003.001a.75.75 0 0 0 .704-.022A23.075 23.075 0 0 0 10 1.5c-2.796 0-5.481 1.024-7.523 2.868-2.042 1.844-3.156 4.288-3.156 6.825 0 2.537 1.114 4.981 3.156 6.825A16.923 16.923 0 0 0 9.69 18.933ZM10 11.25a2.25 2.25 0 1 0 0-4.5 2.25 2.25 0 0 0 0 4.5Z" clip-rule="evenodd" /></svg>`,
+            bed: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-5 h-5 inline-block mr-1"><path fill-rule="evenodd" d="M11.013 2.513a2.5 2.5 0 0 0-1.958-.032L3.606 4.444A2.5 2.5 0 0 0 2 6.678V14.25a.75.75 0 0 0 .75.75h.5a.75.75 0 0 0 .75-.75V8.818l8.073-1.763a.75.75 0 0 1 .85.208l3.5 4.5a.75.75 0 0 0 .976.078l.024-.018a.75.75 0 0 0 .406-.92l-2.96-6.058a2.5 2.5 0 0 0-2.388-1.564ZM.75 16.5A.75.75 0 0 1 0 15.75v-1.5a.75.75 0 0 1 1.5 0v1.5A.75.75 0 0 1 .75 16.5Zm4 0a.75.75 0 0 1-.75-.75v-1.5a.75.75 0 0 1 1.5 0v1.5A.75.75 0 0 1 4.75 16.5Zm13.75-1.75a2.25 2.25 0 1 0 0-4.5 2.25 2.25 0 0 0 0 4.5Zm0-2.25a.75.75 0 0 1 0 1.5.75.75 0 0 1 0-1.5Z" clip-rule="evenodd" /></svg>`,
+            size: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-5 h-5 inline-block mr-1"><path d="M2.582 2.732a.75.75 0 0 1 .942-.318l5.51 2.453a.75.75 0 0 1 .123.917l-1.72 3.152a.75.75 0 0 1-1.26-.688l1.359-2.483L3.01 4.418a.75.75 0 0 1-.318-.942l.022-.043Zm9.473-1.223a.75.75 0 0 1 .123.917L9.63 6.075a.75.75 0 0 1-1.26-.688l2.097-3.832a.75.75 0 0 1 .942-.318l.022.01Z" /><path fill-rule="evenodd" d="M4.75 6.5A.75.75 0 0 1 5.5 5.75h9A.75.75 0 0 1 15.25 6.5v9a.75.75 0 0 1-.75.75h-9A.75.75 0 0 1 4.75 15.5v-9ZM6.25 7.25v7.5h7.5v-7.5h-7.5Z" clip-rule="evenodd" /></svg>`,
+            price: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-5 h-5 inline-block mr-1"><path d="M10.75 10.84V14.25a.75.75 0 0 1-1.5 0V10.84C7.18 10.531 6 9.588 6 8.5h1.594a26.83 26.83 0 0 1 .406-1H6A.75.75 0 0 1 6 6h2.5A.75.75 0 0 1 9.25 6.75v0c.035.02.07.043.106.066H10V5.75a.75.75 0 0 1 1.5 0V7h.894c.037-.023.07-.046.106-.066v0A.75.75 0 0 1 13.25 6H14a.75.75 0 0 1 0 1.5h-1.031a27.34 27.34 0 0 1 .406 1H14c0 1.088-1.18 2.03-3.25 2.34Z" /><path fill-rule="evenodd" d="M10 18a8 8 0 1 0 0-16 8 8 0 0 0 0 16Zm0 1.5a9.5 9.5 0 1 0 0-19 9.5 9.5 0 0 0 0 19Z" clip-rule="evenodd" /></svg>`,
+            check: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-5 h-5 text-green-500 mr-2"><path fill-rule="evenodd" d="M16.704 4.153a.75.75 0 0 1 .143 1.052l-8 10.5a.75.75 0 0 1-1.127.075l-4.5-4.5a.75.75 0 0 1 1.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 0 1 1.05-.143Z" clip-rule="evenodd" /></svg>`,
+        };
+
+        // --- APPLICATION STATE AND LOGIC ---
+        const app = {
+            state: {
+                currentPage: 'home',
+                properties: [],
+                filteredProperties: [],
+                selectedPropertyId: null,
+                searchFilters: {
+                    location: '',
+                    type: 'any',
+                    minPrice: '',
+                    maxPrice: '',
+                },
+                sortOption: 'newest',
+                currentPageNumber: 1,
+                itemsPerPage: 6,
+            },
+
+            // --- MOCK DATA ---
+            mockProperties: [
+                { id: 1, title: 'Modern Apartment in Berlin Mitte', city: 'Berlin', address: 'Torstraße 10, 10119 Berlin', price: 1200, sizeSqm: 75, rooms: 3, type: 'Apartment', isFeatured: true, availability: '2024-08-01', imageUrl: 'placeholder_berlin_1.jpg', images: ['p1_1.jpg', 'p1_2.jpg', 'p1_3.jpg'], floorPlanUrl: 'fp1.jpg', description: 'Bright and spacious apartment in the heart of Berlin. Fully renovated with modern amenities. Excellent transport links.', amenities: ['Balcony', 'Elevator', 'Fitted Kitchen', 'Pet-friendly'] },
+                { id: 2, title: 'Cozy Studio in Hamburg Sternschanze', city: 'Hamburg', address: 'Schanzenstraße 5, 20357 Hamburg', price: 850, sizeSqm: 40, rooms: 1, type: 'Studio', isFeatured: true, availability: '2024-09-01', imageUrl: 'placeholder_hamburg_1.jpg', images: ['p2_1.jpg', 'p2_2.jpg'], floorPlanUrl: 'fp2.jpg', description: 'Charming studio in the vibrant Sternschanze district. Perfect for singles or students. Close to cafes and parks.', amenities: ['Fitted Kitchen', 'Central Heating'] },
+                { id: 3, title: 'Spacious Family House in Munich Bogenhausen', city: 'Munich', address: 'Ismaninger Str. 20, 81675 München', price: 3500, sizeSqm: 180, rooms: 5, type: 'House', isFeatured: false, availability: '2024-07-15', imageUrl: 'placeholder_munich_1.jpg', images: ['p3_1.jpg', 'p3_2.jpg', 'p3_3.jpg', 'p3_4.jpg'], floorPlanUrl: 'fp3.jpg', description: 'Beautiful family house with a large garden in a quiet, upscale neighborhood. Ideal for families with children.', amenities: ['Garden', 'Garage', 'Balcony', 'Fireplace', 'Basement'] },
+                { id: 4, title: 'Chic Loft in Frankfurt Sachsenhausen', city: 'Frankfurt', address: 'Brückenstraße 30, 60594 Frankfurt am Main', price: 1800, sizeSqm: 110, rooms: 2, type: 'Loft', isFeatured: true, availability: 'available', imageUrl: 'placeholder_frankfurt_1.jpg', images: ['p4_1.jpg', 'p4_2.jpg'], floorPlanUrl: 'fp4.jpg', description: 'Stylish loft apartment with industrial charm and Main river views. Open-plan living space.', amenities: ['River View', 'Elevator', 'Designer Kitchen'] },
+                { id: 5, title: 'Affordable Flat in Leipzig Connewitz', city: 'Leipzig', address: 'Wolfgang-Heinze-Straße 15, 04277 Leipzig', price: 600, sizeSqm: 60, rooms: 2, type: 'Apartment', isFeatured: false, availability: '2024-10-01', imageUrl: 'placeholder_leipzig_1.jpg', images: ['p5_1.jpg'], floorPlanUrl: 'fp5.jpg', description: 'Well-maintained apartment in a lively area of Leipzig. Great value for money.', amenities: ['Balcony', 'Cellar'] },
+                { id: 6, title: 'Luxury Penthouse in Düsseldorf MedienHafen', city: 'Düsseldorf', address: 'Kaistraße 1, 40221 Düsseldorf', price: 4500, sizeSqm: 220, rooms: 4, type: 'Penthouse', isFeatured: true, availability: 'available', imageUrl: 'placeholder_dusseldorf_1.jpg', images: ['p6_1.jpg', 'p6_2.jpg', 'p6_3.jpg'], floorPlanUrl: 'fp6.jpg', description: 'Exclusive penthouse with stunning panoramic views over the Rhine and MedienHafen. High-end finishes.', amenities: ['Rooftop Terrace', 'Sauna', 'Smart Home', 'Concierge'] },
+                { id: 7, title: 'Room in Shared Apartment in Cologne Ehrenfeld', city: 'Cologne', address: 'Venloer Str. 300, 50823 Köln', price: 550, sizeSqm: 20, rooms: 1, type: 'Shared Room', isFeatured: false, availability: '2024-08-15', imageUrl: 'placeholder_cologne_1.jpg', images: ['p7_1.jpg'], floorPlanUrl: null, description: 'Bright room in a friendly shared flat (WG). Ideal for students or young professionals. Central location.', amenities: ['Shared Kitchen', 'Shared Bathroom', 'Washing Machine'] },
+                { id: 8, title: 'Quiet Apartment in Stuttgart West', city: 'Stuttgart', address: 'Rosenbergstraße 50, 70176 Stuttgart', price: 950, sizeSqm: 65, rooms: 2, type: 'Apartment', isFeatured: false, availability: 'available', imageUrl: 'placeholder_stuttgart_1.jpg', images: ['p8_1.jpg', 'p8_2.jpg'], floorPlanUrl: 'fp8.jpg', description: 'Comfortable apartment in a quiet residential area, yet close to the city center. Good public transport.', amenities: ['Balcony', 'Fitted Kitchen', 'Storage'] },
+                { id: 9, title: 'Modern Apartment in Berlin Kreuzberg', city: 'Berlin', address: 'Oranienstraße 45, 10999 Berlin', price: 1350, sizeSqm: 80, rooms: 3, type: 'Apartment', isFeatured: false, availability: '2024-09-15', imageUrl: 'placeholder_berlin_2.jpg', images: ['p9_1.jpg', 'p9_2.jpg'], floorPlanUrl: 'fp9.jpg', description: 'Stylish apartment in the trendy Kreuzberg district. Lots of natural light and a modern kitchen.', amenities: ['Balcony', 'Elevator', 'Modern Bathroom'] },
+                { id: 10, title: 'Family Home with Garden in Hamburg Blankenese', city: 'Hamburg', address: 'Elbchaussee 580, 22587 Hamburg', price: 4200, sizeSqm: 200, rooms: 6, type: 'House', isFeatured: true, availability: '2024-11-01', imageUrl: 'placeholder_hamburg_2.jpg', images: ['p10_1.jpg', 'p10_2.jpg', 'p10_3.jpg'], floorPlanUrl: 'fp10.jpg', description: 'Elegant family home in the prestigious Blankenese area, close to the Elbe river. Large garden and multiple balconies.', amenities: ['Garden', 'Multiple Balconies', 'Garage', 'Guest WC'] },
+            ],
+
+            // --- INITIALIZATION ---
+            init() {
+                this.state.properties = [...this.mockProperties];
+                this.state.filteredProperties = [...this.mockProperties];
+                
+                this.setupEventListeners();
+                this.render();
+                document.getElementById('currentYear').textContent = new Date().getFullYear();
+
+                // Sticky header
+                const header = document.getElementById('main-header');
+                const sticky = header.offsetTop;
+                window.onscroll = () => {
+                    if (window.pageYOffset > sticky + 50) { // Add some offset before it becomes sticky
+                        header.classList.add('sticky');
+                    } else {
+                        header.classList.remove('sticky');
+                    }
+                };
+            },
+
+            // --- EVENT LISTENERS ---
+            setupEventListeners() {
+                // Navigation links
+                document.querySelectorAll('a[data-page]').forEach(link => {
+                    link.addEventListener('click', (e) => {
+                        e.preventDefault();
+                        this.navigateTo(link.dataset.page);
+                        const mobileMenu = document.getElementById('mobile-menu');
+                        if (!mobileMenu.classList.contains('hidden')) {
+                            mobileMenu.classList.add('hidden');
+                        }
+                    });
+                });
+
+                // Mobile menu toggle
+                document.getElementById('mobile-menu-button').addEventListener('click', () => {
+                    document.getElementById('mobile-menu').classList.toggle('hidden');
+                });
+
+                // Dynamic event listeners for elements created by render functions
+                document.getElementById('app-content').addEventListener('click', (e) => {
+                    if (e.target.closest('[data-action="view-property"]')) {
+                        const propertyId = e.target.closest('[data-id]').dataset.id;
+                        this.navigateTo('propertyDetail', { id: parseInt(propertyId) });
+                    }
+                    if (e.target.closest('[data-action="submit-hero-search"]')) {
+                        this.handleHeroSearch();
+                    }
+                    if (e.target.closest('[data-action="submit-inquiry"]')) {
+                        e.preventDefault();
+                        this.handleFormSubmission('Inquiry Form');
+                    }
+                    if (e.target.closest('[data-action="submit-contact-form"]')) {
+                        e.preventDefault();
+                        this.handleFormSubmission('Contact Form');
+                    }
+                     if (e.target.matches('[data-action="prev-page"]')) {
+                        if (this.state.currentPageNumber > 1) {
+                            this.state.currentPageNumber--;
+                            this.renderPropertiesPageContent();
+                        }
+                    }
+                    if (e.target.matches('[data-action="next-page"]')) {
+                        const totalPages = Math.ceil(this.state.filteredProperties.length / this.state.itemsPerPage);
+                        if (this.state.currentPageNumber < totalPages) {
+                            this.state.currentPageNumber++;
+                            this.renderPropertiesPageContent();
+                        }
+                    }
+                });
+                
+                document.getElementById('app-content').addEventListener('change', (e) => {
+                    if (e.target.id === 'filter-location' || e.target.id === 'filter-type' || e.target.id === 'filter-min-price' || e.target.id === 'filter-max-price' || e.target.id === 'filter-min-size' || e.target.id === 'filter-rooms' || e.target.id === 'sort-properties') {
+                        this.applyFiltersAndSort();
+                    }
+                });
+            },
+            
+            handleFormSubmission(formName) {
+                const form = event.target.closest('form');
+                const formData = new FormData(form);
+                const data = Object.fromEntries(formData.entries());
+                console.log(`${formName} Data:`, data);
+                alert(`${formName.split(' ')[0]} submitted! Check console for data.`);
+                form.reset();
+            },
+
+            handleHeroSearch() {
+                const location = document.getElementById('hero-search-location').value;
+                const type = document.getElementById('hero-search-type').value;
+                const minPrice = document.getElementById('hero-search-min-price').value;
+                const maxPrice = document.getElementById('hero-search-max-price').value;
+
+                this.state.searchFilters = { location, type, minPrice, maxPrice };
+                this.navigateTo('properties');
+            },
+            
+            applyFiltersAndSort() {
+                if (this.state.currentPage !== 'properties') return;
+
+                const locationFilter = document.getElementById('filter-location').value.toLowerCase();
+                const typeFilter = document.getElementById('filter-type').value;
+                const minPriceFilter = parseFloat(document.getElementById('filter-min-price').value) || 0;
+                const maxPriceFilter = parseFloat(document.getElementById('filter-max-price').value) || Infinity;
+                const minSizeFilter = parseFloat(document.getElementById('filter-min-size').value) || 0;
+                const roomsFilter = document.getElementById('filter-rooms').value;
+                
+                this.state.searchFilters = {
+                    location: locationFilter,
+                    type: typeFilter,
+                    minPrice: minPriceFilter,
+                    maxPrice: maxPriceFilter,
+                    minSize: minSizeFilter,
+                    rooms: roomsFilter,
+                };
+
+                let properties = [...this.state.properties];
+
+                properties = properties.filter(p => {
+                    const matchesLocation = p.city.toLowerCase().includes(locationFilter) || p.address.toLowerCase().includes(locationFilter);
+                    const matchesType = typeFilter === 'any' || p.type === typeFilter;
+                    const matchesPrice = p.price >= minPriceFilter && p.price <= maxPriceFilter;
+                    const matchesSize = p.sizeSqm >= minSizeFilter;
+                    const matchesRooms = !roomsFilter || p.rooms.toString() === roomsFilter || (roomsFilter === '5+' && p.rooms >= 5);
+                    return matchesLocation && matchesType && matchesPrice && matchesSize && matchesRooms;
+                });
+                
+                this.state.sortOption = document.getElementById('sort-properties').value;
+                if (this.state.sortOption === 'priceAsc') {
+                    properties.sort((a, b) => a.price - b.price);
+                } else if (this.state.sortOption === 'priceDesc') {
+                    properties.sort((a, b) => b.price - a.price);
+                } else if (this.state.sortOption === 'newest') {
+                    // Assuming higher ID means newer, or use availability date if available
+                    properties.sort((a, b) => new Date(b.availability) - new Date(a.availability) || b.id - a.id);
+                }
+
+
+                this.state.filteredProperties = properties;
+                this.state.currentPageNumber = 1; // Reset to first page
+                this.renderPropertiesPageContent();
+            },
+
+            // --- NAVIGATION & RENDERING ---
+            navigateTo(page, params = {}) {
+                this.state.currentPage = page;
+                if (params.id) {
+                    this.state.selectedPropertyId = params.id;
+                }
+                window.scrollTo(0,0); // Scroll to top on page change
+                this.render();
+            },
+
+            render() {
+                const contentArea = document.getElementById('app-content');
+                contentArea.innerHTML = ''; // Clear previous content
+
+                // Update active nav link
+                document.querySelectorAll('header nav a').forEach(link => {
+                    link.classList.toggle('text-accent', link.dataset.page === this.state.currentPage);
+                    link.classList.toggle('font-bold', link.dataset.page === this.state.currentPage);
+                });
+
+
+                switch (this.state.currentPage) {
+                    case 'home':
+                        contentArea.innerHTML = this.renderHomePage();
+                        break;
+                    case 'properties':
+                        contentArea.innerHTML = this.renderPropertiesPage();
+                        this.applyFiltersAndSort(); // Initial render with filters
+                        break;
+                    case 'propertyDetail':
+                        const property = this.state.properties.find(p => p.id === this.state.selectedPropertyId);
+                        contentArea.innerHTML = property ? this.renderPropertyDetailPage(property) : this.renderNotFoundPage();
+                        break;
+                    case 'services':
+                        contentArea.innerHTML = this.renderServicesPage();
+                        break;
+                    case 'about':
+                        contentArea.innerHTML = this.renderAboutPage();
+                        break;
+                    case 'contact':
+                        contentArea.innerHTML = this.renderContactPage();
+                        break;
+                    default:
+                        contentArea.innerHTML = this.renderNotFoundPage();
+                }
+            },
+
+            // --- PAGE RENDER FUNCTIONS ---
+            renderHomePage() {
+                const featuredProperties = this.state.properties.filter(p => p.isFeatured).slice(0, 3);
+                return `
+                    <!-- Hero Section -->
+                    <section class="bg-primary text-neutral-white py-20 rounded-xl shadow-xl min-h-[60vh] flex items-center" style="background-image: url('https://images.unsplash.com/photo-1512917774080-9991f1c4c750?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1740&q=80'); background-size: cover; background-position: center;">
+                        <div class="container mx-auto text-center bg-black bg-opacity-50 p-8 md:p-12 rounded-lg">
+                            <h1 class="text-4xl md:text-5xl font-bold mb-6 text-neutral-white">Find Your Dream Home in Germany</h1>
+                            <p class="text-lg md:text-xl mb-8 text-gray-200">Discover a wide range of rental properties tailored to your needs.</p>
+                            <form id="hero-search-form" class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8 max-w-3xl mx-auto">
+                                <input type="text" id="hero-search-location" placeholder="City, ZIP, or Address" class="form-input text-dark-gray">
+                                <select id="hero-search-type" class="form-input text-dark-gray">
+                                    <option value="any">Any Type</option>
+                                    <option value="Apartment">Apartment</option>
+                                    <option value="House">House</option>
+                                    <option value="Studio">Studio</option>
+                                    <option value="Loft">Loft</option>
+                                </select>
+                                <input type="number" id="hero-search-min-price" placeholder="Min Price (€)" class="form-input text-dark-gray">
+                                <input type="number" id="hero-search-max-price" placeholder="Max Price (€)" class="form-input text-dark-gray">
+                            </form>
+                            <button data-action="submit-hero-search" class="btn btn-primary text-lg px-10 py-4">Find Your New Home</button>
+                        </div>
+                    </section>
+
+                    <!-- Key Selling Points -->
+                    <section class="py-16">
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-8 text-center">
+                            <div class="p-6">
+                                <h3 class="mb-2">20+ Years Experience</h3>
+                                <p class="text-gray-600">Expertise in the German real estate market you can trust.</p>
+                            </div>
+                            <div class="p-6">
+                                <h3 class="mb-2">1,000+ Properties Rented</h3>
+                                <p class="text-gray-600">A proven track record of connecting tenants with their ideal homes.</p>
+                            </div>
+                            <div class="p-6">
+                                <h3 class="mb-2">Nationwide Coverage</h3>
+                                <p class="text-gray-600">Listings in all major German cities and regions.</p>
+                            </div>
+                        </div>
+                    </section>
+
+                    <!-- Featured Properties -->
+                    <section class="py-12 bg-neutral-white rounded-xl shadow-lg">
+                        <h2 class="text-center mb-10">Featured Properties</h2>
+                        <div id="featured-properties-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                            ${featuredProperties.map(p => this.renderPropertyCard(p)).join('')}
+                        </div>
+                        <div class="text-center mt-10">
+                            <a href="#" data-page="properties" class="btn btn-secondary">View All Properties</a>
+                        </div>
+                    </section>
+
+                    <!-- Testimonials -->
+                    <section class="py-16">
+                        <h2 class="text-center mb-10">What Our Clients Say</h2>
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+                            ${[1,2,3].map(i => `
+                                <div class="bg-neutral-white p-6 rounded-lg shadow-md">
+                                    <p class="text-gray-600 mb-4">"HausFinder DE made our move to Germany seamless. We found the perfect apartment in Berlin within a week!"</p>
+                                    <p class="font-semibold text-primary">- The Schmidt Family</p>
+                                </div>
+                            `).join('')}
+                        </div>
+                    </section>
+                `;
+            },
+
+            renderPropertyCard(property) {
+                return `
+                    <div class="card" data-id="${property.id}">
+                        <div class="aspect-video w-full placeholder-image text-lg">
+                            ${property.imageUrl === 'placeholder_image' ? 'Property Image' : `<img src="https://source.unsplash.com/random/400x300?house,interior&sig=${property.id}" alt="${property.title}" class="w-full h-full object-cover">`}
+                        </div>
+                        <div class="p-6">
+                            <h3 class="mb-1 truncate" title="${property.title}">${property.title}</h3>
+                            <p class="text-sm text-gray-500 mb-3">${icons.location} ${property.address}</p>
+                            <div class="flex justify-between items-center text-sm mb-4">
+                                <span class="text-gray-700">${icons.bed} ${property.rooms} Rooms</span>
+                                <span class="text-gray-700">${icons.size} ${property.sizeSqm} sqm</span>
+                            </div>
+                            <p class="text-xl font-bold text-accent mb-4">${icons.price} €${property.price}/month</p>
+                            <button data-action="view-property" class="btn btn-primary w-full">View Details</button>
+                        </div>
+                    </div>
+                `;
+            },
+            
+            renderPropertiesPage() {
+                 return `
+                    <div class="flex flex-col lg:flex-row gap-8">
+                        <!-- Filters Sidebar -->
+                        <aside class="w-full lg:w-1/4 bg-neutral-white p-6 rounded-xl shadow-lg self-start">
+                            <h2 class="mb-6">Filter Properties</h2>
+                            <form id="filter-form" class="space-y-4">
+                                <div>
+                                    <label for="filter-location" class="form-label">Location (City, ZIP)</label>
+                                    <input type="text" id="filter-location" class="form-input" value="${this.state.searchFilters.location || ''}">
+                                </div>
+                                <div>
+                                    <label for="filter-type" class="form-label">Property Type</label>
+                                    <select id="filter-type" class="form-input" value="${this.state.searchFilters.type || 'any'}">
+                                        <option value="any">Any Type</option>
+                                        <option value="Apartment">Apartment</option>
+                                        <option value="House">House</option>
+                                        <option value="Studio">Studio</option>
+                                        <option value="Loft">Loft</option>
+                                        <option value="Penthouse">Penthouse</option>
+                                        <option value="Shared Room">Shared Room</option>
+                                    </select>
+                                </div>
+                                <div class="grid grid-cols-2 gap-4">
+                                    <div>
+                                        <label for="filter-min-price" class="form-label">Min Price (€)</label>
+                                        <input type="number" id="filter-min-price" class="form-input" placeholder="0" value="${this.state.searchFilters.minPrice || ''}">
+                                    </div>
+                                    <div>
+                                        <label for="filter-max-price" class="form-label">Max Price (€)</label>
+                                        <input type="number" id="filter-max-price" class="form-input" placeholder="Any" value="${this.state.searchFilters.maxPrice === Infinity ? '' : (this.state.searchFilters.maxPrice || '')}">
+                                    </div>
+                                </div>
+                                <div>
+                                    <label for="filter-min-size" class="form-label">Min Size (sqm)</label>
+                                    <input type="number" id="filter-min-size" class="form-input" placeholder="0">
+                                </div>
+                                <div>
+                                    <label for="filter-rooms" class="form-label">Number of Rooms</label>
+                                    <select id="filter-rooms" class="form-input">
+                                        <option value="">Any</option>
+                                        <option value="1">1 Room</option>
+                                        <option value="2">2 Rooms</option>
+                                        <option value="3">3 Rooms</option>
+                                        <option value="4">4 Rooms</option>
+                                        <option value="5+">5+ Rooms</option>
+                                    </select>
+                                </div>
+                                <!-- Apply Filters button removed, filters apply on change -->
+                            </form>
+                        </aside>
+
+                        <!-- Property Listings -->
+                        <section class="w-full lg:w-3/4">
+                            <div class="flex justify-between items-center mb-6">
+                                <h2 id="property-count">Properties Found</h2>
+                                <select id="sort-properties" class="form-input w-auto">
+                                    <option value="newest">Sort by Newest</option>
+                                    <option value="priceAsc">Price: Low to High</option>
+                                    <option value="priceDesc">Price: High to Low</option>
+                                </select>
+                            </div>
+                            <div id="properties-grid-container" class="space-y-6">
+                                <!-- Property cards will be rendered here by renderPropertiesPageContent -->
+                            </div>
+                             <div id="pagination-controls" class="mt-8 flex justify-center items-center space-x-4">
+                                <!-- Pagination controls will be rendered here -->
+                            </div>
+                        </section>
+                    </div>
+                `;
+            },
+            
+            renderPropertiesPageContent() {
+                const container = document.getElementById('properties-grid-container');
+                if (!container) return; // Properties page not active
+
+                const startIndex = (this.state.currentPageNumber - 1) * this.state.itemsPerPage;
+                const endIndex = startIndex + this.state.itemsPerPage;
+                const paginatedProperties = this.state.filteredProperties.slice(startIndex, endIndex);
+
+                if (paginatedProperties.length > 0) {
+                    container.innerHTML = `<div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+                        ${paginatedProperties.map(p => this.renderPropertyCard(p)).join('')}
+                    </div>`;
+                } else {
+                    container.innerHTML = `<p class="text-center text-gray-500 py-10 text-lg">No properties found matching your criteria. Try adjusting your filters.</p>`;
+                }
+                
+                document.getElementById('property-count').textContent = `${this.state.filteredProperties.length} Properties Found`;
+                this.renderPaginationControls();
+            },
+
+            renderPaginationControls() {
+                const paginationContainer = document.getElementById('pagination-controls');
+                 if (!paginationContainer) return;
+
+                const totalPages = Math.ceil(this.state.filteredProperties.length / this.state.itemsPerPage);
+                if (totalPages <= 1) {
+                    paginationContainer.innerHTML = '';
+                    return;
+                }
+
+                let buttonsHtml = '';
+                if (this.state.currentPageNumber > 1) {
+                    buttonsHtml += `<button data-action="prev-page" class="btn btn-secondary">&laquo; Previous</button>`;
+                }
+                buttonsHtml += `<span class="p-3">Page ${this.state.currentPageNumber} of ${totalPages}</span>`;
+                if (this.state.currentPageNumber < totalPages) {
+                    buttonsHtml += `<button data-action="next-page" class="btn btn-secondary">Next &raquo;</button>`;
+                }
+                paginationContainer.innerHTML = buttonsHtml;
+            },
+
+            renderPropertyDetailPage(property) {
+                return `
+                    <section class="bg-neutral-white p-6 md:p-8 rounded-xl shadow-xl">
+                        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                            <!-- Image Gallery / Carousel -->
+                            <div class="lg:col-span-2">
+                                <h1 class="mb-2">${property.title}</h1>
+                                <p class="text-gray-500 mb-6">${icons.location} ${property.address}</p>
+                                <div class="aspect-video w-full placeholder-image text-2xl mb-4">
+                                    <img src="https://source.unsplash.com/random/800x600?modern,house,interior&sig=${property.id}" alt="${property.title}" class="w-full h-full object-cover rounded-lg">
+                                </div>
+                                <div class="grid grid-cols-3 gap-2">
+                                    ${property.images.slice(0,3).map((img, idx) => `
+                                        <div class="aspect-square placeholder-image text-sm">
+                                            <img src="https://source.unsplash.com/random/200x200?interior,room&sig=${property.id + idx + 100}" alt="Property view ${idx+1}" class="w-full h-full object-cover rounded">
+                                        </div>
+                                    `).join('')}
+                                </div>
+                            </div>
+
+                            <!-- Property Info & CTA -->
+                            <div class="lg:col-span-1">
+                                <div class="bg-light-gray p-6 rounded-lg">
+                                    <h2 class="text-accent mb-4">€${property.price}<span class="text-base text-dark-gray font-normal">/month</span></h2>
+                                    <ul class="space-y-3 text-body-base mb-6">
+                                        <li><strong>Type:</strong> ${property.type}</li>
+                                        <li><strong>Size:</strong> ${property.sizeSqm} sqm</li>
+                                        <li><strong>Rooms:</strong> ${property.rooms}</li>
+                                        <li><strong>Available from:</strong> ${property.availability === 'available' ? 'Immediately' : new Date(property.availability).toLocaleDateString('de-DE')}</li>
+                                    </ul>
+                                    <button data-action="schedule-viewing" class="btn btn-primary w-full mb-3">Schedule Viewing</button>
+                                    <button data-action="submit-inquiry-alt" class="btn btn-secondary w-full bg-opacity-80 hover:bg-opacity-100">Request Information</button>
+                                </div>
+                                ${property.floorPlanUrl ? `
+                                <div class="mt-6">
+                                    <h3 class="mb-2">Floor Plan</h3>
+                                    <div class="aspect-video w-full placeholder-image text-lg">Floor Plan Preview</div>
+                                </div>
+                                ` : ''}
+                            </div>
+                        </div>
+
+                        <!-- Description & Amenities -->
+                        <div class="mt-10 pt-8 border-t border-gray-200">
+                            <h2 class="mb-4">Property Description</h2>
+                            <p class="text-gray-700 leading-relaxed mb-8">${property.description}</p>
+
+                            <h2 class="mb-4">Amenities</h2>
+                            <ul class="grid grid-cols-2 md:grid-cols-3 gap-x-4 gap-y-2 text-gray-700">
+                                ${property.amenities.map(amenity => `
+                                    <li class="flex items-center">${icons.check} ${amenity}</li>
+                                `).join('')}
+                            </ul>
+                        </div>
+                        
+                        <!-- Location Map -->
+                        <div class="mt-10 pt-8 border-t border-gray-200">
+                            <h2 class="mb-4">Location</h2>
+                            <div class="aspect-video w-full bg-gray-300 rounded-lg flex items-center justify-center text-gray-500">
+                                Embedded Map Placeholder (e.g., Google Maps) for ${property.address}
+                            </div>
+                        </div>
+
+                        <!-- Inquiry Form -->
+                        <div class="mt-10 pt-8 border-t border-gray-200">
+                            <h2 class="mb-6">Interested? Send an Inquiry</h2>
+                            <form id="property-inquiry-form" class="max-w-lg space-y-4">
+                                <div>
+                                    <label for="inquiry-name" class="form-label">Full Name</label>
+                                    <input type="text" id="inquiry-name" name="name" class="form-input" required>
+                                </div>
+                                <div>
+                                    <label for="inquiry-email" class="form-label">Email Address</label>
+                                    <input type="email" id="inquiry-email" name="email" class="form-input" required>
+                                </div>
+                                <div>
+                                    <label for="inquiry-phone" class="form-label">Phone Number (Optional)</label>
+                                    <input type="tel" id="inquiry-phone" name="phone" class="form-input">
+                                </div>
+                                <div>
+                                    <label for="inquiry-message" class="form-label">Message</label>
+                                    <textarea id="inquiry-message" name="message" rows="4" class="form-input" required>I am interested in "${property.title}". Please provide more information or schedule a viewing.</textarea>
+                                </div>
+                                <button type="submit" data-action="submit-inquiry" class="btn btn-primary">Send Inquiry</button>
+                            </form>
+                        </div>
+                    </section>
+                `;
+            },
+            
+            renderServicesPage() {
+                return `
+                    <section class="bg-neutral-white p-6 md:p-8 rounded-xl shadow-xl">
+                        <h1 class="mb-8 text-center">Our Services</h1>
+                        <div class="grid md:grid-cols-2 gap-8">
+                            <div class="p-6 border border-gray-200 rounded-lg">
+                                <h2 class="text-primary mb-3">For Tenants</h2>
+                                <p class="text-gray-700 mb-4">We help you find the perfect rental property in Germany. Our services include:</p>
+                                <ul class="list-disc list-inside text-gray-600 space-y-1">
+                                    <li>Extensive property listings with detailed information.</li>
+                                    <li>Personalized search assistance based on your needs.</li>
+                                    <li>Support with rental applications and contracts.</li>
+                                    <li>Guidance for expats and international students.</li>
+                                </ul>
+                            </div>
+                            <div class="p-6 border border-gray-200 rounded-lg">
+                                <h2 class="text-primary mb-3">For Landlords</h2>
+                                <p class="text-gray-700 mb-4">Maximize your rental income and minimize hassle with our landlord services:</p>
+                                <ul class="list-disc list-inside text-gray-600 space-y-1">
+                                    <li>Professional property marketing and listing.</li>
+                                    <li>Tenant screening and selection.</li>
+                                    <li>Rent collection and financial reporting.</li>
+                                    <li>Property maintenance coordination.</li>
+                                </ul>
+                            </div>
+                            <div class="p-6 border border-gray-200 rounded-lg md:col-span-2">
+                                <h2 class="text-primary mb-3">Corporate Housing Solutions</h2>
+                                <p class="text-gray-700">We offer tailored solutions for companies looking to accommodate their employees. Whether for short-term projects or long-term relocations, we can find suitable housing options that meet corporate requirements and budgets.</p>
+                            </div>
+                        </div>
+                    </section>
+                `;
+            },
+
+            renderAboutPage() {
+                const teamMembers = [
+                    { name: 'Anna Müller', role: 'CEO & Founder', expertise: 'German Real Estate Market Expert', photo: 'anna.jpg' },
+                    { name: 'Max Schmidt', role: 'Head of Rentals', expertise: 'Tenant Relations Specialist', photo: 'max.jpg' },
+                    { name: 'Sophie Schneider', role: 'Marketing Manager', expertise: 'Digital Real Estate Marketing', photo: 'sophie.jpg' },
+                ];
+                return `
+                    <section class="bg-neutral-white p-6 md:p-8 rounded-xl shadow-xl">
+                        <h1 class="mb-8 text-center">About HausFinder DE</h1>
+                        
+                        <div class="mb-12">
+                            <h2 class="text-primary mb-4">Our Mission</h2>
+                            <p class="text-gray-700 leading-relaxed">At HausFinder DE, our mission is to simplify the process of finding and renting properties across Germany. We strive to provide a user-friendly platform, comprehensive listings, and exceptional customer service to make your housing journey smooth and successful. We believe everyone deserves a comfortable place to call home, and we are dedicated to connecting tenants with properties that fit their lifestyle and budget.</p>
+                        </div>
+
+                        <div class="mb-12">
+                            <h2 class="text-primary mb-4">Our History</h2>
+                            <p class="text-gray-700 leading-relaxed">Founded in 2003, HausFinder DE started with a vision to modernize property search in Germany. Over the past two decades, we have grown into a trusted name in the real estate sector, helping thousands of individuals, families, and businesses find their ideal rental accommodations. Our commitment to innovation, transparency, and client satisfaction has been the cornerstone of our success.</p>
+                        </div>
+
+                        <h2 class="text-primary mb-6 text-center">Meet Our Team</h2>
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+                            ${teamMembers.map(member => `
+                                <div class="text-center p-4 border border-gray-200 rounded-lg">
+                                    <div class="w-32 h-32 rounded-full mx-auto mb-4 placeholder-image bg-gray-300">
+                                        <img src="https://source.unsplash.com/random/128x128?person,portrait&sig=${member.name}" alt="${member.name}" class="w-full h-full object-cover rounded-full">
+                                    </div>
+                                    <h3 class="text-dark-gray">${member.name}</h3>
+                                    <p class="text-accent font-semibold text-sm">${member.role}</p>
+                                    <p class="text-gray-600 text-xs mt-1">${member.expertise}</p>
+                                </div>
+                            `).join('')}
+                        </div>
+                        
+                        <div class="mt-12 text-center">
+                             <h2 class="text-primary mb-4">Accreditations & Awards</h2>
+                             <div class="flex justify-center space-x-8 items-center">
+                                <div class="w-24 h-24 placeholder-image bg-gray-300 text-xs p-2">Real Estate Award 2023</div>
+                                <div class="w-24 h-24 placeholder-image bg-gray-300 text-xs p-2">IVD Member</div>
+                                <div class="w-24 h-24 placeholder-image bg-gray-300 text-xs p-2">Top Service Provider</div>
+                             </div>
+                        </div>
+                    </section>
+                `;
+            },
+
+            renderContactPage() {
+                return `
+                    <section class="bg-neutral-white p-6 md:p-8 rounded-xl shadow-xl">
+                        <h1 class="mb-8 text-center">Get In Touch</h1>
+                        <div class="grid md:grid-cols-2 gap-12">
+                            <div>
+                                <h2 class="text-primary mb-4">Contact Us</h2>
+                                <form id="main-contact-form" class="space-y-4">
+                                    <div>
+                                        <label for="contact-name" class="form-label">Full Name</label>
+                                        <input type="text" id="contact-name" name="name" class="form-input" required>
+                                    </div>
+                                    <div>
+                                        <label for="contact-email" class="form-label">Email Address</label>
+                                        <input type="email" id="contact-email" name="email" class="form-input" required>
+                                    </div>
+                                    <div>
+                                        <label for="contact-phone" class="form-label">Phone Number (Optional)</label>
+                                        <input type="tel" id="contact-phone" name="phone" class="form-input">
+                                    </div>
+                                    <div>
+                                        <label for="contact-message" class="form-label">Message</label>
+                                        <textarea id="contact-message" name="message" rows="5" class="form-input" required></textarea>
+                                    </div>
+                                    <button type="submit" data-action="submit-contact-form" class="btn btn-primary">Send Message</button>
+                                </form>
+                            </div>
+                            <div>
+                                <h2 class="text-primary mb-4">Our Office</h2>
+                                <p class="text-gray-700 mb-2"><strong>HausFinder DE Hauptsitz</strong></p>
+                                <p class="text-gray-600 mb-1">Musterstraße 123</p>
+                                <p class="text-gray-600 mb-4">10117 Berlin, Germany</p>
+                                
+                                <p class="text-gray-700 mb-2"><strong>Phone:</strong> <a href="tel:+493012345678" class="text-accent hover:underline">+49 (0)30 1234 5678</a></p>
+                                <p class="text-gray-700 mb-4"><strong>Email:</strong> <a href="mailto:info@hausfinder.de" class="text-accent hover:underline">info@hausfinder.de</a></p>
+
+                                <h3 class="text-dark-gray font-semibold mb-2">Office Hours:</h3>
+                                <p class="text-gray-600 mb-1">Monday - Friday: 9:00 - 18:00</p>
+                                <p class="text-gray-600 mb-6">Saturday: 10:00 - 14:00 (By appointment)</p>
+
+                                <div class="aspect-video w-full bg-gray-300 rounded-lg flex items-center justify-center text-gray-500">
+                                    Embedded Google Map Placeholder for Office
+                                </div>
+                            </div>
+                        </div>
+                    </section>
+                `;
+            },
+
+            renderNotFoundPage() {
+                return `
+                    <section class="text-center py-20">
+                        <h1 class="text-6xl font-bold text-primary mb-4">404</h1>
+                        <h2 class="text-3xl text-dark-gray mb-6">Page Not Found</h2>
+                        <p class="text-gray-600 mb-8">Sorry, the page you are looking for does not exist or has been moved.</p>
+                        <a href="#" data-page="home" class="btn btn-primary">Go to Homepage</a>
+                    </section>
+                `;
+            }
+        };
+
+        // --- INITIALIZE THE APP ---
+        document.addEventListener('DOMContentLoaded', () => {
+            app.init();
+        });
+
+    </script>
+</body>
+</html>

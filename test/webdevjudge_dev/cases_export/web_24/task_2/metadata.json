@@ -1,0 +1,9 @@
+{
+  "web_id": "web_24",
+  "task_id": 2,
+  "task_type": "dynamic",
+  "instruction": "Task: Click on a specific cryptocurrency from the market list.\nExpected Result: The UI displays a dedicated 'Trade' interface for the selected cryptocurrency, showing its current mock price and forms for buying or selling.\n\nNote: The task is only considered successful if the expected result is achieved; otherwise, it is deemed infeasible.",
+  "max_steps": 15,
+  "expected": "The UI displays a dedicated 'Trade' interface for the selected cryptocurrency, showing its current mock price and forms for buying or selling.",
+  "label": 0
+}

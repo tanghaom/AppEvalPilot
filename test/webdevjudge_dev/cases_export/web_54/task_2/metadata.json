@@ -1,0 +1,9 @@
+{
+  "web_id": "web_54",
+  "task_id": 2,
+  "task_type": "dynamic",
+  "instruction": "Task: Click a 'Create New Post' button.\nExpected Result: A form is displayed, allowing the user to input a title and text content for a new post.\n\nNote: The task is only considered successful if the expected result is achieved; otherwise, it is deemed infeasible.",
+  "max_steps": 15,
+  "expected": "A form is displayed, allowing the user to input a title and text content for a new post.",
+  "label": 0
+}

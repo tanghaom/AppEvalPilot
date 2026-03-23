@@ -1,0 +1,660 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Interactive 3D Circle Editor</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    <style>
+        body { margin: 0; overflow: hidden; font-family: sans-serif; }
+        canvas { display: block; }
+        .control-panel input[type="number"], 
+        .control-panel input[type="color"],
+        .control-panel select {
+            background-color: #374151; /* bg-slate-700 */
+            color: #f1f5f9; /* text-slate-100 */
+            border: 1px solid #4b5563; /* border-slate-600 */
+            border-radius: 0.25rem; /* rounded */
+            padding: 0.25rem 0.5rem; /* py-1 px-2 */
+            width: 100%;
+            box-sizing: border-box;
+        }
+        .control-panel input[type="range"] {
+            width: 100%;
+            accent-color: #38bdf8; /* sky-400 */
+        }
+        .control-panel input[type="checkbox"] {
+             accent-color: #38bdf8; /* sky-400 */
+        }
+        .control-panel label {
+            display: block;
+            margin-bottom: 0.25rem; /* mb-1 */
+            font-size: 0.875rem; /* text-sm */
+            color: #cbd5e1; /* text-slate-300 */
+        }
+        .control-panel .section-title {
+            font-size: 1rem; /* text-base, was text-lg */
+            font-weight: 600; /* font-semibold */
+            margin-top: 1rem; /* mt-4 */
+            margin-bottom: 0.75rem; /* mb-3 */
+            border-bottom: 1px solid #4b5563; /* border-slate-600 */
+            padding-bottom: 0.5rem; /* pb-2 */
+            color: #7dd3fc; /* text-sky-300 */
+        }
+        .control-panel button {
+            transition: background-color 0.2s;
+        }
+    </style>
+</head>
+<body class="bg-slate-900 text-slate-100 flex">
+
+    <!-- 3D Canvas Container -->
+    <div id="canvas-container" class="flex-grow h-screen relative">
+        <!-- Canvas will be appended here by Three.js -->
+    </div>
+
+    <!-- UI Control Panel -->
+    <div id="control-panel" class="control-panel w-80 h-screen bg-slate-800 p-4 overflow-y-auto shadow-lg border-l border-slate-700">
+        <h1 class="text-xl font-bold mb-4 text-sky-400">3D Circle Editor</h1>
+
+        <!-- Global Controls -->
+        <div class="mb-6">
+            <h2 class="section-title">Global Controls</h2>
+            <button id="add-circle-mode-btn" class="w-full bg-sky-500 hover:bg-sky-600 text-white font-semibold py-2 px-4 rounded mb-3 text-sm" aria-label="Toggle Add Circle Mode">
+                Mode: Select (Click Canvas to Add)
+            </button>
+            <label for="axes-helper-toggle" class="flex items-center space-x-2 cursor-pointer text-sm">
+                <input type="checkbox" id="axes-helper-toggle" class="form-checkbox h-4 w-4 text-sky-500 bg-slate-700 border-slate-600 rounded focus:ring-sky-500" checked aria-labelledby="axes-helper-label">
+                <span id="axes-helper-label">Show Axes Helper</span>
+            </label>
+        </div>
+
+        <!-- Default Circle Properties (for new circles) -->
+        <div class="mb-6">
+            <h2 class="section-title">New Circle Defaults</h2>
+            <div class="mb-2">
+                <label for="default-color">Color:</label>
+                <input type="color" id="default-color" value="#38BDF8" aria-label="Default circle color">
+            </div>
+            <div class="mt-2">
+                <label for="default-size">Size: <span id="default-size-value" class="font-mono text-sky-400">0.50</span></label>
+                <input type="range" id="default-size" min="0.1" max="2" step="0.05" value="0.5" aria-label="Default circle size">
+            </div>
+            <div class="mt-2">
+                <label for="default-opacity">Opacity: <span id="default-opacity-value" class="font-mono text-sky-400">1.00</span></label>
+                <input type="range" id="default-opacity" min="0" max="1" step="0.01" value="1" aria-label="Default circle opacity">
+            </div>
+        </div>
+        
+        <!-- Selected Circle Properties -->
+        <div id="selected-circle-controls" class="hidden">
+            <h2 class="section-title">Selected Circle (<span id="selected-circle-id-display" class="font-mono"></span>)</h2>
+            
+            <p class="text-xs text-slate-400 mb-1">Position (X, Y, Z)</p>
+            <div class="grid grid-cols-3 gap-2 mb-3">
+                <div>
+                    <label for="circle-pos-x" class="sr-only">Pos X</label>
+                    <input type="number" id="circle-pos-x" step="0.1" aria-label="Selected circle X position" title="Position X">
+                </div>
+                <div>
+                    <label for="circle-pos-y" class="sr-only">Pos Y</label>
+                    <input type="number" id="circle-pos-y" step="0.1" aria-label="Selected circle Y position" title="Position Y">
+                </div>
+                <div>
+                    <label for="circle-pos-z" class="sr-only">Pos Z</label>
+                    <input type="number" id="circle-pos-z" step="0.1" aria-label="Selected circle Z position" title="Position Z">
+                </div>
+            </div>
+
+            <p class="text-xs text-slate-400 mb-1">Rotation (X, Y, Z - Radians)</p>
+            <div class="grid grid-cols-3 gap-2 mb-3">
+                 <div>
+                    <label for="circle-rot-x" class="sr-only">Rot X</label>
+                    <input type="number" id="circle-rot-x" step="0.05" aria-label="Selected circle X rotation in radians" title="Rotation X">
+                </div>
+                <div>
+                    <label for="circle-rot-y" class="sr-only">Rot Y</label>
+                    <input type="number" id="circle-rot-y" step="0.05" aria-label="Selected circle Y rotation in radians" title="Rotation Y">
+                </div>
+                <div>
+                    <label for="circle-rot-z" class="sr-only">Rot Z</label>
+                    <input type="number" id="circle-rot-z" step="0.05" aria-label="Selected circle Z rotation in radians" title="Rotation Z">
+                </div>
+            </div>
+
+            <div class="mb-3">
+                <label for="circle-color">Color:</label>
+                <input type="color" id="circle-color" aria-label="Selected circle color">
+            </div>
+
+            <div class="mb-3">
+                <label for="circle-size">Size: <span id="circle-size-value" class="font-mono text-sky-400">1.00</span></label>
+                <input type="range" id="circle-size" min="0.1" max="5" step="0.05" aria-label="Selected circle size">
+            </div>
+
+            <div class="mb-3">
+                <label for="circle-opacity">Opacity: <span id="circle-opacity-value" class="font-mono text-sky-400">1.00</span></label>
+                <input type="range" id="circle-opacity" min="0" max="1" step="0.01" aria-label="Selected circle opacity">
+            </div>
+            
+            <div class="mb-4">
+                <label for="circle-animation-toggle" class="flex items-center space-x-2 cursor-pointer text-sm">
+                    <input type="checkbox" id="circle-animation-toggle" class="form-checkbox h-4 w-4 text-sky-500 bg-slate-700 border-slate-600 rounded focus:ring-sky-500" aria-labelledby="circle-animation-label">
+                    <span id="circle-animation-label">Enable Animation</span>
+                </label>
+            </div>
+
+            <button id="delete-circle-btn" class="w-full bg-red-600 hover:bg-red-700 text-white font-semibold py-2 px-4 rounded text-sm" aria-label="Delete selected circle">
+                Delete Circle
+            </button>
+        </div>
+        
+        <div id="error-message" class="mt-4 p-2 bg-red-700 text-white rounded hidden text-sm"></div>
+    </div>
+
+    <script>
+        // --- Three.js Global Variables ---
+        let scene, camera, renderer, controls;
+        let instancedMesh, circleGeometry, circleMaterial;
+        let axesHelper;
+        const MAX_CIRCLES = 500; // Maximum number of circles that can be rendered
+        let circlesData = []; // Stores data for each circle: { uuid, position, rotation (euler), colorStr, size, opacity, animated, animationProps }
+        let selectedCircleUUID = null; // UUID of the currently selected circle
+        let isAddingCircleMode = false; // Mode toggle: false = select, true = add
+        
+        let raycaster, mouseScreenCoords; // For mouse interaction
+        let placementPlane; // Invisible plane for raycasting to place new circles
+        let previewMesh; // Mesh for showing a circle preview before placement
+
+        // --- DOM Element References ---
+        let canvasContainer;
+        let addCircleModeBtn, axesHelperToggle;
+        let defaultColorInput, defaultSizeInput, defaultOpacityInput;
+        let defaultSizeValueSpan, defaultOpacityValueSpan;
+        let selectedCircleControlsUI, selectedCircleIdDisplay;
+        let circlePosXInput, circlePosYInput, circlePosZInput;
+        let circleRotXInput, circleRotYInput, circleRotZInput;
+        let circleColorInput, circleSizeInput, circleSizeValueSpan, circleOpacityInput, circleOpacityValueSpan;
+        let circleAnimationToggle;
+        let deleteCircleBtn;
+        let errorMessageDiv;
+
+        // --- Initialization Function ---
+        function init() {
+            try {
+                // Get DOM elements
+                getDOMElements();
+
+                // Initialize Three.js Scene, Camera, Renderer
+                scene = new THREE.Scene();
+                scene.background = new THREE.Color(0x1e293b); // Tailwind slate-800
+
+                camera = new THREE.PerspectiveCamera(75, canvasContainer.clientWidth / canvasContainer.clientHeight, 0.1, 1000);
+                camera.position.set(0, 2.5, 6); // Adjusted camera position
+
+                renderer = new THREE.WebGLRenderer({ antialias: true });
+                renderer.setSize(canvasContainer.clientWidth, canvasContainer.clientHeight);
+                renderer.setPixelRatio(window.devicePixelRatio);
+                canvasContainer.appendChild(renderer.domElement);
+
+                // OrbitControls for camera manipulation
+                controls = new THREE.OrbitControls(camera, renderer.domElement);
+                controls.enableDamping = true;
+                controls.dampingFactor = 0.1;
+                controls.minDistance = 1;
+                controls.maxDistance = 50;
+
+                // Lighting
+                const ambientLight = new THREE.AmbientLight(0xffffff, 0.7);
+                scene.add(ambientLight);
+                const directionalLight = new THREE.DirectionalLight(0xffffff, 0.9);
+                directionalLight.position.set(5, 10, 7.5).normalize();
+                scene.add(directionalLight);
+
+                // Axes Helper
+                axesHelper = new THREE.AxesHelper(2); // Size of axes lines
+                scene.add(axesHelper);
+                axesHelper.visible = axesHelperToggle.checked;
+
+                // Raycaster and Mouse Vector
+                raycaster = new THREE.Raycaster();
+                mouseScreenCoords = new THREE.Vector2();
+
+                // Placement Plane (horizontal at Y=0)
+                const planeGeom = new THREE.PlaneGeometry(100, 100);
+                //const planeMat = new THREE.MeshBasicMaterial({ visible: false, side: THREE.DoubleSide }); // For debugging: color: 0x444444
+                const planeMat = new THREE.MeshBasicMaterial({ visible: false, side: THREE.DoubleSide });
+                placementPlane = new THREE.Mesh(planeGeom, planeMat);
+                placementPlane.rotation.x = -Math.PI / 2; // Rotate to be horizontal
+                scene.add(placementPlane);
+
+                // Instanced Mesh for Circles
+                circleGeometry = new THREE.CircleGeometry(0.5, 32); // Base radius 0.5
+                circleMaterial = new THREE.MeshStandardMaterial({
+                    side: THREE.DoubleSide,
+                    transparent: true, // Required for opacity effects (even if imperfect for per-instance)
+                    metalness: 0.2,
+                    roughness: 0.7,
+                });
+                
+                instancedMesh = new THREE.InstancedMesh(circleGeometry, circleMaterial, MAX_CIRCLES);
+                instancedMesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage); // Optimize for frequent updates
+                if (instancedMesh.instanceColor) { // instanceColor might be null initially
+                    instancedMesh.instanceColor.setUsage(THREE.DynamicDrawUsage);
+                }
+                scene.add(instancedMesh);
+
+                // Preview Mesh for placing new circles
+                const previewMaterial = new THREE.MeshStandardMaterial({
+                    color: 0x00FFFF, // Cyan color for preview
+                    transparent: true,
+                    opacity: 0.6,
+                    side: THREE.DoubleSide,
+                    emissive: 0x00FFFF, // Make it glow slightly
+                    emissiveIntensity: 0.3
+                });
+                previewMesh = new THREE.Mesh(circleGeometry, previewMaterial);
+                previewMesh.visible = false;
+                scene.add(previewMesh);
+
+                // Setup Event Listeners for UI and 3D canvas
+                setupEventListeners();
+                updateAddCircleModeButtonText(); // Set initial button text
+
+                // Add some initial circles for demonstration
+                addCircle({ x: -1.5, y: 0, z: 0 }, { x: 0, y: 0, z: 0 }, '#FF6347', 0.6, 1, false); // Tomato red
+                addCircle({ x: 0, y: 0, z: -1 }, { x: 0, y: 0, z: 0 }, '#4682B4', 0.8, 0.9, true); // Steel blue, animated
+                addCircle({ x: 1.5, y: 0, z: 0 }, { x: Math.PI/4, y: 0, z: 0 }, '#32CD32', 0.5, 0.7, false); // Lime green, tilted
+
+                // Start the animation loop
+                animate();
+
+            } catch (error) {
+                console.error("Initialization failed:", error);
+                displayError("Initialization failed. Please refresh or check console.");
+            }
+        }
+
+        function getDOMElements() {
+            canvasContainer = document.getElementById('canvas-container');
+            addCircleModeBtn = document.getElementById('add-circle-mode-btn');
+            axesHelperToggle = document.getElementById('axes-helper-toggle');
+            defaultColorInput = document.getElementById('default-color');
+            defaultSizeInput = document.getElementById('default-size');
+            defaultOpacityInput = document.getElementById('default-opacity');
+            defaultSizeValueSpan = document.getElementById('default-size-value');
+            defaultOpacityValueSpan = document.getElementById('default-opacity-value');
+            selectedCircleControlsUI = document.getElementById('selected-circle-controls');
+            selectedCircleIdDisplay = document.getElementById('selected-circle-id-display');
+            circlePosXInput = document.getElementById('circle-pos-x');
+            circlePosYInput = document.getElementById('circle-pos-y');
+            circlePosZInput = document.getElementById('circle-pos-z');
+            circleRotXInput = document.getElementById('circle-rot-x');
+            circleRotYInput = document.getElementById('circle-rot-y');
+            circleRotZInput = document.getElementById('circle-rot-z');
+            circleColorInput = document.getElementById('circle-color');
+            circleSizeInput = document.getElementById('circle-size');
+            circleSizeValueSpan = document.getElementById('circle-size-value');
+            circleOpacityInput = document.getElementById('circle-opacity');
+            circleOpacityValueSpan = document.getElementById('circle-opacity-value');
+            circleAnimationToggle = document.getElementById('circle-animation-toggle');
+            deleteCircleBtn = document.getElementById('delete-circle-btn');
+            errorMessageDiv = document.getElementById('error-message');
+        }
+
+        // --- UI Interaction & State Management ---
+        function setupEventListeners() {
+            window.addEventListener('resize', onWindowResize, false);
+            canvasContainer.addEventListener('mousemove', onCanvasMouseMove, false);
+            canvasContainer.addEventListener('click', onCanvasClick, false);
+            
+            addCircleModeBtn.addEventListener('click', () => {
+                isAddingCircleMode = !isAddingCircleMode;
+                updateAddCircleModeButtonText();
+                if (!isAddingCircleMode) previewMesh.visible = false; // Hide preview if exiting add mode
+            });
+
+            axesHelperToggle.addEventListener('change', (e) => axesHelper.visible = e.target.checked);
+
+            // Default properties listeners
+            defaultSizeInput.addEventListener('input', (e) => defaultSizeValueSpan.textContent = parseFloat(e.target.value).toFixed(2));
+            defaultOpacityInput.addEventListener('input', (e) => defaultOpacityValueSpan.textContent = parseFloat(e.target.value).toFixed(2));
+
+            // Selected circle property listeners
+            const inputsToWatch = [
+                circlePosXInput, circlePosYInput, circlePosZInput,
+                circleRotXInput, circleRotYInput, circleRotZInput,
+                circleColorInput, circleSizeInput, circleOpacityInput,
+                circleAnimationToggle
+            ];
+            inputsToWatch.forEach(input => input.addEventListener('input', handleSelectedCircleInputChange));
+            
+            circleSizeInput.addEventListener('input', (e) => circleSizeValueSpan.textContent = parseFloat(e.target.value).toFixed(2));
+            circleOpacityInput.addEventListener('input', (e) => circleOpacityValueSpan.textContent = parseFloat(e.target.value).toFixed(2));
+
+            deleteCircleBtn.addEventListener('click', handleDeleteSelectedCircle);
+        }
+
+        function updateAddCircleModeButtonText() {
+            if (isAddingCircleMode) {
+                addCircleModeBtn.textContent = "Mode: Add (Click Canvas to Place)";
+                addCircleModeBtn.classList.replace('bg-sky-500', 'bg-emerald-500');
+                addCircleModeBtn.classList.replace('hover:bg-sky-600', 'hover:bg-emerald-600');
+            } else {
+                addCircleModeBtn.textContent = "Mode: Select (Click Canvas to Add)";
+                addCircleModeBtn.classList.replace('bg-emerald-500', 'bg-sky-500');
+                addCircleModeBtn.classList.replace('hover:bg-emerald-600', 'hover:bg-sky-600');
+            }
+        }
+
+        function displayError(message) {
+            errorMessageDiv.textContent = message;
+            errorMessageDiv.classList.remove('hidden');
+            setTimeout(() => errorMessageDiv.classList.add('hidden'), 5000); // Hide after 5 seconds
+        }
+
+        // --- Circle Data Management ---
+        function addCircle(position, rotation, colorStr, size, opacity, animated) {
+            if (circlesData.length >= MAX_CIRCLES) {
+                displayError("Maximum number of circles reached.");
+                return null;
+            }
+            const uuid = THREE.MathUtils.generateUUID();
+            const circle = {
+                uuid,
+                position: new THREE.Vector3(position.x, position.y, position.z),
+                rotation: new THREE.Euler(rotation.x, rotation.y, rotation.z, 'XYZ'), // Store as Euler for UI
+                colorStr: colorStr, // Hex string for UI and storage
+                size: parseFloat(size),
+                opacity: parseFloat(opacity),
+                animated: animated,
+                animationProps: {}, // For storing animation-modified values like scale
+            };
+            circlesData.push(circle);
+            updateInstancedMeshState(); // Update all instances
+            return circle;
+        }
+
+        // Updates the entire InstancedMesh based on circlesData array
+        function updateInstancedMeshState() {
+            if (!instancedMesh) return;
+
+            const tempMatrix = new THREE.Matrix4();
+            const tempColor = new THREE.Color();
+            const tempQuaternion = new THREE.Quaternion();
+            const tempScale = new THREE.Vector3();
+
+            for (let i = 0; i < circlesData.length; i++) {
+                const circle = circlesData[i];
+                
+                tempQuaternion.setFromEuler(circle.rotation);
+                // Opacity: If low, scale to almost zero. Otherwise, use circle's size.
+                const effectiveSize = circle.opacity < 0.01 ? 0.001 : (circle.animationProps?.effectiveSize ?? circle.size);
+                tempScale.set(effectiveSize, effectiveSize, 1); // Assuming CircleGeometry is flat, Z scale is 1.
+                tempMatrix.compose(circle.position, tempQuaternion, tempScale);
+                instancedMesh.setMatrixAt(i, tempMatrix);
+
+                // Color: Apply highlight if selected
+                tempColor.set(circle.colorStr);
+                if (circle.uuid === selectedCircleUUID) {
+                    let hsl = {};
+                    tempColor.getHSL(hsl);
+                    // Highlight: slightly desaturate and significantly brighten
+                    tempColor.setHSL(hsl.h, hsl.s * 0.7, Math.min(1, hsl.l + 0.4));
+                }
+                // Apply animation color modifications if any
+                if (circle.animated && circle.animationProps && circle.animationProps.colorMultiplier) {
+                    tempColor.multiplyScalar(circle.animationProps.colorMultiplier);
+                }
+                instancedMesh.setColorAt(i, tempColor);
+            }
+            instancedMesh.count = circlesData.length;
+            instancedMesh.instanceMatrix.needsUpdate = true;
+            if (circlesData.length > 0 && instancedMesh.instanceColor) {
+                 instancedMesh.instanceColor.needsUpdate = true;
+            }
+        }
+        
+        // Updates a single instance in the InstancedMesh
+        function updateSingleInstanceVisuals(circleIndex) {
+            if (circleIndex < 0 || circleIndex >= circlesData.length || !instancedMesh) return;
+
+            const circle = circlesData[circleIndex];
+            const tempMatrix = new THREE.Matrix4();
+            const tempColor = new THREE.Color();
+            const tempQuaternion = new THREE.Quaternion();
+            const tempScale = new THREE.Vector3();
+
+            tempQuaternion.setFromEuler(circle.rotation);
+            const effectiveSize = circle.opacity < 0.01 ? 0.001 : (circle.animationProps?.effectiveSize ?? circle.size);
+            tempScale.set(effectiveSize, effectiveSize, 1);
+            tempMatrix.compose(circle.position, tempQuaternion, tempScale);
+            instancedMesh.setMatrixAt(circleIndex, tempMatrix);
+
+            tempColor.set(circle.colorStr);
+            if (circle.uuid === selectedCircleUUID) { // Apply selection highlight
+                let hsl = {}; tempColor.getHSL(hsl);
+                tempColor.setHSL(hsl.h, hsl.s * 0.7, Math.min(1, hsl.l + 0.4));
+            }
+            if (circle.animated && circle.animationProps && circle.animationProps.colorMultiplier) {
+                tempColor.multiplyScalar(circle.animationProps.colorMultiplier);
+            }
+            instancedMesh.setColorAt(circleIndex, tempColor);
+            
+            instancedMesh.instanceMatrix.needsUpdate = true;
+            if (instancedMesh.instanceColor) instancedMesh.instanceColor.needsUpdate = true;
+        }
+
+        function handleSelectedCircleInputChange() {
+            if (!selectedCircleUUID) return;
+            const circle = circlesData.find(c => c.uuid === selectedCircleUUID);
+            if (!circle) return;
+
+            const index = circlesData.indexOf(circle);
+
+            try {
+                circle.position.set(
+                    parseFloat(circlePosXInput.value),
+                    parseFloat(circlePosYInput.value),
+                    parseFloat(circlePosZInput.value)
+                );
+                circle.rotation.set( // Euler angles
+                    parseFloat(circleRotXInput.value),
+                    parseFloat(circleRotYInput.value),
+                    parseFloat(circleRotZInput.value)
+                );
+                circle.colorStr = circleColorInput.value;
+                circle.size = parseFloat(circleSizeInput.value);
+                circle.opacity = parseFloat(circleOpacityInput.value);
+                circle.animated = circleAnimationToggle.checked;
+                if (!circle.animated) circle.animationProps = {}; // Clear animation props if disabled
+
+                updateSingleInstanceVisuals(index);
+            } catch (error) {
+                console.error("Error updating circle properties:", error);
+                displayError("Invalid input value for selected circle.");
+            }
+        }
+
+        function populateSelectedCircleUI(circle) {
+            if (!circle) {
+                selectedCircleControlsUI.classList.add('hidden');
+                if (selectedCircleUUID) { // If there was a selection, redraw to remove highlight
+                    const oldSelectedIdx = circlesData.findIndex(c => c.uuid === selectedCircleUUID);
+                    selectedCircleUUID = null;
+                    if(oldSelectedIdx !== -1) updateSingleInstanceVisuals(oldSelectedIdx); // Redraw old selection without highlight
+                }
+                selectedCircleUUID = null;
+                return;
+            }
+            
+            // If there was a previously selected circle, redraw it without highlight
+            if (selectedCircleUUID && selectedCircleUUID !== circle.uuid) {
+                 const oldSelectedIdx = circlesData.findIndex(c => c.uuid === selectedCircleUUID);
+                 if(oldSelectedIdx !== -1) updateSingleInstanceVisuals(oldSelectedIdx);
+            }
+
+            selectedCircleUUID = circle.uuid; // Set new selected UUID
+            selectedCircleControlsUI.classList.remove('hidden');
+            selectedCircleIdDisplay.textContent = `...${circle.uuid.slice(-6)}`;
+
+            circlePosXInput.value = circle.position.x.toFixed(2);
+            circlePosYInput.value = circle.position.y.toFixed(2);
+            circlePosZInput.value = circle.position.z.toFixed(2);
+            
+            circleRotXInput.value = circle.rotation.x.toFixed(2);
+            circleRotYInput.value = circle.rotation.y.toFixed(2);
+            circleRotZInput.value = circle.rotation.z.toFixed(2);
+
+            circleColorInput.value = circle.colorStr;
+            circleSizeInput.value = circle.size.toFixed(2);
+            circleSizeValueSpan.textContent = circle.size.toFixed(2);
+            circleOpacityInput.value = circle.opacity.toFixed(2);
+            circleOpacityValueSpan.textContent = circle.opacity.toFixed(2);
+            circleAnimationToggle.checked = circle.animated;
+
+            const currentSelectedIdx = circlesData.findIndex(c => c.uuid === selectedCircleUUID);
+            if(currentSelectedIdx !== -1) updateSingleInstanceVisuals(currentSelectedIdx); // Redraw new selection with highlight
+        }
+
+        function handleDeleteSelectedCircle() {
+            if (!selectedCircleUUID) return;
+
+            const index = circlesData.findIndex(c => c.uuid === selectedCircleUUID);
+            if (index === -1) return;
+
+            circlesData.splice(index, 1); // Remove from data array
+            selectedCircleUUID = null;
+            populateSelectedCircleUI(null); // Hide controls and clear selection state
+            
+            updateInstancedMeshState(); // Rebuild all instance attributes
+        }
+        
+        // --- Canvas Event Handlers ---
+        function onWindowResize() {
+            camera.aspect = canvasContainer.clientWidth / canvasContainer.clientHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(canvasContainer.clientWidth, canvasContainer.clientHeight);
+        }
+
+        function onCanvasMouseMove(event) {
+            const rect = renderer.domElement.getBoundingClientRect();
+            mouseScreenCoords.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+            mouseScreenCoords.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+            
+            if (!isAddingCircleMode || !previewMesh) {
+                previewMesh.visible = false; // Ensure preview is hidden if not in add mode
+                return;
+            }
+            
+            raycaster.setFromCamera(mouseScreenCoords, camera);
+            const intersectsPlacement = raycaster.intersectObject(placementPlane);
+
+            if (intersectsPlacement.length > 0) {
+                const intersectPoint = intersectsPlacement[0].point;
+                previewMesh.position.copy(intersectPoint);
+                const defaultSize = parseFloat(defaultSizeInput.value);
+                previewMesh.scale.set(defaultSize, defaultSize, 1);
+                // Update preview material based on default settings
+                previewMesh.material.color.set(defaultColorInput.value);
+                previewMesh.material.opacity = parseFloat(defaultOpacityInput.value) * 0.6 + 0.2; // Make it a bit more transparent than actual
+                previewMesh.visible = true;
+            } else {
+                previewMesh.visible = false;
+            }
+        }
+
+        function onCanvasClick(event) {
+            const rect = renderer.domElement.getBoundingClientRect();
+            mouseScreenCoords.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+            mouseScreenCoords.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+
+            raycaster.setFromCamera(mouseScreenCoords, camera);
+
+            if (isAddingCircleMode) {
+                const intersectsPlacement = raycaster.intersectObject(placementPlane);
+                if (intersectsPlacement.length > 0) {
+                    const point = intersectsPlacement[0].point;
+                    addCircle(
+                        point, // {x,y,z} from intersection
+                        { x: 0, y: 0, z: 0 }, // Default rotation
+                        defaultColorInput.value,
+                        parseFloat(defaultSizeInput.value),
+                        parseFloat(defaultOpacityInput.value),
+                        false // Not animated by default
+                    );
+                }
+            } else { // Select mode
+                if (circlesData.length === 0 || instancedMesh.count === 0) return;
+                
+                const intersectsObjects = raycaster.intersectObject(instancedMesh);
+                if (intersectsObjects.length > 0) {
+                    const instanceId = intersectsObjects[0].instanceId; // This is the index in the instanced mesh
+                    if (instanceId !== undefined && instanceId < circlesData.length) {
+                        const clickedCircle = circlesData[instanceId];
+                        if (selectedCircleUUID === clickedCircle.uuid) { // Clicked selected again: deselect
+                            populateSelectedCircleUI(null);
+                        } else {
+                            populateSelectedCircleUI(clickedCircle);
+                        }
+                    }
+                } else { // Clicked on empty space in select mode
+                    if (selectedCircleUUID) { // If a circle was selected, deselect it
+                        populateSelectedCircleUI(null);
+                    }
+                }
+            }
+        }
+
+        // --- Animation Loop ---
+        const clock = new THREE.Clock();
+        function animate() {
+            requestAnimationFrame(animate);
+            const deltaTime = clock.getDelta();
+            const elapsedTime = clock.getElapsedTime();
+
+            controls.update(); // For damping or auto-rotate
+
+            // Animations for circles
+            let instancesNeedVisualUpdate = false;
+            for (let i = 0; i < circlesData.length; i++) {
+                const circle = circlesData[i];
+                if (circle.animated) {
+                    // Pulsating size
+                    const pulseFactor = (Math.sin(elapsedTime * 2.5 + i * 0.5) + 1) / 2; // Range 0 to 1
+                    circle.animationProps.effectiveSize = circle.size * (0.8 + pulseFactor * 0.4); // Pulse between 80% and 120%
+
+                    // Rotating (around local Z axis)
+                    circle.rotation.z = (circle.rotation.z + 1.0 * deltaTime) % (2 * Math.PI) ;
+                    
+                    // Example: Pulsating color brightness (optional)
+                    // circle.animationProps.colorMultiplier = 0.75 + ( (Math.sin(elapsedTime * 1.5 + i * 0.8) + 1) / 2 ) * 0.25; // Range 0.75 to 1.0
+                    
+                    updateSingleInstanceVisuals(i); // Update this instance's matrix and color
+                    instancesNeedVisualUpdate = true; // Flag that at least one instance was updated.
+                                                     // This is handled by updateSingleInstanceVisuals actually.
+                } else if (circle.animationProps && Object.keys(circle.animationProps).length > 0) {
+                     // If animation was just turned off, clear props and restore visuals
+                    circle.animationProps = {};
+                    updateSingleInstanceVisuals(i);
+                }
+            }
+            // No need for global instanceMatrix.needsUpdate here if updateSingleInstanceVisuals handles it.
+
+            try {
+                renderer.render(scene, camera);
+            } catch (error) {
+                console.error("Render error:", error);
+                displayError("Rendering error occurred. Check console for details.");
+                // Consider stopping animation loop if error is critical by not calling requestAnimationFrame again.
+            }
+        }
+
+        // --- Start the Application ---
+        document.addEventListener('DOMContentLoaded', init);
+
+    </script>
+</body>
+</html>

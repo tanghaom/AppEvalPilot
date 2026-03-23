@@ -1,0 +1,9 @@
+{
+  "web_id": "web_58",
+  "task_id": 3,
+  "task_type": "dynamic",
+  "instruction": "Task: Click a 'Pencil Mode' toggle button, then select a grid cell, then click number buttons (1-9) to add or remove candidate numbers (pencil marks) in that cell.\nExpected Result: Small 'pencil mark' versions of the selected numbers appear or disappear as candidates within the chosen cell. Inputting a main number might be disabled or visually distinct while in pencil mode.\n\nNote: The task is only considered successful if the expected result is achieved; otherwise, it is deemed infeasible.",
+  "max_steps": 15,
+  "expected": "Small 'pencil mark' versions of the selected numbers appear or disappear as candidates within the chosen cell. Inputting a main number might be disabled or visually distinct while in pencil mode.",
+  "label": 0
+}

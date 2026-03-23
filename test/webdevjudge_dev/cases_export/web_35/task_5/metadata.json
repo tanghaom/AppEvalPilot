@@ -1,0 +1,9 @@
+{
+  "web_id": "web_35",
+  "task_id": 5,
+  "task_type": "dynamic",
+  "instruction": "Task: Click a theme toggle to switch between dark and light modes.\nExpected Result: The application's visual theme changes, affecting colors and styles across the UI, ideally with a smooth transition.\n\nNote: The task is only considered successful if the expected result is achieved; otherwise, it is deemed infeasible.",
+  "max_steps": 15,
+  "expected": "The application's visual theme changes, affecting colors and styles across the UI, ideally with a smooth transition.",
+  "label": 1
+}

@@ -1,0 +1,9 @@
+{
+  "web_id": "web_29",
+  "task_id": 2,
+  "task_type": "dynamic",
+  "instruction": "Task: On a property listings page, select a filter option (e.g., 'Price Range: €500-€1000') from a filter menu.\nExpected Result: The displayed list of properties updates to show only those matching the selected filter criteria.\n\nNote: The task is only considered successful if the expected result is achieved; otherwise, it is deemed infeasible.",
+  "max_steps": 15,
+  "expected": "The displayed list of properties updates to show only those matching the selected filter criteria.",
+  "label": 0
+}

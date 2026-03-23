@@ -1,0 +1,9 @@
+{
+  "web_id": "web_15",
+  "task_id": 3,
+  "task_type": "dynamic",
+  "instruction": "Task: Click on a channel name from the channel list.\nExpected Result: The message area updates to show messages for the selected channel (if any), with the newest messages at the top. URLs within these messages are rendered as clickable hyperlinks, and video URLs are embedded.\n\nNote: The task is only considered successful if the expected result is achieved; otherwise, it is deemed infeasible.",
+  "max_steps": 15,
+  "expected": "The message area updates to show messages for the selected channel (if any), with the newest messages at the top. URLs within these messages are rendered as clickable hyperlinks, and video URLs are embedded.",
+  "label": 1
+}

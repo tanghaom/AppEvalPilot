@@ -1,0 +1,9 @@
+{
+  "web_id": "web_48",
+  "task_id": 5,
+  "task_type": "dynamic",
+  "instruction": "Task: Hover over a content block to reveal its options menu (e.g., a '...' icon), click the icon, and select 'Delete' from the menu.\nExpected Result: The selected content block is removed from the page.\n\nNote: The task is only considered successful if the expected result is achieved; otherwise, it is deemed infeasible.",
+  "max_steps": 15,
+  "expected": "The selected content block is removed from the page.",
+  "label": 1
+}

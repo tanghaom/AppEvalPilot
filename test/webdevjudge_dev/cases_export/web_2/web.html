@@ -1,0 +1,871 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Duck Duck Goose Game</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Custom styles if necessary, but primarily use Tailwind */
+        body {
+            font-family: 'Arial Rounded MT Bold', 'Helvetica Rounded', Arial, sans-serif;
+            overscroll-behavior: none; /* Prevent pull-to-refresh on mobile */
+        }
+        .player-avatar {
+            transition: transform 0.3s ease-out, opacity 0.3s ease-out;
+        }
+        .player-avatar.dead {
+            opacity: 0.4;
+            filter: grayscale(100%);
+        }
+        .task-item.completed {
+            text-decoration: line-through;
+            color: #4ade80; /* Tailwind green-500 */
+        }
+
+        /* Simple button styles (can be enhanced with more Tailwind) */
+        .btn {
+            @apply px-6 py-3 rounded-lg font-semibold text-white shadow-md transition-all duration-150 ease-in-out;
+        }
+        .btn-primary {
+            @apply bg-amber-500 hover:bg-amber-600 focus:ring-2 focus:ring-amber-400 focus:ring-opacity-50;
+        }
+        .btn-secondary {
+            @apply bg-sky-500 hover:bg-sky-600 focus:ring-2 focus:ring-sky-400 focus:ring-opacity-50;
+        }
+        .btn-danger {
+            @apply bg-rose-600 hover:bg-rose-700 focus:ring-2 focus:ring-rose-500 focus:ring-opacity-50;
+        }
+        .btn-neutral {
+            @apply bg-slate-600 hover:bg-slate-700 focus:ring-2 focus:ring-slate-500 focus:ring-opacity-50;
+        }
+        .btn-disabled {
+            @apply bg-slate-400 cursor-not-allowed;
+        }
+
+        /* Modal styles */
+        .modal {
+            @apply fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center p-4 z-50;
+        }
+        .modal-content {
+            @apply bg-slate-800 p-6 rounded-xl shadow-2xl max-w-md w-full;
+        }
+
+        /* Custom animations */
+        @keyframes float {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-10px); }
+        }
+        .animate-float {
+            animation: float 3s ease-in-out infinite;
+        }
+
+        /* For the ghost icon on dead players */
+        .dead-overlay::after {
+            content: '👻';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 2rem; /* Adjust size as needed */
+            opacity: 0.8;
+        }
+    </style>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        'brand-bg': '#1e293b', // slate-800
+                        'brand-surface': '#334155', // slate-700
+                        'brand-text': '#f1f5f9', // slate-100
+                        'brand-primary': '#f59e0b', // amber-500
+                        'brand-secondary': '#0ea5e9', // sky-500
+                        'brand-accent-duck': '#22d3ee', // cyan-400
+                        'brand-accent-goose': '#f43f5e', // rose-500
+                        'brand-success': '#22c55e', // green-500
+                    },
+                    fontFamily: {
+                        sans: ['Arial Rounded MT Bold', 'Helvetica Rounded', 'Arial', 'sans-serif'],
+                    },
+                }
+            }
+        }
+    </script>
+</head>
+<body class="bg-brand-bg text-brand-text min-h-screen flex flex-col items-center justify-center p-4 select-none">
+
+    <div id="gameContainer" class="w-full max-w-4xl mx-auto">
+
+        <!-- Splash Screen -->
+        <div id="splashScreen" class="text-center space-y-8">
+            <h1 class="text-6xl font-bold text-brand-primary animate-float">Duck Duck Goose</h1>
+            <p class="text-xl text-slate-300">A game of social deduction and fowl play!</p>
+            <div class="w-full max-w-sm mx-auto">
+                <input type="text" id="playerNameInput" placeholder="Enter Your Name" class="w-full p-3 rounded-lg bg-slate-700 text-white border-2 border-slate-600 focus:border-amber-500 focus:ring-amber-500 outline-none">
+                <button id="startGameButton" class="btn btn-primary w-full mt-4">Start Game</button>
+            </div>
+            <div class="mt-6 p-4 bg-slate-700 rounded-lg text-sm text-slate-300">
+                <h3 class="font-semibold text-lg text-amber-400 mb-2">How to Play (Simplified)</h3>
+                <p><strong class="text-brand-accent-duck">Ducks:</strong> Complete all your tasks to win! Or, identify and vote out all the Geese.</p>
+                <p><strong class="text-brand-accent-goose">Geese:</strong> Eliminate Ducks until your numbers are equal. Use your "Quack!" ability. Don't get caught!</p>
+            </div>
+        </div>
+
+        <!-- Game Screen -->
+        <div id="gameScreen" class="hidden">
+            <div class="flex flex-col md:flex-row justify-between items-center mb-6 p-4 bg-brand-surface rounded-lg shadow-lg">
+                <div>
+                    <h2 class="text-2xl font-bold">Playing as: <span id="playerNameDisplay" class="text-amber-400"></span></h2>
+                    <p class="text-lg">Your Role: <span id="playerRoleDisplay" class="font-semibold"></span></p>
+                </div>
+                <div class="text-right mt-4 md:mt-0">
+                    <p>Tasks Remaining: <span id="tasksRemainingDisplay" class="font-bold text-green-400">0</span></p>
+                    <p>Emergency Meetings: <span id="emergencyMeetingsAvailable" class="font-bold text-sky-400">1</span></p>
+                </div>
+            </div>
+
+            <div id="mapArea" class="relative bg-slate-900/50 p-4 min-h-[300px] md:min-h-[400px] rounded-xl shadow-inner flex flex-wrap gap-4 items-center justify-center mb-6 border-2 border-slate-700">
+                <!-- Player avatars will be injected here -->
+            </div>
+            
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <button id="viewTasksButton" class="btn btn-secondary col-span-2 md:col-span-1">View Tasks</button>
+                <button id="useAbilityButton" class="btn btn-danger">Quack! (Kill)</button>
+                <button id="reportButton" class="btn btn-neutral">Report Body</button>
+                <button id="emergencyMeetingButton" class="btn btn-neutral">Emergency Meeting</button>
+            </div>
+        </div>
+
+        <!-- Task Modal -->
+        <div id="taskModal" class="modal hidden">
+            <div class="modal-content w-full max-w-lg">
+                <h3 class="text-2xl font-bold text-amber-400 mb-4">Your Tasks</h3>
+                <ul id="taskList" class="space-y-2 max-h-60 overflow-y-auto">
+                    <!-- Tasks will be injected here -->
+                </ul>
+                <button id="closeTaskModalButton" class="btn btn-primary w-full mt-6">Close</button>
+            </div>
+        </div>
+
+        <!-- Meeting Screen -->
+        <div id="meetingScreen" class="hidden">
+            <div class="bg-brand-surface p-6 rounded-xl shadow-xl">
+                <h2 id="meetingTitle" class="text-3xl font-bold text-center text-amber-400 mb-2">EMERGENCY MEETING!</h2>
+                <p id="meetingReason" class="text-center text-slate-300 mb-6">A body was reported / A meeting was called.</p>
+                
+                <div id="meetingPlayersGrid" class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 mb-6">
+                    <!-- Player voting cards will be injected here -->
+                </div>
+                
+                <p class="text-center text-slate-400 mb-2">Time remaining: <span id="meetingTimerDisplay">30</span>s</p>
+                <div id="votingStatus" class="text-center text-lg mb-4">Vote for who to eject!</div>
+                <button id="skipVoteButton" class="btn btn-neutral w-full">Skip Vote</button>
+            </div>
+        </div>
+        
+        <!-- Vote Result Modal -->
+        <div id="voteResultModal" class="modal hidden">
+            <div class="modal-content text-center">
+                <h3 class="text-2xl font-bold text-amber-400 mb-4">Voting Results</h3>
+                <div id="voteResultsDisplay" class="mb-4 space-y-1 text-slate-200">
+                    <!-- Vote counts here -->
+                </div>
+                <p id="ejectedPlayerDisplay" class="text-xl font-semibold mb-6"></p>
+                <button id="closeVoteResultModalButton" class="btn btn-primary w-full">Continue</button>
+            </div>
+        </div>
+
+
+        <!-- Game Over Screen -->
+        <div id="gameOverScreen" class="hidden text-center space-y-6">
+            <h2 id="gameOverTitle" class="text-5xl font-bold"></h2>
+            <p id="gameOverMessage" class="text-xl text-slate-300"></p>
+            <button id="playAgainButton" class="btn btn-primary">Play Again</button>
+        </div>
+    </div>
+
+<script>
+const G = { // Game State and Settings
+    playerName: "Player",
+    players: [],
+    playerIsGoose: false,
+    tasks: [],
+    totalTasks: 0,
+    completedTasks: 0,
+    gameSettings: {
+        numPlayers: 8,
+        numGeese: 2,
+        tasksPerDuck: 3,
+        killCooldown: 15, // seconds
+        emergencyMeetings: 1,
+        meetingDuration: 30, // seconds
+        playerColors: ['bg-red-500', 'bg-blue-500', 'bg-green-500', 'bg-yellow-500', 'bg-purple-500', 'bg-pink-500', 'bg-indigo-500', 'bg-teal-500', 'bg-orange-500', 'bg-lime-500'],
+        cpuNames: ["Quacky", "Feathers", "Waddles", "Bill", "Puddles", "Honkers", "Sir Quacksalot", "Duck Norris", "Mallard Orwell"]
+    },
+    currentScreen: 'splash', // splash, game, meeting, gameOver
+    killOnCooldown: false,
+    emergencyMeetingsLeft: 1,
+    reportedBody: null, // player object if a body was reported
+    meetingTimerInterval: null,
+    voteCounts: {},
+    playerVotes: {}, // Tracks who current player has voted for
+};
+
+// UI Elements
+const screens = {
+    splash: document.getElementById('splashScreen'),
+    game: document.getElementById('gameScreen'),
+    meeting: document.getElementById('meetingScreen'),
+    gameOver: document.getElementById('gameOverScreen'),
+};
+const playerNameInput = document.getElementById('playerNameInput');
+const startGameButton = document.getElementById('startGameButton');
+
+const playerNameDisplay = document.getElementById('playerNameDisplay');
+const playerRoleDisplay = document.getElementById('playerRoleDisplay');
+const tasksRemainingDisplay = document.getElementById('tasksRemainingDisplay');
+const emergencyMeetingsAvailable = document.getElementById('emergencyMeetingsAvailable');
+const mapArea = document.getElementById('mapArea');
+const viewTasksButton = document.getElementById('viewTasksButton');
+const useAbilityButton = document.getElementById('useAbilityButton');
+const reportButton = document.getElementById('reportButton');
+const emergencyMeetingButton = document.getElementById('emergencyMeetingButton');
+
+const taskModal = document.getElementById('taskModal');
+const taskList = document.getElementById('taskList');
+const closeTaskModalButton = document.getElementById('closeTaskModalButton');
+
+const meetingScreen = document.getElementById('meetingScreen');
+const meetingTitle = document.getElementById('meetingTitle');
+const meetingReason = document.getElementById('meetingReason');
+const meetingPlayersGrid = document.getElementById('meetingPlayersGrid');
+const meetingTimerDisplay = document.getElementById('meetingTimerDisplay');
+const skipVoteButton = document.getElementById('skipVoteButton');
+const votingStatus = document.getElementById('votingStatus');
+
+const voteResultModal = document.getElementById('voteResultModal');
+const voteResultsDisplay = document.getElementById('voteResultsDisplay');
+const ejectedPlayerDisplay = document.getElementById('ejectedPlayerDisplay');
+const closeVoteResultModalButton = document.getElementById('closeVoteResultModalButton');
+
+const gameOverTitle = document.getElementById('gameOverTitle');
+const gameOverMessage = document.getElementById('gameOverMessage');
+const playAgainButton = document.getElementById('playAgainButton');
+
+// Utility Functions
+function switchScreen(screenName) {
+    Object.values(screens).forEach(s => s.classList.add('hidden'));
+    if (screens[screenName]) {
+        screens[screenName].classList.remove('hidden');
+    }
+    G.currentScreen = screenName;
+}
+
+function shuffleArray(array) {
+    for (let i = array.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [array[i], array[j]] = [array[j], array[i]];
+    }
+}
+
+// Game Setup
+function setupGame() {
+    G.playerName = playerNameInput.value.trim() || "Player 1";
+    G.players = [];
+    G.tasks = [];
+    G.completedTasks = 0;
+    G.totalTasks = 0;
+    G.emergencyMeetingsLeft = G.gameSettings.emergencyMeetings;
+    G.killOnCooldown = false;
+    G.reportedBody = null;
+    G.playerVotes = {};
+    
+    // Create players
+    const availableColors = [...G.gameSettings.playerColors];
+    shuffleArray(availableColors);
+    const cpuNamesCopy = [...G.gameSettings.cpuNames];
+    shuffleArray(cpuNamesCopy);
+
+    // Add human player
+    G.players.push({
+        id: 0,
+        name: G.playerName,
+        isHuman: true,
+        isGoose: false,
+        isAlive: true,
+        tasks: [],
+        completedTasksCount: 0,
+        color: availableColors.pop() || 'bg-gray-400',
+        reported: false, // if this player reported a body
+        votedFor: null,
+    });
+
+    // Add CPU players
+    for (let i = 1; i < G.gameSettings.numPlayers; i++) {
+        G.players.push({
+            id: i,
+            name: cpuNamesCopy.pop() || `CPU ${i}`,
+            isHuman: false,
+            isGoose: false,
+            isAlive: true,
+            tasks: [],
+            completedTasksCount: 0,
+            color: availableColors.pop() || 'bg-gray-400',
+            reported: false,
+            votedFor: null,
+        });
+    }
+
+    // Assign roles (Geese)
+    const playerIndices = G.players.map((_, idx) => idx);
+    shuffleArray(playerIndices);
+    for (let i = 0; i < G.gameSettings.numGeese; i++) {
+        G.players[playerIndices[i]].isGoose = true;
+    }
+    
+    const humanPlayer = G.players.find(p => p.isHuman);
+    G.playerIsGoose = humanPlayer.isGoose;
+
+    // Assign tasks
+    const allPossibleTasks = [
+        "Fix Wires in Cafeteria", "Empty Chute in Storage", "Align Telescope", 
+        "Chart Course in Navigation", "Upload Data from Lab", "Clear Asteroids",
+        "Start Reactor", "Swipe Admin Card", "Calibrate Distributor", "Clean O2 Filter"
+    ];
+
+    G.players.forEach(player => {
+        if (!player.isGoose) {
+            shuffleArray(allPossibleTasks);
+            for (let i = 0; i < G.gameSettings.tasksPerDuck; i++) {
+                const taskName = allPossibleTasks[i % allPossibleTasks.length] + ` (${player.name})`; // Make task unique-ish
+                const task = { id: `${player.id}-${i}`, name: taskName, completed: false };
+                player.tasks.push(task);
+                if (player.isHuman) {
+                    G.tasks.push(task);
+                }
+                G.totalTasks++;
+            }
+        }
+    });
+
+    updateGameScreenUI();
+    switchScreen('game');
+    // Simple AI loop (could be more advanced)
+    // setInterval(runCPULogic, 5000); // CPUs perform actions every 5 seconds
+}
+
+function updateGameScreenUI() {
+    const humanPlayer = G.players.find(p => p.isHuman);
+    playerNameDisplay.textContent = humanPlayer.name;
+    playerRoleDisplay.textContent = G.playerIsGoose ? "Goose" : "Duck";
+    playerRoleDisplay.className = G.playerIsGoose ? 'font-semibold text-brand-accent-goose' : 'font-semibold text-brand-accent-duck';
+    
+    tasksRemainingDisplay.textContent = G.playerIsGoose ? 'N/A' : `${G.tasks.filter(t => !t.completed).length} / ${G.tasks.length}`;
+    emergencyMeetingsAvailable.textContent = G.emergencyMeetingsLeft;
+
+    useAbilityButton.textContent = G.playerIsGoose ? "Quack! (Kill)" : "Use"; // "Use" could be context sensitive later
+    useAbilityButton.className = `btn ${G.playerIsGoose ? (G.killOnCooldown ? 'btn-disabled' : 'btn-danger') : 'btn-secondary'}`;
+    useAbilityButton.disabled = (G.playerIsGoose && G.killOnCooldown) || !G.playerIsGoose; // Disable for Ducks for now
+
+    reportButton.disabled = G.players.filter(p => !p.isAlive && !p.reported).length === 0;
+    emergencyMeetingButton.disabled = G.emergencyMeetingsLeft <= 0;
+
+    renderPlayerAvatars();
+}
+
+function renderPlayerAvatars() {
+    mapArea.innerHTML = '';
+    G.players.forEach(player => {
+        const avatar = document.createElement('div');
+        avatar.className = `player-avatar relative flex flex-col items-center justify-center w-20 h-20 md:w-24 md:h-24 rounded-full text-white text-xs text-center p-1 shadow-lg border-2 border-slate-600 ${player.color}`;
+        avatar.dataset.playerId = player.id;
+        
+        const nameEl = document.createElement('span');
+        nameEl.className = 'font-semibold truncate max-w-full';
+        nameEl.textContent = player.name.split(' ')[0]; // First name or short name
+        avatar.appendChild(nameEl);
+
+        if (player.isHuman) {
+            const youIndicator = document.createElement('span');
+            youIndicator.textContent = "(You)";
+            youIndicator.className = "text-xs block opacity-80";
+            avatar.appendChild(youIndicator);
+        }
+
+        if (!player.isAlive) {
+            avatar.classList.add('dead');
+            avatar.classList.add('dead-overlay'); // For the ghost emoji
+        } else {
+            // Add interaction for human Goose to kill
+            if (G.playerIsGoose && !player.isHuman && !G.killOnCooldown) {
+                 avatar.classList.add('cursor-pointer', 'hover:ring-4', 'hover:ring-rose-500');
+                 avatar.onclick = () => attemptKill(player.id);
+            }
+        }
+        mapArea.appendChild(avatar);
+    });
+}
+
+function attemptKill(targetPlayerId) {
+    if (!G.playerIsGoose || G.killOnCooldown) return;
+
+    const target = G.players.find(p => p.id === targetPlayerId);
+    if (target && target.isAlive && !target.isHuman) {
+        target.isAlive = false;
+        console.log(`${G.playerName} killed ${target.name}`);
+        
+        G.killOnCooldown = true;
+        useAbilityButton.disabled = true;
+        useAbilityButton.classList.add('btn-disabled');
+        useAbilityButton.classList.remove('btn-danger');
+        updateGameScreenUI(); // Re-render avatars to show dead state and remove kill cursor
+
+        let cooldownTime = G.gameSettings.killCooldown;
+        useAbilityButton.textContent = `Quack! (${cooldownTime}s)`;
+        const interval = setInterval(() => {
+            cooldownTime--;
+            useAbilityButton.textContent = `Quack! (${cooldownTime}s)`;
+            if (cooldownTime <= 0) {
+                clearInterval(interval);
+                G.killOnCooldown = false;
+                useAbilityButton.disabled = false;
+                useAbilityButton.classList.remove('btn-disabled');
+                useAbilityButton.classList.add('btn-danger');
+                useAbilityButton.textContent = "Quack! (Kill)";
+                updateGameScreenUI(); // Re-enable kill cursors on avatars
+            }
+        }, 1000);
+
+        checkWinConditions();
+    }
+}
+
+function completeTask(taskId) {
+    const task = G.tasks.find(t => t.id === taskId);
+    if (task && !task.completed) {
+        task.completed = true;
+        G.completedTasks++;
+        const humanPlayer = G.players.find(p => p.isHuman);
+        if(humanPlayer) humanPlayer.completedTasksCount++;
+        
+        renderTaskList();
+        updateGameScreenUI();
+        checkWinConditions();
+    }
+}
+
+// Task Modal Logic
+function renderTaskList() {
+    taskList.innerHTML = '';
+    if (G.playerIsGoose || G.tasks.length === 0) {
+        taskList.innerHTML = '<li class="text-slate-400">You are a Goose. Your task is to eliminate Ducks!</li>';
+        viewTasksButton.disabled = true;
+        return;
+    }
+    viewTasksButton.disabled = false;
+
+    G.tasks.forEach(task => {
+        const li = document.createElement('li');
+        li.className = `p-3 rounded-md cursor-pointer transition-colors ${task.completed ? 'task-item completed bg-green-900/50' : 'task-item bg-slate-700 hover:bg-slate-600'}`;
+        li.textContent = task.name;
+        if (!task.completed) {
+            li.onclick = () => completeTask(task.id);
+        }
+        taskList.appendChild(li);
+    });
+}
+
+// Meeting Logic
+function startMeeting(reason, reportedPlayer = null) {
+    if (G.currentScreen === 'meeting') return; // Already in a meeting
+
+    switchScreen('meeting');
+    G.reportedBody = reportedPlayer;
+    meetingReason.textContent = reason;
+    meetingTitle.textContent = reportedPlayer ? `${reportedPlayer.name.toUpperCase()}'S BODY REPORTED!` : "EMERGENCY MEETING!";
+    
+    G.playerVotes = {}; // Clear previous player votes for this meeting instance
+
+    renderMeetingPlayers();
+    
+    let timeLeft = G.gameSettings.meetingDuration;
+    meetingTimerDisplay.textContent = timeLeft;
+    if (G.meetingTimerInterval) clearInterval(G.meetingTimerInterval);
+    G.meetingTimerInterval = setInterval(() => {
+        timeLeft--;
+        meetingTimerDisplay.textContent = timeLeft;
+        if (timeLeft <= 0) {
+            clearInterval(G.meetingTimerInterval);
+            processVotes();
+        }
+    }, 1000);
+}
+
+function renderMeetingPlayers() {
+    meetingPlayersGrid.innerHTML = '';
+    votingStatus.textContent = "Vote for who to eject!";
+    G.players.filter(p => p.isAlive).forEach(player => {
+        const card = document.createElement('div');
+        card.className = `p-3 rounded-lg text-center cursor-pointer transition-all border-2 border-transparent hover:border-amber-400 ${player.color}`;
+        
+        const avatarPlaceholder = document.createElement('div');
+        avatarPlaceholder.className = `w-12 h-12 rounded-full mx-auto mb-2 ${player.color} flex items-center justify-center text-xl font-bold border-2 border-slate-400`;
+        avatarPlaceholder.textContent = player.name.substring(0,1).toUpperCase();
+        card.appendChild(avatarPlaceholder);
+
+        const nameEl = document.createElement('p');
+        nameEl.className = "font-semibold truncate";
+        nameEl.textContent = player.name;
+        card.appendChild(nameEl);
+
+        if (player.isHuman) {
+            const youIndicator = document.createElement('span');
+            youIndicator.textContent = "(You)";
+            youIndicator.className = "text-xs block opacity-80";
+            card.appendChild(youIndicator);
+        }
+
+        card.onclick = () => castVote(player.id);
+        meetingPlayersGrid.appendChild(card);
+    });
+}
+
+function castVote(playerId) {
+    if (G.playerVotes[G.players.find(p => p.isHuman).id]) { // Human has already voted
+        votingStatus.textContent = "You have already voted!";
+        return;
+    }
+    const humanPlayer = G.players.find(p => p.isHuman);
+    humanPlayer.votedFor = playerId;
+    G.playerVotes[humanPlayer.id] = playerId; // Record human vote
+    
+    votingStatus.textContent = `You voted for ${G.players.find(p => p.id === playerId).name}. Waiting for others...`;
+    // Highlight selected player (optional)
+    // Simulate CPU votes after human votes
+    simulateCPUVotes();
+    
+    // Optional: If all alive players have voted, process immediately
+    const alivePlayers = G.players.filter(p => p.isAlive).length;
+    const totalVotesCast = Object.keys(G.playerVotes).length; // This needs to track all votes, not just human
+    // For now, we wait for timer or CPU votes to complete.
+    // We can add a small delay then process votes if CPU voting is instant.
+    // For this demo, we will wait for the timer mostly.
+}
+
+function simulateCPUVotes() {
+    G.players.filter(p => p.isAlive && !p.isHuman).forEach(cpu => {
+        if (!G.playerVotes[cpu.id]) { // If CPU hasn't "voted" yet in this round
+            const aliveTargets = G.players.filter(p => p.isAlive);
+            if (aliveTargets.length > 0) {
+                // Simple AI: Geese try to vote for Ducks, Ducks vote randomly or for suspicious players
+                let votedForId;
+                if (cpu.isGoose) { // Goose AI
+                    const potentialDuckTargets = aliveTargets.filter(p => !p.isGoose);
+                    if (potentialDuckTargets.length > 0) {
+                        votedForId = potentialDuckTargets[Math.floor(Math.random() * potentialDuckTargets.length)].id;
+                    } else { // Only other geese left? Unlikely, but vote randomly.
+                        votedForId = aliveTargets[Math.floor(Math.random() * aliveTargets.length)].id;
+                    }
+                } else { // Duck AI
+                    // For simplicity, vote randomly among other alive players
+                    const otherAliveTargets = aliveTargets.filter(p => p.id !== cpu.id);
+                     if (otherAliveTargets.length > 0) {
+                        votedForId = otherAliveTargets[Math.floor(Math.random() * otherAliveTargets.length)].id;
+                    } else { // Only self left? This case shouldn't happen in normal gameplay.
+                        votedForId = cpu.id; // Vote self if no other option
+                    }
+                }
+                // With a small chance, CPU might skip vote
+                if (Math.random() < 0.1) {
+                     G.playerVotes[cpu.id] = 'skip';
+                } else {
+                     G.playerVotes[cpu.id] = votedForId;
+                }
+            } else {
+                 G.playerVotes[cpu.id] = 'skip'; // No one to vote for
+            }
+        }
+    });
+     // Check if all players voted
+    const alivePlayerCount = G.players.filter(p => p.isAlive).length;
+    if (Object.keys(G.playerVotes).length >= alivePlayerCount) {
+        clearInterval(G.meetingTimerInterval); // Stop timer early if all voted
+        processVotes();
+    }
+}
+
+
+skipVoteButton.onclick = () => {
+    if (G.playerVotes[G.players.find(p => p.isHuman).id]) {
+        votingStatus.textContent = "You have already voted!";
+        return;
+    }
+    const humanPlayer = G.players.find(p => p.isHuman);
+    humanPlayer.votedFor = 'skip';
+    G.playerVotes[humanPlayer.id] = 'skip';
+    votingStatus.textContent = "You skipped your vote. Waiting for others...";
+    simulateCPUVotes(); // Trigger CPU votes if human skips
+};
+
+function processVotes() {
+    if (G.meetingTimerInterval) clearInterval(G.meetingTimerInterval);
+    G.voteCounts = {};
+    let skipVotes = 0;
+
+    G.players.filter(p => p.isAlive).forEach(voter => {
+        const votedForId = G.playerVotes[voter.id]; // This should be populated by castVote and simulateCPUVotes
+        if (!votedForId && voter.isHuman) { // Human didn't vote, default to skip
+             G.playerVotes[voter.id] = 'skip';
+        } else if (!votedForId && !voter.isHuman) { // CPU didn't vote (shouldn't happen if simulateCPUVotes runs)
+             G.playerVotes[voter.id] = 'skip'; // Default to skip
+        }
+
+        const finalVote = G.playerVotes[voter.id];
+        if (finalVote === 'skip') {
+            skipVotes++;
+        } else {
+            G.voteCounts[finalVote] = (G.voteCounts[finalVote] || 0) + 1;
+        }
+    });
+
+    // Determine ejected player
+    let maxVotes = 0;
+    let ejectedPlayerId = null;
+    let tie = false;
+
+    for (const playerId in G.voteCounts) {
+        if (G.voteCounts[playerId] > maxVotes) {
+            maxVotes = G.voteCounts[playerId];
+            ejectedPlayerId = playerId;
+            tie = false;
+        } else if (G.voteCounts[playerId] === maxVotes) {
+            tie = true;
+        }
+    }
+    
+    let resultMessage = "";
+    voteResultsDisplay.innerHTML = ''; // Clear previous results
+
+    // Display individual votes
+    for (const voterId in G.playerVotes) {
+        const voter = G.players.find(p => p.id == voterId);
+        if (!voter || !voter.isAlive) continue; 
+
+        const votedForId = G.playerVotes[voter.id];
+        let votedForName = "Skipped";
+        if (votedForId !== 'skip') {
+            const votedForPlayer = G.players.find(p => p.id == votedForId);
+            if (votedForPlayer) votedForName = votedForPlayer.name;
+        }
+        const voteP = document.createElement('p');
+        voteP.textContent = `${voter.name} voted for ${votedForName}`;
+        voteResultsDisplay.appendChild(voteP);
+    }
+
+
+    if (tie || maxVotes <= skipVotes && skipVotes > 0) {
+        resultMessage = "Vote tied! No one was ejected.";
+        if (skipVotes > maxVotes) resultMessage = "Most players skipped. No one was ejected.";
+        ejectedPlayerDisplay.textContent = resultMessage;
+    } else if (ejectedPlayerId) {
+        const ejectedPlayer = G.players.find(p => p.id == ejectedPlayerId);
+        ejectedPlayer.isAlive = false;
+        resultMessage = `${ejectedPlayer.name} was ejected.`;
+        if (ejectedPlayer.isGoose) {
+            resultMessage += ` ${ejectedPlayer.name} was a Goose!`;
+        } else {
+            resultMessage += ` ${ejectedPlayer.name} was a Duck.`;
+        }
+        ejectedPlayerDisplay.textContent = resultMessage;
+    } else {
+        resultMessage = "No one received enough votes. No one was ejected.";
+        ejectedPlayerDisplay.textContent = resultMessage;
+    }
+    
+    // Reset player votes for next meeting
+    G.players.forEach(p => p.votedFor = null);
+    G.playerVotes = {}; // Clear all recorded votes for next round
+
+    voteResultModal.classList.remove('hidden');
+}
+
+closeVoteResultModalButton.onclick = () => {
+    voteResultModal.classList.add('hidden');
+    if (G.reportedBody) { // Mark body as reported after meeting
+        const deadPlayer = G.players.find(p => p.id === G.reportedBody.id);
+        if (deadPlayer) deadPlayer.reported = true;
+        G.reportedBody = null;
+    }
+    updateGameScreenUI();
+    switchScreen('game');
+    checkWinConditions();
+};
+
+
+// Win Conditions
+function checkWinConditions() {
+    const alivePlayers = G.players.filter(p => p.isAlive);
+    const aliveGeese = alivePlayers.filter(p => p.isGoose);
+    const aliveDucks = alivePlayers.filter(p => !p.isGoose);
+
+    // Geese win conditions
+    if (aliveGeese.length === 0) {
+        gameOver("Ducks Win!", "All Geese have been eliminated or disconnected!");
+        return true;
+    }
+    if (aliveGeese.length >= aliveDucks.length) {
+        gameOver("Geese Win!", "The Geese have overwhelmed the Ducks!");
+        return true;
+    }
+
+    // Ducks win conditions
+    const humanPlayer = G.players.find(p => p.isHuman);
+    if (!G.playerIsGoose) { // Only check task win for ducks
+        const totalPlayerTasks = G.tasks.length;
+        const completedPlayerTasks = G.tasks.filter(t => t.completed).length;
+        if (totalPlayerTasks > 0 && completedPlayerTasks >= totalPlayerTasks) {
+             // Let's check *all* duck tasks for global win.
+            let allDucksTasksDone = true;
+            let totalDuckTasksInGame = 0;
+            let completedDuckTasksInGame = 0;
+
+            G.players.filter(p => !p.isGoose).forEach(duck => {
+                totalDuckTasksInGame += duck.tasks.length;
+                completedDuckTasksInGame += duck.tasks.filter(t => t.completed).length;
+                // CPU Ducks complete tasks slowly
+                if (!duck.isHuman && duck.isAlive) {
+                    const incompleteTasks = duck.tasks.filter(t => !t.completed);
+                    if (incompleteTasks.length > 0 && Math.random() < 0.2) { // 20% chance per check to complete a task
+                        incompleteTasks[0].completed = true;
+                    }
+                }
+            });
+            
+            if (totalDuckTasksInGame > 0 && completedDuckTasksInGame >= totalDuckTasksInGame) {
+                 gameOver("Ducks Win!", "All tasks have been completed!");
+                 return true;
+            }
+        }
+    }
+    return false;
+}
+
+
+function gameOver(title, message) {
+    switchScreen('gameOver');
+    gameOverTitle.textContent = title;
+    gameOverMessage.textContent = message;
+    if (title.includes("Ducks Win")) {
+        gameOverTitle.className = "text-5xl font-bold text-brand-accent-duck";
+    } else {
+        gameOverTitle.className = "text-5xl font-bold text-brand-accent-goose";
+    }
+}
+
+// Event Listeners
+startGameButton.addEventListener('click', () => {
+    setupGame();
+});
+
+viewTasksButton.addEventListener('click', () => {
+    renderTaskList();
+    taskModal.classList.remove('hidden');
+});
+
+closeTaskModalButton.addEventListener('click', () => {
+    taskModal.classList.add('hidden');
+});
+
+useAbilityButton.addEventListener('click', () => {
+    if (G.playerIsGoose && !G.killOnCooldown) {
+        // In this simplified version, kill is by clicking avatar.
+        // This button could be for sabotage later.
+        // For now, it's just visual feedback or if we implement range-based kill.
+        // It's mostly handled by avatar clicks for kill.
+        // Let's make it a sabotage button placeholder for Geese if not on cooldown.
+        alert("Sabotage ability placeholder! (Not implemented yet)");
+    } else if (!G.playerIsGoose) {
+        // For ducks, this could be context sensitive "Use" (e.g. for tasks)
+        alert("Use ability placeholder for Ducks! (Not implemented yet)");
+    }
+});
+
+reportButton.addEventListener('click', () => {
+    const deadUnreportedPlayers = G.players.filter(p => !p.isAlive && !p.reported);
+    if (deadUnreportedPlayers.length > 0) {
+        // For simplicity, report the first one found. In a real game, player would click on a body.
+        const bodyToReport = deadUnreportedPlayers[0];
+        bodyToReport.reported = true; // Mark as reported to prevent re-reporting same body immediately
+        startMeeting(`A body of ${bodyToReport.name} was reported!`, bodyToReport);
+    } else {
+        alert("No bodies to report nearby!"); // This feedback needs better context.
+    }
+});
+
+emergencyMeetingButton.addEventListener('click', () => {
+    if (G.emergencyMeetingsLeft > 0) {
+        G.emergencyMeetingsLeft--;
+        updateGameScreenUI();
+        startMeeting(`${G.playerName} called an Emergency Meeting!`);
+    }
+});
+
+playAgainButton.addEventListener('click', () => {
+    switchScreen('splash');
+});
+
+
+// Initial screen
+switchScreen('splash');
+
+// CPU Logic (very simple)
+function runCPULogic() {
+    if (G.currentScreen !== 'game') return;
+
+    G.players.forEach(player => {
+        if (!player.isHuman && player.isAlive) {
+            if (player.isGoose) {
+                // Goose AI: Try to "kill" if not on cooldown (simulated, no actual cooldown tracking for CPU here)
+                // And if there's a nearby duck
+                const aliveDucks = G.players.filter(p => p.isAlive && !p.isGoose);
+                if (aliveDucks.length > 0 && Math.random() < 0.1) { // 10% chance to kill
+                    const targetDuck = aliveDucks[Math.floor(Math.random() * aliveDucks.length)];
+                    targetDuck.isAlive = false;
+                    console.log(`(AI) ${player.name} killed ${targetDuck.name}`);
+                    updateGameScreenUI(); // To show dead player and update report button
+                    checkWinConditions();
+                }
+            } else {
+                // Duck AI: Try to "complete" a task
+                const incompleteTasks = player.tasks.filter(t => !t.completed);
+                if (incompleteTasks.length > 0 && Math.random() < 0.25) { // 25% chance to complete a task
+                    incompleteTasks[0].completed = true;
+                    player.completedTasksCount++;
+                    // Note: G.completedTasks is for the human player.
+                    // We need a global task count check or individual CPU task tracking for win condition.
+                    // The current checkWinConditions looks at global G.tasks for human,
+                    // and iterates through all player tasks for actual total.
+                    console.log(`(AI) ${player.name} completed a task.`);
+                    checkWinConditions(); // Check if all tasks completed by all ducks
+                }
+            }
+        }
+    });
+}
+
+// Start CPU logic after a delay to let player orient
+setTimeout(() => {
+    setInterval(runCPULogic, 7000); // CPUs perform actions every 7 seconds
+}, 5000);
+
+
+// Make sure player avatars are distinct (already handled by player.color)
+// The placeholder was <div class="bg-gray-200 border-2 border-dashed rounded-xl w-16 h-16" />
+// I'm using colored, rounded divs: w-20 h-20 rounded-full ${player.color}
+// This fits the spirit of the request.
+
+</script>
+
+</body>
+</html>

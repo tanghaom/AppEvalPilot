@@ -1,0 +1,9 @@
+{
+  "web_id": "web_85",
+  "task_id": 4,
+  "task_type": "dynamic",
+  "instruction": "Task: Display game status (Check, Checkmate, Stalemate) in response to moves.\nExpected Result: When a user's move results in check, checkmate, or stalemate, a clear message or visual indicator (e.g., 'Check!', 'Checkmate - White wins!', 'Stalemate - Draw!') is displayed. If the state is checkmate or stalemate, further piece movements are disabled.\n\nNote: The task is only considered successful if the expected result is achieved; otherwise, it is deemed infeasible.",
+  "max_steps": 15,
+  "expected": "When a user's move results in check, checkmate, or stalemate, a clear message or visual indicator (e.g., 'Check!', 'Checkmate - White wins!', 'Stalemate - Draw!') is displayed. If the state is checkmate or stalemate, further piece movements are disabled.",
+  "label": 1
+}

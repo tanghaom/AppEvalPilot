@@ -1,0 +1,9 @@
+{
+  "web_id": "web_60",
+  "task_id": 1,
+  "task_type": "dynamic",
+  "instruction": "Task: Click the user icon (sidebar toggle) to open/close the navigation sidebar.\nExpected Result: The navigation sidebar toggles its visibility, sliding in from or out to the left.\n\nNote: The task is only considered successful if the expected result is achieved; otherwise, it is deemed infeasible.",
+  "max_steps": 15,
+  "expected": "The navigation sidebar toggles its visibility, sliding in from or out to the left.",
+  "label": 1
+}

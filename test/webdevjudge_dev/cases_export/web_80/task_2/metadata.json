@@ -1,0 +1,9 @@
+{
+  "web_id": "web_80",
+  "task_id": 2,
+  "task_type": "dynamic",
+  "instruction": "Task: User inputs text into a designated data input field (e.g., a textarea).\nExpected Result: The entered text is displayed in the input field and is available for processing by the selected model.\n\nNote: The task is only considered successful if the expected result is achieved; otherwise, it is deemed infeasible.",
+  "max_steps": 15,
+  "expected": "The entered text is displayed in the input field and is available for processing by the selected model.",
+  "label": 1
+}

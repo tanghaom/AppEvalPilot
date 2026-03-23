@@ -1,0 +1,598 @@
+<!DOCTYPE html>
+<html lang="en" class=""> <!-- Dark mode class will be added here by JS -->
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PriceTrack Pro</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        /* Custom scrollbar for webkit browsers */
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        .dark ::-webkit-scrollbar-track { background: #0f172a; } /* slate-900 */
+        html:not(.dark) ::-webkit-scrollbar-track { background: #f8fafc; } /* slate-50 */
+        ::-webkit-scrollbar-thumb { background: #64748b; border-radius: 4px; } /* primary/slate-500 */
+        ::-webkit-scrollbar-thumb:hover { background: #475569; } /* slate-600 */
+        .dark ::-webkit-scrollbar-thumb { background: #475569; } /* slate-600 */
+        .dark ::-webkit-scrollbar-thumb:hover { background: #334155; } /* slate-700 */
+
+        /* Custom slider track styling */
+        input[type="range"].price-slider {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 100%;
+            height: 8px; /* Consistent height */
+            border-radius: 4px;
+            background: #cbd5e1; /* Default light track: slate-300 */
+            outline: none;
+            opacity: 0.8;
+            transition: opacity .2s, background .3s;
+        }
+        input[type="range"].price-slider:hover { opacity: 1; }
+        input[type="range"].price-slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 18px; /* Thumb size */
+            height: 18px;
+            border-radius: 50%;
+            background: #64748b; /* Default light thumb: primary/slate-500 */
+            cursor: pointer;
+            border: 3px solid #ffffff; /* Light mode thumb border */
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            transition: background .3s, border-color .3s;
+        }
+        input[type="range"].price-slider::-moz-range-thumb {
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            background: #64748b; /* Default light thumb: primary/slate-500 */
+            cursor: pointer;
+            border: 3px solid #ffffff; /* Light mode thumb border */
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            transition: background .3s, border-color .3s;
+        }
+
+        /* Dark mode slider styles */
+        .dark input[type="range"].price-slider { background: #334155; /* Dark track: slate-700 */ }
+        .dark input[type="range"].price-slider::-webkit-slider-thumb {
+            background: #94a3b8; /* Dark thumb: slate-400 */
+            border-color: #1e293b; /* Dark card background: slate-800 */
+        }
+        .dark input[type="range"].price-slider::-moz-range-thumb {
+            background: #94a3b8; /* Dark thumb: slate-400 */
+            border-color: #1e293b; /* Dark card background: slate-800 */
+        }
+
+        /* For item card transitions */
+        .item-card { transition: opacity 0.3s ease, transform 0.3s ease; will-change: opacity, transform; }
+        .item-card-enter { opacity: 0; transform: translateY(20px); }
+        .item-card-exit-active { opacity: 0; transform: scale(0.95); }
+        
+        /* Modal transitions */
+        #editItemModal { transition: opacity 0.3s ease-in-out; will-change: opacity; }
+        #editItemModal > div > div { transition: transform 0.3s ease-in-out, opacity 0.3s ease-in-out; will-change: transform, opacity; } /* Target the inner animating div */
+
+    </style>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#64748b', // slate-500
+                        success: '#10b981', // emerald-500
+                        danger: '#f43f5e',  // rose-500
+                        'light-bg': '#f8fafc', // slate-50 (softer than pure white)
+                        'light-text': '#1f2937', // slate-800
+                        'dark-bg': '#0f172a',  // slate-900
+                        'dark-text': '#f1f5f9', // slate-100
+                        'card-light': '#ffffff', // Card bg pure white for contrast on slate-50
+                        'card-dark': '#1e293b' // slate-800
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+<body class="bg-light-bg text-light-text dark:bg-dark-bg dark:text-dark-text transition-colors duration-300 antialiased">
+    <!-- Main container -->
+    <div class="container mx-auto p-4 md:p-8 max-w-4xl min-h-screen">
+        <!-- Header -->
+        <header class="flex flex-col sm:flex-row justify-between items-center mb-8">
+            <h1 class="text-3xl md:text-4xl font-bold text-primary dark:text-slate-300 mb-4 sm:mb-0">
+                Price<span class="text-slate-700 dark:text-slate-400">Track</span>
+            </h1>
+            <div class="flex items-center space-x-2 sm:space-x-4">
+                <div class="relative">
+                    <input type="text" id="searchInput" placeholder="Search items..." class="w-40 sm:w-auto pl-10 pr-4 py-2 text-sm border border-slate-300 dark:border-slate-600 rounded-lg bg-card-light dark:bg-slate-800 focus:ring-2 focus:ring-primary dark:focus:ring-primary focus:border-transparent outline-none transition-all">
+                    <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                        <svg class="h-5 w-5 text-slate-400 dark:text-slate-500" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                            <path fill-rule="evenodd" d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z" clip-rule="evenodd" />
+                        </svg>
+                    </div>
+                </div>
+                <button id="themeToggleBtn" aria-label="Toggle dark mode" class="p-2 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors text-slate-600 dark:text-slate-400">
+                    <svg id="sunIcon" xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
+                    </svg>
+                    <svg id="moonIcon" xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 hidden" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
+                    </svg>
+                </button>
+            </div>
+        </header>
+
+        <!-- Item Entry Form -->
+        <section id="itemEntrySection" class="mb-8 p-6 bg-card-light dark:bg-card-dark rounded-xl shadow-lg">
+            <h2 class="text-xl font-semibold mb-4 text-slate-700 dark:text-slate-300">Add New Item</h2>
+            <form id="addItemForm" class="space-y-4">
+                <div>
+                    <label for="itemName" class="block text-sm font-medium text-slate-600 dark:text-slate-400 mb-1">Item Name</label>
+                    <input type="text" id="itemName" name="itemName" required class="w-full px-4 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-light-bg dark:bg-slate-700 focus:ring-2 focus:ring-primary dark:focus:ring-primary focus:border-transparent outline-none" placeholder="e.g., Organic Coffee Beans">
+                    <p id="itemNameError" class="text-danger text-xs mt-1 min-h-[1em]"></p> <!-- min-h to prevent layout shift -->
+                </div>
+                <div>
+                    <label for="prevPrice" class="block text-sm font-medium text-slate-600 dark:text-slate-400 mb-1">Previous Price ($)</label>
+                    <input type="number" id="prevPrice" name="prevPrice" required min="0.01" step="0.01" class="w-full px-4 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-light-bg dark:bg-slate-700 focus:ring-2 focus:ring-primary dark:focus:ring-primary focus:border-transparent outline-none" placeholder="e.g., 12.99">
+                    <p id="prevPriceError" class="text-danger text-xs mt-1 min-h-[1em]"></p>
+                </div>
+                <button type="submit" class="w-full sm:w-auto bg-primary hover:bg-slate-600 dark:bg-primary dark:hover:bg-slate-400 text-white font-semibold py-2.5 px-6 rounded-lg transition-colors flex items-center justify-center space-x-2 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary dark:focus:ring-offset-dark-bg">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                        <path fill-rule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clip-rule="evenodd" />
+                    </svg>
+                    <span>Add Item</span>
+                </button>
+                <p id="formError" class="text-danger text-sm mt-2 min-h-[1.25em]"></p>
+            </form>
+        </section>
+
+        <!-- Item List -->
+        <section id="itemListSection">
+            <div class="flex justify-between items-center mb-4">
+                <h2 class="text-xl font-semibold text-slate-700 dark:text-slate-300">Tracked Items</h2>
+                <!-- Potentially for sorting options in future -->
+            </div>
+            <div id="itemList" class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <!-- Item cards will be dynamically inserted here -->
+            </div>
+            <!-- Placeholder for empty state -->
+            <div id="emptyState" class="md:col-span-2 text-center py-10 text-slate-500 dark:text-slate-400 hidden">
+                <!-- Content injected by JS -->
+            </div>
+        </section>
+
+        <!-- Edit Item Modal -->
+        <div id="editItemModal" class="fixed inset-0 bg-slate-900 bg-opacity-50 dark:bg-opacity-75 flex items-center justify-center p-4 hidden z-50 opacity-0">
+            <div class="bg-card-light dark:bg-card-dark p-6 md:p-8 rounded-xl shadow-2xl w-full max-w-md scale-95 opacity-0"> {/* Added opacity-0 here for transition */}
+                <div class="flex justify-between items-center mb-6">
+                    <h2 class="text-xl font-semibold text-slate-700 dark:text-slate-300">Edit Item</h2>
+                    <button id="closeEditModalBtn" aria-label="Close edit modal" class="p-1 rounded-full hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-500 dark:text-slate-400">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                    </button>
+                </div>
+                <form id="editItemForm" class="space-y-4">
+                    <input type="hidden" id="editItemId">
+                    <div>
+                        <label for="editItemName" class="block text-sm font-medium text-slate-600 dark:text-slate-400 mb-1">Item Name</label>
+                        <input type="text" id="editItemName" name="editItemName" required class="w-full px-4 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-light-bg dark:bg-slate-700 focus:ring-2 focus:ring-primary dark:focus:ring-primary focus:border-transparent outline-none">
+                        <p id="editItemNameError" class="text-danger text-xs mt-1 min-h-[1em]"></p>
+                    </div>
+                    <div>
+                        <label for="editPrevPrice" class="block text-sm font-medium text-slate-600 dark:text-slate-400 mb-1">Previous Price ($)</label>
+                        <input type="number" id="editPrevPrice" name="editPrevPrice" required min="0.01" step="0.01" class="w-full px-4 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-light-bg dark:bg-slate-700 focus:ring-2 focus:ring-primary dark:focus:ring-primary focus:border-transparent outline-none">
+                        <p id="editPrevPriceError" class="text-danger text-xs mt-1 min-h-[1em]"></p>
+                    </div>
+                    <button type="submit" class="w-full bg-primary hover:bg-slate-600 dark:bg-primary dark:hover:bg-slate-400 text-white font-semibold py-2.5 px-6 rounded-lg transition-colors flex items-center justify-center space-x-2 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary dark:focus:ring-offset-dark-bg">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                            <path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z" />
+                        </svg>
+                        <span>Save Changes</span>
+                    </button>
+                    <p id="editFormError" class="text-danger text-sm mt-2 min-h-[1.25em]"></p>
+                </form>
+            </div>
+        </div>
+    </div>
+
+<script>
+    // Immediately Invoked Function Expression (IIFE) to encapsulate script
+    (() => {
+        // State
+        let items = [];
+        let isDarkMode = false;
+        let searchTerm = '';
+
+        // DOM Elements
+        const htmlElement = document.documentElement;
+        const themeToggleBtn = document.getElementById('themeToggleBtn');
+        const sunIcon = document.getElementById('sunIcon');
+        const moonIcon = document.getElementById('moonIcon');
+        const addItemForm = document.getElementById('addItemForm');
+        const itemNameInput = document.getElementById('itemName');
+        const prevPriceInput = document.getElementById('prevPrice');
+        const itemNameError = document.getElementById('itemNameError');
+        const prevPriceError = document.getElementById('prevPriceError');
+        const formError = document.getElementById('formError');
+        const itemListContainer = document.getElementById('itemList');
+        const emptyStateDiv = document.getElementById('emptyState');
+        const searchInput = document.getElementById('searchInput');
+
+        const editItemModal = document.getElementById('editItemModal');
+        const editItemModalContent = editItemModal.querySelector('div > div');
+        const closeEditModalBtn = document.getElementById('closeEditModalBtn');
+        const editItemForm = document.getElementById('editItemForm');
+        const editItemIdInput = document.getElementById('editItemId');
+        const editItemNameInput = document.getElementById('editItemName');
+        const editPrevPriceInput = document.getElementById('editPrevPrice');
+        const editItemNameError = document.getElementById('editItemNameError');
+        const editPrevPriceError = document.getElementById('editPrevPriceError');
+        const editFormError = document.getElementById('editFormError');
+
+        // Utility functions
+        const generateId = () => Date.now().toString(36) + Math.random().toString(36).substring(2);
+        const formatCurrency = (amount) => parseFloat(amount).toLocaleString('en-US', { style: 'currency', currency: 'USD' });
+
+        const calculatePriceDifference = (prevPrice, currentPrice) => {
+            if (prevPrice === 0) return currentPrice > 0 ? Infinity : 0;
+            return ((currentPrice - prevPrice) / prevPrice) * 100;
+        };
+
+        // Local Storage
+        const saveToLocalStorage = () => {
+            localStorage.setItem('priceTrackerItems', JSON.stringify(items));
+            localStorage.setItem('priceTrackerDarkMode', JSON.stringify(isDarkMode));
+        };
+
+        const loadFromLocalStorage = () => {
+            const storedItems = localStorage.getItem('priceTrackerItems');
+            if (storedItems) {
+                items = JSON.parse(storedItems);
+            }
+            const prefersDarkScheme = window.matchMedia('(prefers-color-scheme: dark)').matches;
+            const storedDarkMode = localStorage.getItem('priceTrackerDarkMode');
+            
+            if (storedDarkMode !== null) {
+                isDarkMode = JSON.parse(storedDarkMode);
+            } else {
+                isDarkMode = prefersDarkScheme;
+            }
+        };
+        
+        // Dark Mode
+        const applyTheme = () => {
+            if (isDarkMode) {
+                htmlElement.classList.add('dark');
+                sunIcon.classList.add('hidden');
+                moonIcon.classList.remove('hidden');
+            } else {
+                htmlElement.classList.remove('dark');
+                sunIcon.classList.remove('hidden');
+                moonIcon.classList.add('hidden');
+            }
+        };
+
+        const toggleTheme = () => {
+            isDarkMode = !isDarkMode;
+            applyTheme();
+            saveToLocalStorage();
+        };
+
+        // Validation
+        const validateItemName = (name, currentId = null) => {
+            const trimmedName = name.trim();
+            if (!trimmedName) return "Item name cannot be empty.";
+            if (items.some(item => item.name.toLowerCase() === trimmedName.toLowerCase() && item.id !== currentId)) {
+                return "Item name already exists.";
+            }
+            return "";
+        };
+
+        const validatePrice = (price) => {
+            const numPrice = parseFloat(price);
+            if (isNaN(numPrice) || numPrice <= 0) return "Price must be a positive number.";
+            return "";
+        };
+
+        const displayError = (element, message) => {
+            element.textContent = message;
+        };
+
+        const clearFormErrors = () => {
+            [itemNameError, prevPriceError, formError, editItemNameError, editPrevPriceError, editFormError].forEach(el => el.textContent = '');
+        };
+
+        // Render Functions
+        const renderItems = () => {
+            itemListContainer.innerHTML = ''; 
+            
+            const filteredItems = items.filter(item => 
+                item.name.toLowerCase().includes(searchTerm.toLowerCase())
+            );
+
+            if (filteredItems.length === 0) {
+                emptyStateDiv.classList.remove('hidden');
+                if (items.length === 0) {
+                    emptyStateDiv.innerHTML = `
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-16 w-16 mx-auto mb-4 text-slate-400 dark:text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4"/>
+                        </svg>
+                        <p class="text-lg font-medium">No items yet.</p>
+                        <p class="text-sm">Add items using the form above to start tracking prices.</p>
+                    `;
+                } else {
+                     emptyStateDiv.innerHTML = `
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-12 w-12 mx-auto mb-3 text-slate-400 dark:text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" />
+                        </svg>
+                        <p class="text-lg font-medium">No items match your search.</p>
+                        <p class="text-sm">Try a different search term or clear the search.</p>
+                    `;
+                }
+            } else {
+                emptyStateDiv.classList.add('hidden');
+            }
+
+            filteredItems.forEach(item => {
+                const itemCard = document.createElement('div');
+                itemCard.classList.add('item-card', 'bg-card-light', 'dark:bg-card-dark', 'p-5', 'rounded-xl', 'shadow-lg', 'space-y-3');
+                itemCard.dataset.itemId = item.id;
+
+                const priceDiff = calculatePriceDifference(item.prevPrice, item.currentPrice);
+                let diffColorClass = 'text-slate-500 dark:text-slate-400';
+                let diffIndicatorIcon = `<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 inline mr-1 shrink-0" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm-.707-10.293a1 1 0 00-1.414 1.414l.293.293V12a1 1 0 102 0v-1.586l.293-.293a1 1 0 00-1.414-1.414zM10 6a1 1 0 100-2 1 1 0 000 2z" clip-rule="evenodd" /></svg>`;
+
+                if (priceDiff < -0.001) { // Using a small epsilon for floating point comparison
+                    diffColorClass = 'text-success'; 
+                    diffIndicatorIcon = `<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 inline mr-1 shrink-0" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M14.707 10.293a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 111.414-1.414L9 12.586V5a1 1 0 012 0v7.586l2.293-2.293a1 1 0 011.414 0z" clip-rule="evenodd" /></svg>`; 
+                } else if (priceDiff > 0.001) {
+                    diffColorClass = 'text-danger'; 
+                    diffIndicatorIcon = `<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 inline mr-1 shrink-0" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M5.293 9.707a1 1 0 010-1.414l4-4a1 1 0 011.414 0l4 4a1 1 0 01-1.414 1.414L11 7.414V15a1 1 0 11-2 0V7.414L6.707 9.707a1 1 0 01-1.414 0z" clip-rule="evenodd" /></svg>`;
+                }
+                
+                itemCard.innerHTML = `
+                    <div class="flex justify-between items-start">
+                        <div>
+                            <h3 class="text-lg font-semibold text-slate-800 dark:text-slate-200 break-all">${item.name}</h3>
+                            <p class="text-xs text-slate-500 dark:text-slate-400">Previous: ${formatCurrency(item.prevPrice)}</p>
+                        </div>
+                        <div class="flex space-x-1 shrink-0 ml-2">
+                            <button class="edit-item-btn p-1.5 text-slate-500 hover:text-primary dark:text-slate-400 dark:hover:text-slate-300 rounded-md hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors" aria-label="Edit item ${item.name}">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                                    <path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z" />
+                                </svg>
+                            </button>
+                            <button class="delete-item-btn p-1.5 text-slate-500 hover:text-danger dark:text-slate-400 dark:hover:text-rose-400 rounded-md hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors" aria-label="Delete item ${item.name}">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                                    <path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd" />
+                                </svg>
+                            </button>
+                        </div>
+                    </div>
+                    <div>
+                        <div class="flex justify-between items-baseline mb-1">
+                            <label for="priceSlider-${item.id}" class="block text-sm font-medium text-slate-600 dark:text-slate-400">Current Price:</label>
+                            <span class="current-price font-semibold text-lg ${diffColorClass}">${formatCurrency(item.currentPrice)}</span>
+                        </div>
+                        <input type="range" id="priceSlider-${item.id}" min="0" max="${Math.max(item.prevPrice * 2, 10)}" step="0.01" value="${item.currentPrice}" 
+                               class="w-full price-slider">
+                    </div>
+                    <div class="text-sm font-medium price-difference ${diffColorClass} flex items-center">
+                        ${diffIndicatorIcon}
+                        <span>${priceDiff.toFixed(1)}%</span>
+                        <span class="text-xs text-slate-500 dark:text-slate-400 ml-1.5">(${priceDiff >= 0 ? '+' : ''}${formatCurrency(item.currentPrice - item.prevPrice)})</span>
+                    </div>
+                `;
+                
+                itemCard.querySelector('.delete-item-btn').addEventListener('click', () => handleDeleteItem(item.id, itemCard));
+                itemCard.querySelector('.edit-item-btn').addEventListener('click', () => handleOpenEditModal(item));
+                
+                const priceSlider = itemCard.querySelector(`#priceSlider-${item.id}`);
+                const currentPriceDisplay = itemCard.querySelector('.current-price');
+                const priceDifferenceDisplay = itemCard.querySelector('.price-difference');
+
+                priceSlider.addEventListener('input', (e) => {
+                    const newCurrentPrice = parseFloat(e.target.value);
+                    
+                    currentPriceDisplay.textContent = formatCurrency(newCurrentPrice);
+                    const newPriceDiff = calculatePriceDifference(item.prevPrice, newCurrentPrice);
+                    let newDiffColorClass = 'text-slate-500 dark:text-slate-400';
+                    let newDiffIndicatorIcon = `<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 inline mr-1 shrink-0" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm-.707-10.293a1 1 0 00-1.414 1.414l.293.293V12a1 1 0 102 0v-1.586l.293-.293a1 1 0 00-1.414-1.414zM10 6a1 1 0 100-2 1 1 0 000 2z" clip-rule="evenodd" /></svg>`;
+
+                    if (newPriceDiff < -0.001) {
+                        newDiffColorClass = 'text-success';
+                        newDiffIndicatorIcon = `<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 inline mr-1 shrink-0" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M14.707 10.293a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 111.414-1.414L9 12.586V5a1 1 0 012 0v7.586l2.293-2.293a1 1 0 011.414 0z" clip-rule="evenodd" /></svg>`; 
+                    } else if (newPriceDiff > 0.001) {
+                        newDiffColorClass = 'text-danger';
+                        newDiffIndicatorIcon = `<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 inline mr-1 shrink-0" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M5.293 9.707a1 1 0 010-1.414l4-4a1 1 0 011.414 0l4 4a1 1 0 01-1.414 1.414L11 7.414V15a1 1 0 11-2 0V7.414L6.707 9.707a1 1 0 01-1.414 0z" clip-rule="evenodd" /></svg>`;
+                    }
+                    
+                    currentPriceDisplay.className = `current-price font-semibold text-lg ${newDiffColorClass}`;
+                    priceDifferenceDisplay.className = `text-sm font-medium price-difference ${newDiffColorClass} flex items-center`;
+                    priceDifferenceDisplay.innerHTML = `
+                        ${newDiffIndicatorIcon}
+                        <span>${newPriceDiff.toFixed(1)}%</span>
+                        <span class="text-xs text-slate-500 dark:text-slate-400 ml-1.5">(${newPriceDiff >= 0 ? '+' : ''}${formatCurrency(newCurrentPrice - item.prevPrice)})</span>
+                    `;
+                });
+
+                priceSlider.addEventListener('change', (e) => { 
+                    const changedItem = items.find(i => i.id === item.id);
+                    if(changedItem) {
+                        changedItem.currentPrice = parseFloat(e.target.value);
+                        saveToLocalStorage();
+                    }
+                });
+                
+                itemCard.classList.add('item-card-enter');
+                requestAnimationFrame(() => {
+                    requestAnimationFrame(() => {
+                        itemCard.classList.remove('item-card-enter');
+                    });
+                });
+                itemListContainer.appendChild(itemCard);
+            });
+        };
+
+        // Event Handlers
+        const handleAddItem = (e) => {
+            e.preventDefault();
+            clearFormErrors();
+
+            const name = itemNameInput.value;
+            const prevPrice = prevPriceInput.value;
+
+            const nameValidationError = validateItemName(name);
+            const priceValidationError = validatePrice(prevPrice);
+
+            let isValid = true;
+            if (nameValidationError) {
+                displayError(itemNameError, nameValidationError);
+                isValid = false;
+            }
+            if (priceValidationError) {
+                displayError(prevPriceError, priceValidationError);
+                isValid = false;
+            }
+
+            if (!isValid) return;
+
+            const newItem = {
+                id: generateId(),
+                name: name.trim(),
+                prevPrice: parseFloat(prevPrice),
+                currentPrice: parseFloat(prevPrice)
+            };
+            items.unshift(newItem);
+            saveToLocalStorage();
+            renderItems();
+            addItemForm.reset();
+            itemNameInput.focus();
+        };
+
+        const handleDeleteItem = (id, cardElement) => {
+            cardElement.classList.add('item-card-exit-active');
+            cardElement.addEventListener('transitionend', () => {
+                items = items.filter(item => item.id !== id);
+                saveToLocalStorage();
+                renderItems(); 
+            }, { once: true });
+        };
+        
+        const handleOpenEditModal = (itemToEdit) => {
+            if (!itemToEdit) return;
+
+            editItemIdInput.value = itemToEdit.id;
+            editItemNameInput.value = itemToEdit.name;
+            editPrevPriceInput.value = itemToEdit.prevPrice;
+            
+            clearFormErrors();
+            editItemModal.classList.remove('hidden');
+            requestAnimationFrame(() => { // Ensure display:block is processed
+                editItemModal.classList.remove('opacity-0');
+                editItemModalContent.classList.remove('scale-95', 'opacity-0');
+            });
+            editItemNameInput.focus();
+        };
+
+        const handleCloseEditModal = () => {
+            editItemModal.classList.add('opacity-0');
+            editItemModalContent.classList.add('scale-95', 'opacity-0');
+            
+            const onTransitionEnd = (e) => {
+                // Only hide if the transition was on the main modal backdrop or content itself
+                if (e.target === editItemModal || e.target === editItemModalContent) {
+                    editItemModal.classList.add('hidden');
+                    editItemModal.removeEventListener('transitionend', onTransitionEnd);
+                    editItemModalContent.removeEventListener('transitionend', onTransitionEnd);
+                }
+            };
+            editItemModal.addEventListener('transitionend', onTransitionEnd);
+            editItemModalContent.addEventListener('transitionend', onTransitionEnd);
+        };
+
+        const handleSaveEditItem = (e) => {
+            e.preventDefault();
+            clearFormErrors();
+
+            const id = editItemIdInput.value;
+            const name = editItemNameInput.value;
+            const prevPrice = editPrevPriceInput.value;
+
+            const nameValidationError = validateItemName(name, id); 
+            const priceValidationError = validatePrice(prevPrice);
+
+            let isValid = true;
+            if (nameValidationError) {
+                displayError(editItemNameError, nameValidationError);
+                isValid = false;
+            }
+            if (priceValidationError) {
+                displayError(editPrevPriceError, priceValidationError);
+                isValid = false;
+            }
+
+            if (!isValid) return;
+
+            const itemIndex = items.findIndex(item => item.id === id);
+            if (itemIndex > -1) {
+                const oldPrevPrice = items[itemIndex].prevPrice;
+                items[itemIndex].name = name.trim();
+                items[itemIndex].prevPrice = parseFloat(prevPrice);
+                if (oldPrevPrice !== items[itemIndex].prevPrice) {
+                    items[itemIndex].currentPrice = items[itemIndex].prevPrice;
+                }
+            }
+            
+            saveToLocalStorage();
+            renderItems();
+            handleCloseEditModal();
+        };
+        
+        const handleSearch = (e) => {
+            searchTerm = e.target.value;
+            renderItems();
+        };
+
+        // Initialization
+        const init = () => {
+            loadFromLocalStorage();
+            applyTheme();
+            renderItems();
+
+            themeToggleBtn.addEventListener('click', toggleTheme);
+            addItemForm.addEventListener('submit', handleAddItem);
+            searchInput.addEventListener('input', handleSearch);
+            
+            closeEditModalBtn.addEventListener('click', handleCloseEditModal);
+            editItemForm.addEventListener('submit', handleSaveEditItem);
+
+            document.addEventListener('keydown', (e) => {
+                if (e.key === 'Escape' && !editItemModal.classList.contains('hidden')) {
+                    handleCloseEditModal();
+                }
+            });
+            editItemModal.addEventListener('click', (e) => {
+                if (e.target === editItemModal) {
+                    handleCloseEditModal();
+                }
+            });
+
+            window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', e => {
+                if (localStorage.getItem('priceTrackerDarkMode') === null) {
+                    isDarkMode = e.matches;
+                    applyTheme();
+                }
+            });
+        };
+
+        document.addEventListener('DOMContentLoaded', init);
+
+    })();
+</script>
+
+</body>
+</html>

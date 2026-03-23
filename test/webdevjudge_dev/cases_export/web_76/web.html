@@ -1,0 +1,664 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Green Mart - Smart & Eco-Friendly Groceries</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        /* Custom scrollbar for webkit browsers */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #f1f1f1;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #888;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #555;
+        }
+        .tab-active {
+            border-bottom-width: 2px;
+            border-color: #059669; /* emerald-600 */
+            color: #047857; /* emerald-700 */
+            font-weight: 600;
+        }
+        .modal {
+            display: none; /* Hidden by default */
+        }
+        .modal.open {
+            display: flex; /* Show when open */
+        }
+    </style>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: {
+                            light: '#ECFDF5', // emerald-50
+                            DEFAULT: '#10B981', // emerald-500
+                            medium: '#059669', // emerald-600
+                            dark: '#047857', // emerald-700
+                        },
+                        secondary: {
+                            light: '#FFFBEB', // amber-50
+                            DEFAULT: '#F59E0B', // amber-500
+                            dark: '#D97706', // amber-600
+                        },
+                        neutral: {
+                            100: '#F3F4F6', // gray-100
+                            200: '#E5E7EB', // gray-200
+                            300: '#D1D5DB', // gray-300
+                            700: '#374151', // gray-700
+                            800: '#1F2937', // gray-800
+                        }
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    },
+                }
+            }
+        }
+    </script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body class="bg-neutral-100 font-sans antialiased">
+
+    <!-- Navigation Bar -->
+    <nav class="bg-white shadow-md sticky top-0 z-50">
+        <div class="container mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex items-center justify-between h-16">
+                <div class="flex items-center">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 text-primary-medium" viewBox="0 0 20 20" fill="currentColor">
+                        <path fill-rule="evenodd" d="M10 2a4 4 0 00-4 4v1H5a1 1 0 00-.994.89l-1 9A1 1 0 004 18h12a1 1 0 00.994-1.11l-1-9A1 1 0 0015 7h-1V6a4 4 0 00-4-4zm2 5V6a2 2 0 10-4 0v1h4zm-6 3a1 1 0 011-1h8a1 1 0 110 2H7a1 1 0 01-1-1z" clip-rule="evenodd" />
+                    </svg>
+                    <span class="ml-2 text-2xl font-bold text-primary-dark">Green Mart</span>
+                </div>
+                <div class="hidden md:flex space-x-4">
+                    <a href="#hero" class="text-neutral-700 hover:text-primary-medium px-3 py-2 rounded-md text-sm font-medium">Home</a>
+                    <a href="#how-it-works" class="text-neutral-700 hover:text-primary-medium px-3 py-2 rounded-md text-sm font-medium">How It Works</a>
+                    <a href="#features" class="text-neutral-700 hover:text-primary-medium px-3 py-2 rounded-md text-sm font-medium">Features</a>
+                    <button id="viewToggleBtn" class="bg-primary-medium text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-primary-dark transition duration-150">Switch to Shop Owner</button>
+                </div>
+                <div class="md:hidden">
+                    <button id="mobileMenuBtn" class="text-neutral-700 hover:text-primary-medium focus:outline-none">
+                        <svg class="h-6 w-6" stroke="currentColor" fill="none" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16m-7 6h7"></path>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+        </div>
+        <!-- Mobile menu, show/hide based on menu state. -->
+        <div id="mobileMenu" class="md:hidden hidden">
+            <div class="px-2 pt-2 pb-3 space-y-1 sm:px-3">
+                <a href="#hero" class="text-neutral-700 hover:bg-primary-light hover:text-primary-medium block px-3 py-2 rounded-md text-base font-medium">Home</a>
+                <a href="#how-it-works" class="text-neutral-700 hover:bg-primary-light hover:text-primary-medium block px-3 py-2 rounded-md text-base font-medium">How It Works</a>
+                <a href="#features" class="text-neutral-700 hover:bg-primary-light hover:text-primary-medium block px-3 py-2 rounded-md text-base font-medium">Features</a>
+                <button id="mobileViewToggleBtn" class="w-full text-left bg-primary-medium text-white block px-3 py-2 rounded-md text-base font-medium hover:bg-primary-dark transition duration-150 mt-1">Switch to Shop Owner</button>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Hero Section -->
+    <header id="hero" class="bg-primary-light py-12 md:py-20">
+        <div class="container mx-auto px-4 sm:px-6 lg:px-8 text-center">
+            <h1 class="text-4xl sm:text-5xl md:text-6xl font-extrabold text-primary-dark">
+                Fresh Groceries, <span class="block sm:inline">Smart Shopping.</span>
+            </h1>
+            <p class="mt-6 max-w-2xl mx-auto text-lg sm:text-xl text-neutral-700">
+                Experience the future of grocery shopping with Green Mart. Scan, select, and pay seamlessly for an eco-friendly and personalized experience.
+            </p>
+            <div class="mt-10 flex flex-col sm:flex-row justify-center items-center space-y-4 sm:space-y-0 sm:space-x-4">
+                <button id="scanQrBtnHero" class="bg-primary-medium text-white px-8 py-3 rounded-lg text-lg font-semibold hover:bg-primary-dark shadow-lg transition duration-150 flex items-center">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" />
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M3.5 5.5h2V4H3.5a.5.5 0 00-.5.5v2h1V5.5zM3 15v4a1 1 0 001 1h4v-1H4v-3H3zm18 0v3h-3v1h4a1 1 0 001-1v-4h-1zM20 4h-4v1h3v3h1V5a1 1 0 00-1-1zM7 7h2v2H7V7zm0 4h2v2H7v-2zm0 4h2v2H7v-2zm4-8h2v2h-2V7zm0 4h2v2h-2v-2zm4 0h2v2h-2v-2zm0-4h2v2h-2V7zm0 4h2v2h-2v-2zm0 4h2v2h-2v-2z"/>
+                    </svg>
+                    Scan QR to Start Shopping
+                </button>
+                <a href="#features" class="bg-secondary-DEFAULT text-white px-8 py-3 rounded-lg text-lg font-semibold hover:bg-secondary-dark shadow-lg transition duration-150">
+                    Explore Features
+                </a>
+            </div>
+        </div>
+    </header>
+
+    <!-- Problem/Solution Section -->
+    <section class="py-12 md:py-16 bg-white">
+        <div class="container mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="grid md:grid-cols-2 gap-8 items-center">
+                <div>
+                    <h2 class="text-3xl font-bold text-neutral-800 mb-4">The Old Way vs. Green Mart</h2>
+                    <p class="text-neutral-700 mb-3 leading-relaxed">
+                        <strong class_alias="text-neutral-800">Problem:</strong> Traditional shopping means long queues, impersonal experiences, and inventory headaches for shop owners, leading to food waste.
+                    </p>
+                    <p class="text-neutral-700 leading-relaxed">
+                        <strong class_alias="text-primary-dark">Solution:</strong> Green Mart blends online convenience with offline reliability. Our QR-code system, smart inventory, and eco-friendly focus redefine your grocery experience.
+                    </p>
+                </div>
+                <div class="grid grid-cols-2 gap-4">
+                    <div class="bg-red-100 p-4 rounded-lg shadow">
+                        <h3 class="font-semibold text-red-700 mb-1">Old Way</h3>
+                        <ul class="list-disc list-inside text-sm text-red-600 space-y-1">
+                            <li>Long checkout lines</li>
+                            <li>Limited personalization</li>
+                            <li>Inventory challenges</li>
+                            <li>Potential food waste</li>
+                        </ul>
+                    </div>
+                    <div class="bg-primary-light p-4 rounded-lg shadow">
+                        <h3 class="font-semibold text-primary-dark mb-1">Green Mart Way</h3>
+                        <ul class="list-disc list-inside text-sm text-primary-medium space-y-1">
+                            <li>Quick QR access</li>
+                            <li>Personalized selection</li>
+                            <li>Efficient inventory</li>
+                            <li>Waste reduction focus</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- How It Works Section -->
+    <section id="how-it-works" class="py-12 md:py-16 bg-primary-light">
+        <div class="container mx-auto px-4 sm:px-6 lg:px-8">
+            <h2 class="text-3xl font-bold text-center text-primary-dark mb-12">Simple Steps to Smart Shopping</h2>
+            <div class="grid md:grid-cols-3 gap-8 text-center">
+                <div class="bg-white p-6 rounded-xl shadow-lg transform hover:scale-105 transition-transform duration-300">
+                    <div class="bg-secondary-light text-secondary-dark rounded-full w-16 h-16 flex items-center justify-center mx-auto mb-4">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707m12.728 0l-.707.707M12 20v-1m0-16a8 8 0 100 16 8 8 0 000-16zM7 12h10" /></svg>
+                    </div>
+                    <h3 class="text-xl font-semibold text-neutral-800 mb-2">1. Scan QR Code</h3>
+                    <p class="text-neutral-700">Enter the store or access our catalog instantly by scanning a QR code with your smartphone.</p>
+                </div>
+                <div class="bg-white p-6 rounded-xl shadow-lg transform hover:scale-105 transition-transform duration-300">
+                    <div class="bg-secondary-light text-secondary-dark rounded-full w-16 h-16 flex items-center justify-center mx-auto mb-4">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" /></svg>
+                    </div>
+                    <h3 class="text-xl font-semibold text-neutral-800 mb-2">2. Select & Pay</h3>
+                    <p class="text-neutral-700">Browse products, see real-time prices, add to your digital cart, and pay securely online.</p>
+                </div>
+                <div class="bg-white p-6 rounded-xl shadow-lg transform hover:scale-105 transition-transform duration-300">
+                    <div class="bg-secondary-light text-secondary-dark rounded-full w-16 h-16 flex items-center justify-center mx-auto mb-4">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                    </div>
+                    <h3 class="text-xl font-semibold text-neutral-800 mb-2">3. Tokenized Pickup</h3>
+                    <p class="text-neutral-700">Receive a unique token and a time slot for a quick, contactless order pickup at your convenience.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Main Features Section (Tabs for Customer/Shop Owner) -->
+    <main id="features" class="container mx-auto px-4 sm:px-6 lg:px-8 py-12 md:py-16">
+        <div class="mb-8 border-b border-neutral-300">
+            <nav class="flex space-x-4" aria-label="Tabs">
+                <button id="customerTabBtn" data-view="customer" class="tab-button py-4 px-1 border-b-2 font-medium text-lg text-neutral-700 hover:text-primary-medium hover:border-primary-medium whitespace-nowrap tab-active">
+                    For Customers
+                </button>
+                <button id="ownerTabBtn" data-view="owner" class="tab-button py-4 px-1 border-b-2 font-medium text-lg text-neutral-700 hover:text-primary-medium hover:border-primary-medium whitespace-nowrap">
+                    For Shop Owners
+                </button>
+            </nav>
+        </div>
+
+        <!-- Customer View -->
+        <div id="customerView" class="view-content">
+            <h2 class="text-3xl font-bold text-neutral-800 mb-8">Enhancing Your Shopping Experience</h2>
+            <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <!-- Feature Card: QR Code Entry -->
+                <div class="bg-white p-6 rounded-lg shadow-md">
+                    <div class="bg-gray-200 border-2 border-dashed rounded-xl w-full h-40 mb-4 flex items-center justify-center text-gray-500 text-sm">Mockup: Phone scanning QR</div>
+                    <h3 class="text-xl font-semibold text-primary-dark mb-2">QR Code-Based Entry</h3>
+                    <p class="text-neutral-700 text-sm">Quickly access our store catalog or begin your in-store shopping journey by scanning a QR code. No app download required for basic browsing!</p>
+                </div>
+
+                <!-- Feature Card: Product Selection & Real-time Prices -->
+                <div class="bg-white p-6 rounded-lg shadow-md">
+                    <div class="bg-gray-200 border-2 border-dashed rounded-xl w-full h-40 mb-4 flex items-center justify-center text-gray-500 text-sm">Mockup: Product Grid UI</div>
+                    <h3 class="text-xl font-semibold text-primary-dark mb-2">Product Selection & Real-time Prices</h3>
+                    <p class="text-neutral-700 text-sm">Browse a wide variety of products. Prices update in real-time, ensuring you always see the latest deals and stock availability.</p>
+                    <button class="mt-3 text-sm text-primary-medium hover:text-primary-dark font-semibold openProductModalBtn">View Sample Products &rarr;</button>
+                </div>
+
+                <!-- Feature Card: Tokenized Order Pickups -->
+                <div class="bg-white p-6 rounded-lg shadow-md">
+                     <div class="bg-gray-200 border-2 border-dashed rounded-xl w-full h-40 mb-4 flex items-center justify-center text-gray-500 text-sm">Mockup: Pickup Token UI</div>
+                    <h3 class="text-xl font-semibold text-primary-dark mb-2">Tokenized Order Pickups</h3>
+                    <p class="text-neutral-700 text-sm">Skip the queues! Receive a unique digital token and a designated time slot for a swift and contactless order pickup.</p>
+                </div>
+
+                <!-- Feature Card: Online Shopping Options -->
+                <div class="bg-white p-6 rounded-lg shadow-md">
+                    <div class="bg-gray-200 border-2 border-dashed rounded-xl w-full h-40 mb-4 flex items-center justify-center text-gray-500 text-sm">Mockup: Delivery/Pickup options UI</div>
+                    <h3 class="text-xl font-semibold text-primary-dark mb-2">Online Shopping with Delivery/Pickup</h3>
+                    <p class="text-neutral-700 text-sm">Shop from the comfort of your home. Choose between convenient home delivery or quick in-store pickup for your online orders.</p>
+                </div>
+
+                <!-- Feature Card: Festive Shopping Packs -->
+                <div class="bg-white p-6 rounded-lg shadow-md">
+                    <div class="bg-gray-200 border-2 border-dashed rounded-xl w-full h-40 mb-4 flex items-center justify-center text-gray-500 text-sm">Mockup: Festive Pack Image</div>
+                    <h3 class="text-xl font-semibold text-primary-dark mb-2">Festive Shopping Packs</h3>
+                    <p class="text-neutral-700 text-sm">Discover curated packs for festivals and special occasions. Enjoy handpicked selections offering great value and convenience.</p>
+                </div>
+
+                <!-- Feature Card: Family Accounts & Rewards -->
+                <div class="bg-white p-6 rounded-lg shadow-md">
+                    <div class="bg-gray-200 border-2 border-dashed rounded-xl w-full h-40 mb-4 flex items-center justify-center text-gray-500 text-sm">Mockup: Reward Points UI</div>
+                    <h3 class="text-xl font-semibold text-primary-dark mb-2">Family Accounts & Reward Points</h3>
+                    <p class="text-neutral-700 text-sm">Share your account with family members. Earn loyalty points on every purchase and redeem them for exciting rewards and discounts.</p>
+                </div>
+            </div>
+            <!-- Sample Cart Area -->
+            <div id="cartSection" class="mt-12 bg-white p-6 rounded-lg shadow-md">
+                <h3 class="text-2xl font-semibold text-neutral-800 mb-4">Your Shopping Cart</h3>
+                <div id="cartItems" class="space-y-2 mb-4">
+                    <p class="text-neutral-700">Your cart is empty. <span class="openProductModalBtn text-primary-medium hover:underline cursor-pointer">Add some products!</span></p>
+                </div>
+                <div class="border-t pt-4">
+                    <p class="text-lg font-semibold text-neutral-800">Total: $<span id="cartTotal">0.00</span></p>
+                    <button class="mt-4 w-full bg-primary-medium text-white py-2 px-4 rounded-md hover:bg-primary-dark transition duration-150" onclick="alert('Proceeding to Checkout (Simulated)')">Proceed to Checkout</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Shop Owner View -->
+        <div id="ownerView" class="view-content hidden">
+            <h2 class="text-3xl font-bold text-neutral-800 mb-8">Empowering Your Business</h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+                <!-- Summary Card: Total Sales -->
+                <div class="bg-white p-6 rounded-lg shadow-md">
+                    <h4 class="text-sm font-medium text-neutral-500">Total Sales (Month)</h4>
+                    <p class="text-3xl font-bold text-primary-dark mt-1">$12,345.67</p>
+                    <p class="text-sm text-green-500 mt-1">+5.2% from last month</p>
+                </div>
+                <!-- Summary Card: Active Orders -->
+                <div class="bg-white p-6 rounded-lg shadow-md">
+                    <h4 class="text-sm font-medium text-neutral-500">Active Orders</h4>
+                    <p class="text-3xl font-bold text-primary-dark mt-1">78</p>
+                    <p class="text-sm text-neutral-500 mt-1">12 pending pickup</p>
+                </div>
+                <!-- Summary Card: Low Stock Items -->
+                <div class="bg-white p-6 rounded-lg shadow-md">
+                    <h4 class="text-sm font-medium text-neutral-500">Low Stock Items</h4>
+                    <p class="text-3xl font-bold text-secondary-dark mt-1">15</p>
+                    <p class="text-sm text-neutral-500 mt-1">Needs reordering soon</p>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <!-- Sales Tracking Chart -->
+                <div class="lg:col-span-2 bg-white p-6 rounded-lg shadow-md">
+                    <h3 class="text-xl font-semibold text-neutral-800 mb-4">Sales Tracking</h3>
+                    <canvas id="salesChart" class="w-full h-64 md:h-96"></canvas>
+                </div>
+
+                <!-- Inventory Management -->
+                <div class="lg:col-span-1 bg-white p-6 rounded-lg shadow-md">
+                    <h3 class="text-xl font-semibold text-neutral-800 mb-4">Inventory Overview</h3>
+                    <div class="space-y-3 max-h-96 overflow-y-auto">
+                        <div class="flex justify-between items-center p-3 bg-primary-light rounded">
+                            <div>
+                                <p class="font-medium text-primary-dark">Organic Apples</p>
+                                <p class="text-xs text-neutral-700">In Stock: 50 units</p>
+                            </div>
+                            <span class="text-sm font-semibold text-primary-dark">$2.99/unit</span>
+                        </div>
+                        <div class="flex justify-between items-center p-3 bg-red-100 rounded">
+                            <div>
+                                <p class="font-medium text-red-700">Whole Wheat Bread</p>
+                                <p class="text-xs text-red-600">In Stock: 5 units (Low!)</p>
+                            </div>
+                            <span class="text-sm font-semibold text-red-700">$4.50/unit</span>
+                        </div>
+                        <div class="flex justify-between items-center p-3 bg-primary-light rounded">
+                            <div>
+                                <p class="font-medium text-primary-dark">Almond Milk</p>
+                                <p class="text-xs text-neutral-700">In Stock: 120 units</p>
+                            </div>
+                            <span class="text-sm font-semibold text-primary-dark">$3.75/unit</span>
+                        </div>
+                         <div class="flex justify-between items-center p-3 bg-primary-light rounded">
+                            <div>
+                                <p class="font-medium text-primary-dark">Free-Range Eggs</p>
+                                <p class="text-xs text-neutral-700">In Stock: 75 dozen</p>
+                            </div>
+                            <span class="text-sm font-semibold text-primary-dark">$5.20/dozen</span>
+                        </div>
+                    </div>
+                    <button class="mt-4 w-full bg-primary-medium text-white py-2 px-4 rounded-md hover:bg-primary-dark transition duration-150">Manage Full Inventory</button>
+                </div>
+            </div>
+
+            <div class="grid md:grid-cols-2 gap-6 mt-8">
+                <!-- Bulk Order & Festive Pack Management -->
+                <div class="bg-white p-6 rounded-lg shadow-md">
+                    <h3 class="text-xl font-semibold text-neutral-800 mb-4">Pack Management</h3>
+                    <p class="text-neutral-700 text-sm mb-3">Create and manage bulk orders or special festive packs for customers.</p>
+                    <div class="bg-gray-200 border-2 border-dashed rounded-xl w-full h-32 mb-4 flex items-center justify-center text-gray-500 text-sm">Mockup: Festive Pack Creation UI</div>
+                    <button class="w-full bg-secondary-DEFAULT text-white py-2 px-4 rounded-md hover:bg-secondary-dark transition duration-150">Create New Pack</button>
+                </div>
+
+                <!-- Time-slot Allocation -->
+                <div class="bg-white p-6 rounded-lg shadow-md">
+                    <h3 class="text-xl font-semibold text-neutral-800 mb-4">Pickup Time Slot Allocation</h3>
+                    <p class="text-neutral-700 text-sm mb-3">Manage available time slots for order pickups to avoid congestion and ensure smooth operations.</p>
+                    <div class="bg-gray-200 border-2 border-dashed rounded-xl w-full h-32 mb-4 flex items-center justify-center text-gray-500 text-sm">Mockup: Time Slot Calendar/List UI</div>
+                    <button class="w-full bg-secondary-DEFAULT text-white py-2 px-4 rounded-md hover:bg-secondary-dark transition duration-150">Manage Time Slots</button>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Call to Action / Why Green Mart -->
+    <section class="bg-primary-medium py-12 md:py-16">
+        <div class="container mx-auto px-4 sm:px-6 lg:px-8 text-center">
+            <h2 class="text-3xl font-bold text-white mb-4">Join the Green Mart Revolution!</h2>
+            <p class="text-primary-light max-w-2xl mx-auto mb-8 text-lg">
+                Embrace a smarter, faster, and more sustainable way to shop for groceries. We're committed to supporting local produce, reducing waste, and providing you with the freshest options.
+            </p>
+            <button class="bg-white text-primary-medium px-8 py-3 rounded-lg text-lg font-semibold hover:bg-neutral-100 shadow-lg transition duration-150 openProductModalBtn">
+                Start Shopping Now
+            </button>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="bg-neutral-800 text-neutral-300 py-12">
+        <div class="container mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+                <div>
+                    <h3 class="text-xl font-semibold text-white mb-3">Green Mart</h3>
+                    <p class="text-sm">Your partner in fresh, smart, and eco-friendly grocery shopping.</p>
+                </div>
+                <div>
+                    <h3 class="text-lg font-semibold text-white mb-3">Quick Links</h3>
+                    <ul class="space-y-2 text-sm">
+                        <li><a href="#" class="hover:text-primary-light">About Us</a></li>
+                        <li><a href="#" class="hover:text-primary-light">Contact</a></li>
+                        <li><a href="#features" class="hover:text-primary-light">Features</a></li>
+                        <li><a href="#" class="hover:text-primary-light">FAQs</a></li>
+                    </ul>
+                </div>
+                <div>
+                    <h3 class="text-lg font-semibold text-white mb-3">Connect With Us</h3>
+                     <div class="flex space-x-4">
+                        <a href="#" class="hover:text-primary-light"><svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="currentColor" viewBox="0 0 24 24"><path d="M22.46 6c-.77.35-1.6.58-2.46.67.9-.53 1.59-1.37 1.92-2.38-.84.5-1.78.86-2.79 1.07A4.483 4.483 0 0016.3 4c-2.39 0-4.33 1.94-4.33 4.33 0 .34.04.67.11.98C8.2 9.06 5.22 7.44 3.21 4.9c-.34.58-.53 1.26-.53 1.98 0 1.5.77 2.82 1.94 3.59-.71-.02-1.38-.22-1.97-.54v.05c0 2.1 1.49 3.84 3.47 4.24-.36.1-.74.15-1.13.15-.28 0-.55-.03-.81-.08.55 1.72 2.15 2.97 4.04 3.01-1.48 1.16-3.35 1.85-5.37 1.85-.35 0-.69-.02-1.03-.06C2.94 19.36 5.2 20 7.68 20c7.99 0 12.36-6.62 12.36-12.36 0-.19 0-.38-.01-.56.85-.61 1.58-1.37 2.15-2.24z"></path></svg></a>
+                        <a href="#" class="hover:text-primary-light"><svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919C8.416 2.175 8.796 2.163 12 2.163zm0 1.802C9.042 3.965 8.73 3.974 7.548 4.025c-2.502.115-3.492 1.099-3.611 3.611-.051 1.182-.061 1.494-.061 4.364s.01 3.182.061 4.364c.119 2.512 1.109 3.492 3.611 3.611 1.182.051 1.494.061 4.364.061s3.182-.01 4.364-.061c2.502-.119 3.492-1.109 3.611-3.611.051-1.182.061-1.494.061-4.364s-.01-3.182-.061-4.364c-.119-2.512-1.109-3.492-3.611-3.611-1.182-.051-1.494-.061-4.364-.061zm0 2.88H12c-2.456 0-4.458 2.002-4.458 4.458s2.002 4.458 4.458 4.458 4.458-2.002 4.458-4.458S14.456 6.845 12 6.845zm0 7.116c-1.471 0-2.658-1.187-2.658-2.658s1.187-2.658 2.658-2.658 2.658 1.187 2.658 2.658-1.187 2.658-2.658 2.658zm4.965-6.935c-.771 0-1.397.625-1.397 1.396s.626 1.397 1.397 1.397 1.396-.626 1.396-1.397-.625-1.396-1.396-1.396z"></path></svg></a>
+                        <a href="#" class="hover:text-primary-light"><svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="currentColor" viewBox="0 0 24 24"><path d="M19 0h-14c-2.761 0-5 2.239-5 5v14c0 2.761 2.239 5 5 5h14c2.762 0 5-2.239 5-5v-14c0-2.761-2.238-5-5-5zm-11 19h-3v-11h3v11zm-1.5-12.268c-.966 0-1.75-.79-1.75-1.764s.784-1.764 1.75-1.764 1.75.79 1.75 1.764-.783 1.764-1.75 1.764zm13.5 12.268h-3v-5.604c0-3.368-4-3.113-4 0v5.604h-3v-11h3v1.765c1.396-2.586 7-2.777 7 2.476v6.759z"></path></svg></a>
+                    </div>
+                </div>
+            </div>
+            <div class="mt-8 border-t border-neutral-700 pt-8 text-center text-sm">
+                <p>&copy; <span id="currentYear"></span> Green Mart. All rights reserved. Designed with <span class="text-red-500">&hearts;</span> for a Greener Future.</p>
+            </div>
+        </div>
+    </footer>
+
+    <!-- QR Code Scan / Product Modal -->
+    <div id="productModal" class="modal fixed inset-0 bg-black bg-opacity-50 items-center justify-center p-4">
+        <div class="bg-white rounded-lg shadow-xl max-w-3xl w-full max-h-[90vh] overflow-y-auto p-6">
+            <div class="flex justify-between items-center mb-4">
+                <h2 class="text-2xl font-bold text-primary-dark">Select Your Groceries</h2>
+                <button id="closeModalBtn" class="text-neutral-500 hover:text-neutral-700">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
+                </button>
+            </div>
+            <div id="productList" class="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                <!-- Product items will be injected here by JS -->
+            </div>
+            <div class="mt-6 text-right">
+                <button id="closeModalAndCartBtn" class="bg-primary-medium text-white px-6 py-2 rounded-md hover:bg-primary-dark">View Cart & Close</button>
+            </div>
+        </div>
+    </div>
+
+<script>
+    // State
+    let currentView = 'customer'; // 'customer' or 'owner'
+    let cart = [];
+    const products = [
+        { id: 1, name: "Organic Bananas", price: 1.99, category: "Fruits", stock: 100, imagePlaceholder: "Bananas Icon" },
+        { id: 2, name: "Whole Milk (1 Gal)", price: 3.49, category: "Dairy", stock: 50, imagePlaceholder: "Milk Carton Icon" },
+        { id: 3, name: "Artisan Bread", price: 4.29, category: "Bakery", stock: 30, imagePlaceholder: "Bread Loaf Icon" },
+        { id: 4, name: "Fresh Spinach (1lb)", price: 2.79, category: "Vegetables", stock: 75, imagePlaceholder: "Spinach Icon" },
+        { id: 5, name: "Free-Range Eggs (dozen)", price: 5.20, category: "Dairy", stock: 60, imagePlaceholder: "Eggs Icon" },
+        { id: 6, name: "Avocado (Large)", price: 1.89, category: "Fruits", stock: 90, imagePlaceholder: "Avocado Icon" },
+    ];
+
+    // DOM Elements
+    const mobileMenuBtn = document.getElementById('mobileMenuBtn');
+    const mobileMenu = document.getElementById('mobileMenu');
+    const viewToggleBtn = document.getElementById('viewToggleBtn');
+    const mobileViewToggleBtn = document.getElementById('mobileViewToggleBtn');
+    const customerTabBtn = document.getElementById('customerTabBtn');
+    const ownerTabBtn = document.getElementById('ownerTabBtn');
+    const customerView = document.getElementById('customerView');
+    const ownerView = document.getElementById('ownerView');
+    const scanQrBtnHero = document.getElementById('scanQrBtnHero');
+    const productModal = document.getElementById('productModal');
+    const closeModalBtn = document.getElementById('closeModalBtn');
+    const closeModalAndCartBtn = document.getElementById('closeModalAndCartBtn');
+    const productListContainer = document.getElementById('productList');
+    const cartItemsContainer = document.getElementById('cartItems');
+    const cartTotalEl = document.getElementById('cartTotal');
+    const currentYearEl = document.getElementById('currentYear');
+    
+    const openProductModalBtns = document.querySelectorAll('.openProductModalBtn');
+
+    // Initialize current year in footer
+    if (currentYearEl) {
+        currentYearEl.textContent = new Date().getFullYear();
+    }
+
+    // Mobile Menu Toggle
+    mobileMenuBtn.addEventListener('click', () => {
+        mobileMenu.classList.toggle('hidden');
+    });
+
+    // View Toggling Logic
+    function switchView(newView) {
+        currentView = newView;
+        if (currentView === 'customer') {
+            customerView.classList.remove('hidden');
+            ownerView.classList.add('hidden');
+            customerTabBtn.classList.add('tab-active');
+            ownerTabBtn.classList.remove('tab-active');
+            viewToggleBtn.textContent = 'Switch to Shop Owner';
+            mobileViewToggleBtn.textContent = 'Switch to Shop Owner';
+        } else {
+            customerView.classList.add('hidden');
+            ownerView.classList.remove('hidden');
+            customerTabBtn.classList.remove('tab-active');
+            ownerTabBtn.classList.add('tab-active');
+            viewToggleBtn.textContent = 'Switch to Customer';
+            mobileViewToggleBtn.textContent = 'Switch to Customer';
+            renderSalesChart(); // Render chart when owner view is active
+        }
+    }
+
+    viewToggleBtn.addEventListener('click', () => {
+        switchView(currentView === 'customer' ? 'owner' : 'customer');
+    });
+    mobileViewToggleBtn.addEventListener('click', () => {
+        switchView(currentView === 'customer' ? 'owner' : 'customer');
+        mobileMenu.classList.add('hidden'); // Close mobile menu after switching
+    });
+    customerTabBtn.addEventListener('click', () => switchView('customer'));
+    ownerTabBtn.addEventListener('click', () => switchView('owner'));
+
+    // Product Modal Logic
+    function openModal() {
+        renderProductsInModal();
+        productModal.classList.add('open');
+    }
+    function closeModal() {
+        productModal.classList.remove('open');
+    }
+
+    scanQrBtnHero.addEventListener('click', openModal);
+    openProductModalBtns.forEach(btn => btn.addEventListener('click', openModal));
+    closeModalBtn.addEventListener('click', closeModal);
+    closeModalAndCartBtn.addEventListener('click', () => {
+        closeModal();
+        document.getElementById('cartSection').scrollIntoView({ behavior: 'smooth' });
+    });
+    
+    // Close modal if backdrop is clicked
+    productModal.addEventListener('click', (event) => {
+        if (event.target === productModal) {
+            closeModal();
+        }
+    });
+
+    // Product Rendering in Modal
+    function renderProductsInModal() {
+        productListContainer.innerHTML = ''; // Clear existing products
+        products.forEach(product => {
+            const productCard = `
+                <div class="border p-4 rounded-lg shadow bg-white">
+                    <div class="bg-gray-200 border-2 border-dashed rounded-xl w-full h-24 mb-3 flex items-center justify-center text-gray-500 text-xs">${product.imagePlaceholder}</div>
+                    <h3 class="text-md font-semibold text-neutral-800">${product.name}</h3>
+                    <p class="text-sm text-neutral-600">${product.category}</p>
+                    <p class="text-lg font-bold text-primary-medium mt-1">$${product.price.toFixed(2)}</p>
+                    <button data-product-id="${product.id}" class="add-to-cart-btn mt-3 w-full bg-secondary-DEFAULT text-white py-1.5 px-3 rounded-md text-sm hover:bg-secondary-dark transition duration-150">Add to Cart</button>
+                </div>
+            `;
+            productListContainer.insertAdjacentHTML('beforeend', productCard);
+        });
+        // Re-attach event listeners for new "Add to Cart" buttons
+        document.querySelectorAll('.add-to-cart-btn').forEach(button => {
+            button.addEventListener('click', handleAddToCart);
+        });
+    }
+
+    // Cart Logic
+    function handleAddToCart(event) {
+        const productId = parseInt(event.target.dataset.productId);
+        const productToAdd = products.find(p => p.id === productId);
+
+        if (productToAdd) {
+            const existingCartItem = cart.find(item => item.id === productId);
+            if (existingCartItem) {
+                existingCartItem.quantity++;
+            } else {
+                cart.push({ ...productToAdd, quantity: 1 });
+            }
+            updateCartDisplay();
+            // Optionally: show a small notification
+            event.target.textContent = 'Added!';
+            setTimeout(() => { event.target.textContent = 'Add to Cart'; }, 1000);
+        }
+    }
+
+    function updateCartDisplay() {
+        if (cart.length === 0) {
+            cartItemsContainer.innerHTML = `<p class="text-neutral-700">Your cart is empty. <span class="openProductModalBtn text-primary-medium hover:underline cursor-pointer">Add some products!</span></p>`;
+            // Re-attach event listener for the new "Add some products!" link
+             document.querySelectorAll('.openProductModalBtn').forEach(btn => btn.addEventListener('click', openModal));
+        } else {
+            cartItemsContainer.innerHTML = cart.map(item => `
+                <div class="flex justify-between items-center py-2 border-b border-neutral-200 last:border-b-0">
+                    <div>
+                        <p class="font-medium text-neutral-800">${item.name} (x${item.quantity})</p>
+                        <p class="text-sm text-neutral-600">$${item.price.toFixed(2)} each</p>
+                    </div>
+                    <p class="font-semibold text-primary-medium">$${(item.price * item.quantity).toFixed(2)}</p>
+                </div>
+            `).join('');
+        }
+
+        const total = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+        cartTotalEl.textContent = total.toFixed(2);
+    }
+    
+    // Initial cart display
+    updateCartDisplay();
+
+    // Chart.js for Sales Chart
+    let salesChartInstance = null;
+    function renderSalesChart() {
+        const ctx = document.getElementById('salesChart');
+        if (!ctx) return;
+
+        if (salesChartInstance) {
+            salesChartInstance.destroy(); // Destroy previous instance if exists
+        }
+
+        const salesData = {
+            labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul'],
+            datasets: [{
+                label: 'Monthly Sales',
+                data: [6500, 5900, 8000, 8100, 9600, 10500, 12345], // Sample data
+                fill: true,
+                borderColor: 'rgb(16, 185, 129)', // emerald-500
+                backgroundColor: 'rgba(16, 185, 129, 0.1)', // emerald-500 with alpha
+                tension: 0.3,
+                pointBackgroundColor: 'rgb(5, 150, 105)', // emerald-600
+                pointBorderColor: '#fff',
+                pointHoverRadius: 7,
+                pointHoverBackgroundColor: 'rgb(4, 120, 87)' // emerald-700
+            }]
+        };
+        salesChartInstance = new Chart(ctx, {
+            type: 'line',
+            data: salesData,
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: {
+                            callback: function(value) {
+                                return '$' + value / 1000 + 'k';
+                            }
+                        }
+                    }
+                },
+                plugins: {
+                    legend: {
+                        display: true,
+                        position: 'top',
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                return `${context.dataset.label}: $${context.parsed.y.toLocaleString()}`;
+                            }
+                        }
+                    }
+                }
+            }
+        });
+    }
+
+    // Initial setup
+    switchView('customer'); // Start with customer view
+    // For smooth scrolling for anchor links
+    document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+        anchor.addEventListener('click', function (e) {
+            e.preventDefault();
+            const targetId = this.getAttribute('href');
+            const targetElement = document.querySelector(targetId);
+            if (targetElement) {
+                targetElement.scrollIntoView({
+                    behavior: 'smooth'
+                });
+            }
+        });
+    });
+
+</script>
+
+</body>
+</html>

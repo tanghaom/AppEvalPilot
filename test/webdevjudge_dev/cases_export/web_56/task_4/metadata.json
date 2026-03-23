@@ -1,0 +1,9 @@
+{
+  "web_id": "web_56",
+  "task_id": 4,
+  "task_type": "dynamic",
+  "instruction": "Task: After selecting a circle, interact with a UI slider or numeric input field dedicated to 'size' to change its size.\nExpected Result: The selected circle's size on the canvas updates in real-time as the value of the size control is adjusted.\n\nNote: The task is only considered successful if the expected result is achieved; otherwise, it is deemed infeasible.",
+  "max_steps": 15,
+  "expected": "The selected circle's size on the canvas updates in real-time as the value of the size control is adjusted.",
+  "label": 1
+}

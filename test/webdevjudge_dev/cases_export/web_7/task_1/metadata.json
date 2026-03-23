@@ -1,0 +1,9 @@
+{
+  "web_id": "web_7",
+  "task_id": 1,
+  "task_type": "dynamic",
+  "instruction": "Task: Type text into the input bar and click a 'Send' button (or press Enter).\nExpected Result: A new user message appears in the chat log, displaying the profile picture, sender name, time, and the entered text. The input bar is cleared.\n\nNote: The task is only considered successful if the expected result is achieved; otherwise, it is deemed infeasible.",
+  "max_steps": 15,
+  "expected": "A new user message appears in the chat log, displaying the profile picture, sender name, time, and the entered text. The input bar is cleared.",
+  "label": 1
+}

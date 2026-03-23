@@ -1,0 +1,9 @@
+{
+  "web_id": "web_48",
+  "task_id": 3,
+  "task_type": "dynamic",
+  "instruction": "Task: Click the checkbox next to an item in a to-do list block.\nExpected Result: The checkbox state toggles (checked/unchecked), and the to-do item's text visually indicates completion (e.g., strikethrough).\n\nNote: The task is only considered successful if the expected result is achieved; otherwise, it is deemed infeasible.",
+  "max_steps": 15,
+  "expected": "The checkbox state toggles (checked/unchecked), and the to-do item's text visually indicates completion (e.g., strikethrough).",
+  "label": 1
+}

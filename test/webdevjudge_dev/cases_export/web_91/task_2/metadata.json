@@ -1,0 +1,9 @@
+{
+  "web_id": "web_91",
+  "task_id": 2,
+  "task_type": "dynamic",
+  "instruction": "Task: Click a 'Generate Toast' button 3 times in rapid succession.\nExpected Result: Three toasts appear and form a visual stack with overlap (parts/angles showing, styled by :nth-child(1) through :nth-child(3) CSS rules, with the newest on top). Observe and confirm their dismissal order (i.e., whether the oldest toast at the bottom of the stack disappears first, or if the newest toast at the top disappears first due to individual timer settings).\n\nNote: The task is only considered successful if the expected result is achieved; otherwise, it is deemed infeasible.",
+  "max_steps": 15,
+  "expected": "Three toasts appear and form a visual stack with overlap (parts/angles showing, styled by :nth-child(1) through :nth-child(3) CSS rules, with the newest on top). Observe and confirm their dismissal order (i.e., whether the oldest toast at the bottom of the stack disappears first, or if the newest toast at the top disappears first due to individual timer settings).",
+  "label": 1
+}

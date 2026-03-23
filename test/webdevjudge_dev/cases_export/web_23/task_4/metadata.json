@@ -1,0 +1,9 @@
+{
+  "web_id": "web_23",
+  "task_id": 4,
+  "task_type": "dynamic",
+  "instruction": "Task: Type text into the chat application's input field and activate the send mechanism (e.g., click 'Send' button or press Enter).\nExpected Result: The entered text is displayed as a new message in the chat log area (locally simulated, no actual sending).\n\nNote: The task is only considered successful if the expected result is achieved; otherwise, it is deemed infeasible.",
+  "max_steps": 15,
+  "expected": "The entered text is displayed as a new message in the chat log area (locally simulated, no actual sending).",
+  "label": 0
+}

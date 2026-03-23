@@ -1,0 +1,9 @@
+{
+  "web_id": "web_43",
+  "task_id": 4,
+  "task_type": "dynamic",
+  "instruction": "Task: Navigate to 'Language Assistance' and select a phrase category (e.g., 'Greetings').\nExpected Result: A list of common phrases with their translations for the chosen category is displayed from pre-loaded data.\n\nNote: The task is only considered successful if the expected result is achieved; otherwise, it is deemed infeasible.",
+  "max_steps": 15,
+  "expected": "A list of common phrases with their translations for the chosen category is displayed from pre-loaded data.",
+  "label": 0
+}

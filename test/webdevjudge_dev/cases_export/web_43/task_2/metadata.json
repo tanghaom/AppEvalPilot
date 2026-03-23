@@ -1,0 +1,9 @@
+{
+  "web_id": "web_43",
+  "task_id": 2,
+  "task_type": "dynamic",
+  "instruction": "Task: Select a specific venue from a list to view its details.\nExpected Result: Detailed information for the selected venue (e.g., static map image, address, description from pre-loaded data) is displayed.\n\nNote: The task is only considered successful if the expected result is achieved; otherwise, it is deemed infeasible.",
+  "max_steps": 15,
+  "expected": "Detailed information for the selected venue (e.g., static map image, address, description from pre-loaded data) is displayed.",
+  "label": 1
+}

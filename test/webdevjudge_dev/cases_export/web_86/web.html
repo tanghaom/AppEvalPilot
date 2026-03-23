@@ -1,0 +1,557 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Traductor Avanzado Darija ↔ Español</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Kufi+Arabic:wght@400;500;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            overscroll-behavior: none; /* Prevents pull-to-refresh on mobile */
+        }
+        .font-noto-kufi {
+            font-family: 'Noto Kufi Arabic', sans-serif;
+        }
+        .chat-history-container::-webkit-scrollbar {
+            width: 6px;
+        }
+        .chat-history-container::-webkit-scrollbar-track {
+            background: #374151; /* gray-700 */
+            border-radius: 10px;
+        }
+        .chat-history-container::-webkit-scrollbar-thumb {
+            background: #60a5fa; /* blue-400 */
+            border-radius: 10px;
+        }
+        .chat-history-container::-webkit-scrollbar-thumb:hover {
+            background: #3b82f6; /* blue-500 */
+        }
+
+        .fade-in-up {
+            animation: fadeInUpAnimation 0.5s ease-out forwards;
+        }
+        @keyframes fadeInUpAnimation {
+            from { opacity: 0; transform: translateY(15px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .main-container-animate {
+            opacity: 0;
+            transform: translateY(20px);
+            animation: fadeInApp 0.6s ease-out 0.2s forwards;
+        }
+        @keyframes fadeInApp {
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        .spinner {
+            width: 20px;
+            height: 20px;
+            border: 3px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            border-top-color: #fff;
+            animation: spin 1s ease-in-out infinite;
+        }
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .textarea-container {
+            position: relative;
+        }
+        .textarea-clear-btn {
+            position: absolute;
+            top: 0.75rem; /* py-3 specific */
+            right: 0.75rem; /* px-3 specific */
+            color: #9ca3af; /* gray-400 */
+            cursor: pointer;
+            display: none; /* Initially hidden */
+        }
+        .textarea-clear-btn:hover {
+            color: #e5e7eb; /* gray-200 */
+        }
+        textarea:not(:placeholder-shown) + .textarea-clear-btn {
+            display: inline-block;
+        }
+        
+        /* Custom focus ring for textareas */
+        .custom-focus-darija:focus {
+            outline: none;
+            border-color: #a855f7; /* fuchsia-500 */
+            box-shadow: 0 0 0 2px #a855f7; /* fuchsia-500 */
+        }
+        .custom-focus-spanish:focus {
+            outline: none;
+            border-color: #3b82f6; /* sky-500 */
+            box-shadow: 0 0 0 2px #3b82f6; /* sky-500 */
+        }
+
+        /* Bubble tails */
+        .chat-bubble {
+            position: relative;
+            padding: 0.75rem 1rem; /* p-3 p-4 */
+            border-radius: 0.75rem; /* rounded-xl */
+            max-width: 85%;
+        }
+        .chat-bubble.user-input {
+            background-color: #374151; /* slate-700 */
+            color: #e5e7eb; /* slate-200 */
+            margin-left: auto;
+        }
+        .chat-bubble.user-input::after {
+            content: '';
+            position: absolute;
+            bottom: 0px;
+            right: -8px;
+            width: 0;
+            height: 0;
+            border-style: solid;
+            border-width: 10px 0 0 12px;
+            border-color: transparent transparent transparent #374151; /* slate-700 */
+        }
+        .chat-bubble.ai-translation-darija {
+            background-color: #a855f7; /* fuchsia-500 */
+            color: white;
+            margin-right: auto;
+        }
+        .chat-bubble.ai-translation-darija::before {
+            content: '';
+            position: absolute;
+            bottom: 0px;
+            left: -8px;
+            width: 0;
+            height: 0;
+            border-style: solid;
+            border-width: 0 0 10px 12px;
+            border-color: transparent transparent #a855f7 transparent; /* fuchsia-500 */
+        }
+        .chat-bubble.ai-translation-spanish {
+            background-color: #3b82f6; /* sky-500 */
+            color: white;
+            margin-right: auto;
+        }
+        .chat-bubble.ai-translation-spanish::before {
+            content: '';
+            position: absolute;
+            bottom: 0px;
+            left: -8px;
+            width: 0;
+            height: 0;
+            border-style: solid;
+            border-width: 0 0 10px 12px;
+            border-color: transparent transparent #3b82f6 transparent; /* sky-500 */
+        }
+        .lang-label {
+            font-size: 0.75rem; /* text-xs */
+            font-weight: 600; /* font-semibold */
+            margin-bottom: 0.25rem; /* mb-1 */
+            opacity: 0.8;
+        }
+        .message-text {
+            font-size: 1rem; /* text-base or text-lg in original */
+            line-height: 1.6;
+        }
+        .copy-btn {
+            position: absolute;
+            top: 0.5rem;
+            right: 0.5rem;
+            background-color: rgba(255,255,255,0.2);
+            border-radius: 0.375rem; /* rounded-md */
+            padding: 0.25rem; /* p-1 */
+            transition: background-color 0.2s;
+        }
+        .copy-btn:hover {
+            background-color: rgba(255,255,255,0.4);
+        }
+        .copy-btn svg {
+            width: 1rem; /* w-4 */
+            height: 1rem; /* h-4 */
+        }
+
+    </style>
+</head>
+<body class="bg-slate-900 text-slate-100 flex items-center justify-center min-h-screen p-2 sm:p-4 md:p-6 transition-colors duration-300">
+
+    <div id="app-container" class="max-w-4xl w-full bg-slate-800 rounded-2xl shadow-2xl overflow-hidden flex flex-col main-container-animate">
+        <!-- Header -->
+        <header class="p-5 sm:p-6 bg-gradient-to-br from-sky-600 via-indigo-600 to-fuchsia-600 text-white shadow-lg">
+            <div class="flex items-center justify-center space-x-3">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 sm:h-10 sm:w-10" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M3 5h12M9 3v2m1.048 9.5A18.022 18.022 0 016.412 9m6.088 9.5A18.03 18.03 0 019 14.083m-3 4.417C5.322 16.026 2.568 13.16 2 10V6a4 4 0 014-4h12a4 4 0 014 4v4c0 3.16-2.322 6.026-3 7.5M15 14.083V10a2 2 0 00-4 0v4.083m0 0c0 1.519.248 2.95.701 4.307M9 14.083c.453 1.357.701 2.788.701 4.307M12 12a2.5 2.5 0 00-2.5 2.5V17a2.5 2.5 0 002.5 2.5h.008a2.5 2.5 0 002.5-2.5v-2.5A2.5 2.5 0 0012 12zm0 0h.008v.008H12V12z" />
+                </svg>
+                <h1 class="text-2xl sm:text-3xl font-bold tracking-tight text-center">Traductor Darija ↔ Español</h1>
+            </div>
+            <p class="text-center mt-1.5 text-sky-100 text-sm sm:text-base">Impulsado por IA Generativa</p>
+        </header>
+
+        <!-- API Key Input Modal -->
+        <div id="api-key-modal" class="fixed inset-0 bg-slate-900 bg-opacity-80 backdrop-blur-sm flex items-center justify-center z-50 hidden p-4">
+            <div class="bg-slate-800 p-6 sm:p-8 rounded-xl shadow-2xl w-full max-w-md transform transition-all">
+                <h2 class="text-xl font-semibold text-sky-300 mb-1">Clave API de Google Gemini</h2>
+                <p class="text-sm text-slate-400 mb-4">Por favor, introduce tu clave API para usar el traductor. Tu clave se guardará localmente en tu navegador.</p>
+                <p class="text-xs text-amber-400 mb-4">Recuerda: Las claves API no deben exponerse en aplicaciones cliente de producción. Esta es una herramienta de demostración/personal.</p>
+                <input type="password" id="api-key-input" class="w-full p-3 bg-slate-700 border border-slate-600 rounded-lg focus:ring-2 focus:ring-sky-500 focus:border-sky-500 transition-all duration-300 text-slate-100 placeholder-slate-400" placeholder="Introduce tu clave API aquí...">
+                <button id="save-api-key-btn" class="mt-6 w-full py-3 bg-sky-500 text-white rounded-lg hover:bg-sky-600 transition-colors font-semibold shadow-md focus:outline-none focus:ring-2 focus:ring-sky-400 focus:ring-offset-2 focus:ring-offset-slate-800">Guardar y Continuar</button>
+            </div>
+        </div>
+
+        <!-- Input Sections -->
+        <section class="grid md:grid-cols-2">
+            <!-- Darija Input Area -->
+            <div class="p-4 sm:p-6 border-b md:border-b-0 md:border-r border-slate-700 space-y-4 relative">
+                <label for="darija-input" class="block text-lg font-semibold text-fuchsia-400">Darija (Árabe Marroquí)</label>
+                <div class="textarea-container">
+                    <textarea
+                        id="darija-input"
+                        style="font-size: 17px;"
+                        class="w-full h-40 sm:h-48 p-3 bg-slate-700 border border-slate-600 rounded-lg custom-focus-darija transition-all duration-300 resize-none text-slate-100 placeholder-slate-500 font-noto-kufi"
+                        placeholder="اكتب النص بالدارجة هنا..."
+                        dir="rtl"
+                    ></textarea>
+                    <button title="Limpiar texto" class="textarea-clear-btn" data-target="darija-input">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd" /></svg>
+                    </button>
+                </div>
+                <button id="translate-to-spanish-btn" class="w-full py-3 bg-fuchsia-500 text-white rounded-lg hover:bg-fuchsia-600 transition-all duration-300 disabled:opacity-60 disabled:cursor-not-allowed text-base font-semibold shadow-md focus:outline-none focus:ring-2 focus:ring-fuchsia-400 focus:ring-offset-2 focus:ring-offset-slate-800 flex items-center justify-center space-x-2">
+                    <span class="button-text">Traducir al Español</span>
+                    <div class="spinner hidden"></div>
+                </button>
+            </div>
+            
+            <!-- Spanish Input Area -->
+            <div class="p-4 sm:p-6 space-y-4 relative">
+                <label for="spanish-input" class="block text-lg font-semibold text-sky-400">Español</label>
+                <div class="textarea-container">
+                    <textarea
+                        id="spanish-input"
+                        style="font-size: 17px;"
+                        class="w-full h-40 sm:h-48 p-3 bg-slate-700 border border-slate-600 rounded-lg custom-focus-spanish transition-all duration-300 resize-none text-slate-100 placeholder-slate-500"
+                        placeholder="Escribe el texto en español aquí..."
+                    ></textarea>
+                     <button title="Limpiar texto" class="textarea-clear-btn" data-target="spanish-input">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd" /></svg>
+                    </button>
+                </div>
+                <button id="translate-to-darija-btn" class="w-full py-3 bg-sky-500 text-white rounded-lg hover:bg-sky-600 transition-all duration-300 disabled:opacity-60 disabled:cursor-not-allowed text-base font-semibold shadow-md focus:outline-none focus:ring-2 focus:ring-sky-400 focus:ring-offset-2 focus:ring-offset-slate-800 flex items-center justify-center space-x-2">
+                    <span class="button-text">Traducir al Darija</span>
+                    <div class="spinner hidden"></div>
+                </button>
+            </div>
+        </section>
+
+        <!-- Swap Languages Button -->
+        <div class="py-3 px-4 sm:px-6 flex justify-center border-t border-b border-slate-700">
+            <button id="swap-languages-btn" title="Intercambiar idiomas" class="p-2 bg-slate-700 hover:bg-slate-600 rounded-full transition-colors text-slate-300 hover:text-white">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4" />
+                </svg>
+            </button>
+        </div>
+
+        <!-- Error Display -->
+        <div id="error-message-container" class="px-4 sm:px-6 pt-3">
+            <!-- Error message will be injected here -->
+        </div>
+        
+        <!-- History Section -->
+        <section class="p-4 sm:p-6 flex-grow flex flex-col">
+            <h2 class="text-xl font-semibold text-slate-300 mb-4">Historial de Traducción</h2>
+            <div id="chat-history-container" class="chat-history-container flex-grow space-y-5 overflow-y-auto pr-1.5 min-h-[200px] max-h-[calc(100vh-550px)] sm:max-h-[300px] md:max-h-[350px]">
+                <!-- Placeholder for empty history -->
+                <div id="empty-history-placeholder" class="text-center text-slate-500 py-10 flex flex-col items-center justify-center h-full">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="mx-auto h-16 w-16 text-slate-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
+                    </svg>
+                    <p class="mt-3 text-sm">Tu historial de traducciones aparecerá aquí.</p>
+                </div>
+                <!-- Messages will be appended here by JavaScript -->
+            </div>
+        </section>
+         <footer class="text-center p-4 border-t border-slate-700">
+            <p class="text-xs text-slate-500">Diseñado con esmero por un IA Frontend Engineer.</p>
+        </footer>
+    </div>
+
+    <script type="module">
+        import { GoogleGenerativeAI } from "https://esm.sh/@google/generative-ai";
+
+        // --- Configuration ---
+        // IMPORTANT: For production, API keys should NOT be stored in client-side code.
+        // This is for demonstration/personal use. Consider a backend proxy.
+        // Using "gemini-1.5-flash-latest" as a modern and efficient model.
+        const MODEL_NAME = "gemini-1.5-flash-latest"; 
+        const API_KEY_STORAGE_KEY = 'geminiApiKey';
+        let API_KEY = localStorage.getItem(API_KEY_STORAGE_KEY) || '';
+
+        // --- State Management (Vanilla JS) ---
+        let messages = []; // Array of { text: string, language: 'darija' | 'spanish', type: 'input' | 'translation' }
+        let isLoadingDarija = false;
+        let isLoadingSpanish = false;
+
+        // --- DOM Elements ---
+        const darijaInput = document.getElementById('darija-input');
+        const spanishInput = document.getElementById('spanish-input');
+        const translateToSpanishBtn = document.getElementById('translate-to-spanish-btn');
+        const translateToDarijaBtn = document.getElementById('translate-to-darija-btn');
+        const swapLanguagesBtn = document.getElementById('swap-languages-btn');
+        const chatHistoryContainer = document.getElementById('chat-history-container');
+        const emptyHistoryPlaceholder = document.getElementById('empty-history-placeholder');
+        const errorMessageContainer = document.getElementById('error-message-container');
+        
+        const apiKeyModal = document.getElementById('api-key-modal');
+        const apiKeyInput = document.getElementById('api-key-input');
+        const saveApiKeyBtn = document.getElementById('save-api-key-btn');
+
+        let genAIInstance;
+        let modelInstance;
+
+        function initializeAI() {
+            if (!API_KEY) {
+                apiKeyModal.classList.remove('hidden');
+                apiKeyModal.classList.add('flex');
+                return false;
+            }
+            try {
+                genAIInstance = new GoogleGenerativeAI(API_KEY);
+                modelInstance = genAIInstance.getGenerativeModel({ model: MODEL_NAME });
+                apiKeyModal.classList.add('hidden');
+                apiKeyModal.classList.remove('flex');
+                return true;
+            } catch (error) {
+                console.error("Error initializing AI:", error);
+                displayError("Error al inicializar el servicio de IA. Verifica tu clave API y la consola.");
+                API_KEY = ''; // Clear invalid key
+                localStorage.removeItem(API_KEY_STORAGE_KEY);
+                apiKeyModal.classList.remove('hidden');
+                apiKeyModal.classList.add('flex');
+                return false;
+            }
+        }
+        
+        saveApiKeyBtn.addEventListener('click', () => {
+            const key = apiKeyInput.value.trim();
+            if (key) {
+                API_KEY = key;
+                localStorage.setItem(API_KEY_STORAGE_KEY, key);
+                if(initializeAI()) {
+                    displayError(''); // Clear any previous errors
+                }
+            } else {
+                displayError("Por favor, introduce una clave API válida.", apiKeyModal.querySelector('.bg-slate-800'));
+            }
+        });
+
+
+        // --- Functions ---
+        function setLoadingState(button, textSpan, spinnerDiv, isLoading) {
+            if (isLoading) {
+                button.disabled = true;
+                textSpan.classList.add('hidden');
+                spinnerDiv.classList.remove('hidden');
+            } else {
+                button.disabled = false;
+                textSpan.classList.remove('hidden');
+                spinnerDiv.classList.add('hidden');
+            }
+        }
+
+        function displayError(message, container = errorMessageContainer) {
+            if (container === errorMessageContainer) { // Global error
+                 errorMessageContainer.innerHTML = message 
+                ? `<div class="p-3.5 bg-red-600 bg-opacity-80 border border-red-700 text-red-100 rounded-lg text-sm flex items-center space-x-2">
+                     <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 flex-shrink-0" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd" /></svg>
+                     <span>${message}</span>
+                   </div>` 
+                : '';
+            } else { // Modal error
+                const existingError = container.querySelector('.modal-error');
+                if (existingError) existingError.remove();
+                if (message) {
+                    const errorDiv = document.createElement('div');
+                    errorDiv.className = 'modal-error text-red-400 text-xs mt-2';
+                    errorDiv.textContent = message;
+                    container.appendChild(errorDiv);
+                }
+            }
+        }
+
+        function addMessageToHistory(text, language, type) {
+            messages.push({ text, language, type });
+            renderMessages();
+            if (emptyHistoryPlaceholder) emptyHistoryPlaceholder.classList.add('hidden');
+            chatHistoryContainer.scrollTop = chatHistoryContainer.scrollHeight; // Auto-scroll
+        }
+
+        function renderMessages() {
+            chatHistoryContainer.innerHTML = ''; // Clear existing messages
+            if (messages.length === 0 && emptyHistoryPlaceholder) {
+                 emptyHistoryPlaceholder.classList.remove('hidden');
+                 return;
+            }
+            if (emptyHistoryPlaceholder) emptyHistoryPlaceholder.classList.add('hidden');
+
+            messages.forEach((msg, index) => {
+                const messageDiv = document.createElement('div');
+                messageDiv.classList.add('chat-bubble', 'fade-in-up');
+                messageDiv.style.animationDelay = `${index * 0.05}s`; // Stagger animation
+
+                let langLabelText = '';
+                if (msg.type === 'input') {
+                    messageDiv.classList.add('user-input');
+                    langLabelText = msg.language === 'darija' ? 'Tú (Darija)' : 'Tú (Español)';
+                } else { // 'translation'
+                    if (msg.language === 'darija') {
+                        messageDiv.classList.add('ai-translation-darija');
+                        langLabelText = 'Traducción (Darija)';
+                    } else {
+                        messageDiv.classList.add('ai-translation-spanish');
+                        langLabelText = 'Traducción (Español)';
+                    }
+                }
+
+                const langLabel = document.createElement('div');
+                langLabel.className = 'lang-label';
+                langLabel.textContent = langLabelText;
+
+                const textP = document.createElement('p');
+                textP.className = 'message-text';
+                if (msg.language === 'darija') {
+                    textP.classList.add('font-noto-kufi');
+                    textP.dir = 'rtl';
+                }
+                textP.textContent = msg.text;
+
+                messageDiv.appendChild(langLabel);
+                messageDiv.appendChild(textP);
+                
+                if (msg.type === 'translation') {
+                    const copyButton = document.createElement('button');
+                    copyButton.title = 'Copiar traducción';
+                    copyButton.className = 'copy-btn';
+                    copyButton.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path d="M7 3a1 1 0 000 2h6a1 1 0 100-2H7zM4 7a1 1 0 011-1h10a1 1 0 110 2H5a1 1 0 01-1-1zM5 11a1 1 0 100 2h4a1 1 0 100-2H5z"/><path fill-rule="evenodd" d="M2 5a2 2 0 012-2h12a2 2 0 012 2v10a2 2 0 01-2 2H4a2 2 0 01-2-2V5zm2-1a1 1 0 00-1 1v10a1 1 0 001 1h12a1 1 0 001-1V5a1 1 0 00-1-1H4z" clip-rule="evenodd"/></svg>`;
+                    copyButton.addEventListener('click', () => {
+                        navigator.clipboard.writeText(msg.text)
+                            .then(() => {
+                                copyButton.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" /></svg>`;
+                                setTimeout(() => {
+                                   copyButton.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path d="M7 3a1 1 0 000 2h6a1 1 0 100-2H7zM4 7a1 1 0 011-1h10a1 1 0 110 2H5a1 1 0 01-1-1zM5 11a1 1 0 100 2h4a1 1 0 100-2H5z"/><path fill-rule="evenodd" d="M2 5a2 2 0 012-2h12a2 2 0 012 2v10a2 2 0 01-2 2H4a2 2 0 01-2-2V5zm2-1a1 1 0 00-1 1v10a1 1 0 001 1h12a1 1 0 001-1V5a1 1 0 00-1-1H4z" clip-rule="evenodd"/></svg>`;
+                                }, 1500);
+                            })
+                            .catch(err => console.error('Error al copiar: ', err));
+                    });
+                    messageDiv.appendChild(copyButton);
+                }
+
+                chatHistoryContainer.appendChild(messageDiv);
+            });
+        }
+
+        async function translate(text, fromLanguage, toLanguage, buttonElement, textSpan, spinnerDiv) {
+            if (!text.trim()) return;
+            if (!initializeAI()) return; // Ensure AI is initialized (API key might be missing)
+
+            setLoadingState(buttonElement, textSpan, spinnerDiv, true);
+            displayError(''); // Clear previous errors
+
+            addMessageToHistory(text, fromLanguage, 'input');
+
+            try {
+                const prompt = fromLanguage === 'darija' 
+                    ? `Traduce este texto del árabe marroquí (Darija) al español de forma natural y precisa. Si el texto original no es Darija, intenta interpretarlo o indica que no es Darija. Texto: "${text}"`
+                    : `Traduce este texto del español al árabe marroquí (Darija) de forma natural y precisa. Si el texto original no es Español, intenta interpretarlo o indica que no es Español. Texto: "${text}"`;
+
+                const result = await modelInstance.generateContent(prompt);
+                const response = await result.response;
+                const translation = response.text();
+
+                addMessageToHistory(translation, toLanguage, 'translation');
+
+                // Clear the input field from which translation was initiated
+                if (fromLanguage === 'darija') {
+                    darijaInput.value = '';
+                    darijaInput.dispatchEvent(new Event('input')); // Trigger clear button visibility update
+                } else {
+                    spanishInput.value = '';
+                    spanishInput.dispatchEvent(new Event('input')); // Trigger clear button visibility update
+                }
+
+            } catch (err) {
+                console.error("Translation Error:", err);
+                displayError('Error durante la traducción. Por favor, verifica tu conexión, la clave API, o inténtalo de nuevo. Detalles en la consola.');
+                // Remove the input message if translation failed, to avoid confusion
+                messages.pop(); 
+                renderMessages();
+            } finally {
+                setLoadingState(buttonElement, textSpan, spinnerDiv, false);
+            }
+        }
+        
+        // --- Event Listeners ---
+        translateToSpanishBtn.addEventListener('click', () => {
+            const text = darijaInput.value;
+            translate(text, 'darija', 'spanish', translateToSpanishBtn, translateToSpanishBtn.querySelector('.button-text'), translateToSpanishBtn.querySelector('.spinner'));
+        });
+
+        translateToDarijaBtn.addEventListener('click', () => {
+            const text = spanishInput.value;
+            translate(text, 'spanish', 'darija', translateToDarijaBtn, translateToDarijaBtn.querySelector('.button-text'), translateToDarijaBtn.querySelector('.spinner'));
+        });
+
+        swapLanguagesBtn.addEventListener('click', () => {
+            const tempDarija = darijaInput.value;
+            darijaInput.value = spanishInput.value;
+            spanishInput.value = tempDarija;
+            // Trigger input event to update clear button visibility
+            darijaInput.dispatchEvent(new Event('input'));
+            spanishInput.dispatchEvent(new Event('input'));
+        });
+
+        document.querySelectorAll('.textarea-clear-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const targetId = btn.dataset.target;
+                const textarea = document.getElementById(targetId);
+                if (textarea) {
+                    textarea.value = '';
+                    textarea.focus();
+                    textarea.dispatchEvent(new Event('input')); // Trigger clear button visibility update
+                }
+            });
+        });
+        
+        // Show/hide clear buttons based on textarea content
+        [darijaInput, spanishInput].forEach(textarea => {
+            const clearBtn = textarea.nextElementSibling;
+            textarea.addEventListener('input', () => {
+                if (textarea.value.length > 0) {
+                    clearBtn.style.display = 'inline-block';
+                } else {
+                    clearBtn.style.display = 'none';
+                }
+            });
+            // Initial check
+            if (textarea.value.length > 0) clearBtn.style.display = 'inline-block';
+        });
+
+
+        // --- Initialization ---
+        function init() {
+            // Load messages from localStorage if any (optional persistence)
+            // const storedMessages = localStorage.getItem('translationHistory');
+            // if (storedMessages) {
+            //    messages = JSON.parse(storedMessages);
+            // }
+            renderMessages(); // Render initial state (empty or loaded)
+            initializeAI(); // Check for API key and init AI
+            
+            // Animate app container entrance
+            const appContainer = document.getElementById('app-container');
+            // The animation is now handled by CSS class `main-container-animate`
+        }
+
+        init();
+
+    </script>
+</body>
+</html>

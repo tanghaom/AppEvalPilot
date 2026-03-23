@@ -1,0 +1,9 @@
+{
+  "web_id": "web_7",
+  "task_id": 3,
+  "task_type": "dynamic",
+  "instruction": "Task: Click the left or right arrow buttons in the generation selector of an AI message.\nExpected Result: The displayed AI message content updates to the selected generation. The subsequent messages (the branch associated with that generation) are loaded and displayed. The generation selector count (e.g., '2/3') updates.\n\nNote: The task is only considered successful if the expected result is achieved; otherwise, it is deemed infeasible.",
+  "max_steps": 15,
+  "expected": "The displayed AI message content updates to the selected generation. The subsequent messages (the branch associated with that generation) are loaded and displayed. The generation selector count (e.g., '2/3') updates.",
+  "label": 1
+}

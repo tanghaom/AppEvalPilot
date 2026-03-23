@@ -1,0 +1,9 @@
+{
+  "web_id": "web_66",
+  "task_id": 4,
+  "task_type": "dynamic",
+  "instruction": "Task: Press the Down Arrow key to accelerate the active tetromino's fall (soft drop).\nExpected Result: The active tetromino moves down one row. If this movement results in it landing on an existing block or the playfield bottom, it locks in place, and a new tetromino begins to fall from the top.\n\nNote: The task is only considered successful if the expected result is achieved; otherwise, it is deemed infeasible.",
+  "max_steps": 15,
+  "expected": "The active tetromino moves down one row. If this movement results in it landing on an existing block or the playfield bottom, it locks in place, and a new tetromino begins to fall from the top.",
+  "label": 1
+}

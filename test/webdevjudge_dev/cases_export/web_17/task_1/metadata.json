@@ -1,0 +1,9 @@
+{
+  "web_id": "web_17",
+  "task_id": 1,
+  "task_type": "dynamic",
+  "instruction": "Task: Control character movement using keyboard inputs (e.g., WASD, arrow keys).\nExpected Result: The player character's position updates within the 3D game environment.\n\nNote: The task is only considered successful if the expected result is achieved; otherwise, it is deemed infeasible.",
+  "max_steps": 15,
+  "expected": "The player character's position updates within the 3D game environment.",
+  "label": 1
+}

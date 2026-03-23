@@ -1,0 +1,9 @@
+{
+  "web_id": "web_31",
+  "task_id": 2,
+  "task_type": "dynamic",
+  "instruction": "Task: Click on a channel name in the sidebar list.\nExpected Result: Selected channel's messages are displayed; channel is marked active.\n\nNote: The task is only considered successful if the expected result is achieved; otherwise, it is deemed infeasible.",
+  "max_steps": 15,
+  "expected": "Selected channel's messages are displayed; channel is marked active.",
+  "label": 1
+}

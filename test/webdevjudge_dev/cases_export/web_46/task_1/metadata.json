@@ -1,0 +1,9 @@
+{
+  "web_id": "web_46",
+  "task_id": 1,
+  "task_type": "dynamic",
+  "instruction": "Task: Input details (e.g., name, contact email) into a 'New Player Profile' form and click the 'Save Player' button.\nExpected Result: The new player's name is added to a visible list of players on the page, and the input fields in the form are cleared.\n\nNote: The task is only considered successful if the expected result is achieved; otherwise, it is deemed infeasible.",
+  "max_steps": 15,
+  "expected": "The new player's name is added to a visible list of players on the page, and the input fields in the form are cleared.",
+  "label": 1
+}

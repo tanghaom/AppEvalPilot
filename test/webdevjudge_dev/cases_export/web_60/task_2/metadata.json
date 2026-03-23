@@ -1,0 +1,9 @@
+{
+  "web_id": "web_60",
+  "task_id": 2,
+  "task_type": "dynamic",
+  "instruction": "Task: Add a new plant care reminder (e.g., by clicking an 'Add Reminder' button, filling a small form with task name and frequency, and submitting it).\nExpected Result: The new reminder appears in a dedicated 'Plant Care Reminders' section on the dashboard.\n\nNote: The task is only considered successful if the expected result is achieved; otherwise, it is deemed infeasible.",
+  "max_steps": 15,
+  "expected": "The new reminder appears in a dedicated 'Plant Care Reminders' section on the dashboard.",
+  "label": 0
+}

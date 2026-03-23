@@ -1,0 +1,9 @@
+{
+  "web_id": "web_49",
+  "task_id": 4,
+  "task_type": "dynamic",
+  "instruction": "Task: Type text into an active input field.\nExpected Result: Subtle, animated music notes appear and float around the input field as characters are typed, possibly 'dancing' or trailing the cursor, and then fade out.\n\nNote: The task is only considered successful if the expected result is achieved; otherwise, it is deemed infeasible.",
+  "max_steps": 15,
+  "expected": "Subtle, animated music notes appear and float around the input field as characters are typed, possibly 'dancing' or trailing the cursor, and then fade out.",
+  "label": 1
+}

@@ -1,0 +1,9 @@
+{
+  "web_id": "web_75",
+  "task_id": 3,
+  "task_type": "dynamic",
+  "instruction": "Task: Click 'Next' and 'Previous' navigation buttons to change the currently displayed time period (e.g., to the next/previous day, week, or month, depending on the current view).\nExpected Result: The calendar display updates to show events for the newly navigated time period.\n\nNote: The task is only considered successful if the expected result is achieved; otherwise, it is deemed infeasible.",
+  "max_steps": 15,
+  "expected": "The calendar display updates to show events for the newly navigated time period.",
+  "label": 1
+}

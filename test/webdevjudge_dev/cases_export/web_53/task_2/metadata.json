@@ -1,0 +1,9 @@
+{
+  "web_id": "web_53",
+  "task_id": 2,
+  "task_type": "dynamic",
+  "instruction": "Task: Click on a performer's name in the regional leaderboard.\nExpected Result: A detailed view of the selected performer's portfolio (assets, percentage allocation, performance history, etc.) is displayed.\n\nNote: The task is only considered successful if the expected result is achieved; otherwise, it is deemed infeasible.",
+  "max_steps": 15,
+  "expected": "A detailed view of the selected performer's portfolio (assets, percentage allocation, performance history, etc.) is displayed.",
+  "label": 0
+}

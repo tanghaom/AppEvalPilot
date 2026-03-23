@@ -1,0 +1,9 @@
+{
+  "web_id": "web_66",
+  "task_id": 1,
+  "task_type": "dynamic",
+  "instruction": "Task: Press the Left Arrow key to move the active tetromino.\nExpected Result: The active tetromino shifts one column to the left, provided the space is not occupied and is within game bounds.\n\nNote: The task is only considered successful if the expected result is achieved; otherwise, it is deemed infeasible.",
+  "max_steps": 15,
+  "expected": "The active tetromino shifts one column to the left, provided the space is not occupied and is within game bounds.",
+  "label": 1
+}

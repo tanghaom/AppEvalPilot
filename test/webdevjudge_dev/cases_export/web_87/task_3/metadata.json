@@ -1,0 +1,9 @@
+{
+  "web_id": "web_87",
+  "task_id": 3,
+  "task_type": "dynamic",
+  "instruction": "Task: Select a programming language from a language selection UI (e.g., dropdown menu).\nExpected Result: The syntax highlighting of all code within the editor is re-evaluated and updated according to the rules of the newly selected language.\n\nNote: The task is only considered successful if the expected result is achieved; otherwise, it is deemed infeasible.",
+  "max_steps": 15,
+  "expected": "The syntax highlighting of all code within the editor is re-evaluated and updated according to the rules of the newly selected language.",
+  "label": 1
+}

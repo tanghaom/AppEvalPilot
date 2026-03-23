@@ -1,0 +1,9 @@
+{
+  "web_id": "web_86",
+  "task_id": 4,
+  "task_type": "dynamic",
+  "instruction": "Task: While a (simulated) translation is in progress (isLoading is true), attempt to click either of the translate buttons.\nExpected Result: The button is visually indicated as disabled (e.g., reduced opacity) and does not trigger a new translation action or interrupt the current one.\n\nNote: The task is only considered successful if the expected result is achieved; otherwise, it is deemed infeasible.",
+  "max_steps": 15,
+  "expected": "The button is visually indicated as disabled (e.g., reduced opacity) and does not trigger a new translation action or interrupt the current one.",
+  "label": 1
+}

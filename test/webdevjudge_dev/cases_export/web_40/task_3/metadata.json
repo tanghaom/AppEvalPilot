@@ -1,0 +1,9 @@
+{
+  "web_id": "web_40",
+  "task_id": 3,
+  "task_type": "dynamic",
+  "instruction": "Task: Type a command into the hacker-themed terminal input field and press Enter (or click a 'submit' button).\nExpected Result: The terminal processes the command, displaying a response. Successful command sequences reveal contact information or advance the challenge.\n\nNote: The task is only considered successful if the expected result is achieved; otherwise, it is deemed infeasible.",
+  "max_steps": 15,
+  "expected": "The terminal processes the command, displaying a response. Successful command sequences reveal contact information or advance the challenge.",
+  "label": 0
+}

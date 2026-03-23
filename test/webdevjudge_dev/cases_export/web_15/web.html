@@ -1,0 +1,539 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Discord Clone</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Custom scrollbar - more subtle for a Discord feel */
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: #2F3136; /* Tailwind gray-700 approx */ }
+        ::-webkit-scrollbar-thumb { background: #202225; /* Tailwind gray-800 approx */ border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #1B1D1F; /* Darker */ }
+
+        /* Message content specific styles */
+        .message-content a { color: #0099ff; /* A vibrant link blue */ text-decoration: none; }
+        .message-content a:hover { text-decoration: underline; }
+        .message-content iframe { max-width: 100%; border-radius: 8px; margin-top: 0.5rem; /* mt-2 */ }
+        .video-embed { max-height: 20rem; /* max-h-80 (320px) */ } /* Standard Tailwind scale */
+
+        /* Textarea auto-resize behavior */
+        #message-input, .edit-message-textarea { resize: none; overflow-y: hidden; }
+
+        /* Channel item states */
+        .channel-item:hover { background-color: #393c43; /* gray-700 mid */ }
+        .channel-item.active { background-color: #40444B; /* gray-600 a bit lighter */ }
+        .channel-item.active span { color: white; font-weight: 600; /* semibold */ }
+
+        /* Small spinner for OG loading */
+        .loader {
+            border: 3px solid #4f545c30; /* gray-600/20 */
+            border-top: 3px solid #5865F2; /* Discord purple/blue */
+            border-radius: 50%;
+            width: 1rem; /* w-4 */
+            height: 1rem; /* h-4 */
+            animation: spin 1s linear infinite;
+            display: inline-block;
+            margin-right: 0.25rem; /* mr-1 */
+        }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+        /* Prevent selection on non-text elements for cleaner UX */
+        body { user-select: none; }
+        textarea, input, .message-text-selectable { user-select: text; }
+
+        /* Ensure placeholder image div keeps its aspect ratio if used for avatars inside flex */
+        .avatar-placeholder { flex-shrink: 0; }
+    </style>
+</head>
+<body class="bg-gray-800 text-gray-300 flex h-screen antialiased overflow-hidden">
+
+    <div id="app" class="flex h-full w-full">
+        <!-- Server List (Simplified Aesthetic) -->
+        <div class="w-18 bg-gray-900 p-3 space-y-3 flex flex-col items-center shrink-0">
+            <div class="bg-blue-600 w-12 h-12 rounded-full flex items-center justify-center text-white text-xl font-bold cursor-pointer ring-2 ring-offset-2 ring-offset-gray-900 ring-transparent hover:ring-white transition-all duration-150 focus:outline-none focus:ring-white">
+                G
+            </div>
+            <div class="w-8 border-t border-gray-700 my-1"></div>
+            <div title="Add a Server (Placeholder)" class="bg-gray-700 w-12 h-12 rounded-2xl flex items-center justify-center cursor-pointer hover:bg-green-500 hover:rounded-xl transition-all duration-200 group focus:outline-none focus:ring-2 focus:ring-green-400">
+                <svg class="w-6 h-6 text-green-500 group-hover:text-white" fill="currentColor" viewBox="0 0 20 20"><path d="M10 3a1 1 0 011 1v4h4a1 1 0 110 2h-4v4a1 1 0 11-2 0v-4H5a1 1 0 110-2h4V4a1 1 0 011-1z"></path></svg>
+            </div>
+            <!-- Placeholder for generic server icon -->
+            <div class="bg-gray-700 border-2 border-dashed border-gray-500 rounded-xl w-12 h-12 avatar-placeholder"></div>
+        </div>
+
+        <!-- Channel Panel -->
+        <nav class="w-64 bg-gray-800 flex flex-col shrink-0 border-r border-black/20">
+            <header class="h-12 shadow-md p-3 border-b border-black/20 flex justify-between items-center shrink-0">
+                <h1 class="font-semibold text-white text-md">My Awesome Server</h1>
+                <svg class="w-5 h-5 text-gray-400 cursor-pointer hover:text-white" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd"></path></svg>
+            </header>
+            
+            <div class="flex-grow p-2 space-y-0.5 overflow-y-auto" id="channel-list-container">
+                 <button id="add-channel-btn" class="mb-2 w-full flex items-center justify-center text-xs bg-gray-700 hover:bg-gray-600 text-gray-300 hover:text-white font-medium py-2 px-3 rounded-md transition duration-150 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                    <svg class="w-4 h-4 mr-1.5" fill="currentColor" viewBox="0 0 20 20"><path d="M10 3a1 1 0 011 1v4h4a1 1 0 110 2h-4v4a1 1 0 11-2 0v-4H5a1 1 0 110-2h4V4a1 1 0 011-1z"></path></svg>
+                    New Channel
+                </button>
+                <div id="channel-list">
+                    <!-- Channels will be injected here -->
+                </div>
+            </div>
+
+            <footer class="p-2.5 bg-gray-850 border-t border-black/20 flex items-center space-x-2 shrink-0 h-14">
+                <div class="relative avatar-placeholder">
+                    <!-- Placeholder for user avatar -->
+                    <div class="bg-gray-500 border-gray-400 rounded-full w-9 h-9 flex items-center justify-center text-sm font-semibold text-white">
+                        U
+                    </div>
+                    <div class="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 bg-green-500 rounded-full border-2 border-gray-850"></div>
+                </div>
+                <div>
+                    <span id="current-user-name" class="font-semibold text-sm text-white block leading-tight">User Name</span>
+                    <span class="text-xs text-gray-400 block leading-tight">#0001</span>
+                </div>
+            </footer>
+        </nav>
+
+        <!-- Main Chat Area -->
+        <main class="flex-grow bg-gray-700 flex flex-col">
+            <header id="chat-header" class="h-12 shadow-sm px-4 border-b border-black/20 flex items-center space-x-2 shrink-0">
+                <svg class="w-6 h-6 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 20l4-16m2 16l4-16M6 9h14M4 15h14"></path></svg>
+                <h2 id="current-channel-name" class="font-semibold text-white text-lg"></h2>
+                <span id="current-channel-topic" class="text-sm text-gray-400 truncate hidden md:block"></span>
+            </header>
+
+            <div id="messages-container" class="flex-grow p-4 space-y-4 overflow-y-auto flex flex-col">
+                <!-- Messages will be injected here, newest at top via JS logic -->
+            </div>
+
+            <footer class="p-3 bg-gray-700 border-t border-black/20 shrink-0">
+                <div class="bg-gray-800 rounded-lg px-2 py-1 flex items-end">
+                     <button title="Attach File (Placeholder)" class="p-2.5 text-gray-400 hover:text-gray-200 focus:outline-none focus:text-gray-100">
+                        <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-11a1 1 0 10-2 0v2H7a1 1 0 100 2h2v2a1 1 0 102 0v-2h2a1 1 0 100-2h-2V7z" clip-rule="evenodd"></path></svg>
+                    </button>
+                    <textarea id="message-input" placeholder="Message #channel" rows="1" class="flex-grow bg-transparent p-2.5 text-gray-200 focus:outline-none"></textarea>
+                    <button id="send-message-btn" title="Send Message" class="ml-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold p-2.5 rounded-md transition duration-150 self-end mb-0.5 focus:outline-none focus:ring-2 focus:ring-blue-400">
+                        <svg class="w-5 h-5" viewBox="0 0 24 24" fill="currentColor"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"></path></svg>
+                    </button>
+                </div>
+            </footer>
+        </main>
+    </div>
+
+<script>
+    const state = {
+        currentUser: { id: 'user1', name: 'Shinji', avatar: null }, // Avatar can be URL or placeholder
+        channels: [
+            { id: 'c1', name: 'general', topic: 'General discussion about everything.' },
+            { id: 'c2', name: 'dev-talk', topic: 'Frontend, backend, and everything in between.' },
+            { id: 'c3', name: 'memes', topic: 'Only the dankest.' },
+        ],
+        messages: { // channelId: [ { messageObject } ]
+            'c1': [
+                { id: 'm1', userId: 'user2', userName: 'Asuka', avatar: null, text: 'Hey everyone! What\'s up?', createdAt: new Date(Date.now() - 3600000).toISOString(), updatedAt: null, isEditing: false, ogPreviews: {} },
+                { id: 'm2', userId: 'user1', userName: 'Shinji', avatar: null, text: 'Not much, just working on this Discord clone. Check out this cool site: https://tailwindcss.com and a video https://www.youtube.com/watch?v=dQw4w9WgXcQ', createdAt: new Date(Date.now() - 1800000).toISOString(), updatedAt: null, isEditing: false, ogPreviews: {} },
+            ],
+            'c2': [
+                { id: 'm3', userId: 'user3', userName: 'Rei', avatar: null, text: 'The nature of JavaScript is fascinating.', createdAt: new Date().toISOString(), updatedAt: null, isEditing: false, ogPreviews: {} },
+            ],
+            'c3': []
+        },
+        currentChannelId: 'c1',
+    };
+
+    // DOM Elements
+    const channelListEl = document.getElementById('channel-list');
+    const addChannelBtn = document.getElementById('add-channel-btn');
+    const currentChannelNameEl = document.getElementById('current-channel-name');
+    const currentChannelTopicEl = document.getElementById('current-channel-topic');
+    const messagesContainerEl = document.getElementById('messages-container');
+    const messageInputEl = document.getElementById('message-input');
+    const sendMessageBtn = document.getElementById('send-message-btn');
+    const currentUserNameEl = document.getElementById('current-user-name');
+
+
+    // Utility Functions
+    function generateId() { return `id-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`; }
+    
+    function formatDate(dateString) {
+        if (!dateString) return '';
+        const date = new Date(dateString);
+        return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    }
+
+    // Auto-resize textarea
+    function autoResizeTextarea(textarea) {
+        textarea.style.height = 'auto';
+        const newHeight = Math.min(textarea.scrollHeight, 160); // Max height approx 10rem (5 lines)
+        textarea.style.height = newHeight + 'px';
+        textarea.style.overflowY = textarea.scrollHeight > newHeight ? 'auto' : 'hidden';
+    }
+    
+    messageInputEl.addEventListener('input', () => autoResizeTextarea(messageInputEl));
+
+    // URL Parsing and Embedding
+    async function fetchOpenGraphData(url) {
+        try {
+            if (/\.(jpeg|jpg|gif|png|webp)$/i.test(url)) {
+                return { title: url.substring(url.lastIndexOf('/') + 1) || "Image", image: url, description: "Direct image link", site_name: new URL(url).hostname, url: url };
+            }
+            // Using allorigins.win as a CORS proxy for fetching OG data client-side.
+            // Note: Public proxies can be unreliable or have rate limits.
+            const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(url)}`;
+            const response = await fetch(proxyUrl);
+            if (!response.ok) return null;
+            
+            const data = await response.json();
+            const htmlContent = data.contents;
+            if (!htmlContent) return null;
+
+            const parser = new DOMParser();
+            const doc = parser.parseFromString(htmlContent, 'text/html');
+
+            const getMeta = (prop) => doc.querySelector(`meta[property="${prop}"]`)?.content || doc.querySelector(`meta[name="${prop}"]`)?.content;
+
+            let title = getMeta('og:title') || doc.querySelector('title')?.textContent || "No Title";
+            let description = getMeta('og:description') || getMeta('description') || "";
+            let image = getMeta('og:image');
+            const site_name = getMeta('og:site_name') || new URL(url).hostname;
+
+            if (image && !image.startsWith('http')) {
+                try { image = new URL(image, url).href; } catch (e) { image = null; }
+            }
+            if (image && (image.startsWith('data:image') || image.length > 2048)) image = null; // Basic filter for invalid/long data URIs
+
+            // Truncate long titles/descriptions
+            title = title.length > 100 ? title.substring(0, 97) + "..." : title;
+            description = description.length > 150 ? description.substring(0, 147) + "..." : description;
+            
+            return { title, description, image, site_name, url };
+        } catch (error) {
+            console.warn(`Error fetching OG data for ${url}:`, error);
+            return null;
+        }
+    }
+
+    function getYouTubeEmbedUrl(url) {
+        const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/;
+        const match = url.match(regExp);
+        return (match && match[2].length === 11) ? `https://www.youtube.com/embed/${match[2]}` : null;
+    }
+
+    function getVimeoEmbedUrl(url) {
+        const regExp = /https?:\/\/(?:www\.)?vimeo.com\/(?:channels\/(?:\w+\/)?|groups\/([^\/]*)\/videos\/|album\/(\d+)\/video\/|)(\d+)(?:$|\/|\?)/;
+        const match = url.match(regExp);
+        return (match && match[3]) ? `https://player.vimeo.com/video/${match[3]}` : null;
+    }
+
+    async function renderMessageContent(text, messageId) {
+        const urlRegex = /(https?:\/\/[^\s"<>()]+)/g;
+        let contentHtml = '';
+        let lastIndex = 0;
+        let match;
+        const promises = [];
+
+        const message = state.messages[state.currentChannelId].find(m => m.id === messageId);
+
+        while ((match = urlRegex.exec(text)) !== null) {
+            contentHtml += escapeHtml(text.substring(lastIndex, match.index));
+            const url = match[0];
+            lastIndex = urlRegex.lastIndex;
+
+            const ytEmbed = getYouTubeEmbedUrl(url);
+            const vimeoEmbed = getVimeoEmbedUrl(url);
+
+            if (ytEmbed) {
+                contentHtml += `<iframe class="video-embed aspect-video" src="${ytEmbed}" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>`;
+            } else if (vimeoEmbed) {
+                contentHtml += `<iframe class="video-embed aspect-video" src="${vimeoEmbed}" frameborder="0" allow="autoplay; fullscreen; picture-in-picture" allowfullscreen></iframe>`;
+            } else {
+                contentHtml += `<a href="${escapeHtml(url)}" target="_blank" rel="noopener noreferrer">${escapeHtml(url)}</a>`;
+                if (message && !message.ogPreviews[url]) { // Check if preview not already fetched/loading
+                    message.ogPreviews[url] = { status: 'loading' };
+                    // No await here, let it update async. Re-render will pick it up.
+                    fetchOpenGraphData(url).then(ogData => {
+                        if (ogData) {
+                            message.ogPreviews[url] = { status: 'loaded', data: ogData };
+                        } else {
+                            message.ogPreviews[url] = { status: 'failed' };
+                        }
+                        // Smart re-render only the affected message if possible, or full renderMessages
+                        const existingMsgEl = document.getElementById(messageId);
+                        if (existingMsgEl && state.currentChannelId === message.channelId) { // ensure channel hasn't changed
+                           renderMessages(); // Could be optimized to update just one message
+                        }
+                    });
+                }
+            }
+        }
+        contentHtml += escapeHtml(text.substring(lastIndex));
+        return contentHtml;
+    }
+    
+    function renderOGPreview(ogData) {
+        if (!ogData || ogData.status !== 'loaded' || !ogData.data) return '';
+        const { title, description, image, site_name, url } = ogData.data;
+        return `
+            <div class="mt-2 p-3 bg-gray-800 border border-gray-900/50 rounded-lg max-w-md group/og">
+                ${site_name ? `<div class="text-xs text-gray-400 mb-1">${escapeHtml(site_name)}</div>` : ''}
+                <a href="${escapeHtml(url)}" target="_blank" rel="noopener noreferrer" class="text-blue-400 font-semibold hover:underline text-sm block">${escapeHtml(title)}</a>
+                ${description ? `<p class="text-xs text-gray-300 mt-1 message-text-selectable">${escapeHtml(description)}</p>` : ''}
+                ${image ? `<img src="${escapeHtml(image)}" alt="Preview" class="mt-2 rounded-md max-h-40 object-cover w-full group-hover/og:shadow-lg transition-shadow">` : ''}
+            </div>
+        `;
+    }
+
+    function escapeHtml(unsafe) {
+        if (unsafe === null || unsafe === undefined) return '';
+        return unsafe
+             .replace(/&/g, "&amp;")
+             .replace(/</g, "&lt;")
+             .replace(/>/g, "&gt;")
+             .replace(/"/g, "&quot;")
+             .replace(/'/g, "&#039;");
+    }
+
+    // Render Functions
+    function renderChannels() {
+        channelListEl.innerHTML = '';
+        state.channels.forEach(channel => {
+            const channelItem = document.createElement('div');
+            channelItem.className = `channel-item p-2 rounded-md cursor-pointer group flex items-center justify-between ${channel.id === state.currentChannelId ? 'active' : ''}`;
+            channelItem.innerHTML = `
+                <div class="flex items-center">
+                    <svg class="w-4 h-4 ${channel.id === state.currentChannelId ? 'text-white' : 'text-gray-500 group-hover:text-gray-300'} mr-1.5" fill="currentColor" viewBox="0 0 20 20"><path d="M10 12a2 2 0 100-4 2 2 0 000 4zm0 2a4 4 0 100-8 4 4 0 000 8z"/><path d="M3 8a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1z"/></svg> <!-- Hashtag-like icon for text channel -->
+                    <span class="text-gray-400 group-hover:text-gray-200 text-sm">${escapeHtml(channel.name)}</span>
+                </div>
+            `;
+            channelItem.onclick = () => switchChannel(channel.id);
+            channelListEl.appendChild(channelItem);
+        });
+    }
+
+    async function renderMessages() {
+        messagesContainerEl.innerHTML = ''; // Clear existing messages
+        const currentMessages = state.messages[state.currentChannelId] || [];
+        
+        // Messages are stored newest first (unshifted). So iterate normally for display.
+        for (const message of currentMessages) {
+            const messageEl = document.createElement('div');
+            messageEl.id = message.id;
+            messageEl.className = 'flex py-1.5 group hover:bg-gray-700/40 px-4 -mx-4'; // Hover effect for message row
+
+            const avatarPlaceholder = `<div class="avatar-placeholder bg-gray-500 border-2 border-gray-400 rounded-full w-10 h-10 flex items-center justify-center text-sm font-semibold text-white mr-3">${message.userName.substring(0,1).toUpperCase()}</div>`;
+            
+            let messageBodyHtml;
+            if (message.isEditing) {
+                messageBodyHtml = `
+                    <textarea class="edit-message-textarea w-full bg-gray-800 p-2 rounded-md text-gray-200 border border-gray-900 focus:ring-1 focus:ring-blue-500 focus:border-blue-500" rows="1">${escapeHtml(message.text)}</textarea>
+                    <div class="mt-1.5 text-xs">
+                        escape to <button class="text-blue-400 hover:underline cancel-edit-btn">cancel</button> • 
+                        enter to <button class="text-blue-400 hover:underline save-edit-btn">save</button>
+                    </div>
+                `;
+            } else {
+                const parsedContent = await renderMessageContent(message.text, message.id);
+                let ogPreviewsHtml = '';
+                if (message.ogPreviews) {
+                    for (const url in message.ogPreviews) {
+                        const previewState = message.ogPreviews[url];
+                        if (previewState.status === 'loading') {
+                             ogPreviewsHtml += `<div class="mt-2 text-xs text-gray-400"><span class="loader"></span>Loading preview for ${escapeHtml(url)}...</div>`;
+                        } else if (previewState.status === 'loaded') {
+                            ogPreviewsHtml += renderOGPreview(previewState);
+                        }
+                    }
+                }
+                messageBodyHtml = `<div class="message-content text-gray-200 text-sm leading-relaxed message-text-selectable">${parsedContent}</div>${ogPreviewsHtml}`;
+            }
+
+            messageEl.innerHTML = `
+                ${avatarPlaceholder}
+                <div class="flex-grow">
+                    <div class="flex items-baseline space-x-2">
+                        <span class="font-semibold text-green-400 text-sm">${escapeHtml(message.userName)}</span>
+                        <span class="text-xs text-gray-500">${formatDate(message.createdAt)} ${message.updatedAt ? `(edited ${formatDate(message.updatedAt)})` : ''}</span>
+                    </div>
+                    ${messageBodyHtml}
+                </div>
+                ${!message.isEditing && message.userId === state.currentUser.id ? `
+                    <div class="ml-auto pl-2 opacity-0 group-hover:opacity-100 transition-opacity flex space-x-1 self-start">
+                        <button title="Edit message" class="edit-btn p-1 text-gray-400 hover:text-gray-200 rounded"><svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path d="M17.414 2.586a2 2 0 00-2.828 0L7 10.172V13h2.828l7.586-7.586a2 2 0 000-2.828z"></path><path fill-rule="evenodd" d="M2 6a2 2 0 012-2h4a1 1 0 010 2H4v10h10v-4a1 1 0 112 0v4a2 2 0 01-2 2H4a2 2 0 01-2-2V6z" clip-rule="evenodd"></path></svg></button>
+                        <button title="Delete message" class="delete-btn p-1 text-gray-400 hover:text-red-400 rounded"><svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd"></path></svg></button>
+                    </div>
+                ` : ''}
+            `;
+            messagesContainerEl.appendChild(messageEl); // Add to bottom, CSS flex-col makes it stack normally
+
+            if (message.isEditing) {
+                const editTextArea = messageEl.querySelector('.edit-message-textarea');
+                autoResizeTextarea(editTextArea); // Initial resize
+                editTextArea.focus();
+                editTextArea.selectionStart = editTextArea.selectionEnd = editTextArea.value.length; // Move cursor to end
+                
+                editTextArea.addEventListener('input', () => autoResizeTextarea(editTextArea));
+                editTextArea.addEventListener('keydown', (e) => {
+                    if (e.key === 'Enter' && !e.shiftKey) {
+                        e.preventDefault();
+                        handleSaveEdit(message.id, editTextArea.value);
+                    } else if (e.key === 'Escape') {
+                        handleCancelEdit(message.id);
+                    }
+                });
+                messageEl.querySelector('.save-edit-btn').onclick = () => handleSaveEdit(message.id, editTextArea.value);
+                messageEl.querySelector('.cancel-edit-btn').onclick = () => handleCancelEdit(message.id);
+            } else if (message.userId === state.currentUser.id) {
+                messageEl.querySelector('.edit-btn')?.addEventListener('click', () => handleToggleEdit(message.id));
+                messageEl.querySelector('.delete-btn')?.addEventListener('click', () => handleDeleteMessage(message.id));
+            }
+        }
+        // Scroll to bottom (newest messages if not reversed, or to make input visible)
+        // As we add messages to top, scroll to top.
+        messagesContainerEl.scrollTop = 0;
+    }
+
+    function updateChatHeader() {
+        const channel = state.channels.find(c => c.id === state.currentChannelId);
+        if (channel) {
+            currentChannelNameEl.textContent = escapeHtml(channel.name);
+            currentChannelTopicEl.textContent = escapeHtml(channel.topic) || 'No topic set for this channel.';
+            messageInputEl.placeholder = `Message #${escapeHtml(channel.name)}`;
+        } else {
+            currentChannelNameEl.textContent = 'No Channel Selected';
+            currentChannelTopicEl.textContent = '';
+            messageInputEl.placeholder = 'Select a channel to start typing';
+        }
+    }
+
+    // Event Handlers & Logic
+    function handleAddChannel() {
+        const channelName = prompt("Enter new channel name (e.g., announcements):");
+        if (channelName && channelName.trim() !== '') {
+            const newChannel = { 
+                id: generateId(), 
+                name: channelName.trim().toLowerCase().replace(/\s+/g, '-'), // slugify
+                topic: `Discussions about ${channelName.trim()}`
+            };
+            state.channels.push(newChannel);
+            state.messages[newChannel.id] = []; // Initialize messages for new channel
+            renderChannels();
+            switchChannel(newChannel.id);
+        }
+    }
+
+    function switchChannel(channelId) {
+        if (state.currentChannelId === channelId && document.getElementById(channelId)) return; // Already on this channel
+        state.currentChannelId = channelId;
+        // Cancel any ongoing message edit
+        const editingMsg = (state.messages[state.currentChannelId] || []).find(m => m.isEditing);
+        if(editingMsg) editingMsg.isEditing = false;
+
+        updateChatHeader();
+        renderChannels(); // Re-render to update active state
+        renderMessages();
+        messageInputEl.focus();
+    }
+
+    function handleSendMessage() {
+        const text = messageInputEl.value.trim();
+        if (text === '' || !state.currentChannelId) return;
+
+        const newMessage = {
+            id: generateId(),
+            userId: state.currentUser.id,
+            userName: state.currentUser.name,
+            avatar: state.currentUser.avatar,
+            text: text,
+            createdAt: new Date().toISOString(),
+            updatedAt: null,
+            isEditing: false,
+            ogPreviews: {}, // Initialize for potential OG data
+            channelId: state.currentChannelId // Store channelId for async OG updates
+        };
+
+        if (!state.messages[state.currentChannelId]) {
+            state.messages[state.currentChannelId] = [];
+        }
+        state.messages[state.currentChannelId].unshift(newMessage); // Add to beginning (newest first)
+        
+        renderMessages(); // Re-render messages for the current channel
+        
+        messageInputEl.value = '';
+        autoResizeTextarea(messageInputEl); // Reset textarea height
+        messageInputEl.focus();
+    }
+
+    function handleToggleEdit(messageId) {
+        const channelMessages = state.messages[state.currentChannelId];
+        const message = channelMessages.find(m => m.id === messageId);
+        if (message) {
+            // Ensure only one message is editable at a time
+            channelMessages.forEach(msg => msg.isEditing = (msg.id === messageId));
+            renderMessages();
+        }
+    }
+    
+    function handleSaveEdit(messageId, newText) {
+        const message = state.messages[state.currentChannelId].find(m => m.id === messageId);
+        if (message && newText.trim() !== '') {
+            message.text = newText.trim();
+            message.updatedAt = new Date().toISOString();
+            message.isEditing = false;
+            message.ogPreviews = {}; // Reset OG previews as content changed
+            renderMessages();
+        } else if (message) { // If new text is empty, treat as cancel or delete? For now, cancel.
+            message.isEditing = false;
+            renderMessages();
+        }
+    }
+
+    function handleCancelEdit(messageId) {
+        const message = state.messages[state.currentChannelId].find(m => m.id === messageId);
+        if (message) {
+            message.isEditing = false;
+            renderMessages();
+        }
+    }
+
+    function handleDeleteMessage(messageId) {
+        if (confirm("Are you sure you want to delete this message? This cannot be undone.")) {
+            state.messages[state.currentChannelId] = state.messages[state.currentChannelId].filter(m => m.id !== messageId);
+            renderMessages();
+        }
+    }
+    
+    // Initialization
+    function initializeApp() {
+        currentUserNameEl.textContent = state.currentUser.name;
+        addChannelBtn.addEventListener('click', handleAddChannel);
+        sendMessageBtn.addEventListener('click', handleSendMessage);
+        messageInputEl.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                handleSendMessage();
+            }
+        });
+
+        // Initial render
+        if (state.channels.length > 0 && !state.currentChannelId) {
+            state.currentChannelId = state.channels[0].id;
+        }
+        
+        // Pre-fetch OG data for initial messages (optional, can be heavy)
+        Object.values(state.messages).flat().forEach(msg => {
+            renderMessageContent(msg.text, msg.id); // This will kick off OG fetches
+        });
+
+        updateChatHeader();
+        renderChannels();
+        renderMessages(); // Render messages after potential OG fetches initiated
+        messageInputEl.focus();
+    }
+
+    // Start the app
+    document.addEventListener('DOMContentLoaded', initializeApp);
+
+</script>
+</body>
+</html>

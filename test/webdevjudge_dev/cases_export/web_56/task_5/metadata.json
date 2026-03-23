@@ -1,0 +1,9 @@
+{
+  "web_id": "web_56",
+  "task_id": 5,
+  "task_type": "dynamic",
+  "instruction": "Task: Click a UI button or checkbox to toggle a pre-defined animation (e.g., pulsating or rotating) on the selected circle.\nExpected Result: The selected circle begins to animate (e.g., pulsate or rotate) if it was static, or stops animating if it was already animating. The UI control reflects the current animation state.\n\nNote: The task is only considered successful if the expected result is achieved; otherwise, it is deemed infeasible.",
+  "max_steps": 15,
+  "expected": "The selected circle begins to animate (e.g., pulsate or rotate) if it was static, or stops animating if it was already animating. The UI control reflects the current animation state.",
+  "label": 1
+}

@@ -1,0 +1,9 @@
+{
+  "web_id": "web_89",
+  "task_id": 1,
+  "task_type": "dynamic",
+  "instruction": "Task: Click on a TopicCard from the TopicList on the Topic Selection screen to choose a topic.\nExpected Result: The application navigates to the Problem View screen for the selected topic (using mock data), or the TopicCard visually indicates selection.\n\nNote: The task is only considered successful if the expected result is achieved; otherwise, it is deemed infeasible.",
+  "max_steps": 15,
+  "expected": "The application navigates to the Problem View screen for the selected topic (using mock data), or the TopicCard visually indicates selection.",
+  "label": 0
+}

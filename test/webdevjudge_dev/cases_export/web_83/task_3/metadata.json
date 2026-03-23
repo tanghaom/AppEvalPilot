@@ -1,0 +1,9 @@
+{
+  "web_id": "web_83",
+  "task_id": 3,
+  "task_type": "dynamic",
+  "instruction": "Task: Click an 'Edit' icon on an existing task card, modify its name or priority in the presented form, and save the changes.\nExpected Result: The task card on the board updates to reflect the modified details, and a notification confirms the update.\n\nNote: The task is only considered successful if the expected result is achieved; otherwise, it is deemed infeasible.",
+  "max_steps": 15,
+  "expected": "The task card on the board updates to reflect the modified details, and a notification confirms the update.",
+  "label": 0
+}

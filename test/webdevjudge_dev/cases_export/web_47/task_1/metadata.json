@@ -1,0 +1,9 @@
+{
+  "web_id": "web_47",
+  "task_id": 1,
+  "task_type": "dynamic",
+  "instruction": "Task: Type text into the message input field.\nExpected Result: Typed characters appear in the message input field.\n\nNote: The task is only considered successful if the expected result is achieved; otherwise, it is deemed infeasible.",
+  "max_steps": 15,
+  "expected": "Typed characters appear in the message input field.",
+  "label": 1
+}

@@ -1,0 +1,9 @@
+{
+  "web_id": "web_88",
+  "task_id": 5,
+  "task_type": "dynamic",
+  "instruction": "Task: Click a 'Toggle Dark Mode' button/switch to change the website's theme.\nExpected Result: The website's color scheme switches between light mode (e.g., light background, dark text) and dark mode (e.g., dark background, light text). This preference is saved locally (e.g., using localStorage) for persistence across sessions on the same browser.\n\nNote: The task is only considered successful if the expected result is achieved; otherwise, it is deemed infeasible.",
+  "max_steps": 15,
+  "expected": "The website's color scheme switches between light mode (e.g., light background, dark text) and dark mode (e.g., dark background, light text). This preference is saved locally (e.g., using localStorage) for persistence across sessions on the same browser.",
+  "label": 1
+}

@@ -1,0 +1,9 @@
+{
+  "web_id": "web_21",
+  "task_id": 5,
+  "task_type": "dynamic",
+  "instruction": "Task: Click a button/control to toggle the bottom panel (e.g., Terminal, Output area).\nExpected Result: The bottom panel is shown or hidden.\n\nNote: The task is only considered successful if the expected result is achieved; otherwise, it is deemed infeasible.",
+  "max_steps": 15,
+  "expected": "The bottom panel is shown or hidden.",
+  "label": 0
+}

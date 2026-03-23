@@ -1,0 +1,9 @@
+{
+  "web_id": "web_95",
+  "task_id": 5,
+  "task_type": "dynamic",
+  "instruction": "Task: Complete a step and advance to the next in the 'Plan Your Trip' wizard (e.g., select a destination and click 'Next')\nExpected Result: The wizard transitions to the subsequent step (e.g., 'Dates'), and the visual progress indicator updates accordingly.\n\nNote: The task is only considered successful if the expected result is achieved; otherwise, it is deemed infeasible.",
+  "max_steps": 15,
+  "expected": "The wizard transitions to the subsequent step (e.g., 'Dates'), and the visual progress indicator updates accordingly.",
+  "label": 0
+}

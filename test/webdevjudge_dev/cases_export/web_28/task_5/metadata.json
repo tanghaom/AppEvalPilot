@@ -1,0 +1,9 @@
+{
+  "web_id": "web_28",
+  "task_id": 5,
+  "task_type": "dynamic",
+  "instruction": "Task: Click the 'ANALYZE' button\nExpected Result: A visual feedback is provided (e.g., the button's appearance changes temporarily, or a status message like 'Analyze initiated...' updates on the UI).\n\nNote: The task is only considered successful if the expected result is achieved; otherwise, it is deemed infeasible.",
+  "max_steps": 15,
+  "expected": "A visual feedback is provided (e.g., the button's appearance changes temporarily, or a status message like 'Analyze initiated...' updates on the UI).",
+  "label": 0
+}

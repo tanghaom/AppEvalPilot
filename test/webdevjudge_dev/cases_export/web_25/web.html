@@ -1,0 +1,348 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kinetic Cascade</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        /* Modal transitions */
+        #game-modal {
+            transition: opacity 0.3s ease-in-out;
+        }
+        #game-modal > div { /* Targets the inner modal content box */
+            transition: transform 0.3s ease-in-out, opacity 0.3s ease-in-out;
+        }
+        /* Cell and shape transitions */
+        .grid-cell-content { /* Wrapper for shapeVisual for entry/exit animations */
+            transition: transform 0.2s ease-out, opacity 0.2s ease-out;
+        }
+        .shape-visual { /* The actual colored shape */
+            transition: background-color 0.2s ease-in-out, border-color 0.2s ease-in-out, clip-path 0.2s ease-in-out;
+        }
+    </style>
+</head>
+<body class="bg-slate-900 text-slate-100 flex flex-col items-center justify-center min-h-screen p-2 sm:p-4 select-none">
+
+    <div class="game-container w-full max-w-md sm:max-w-lg md:max-w-xl lg:max-w-2xl p-3 sm:p-6 bg-slate-800 rounded-xl shadow-2xl">
+        <header class="mb-4 sm:mb-6 text-center">
+            <h1 class="text-3xl sm:text-4xl font-bold text-yellow-400">Kinetic Cascade</h1>
+            <p class="text-slate-300 mt-1 text-sm sm:text-base">Click shapes to trigger reactions and clear the board!</p>
+        </header>
+
+        <div class="ui-panel flex flex-col sm:flex-row justify-between items-center mb-4 p-3 bg-slate-700 rounded-lg gap-2 sm:gap-0">
+            <div class="flex gap-4">
+                <span id="level-indicator" class="text-md sm:text-lg font-semibold text-slate-200">Level: 1</span>
+                <span id="moves-counter" class="text-md sm:text-lg font-semibold text-slate-200">Moves: 0</span>
+            </div>
+            <div class="flex gap-2">
+                <button id="reset-button" class="px-3 py-1.5 sm:px-4 sm:py-2 text-sm sm:text-base bg-orange-500 hover:bg-orange-600 text-white font-semibold rounded-md shadow transition-colors duration-150">Reset Level</button>
+                <button id="new-game-button" class="px-3 py-1.5 sm:px-4 sm:py-2 text-sm sm:text-base bg-sky-500 hover:bg-sky-600 text-white font-semibold rounded-md shadow transition-colors duration-150">New Game</button>
+            </div>
+        </div>
+
+        <div id="grid-container" class="grid gap-1 p-1 sm:p-2 bg-slate-900/70 rounded-lg shadow-inner aspect-square max-h-[80vw] sm:max-h-[70vh] md:max-h-[60vh]">
+            <!-- Grid cells will be injected here by JavaScript -->
+        </div>
+
+        <footer class="mt-4 sm:mt-6 text-center text-xs sm:text-sm text-slate-400">
+            <p>Kinetic Cascade - Abstract Puzzle Game</p>
+        </footer>
+    </div>
+
+    <!-- Modal Structure -->
+    <div id="game-modal" class="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center p-4 hidden z-50">
+        <div class="bg-slate-800 p-6 sm:p-8 rounded-xl shadow-2xl w-full max-w-md text-center scale-95 opacity-0">
+            <h2 id="modal-title" class="text-xl sm:text-2xl font-bold text-yellow-400 mb-4">Modal Title</h2>
+            <p id="modal-message" class="text-slate-200 mb-6 text-sm sm:text-base">Modal message goes here.</p>
+            <button id="modal-confirm-button" class="px-5 py-2.5 sm:px-6 sm:py-3 bg-green-500 hover:bg-green-600 text-white font-semibold rounded-md shadow transition-colors duration-150 text-sm sm:text-base">OK</button>
+        </div>
+    </div>
+
+    <script>
+        // CONSTANTS
+        const SHAPES = { SQUARE: 'square', CIRCLE: 'circle', TRIANGLE: 'triangle' };
+        const COLORS = { RED: 'red', GREEN: 'green', BLUE: 'blue' };
+        
+        const PALETTE = {
+            [COLORS.RED]:   { bg: 'bg-red-500',   border: 'border-red-700'   },
+            [COLORS.GREEN]: { bg: 'bg-green-500', border: 'border-green-700' },
+            [COLORS.BLUE]:  { bg: 'bg-blue-500',  border: 'border-blue-700'  },
+            EMPTY_CELL_BG: 'bg-slate-700/60', 
+        };
+
+        // GAME STATE
+        let state = {
+            currentLevelIndex: 0,
+            grid: [],
+            nextItemId: 0,
+            moves: 0,
+            status: 'loading', // loading, playing, levelComplete, gameOver
+        };
+
+        // LEVEL DEFINITIONS
+        const levels = [
+            { 
+                grid: [
+                    [{ s: SHAPES.SQUARE, c: COLORS.RED },   { s: SHAPES.CIRCLE, c: COLORS.GREEN }, { s: SHAPES.SQUARE, c: COLORS.RED }],
+                    [{ s: SHAPES.CIRCLE, c: COLORS.BLUE },  { s: SHAPES.TRIANGLE, c: COLORS.GREEN },{ s: SHAPES.CIRCLE, c: COLORS.BLUE }],
+                    [{ s: SHAPES.TRIANGLE, c: COLORS.RED }, { s: SHAPES.SQUARE, c: COLORS.BLUE },  { s: SHAPES.TRIANGLE, c: COLORS.RED }]
+                ].map(row => row.map(item => item ? {shape: item.s, color: item.c} : null)),
+                winCondition: (grid) => grid.flat().every(cell => cell === null),
+            },
+            { 
+                grid: [
+                    [{ s: SHAPES.SQUARE, c: COLORS.RED },    { s: SHAPES.TRIANGLE, c: COLORS.BLUE },  null,                                     { s: SHAPES.CIRCLE, c: COLORS.RED }],
+                    [{ s: SHAPES.CIRCLE, c: COLORS.GREEN },  { s: SHAPES.SQUARE, c: COLORS.RED},      { s: SHAPES.TRIANGLE, c: COLORS.BLUE },  { s: SHAPES.SQUARE, c: COLORS.GREEN }],
+                    [{ s: SHAPES.TRIANGLE, c: COLORS.BLUE }, { s: SHAPES.CIRCLE, c: COLORS.RED },     { s: SHAPES.SQUARE, c: COLORS.GREEN},   { s: SHAPES.CIRCLE, c: COLORS.BLUE }],
+                    [{ s: SHAPES.SQUARE, c: COLORS.RED },    null,                                     { s: SHAPES.CIRCLE, c: COLORS.GREEN }, { s: SHAPES.SQUARE, c: COLORS.RED }]
+                ].map(row => row.map(item => item ? {shape: item.s, color: item.c} : null)),
+                winCondition: (grid) => grid.flat().every(cell => cell === null),
+            },
+            { 
+                grid: [
+                    [{s: SHAPES.SQUARE, c: COLORS.RED}, {s: SHAPES.CIRCLE, c: COLORS.GREEN}, {s: SHAPES.TRIANGLE, c: COLORS.BLUE}, {s: SHAPES.SQUARE, c: COLORS.RED}, {s: SHAPES.CIRCLE, c: COLORS.GREEN}],
+                    [{s: SHAPES.CIRCLE, c: COLORS.GREEN}, null, {s: SHAPES.SQUARE, c: COLORS.BLUE}, null, {s: SHAPES.TRIANGLE, c: COLORS.RED}],
+                    [{s: SHAPES.TRIANGLE, c: COLORS.BLUE}, {s: SHAPES.SQUARE, c: COLORS.RED}, {s: SHAPES.CIRCLE, c: COLORS.GREEN}, {s: SHAPES.SQUARE, c: COLORS.RED}, {s: SHAPES.TRIANGLE, c: COLORS.BLUE}],
+                    [null, {s: SHAPES.CIRCLE, c: COLORS.BLUE}, null, {s: SHAPES.TRIANGLE, c: COLORS.GREEN}, null],
+                    [{s: SHAPES.SQUARE, c: COLORS.RED}, {s: SHAPES.TRIANGLE, c: COLORS.GREEN}, {s: SHAPES.CIRCLE, c: COLORS.BLUE}, {s: SHAPES.SQUARE, c: COLORS.RED}, {s: SHAPES.CIRCLE, c: COLORS.GREEN}]
+                ].map(row => row.map(item => item ? {shape: item.s, color: item.c} : null)),
+                winCondition: (grid) => grid.flat().every(cell => cell === null),
+            }
+        ];
+
+        // UTILITY FUNCTIONS
+        function cloneGrid(grid) {
+            return grid.map(row => row.map(cell => cell ? { ...cell } : null));
+        }
+
+        function generateItemId() {
+            return state.nextItemId++;
+        }
+
+        // INITIALIZATION AND RENDERING
+        function initLevel(levelIndex) {
+            if (levelIndex >= levels.length) {
+                state.status = 'gameOver';
+                showModal("Congratulations!", "You've completed all levels of Kinetic Cascade!", () => {
+                    document.getElementById('new-game-button').focus();
+                }, "Awesome!");
+                return;
+            }
+            const level = levels[levelIndex];
+            state.grid = level.grid.map(row =>
+                row.map(cellData =>
+                    cellData ? { ...cellData, id: generateItemId() } : null
+                )
+            );
+            state.currentLevelIndex = levelIndex;
+            state.moves = 0;
+            state.status = 'playing';
+            renderGame();
+        }
+        
+        function newGame(fullReset = false) {
+            if(fullReset) state.nextItemId = 0;
+            initLevel(0);
+        }
+
+        function renderGame() {
+            renderGrid();
+            renderUI();
+        }
+
+        function renderGrid() {
+            const gridContainer = document.getElementById('grid-container');
+            gridContainer.innerHTML = ''; 
+
+            if (!state.grid || state.grid.length === 0) return;
+
+            const numRows = state.grid.length;
+            const numCols = state.grid[0].length;
+
+            gridContainer.style.gridTemplateColumns = `repeat(${numCols}, minmax(0, 1fr))`;
+            
+            state.grid.forEach((row, rIndex) => {
+                row.forEach((cell, cIndex) => {
+                    const cellElement = document.createElement('div');
+                    cellElement.classList.add(
+                        'aspect-square', 'flex', 'items-center', 'justify-center', 'p-0.5', 'sm:p-1',
+                        'border', 'border-slate-700', // Cell border
+                        'rounded-md', 'sm:rounded-lg', PALETTE.EMPTY_CELL_BG
+                    );
+
+                    if (cell) {
+                        const colorInfo = PALETTE[cell.color];
+                        cellElement.classList.add('cursor-pointer', 'hover:border-slate-500', 'transition-colors', 'duration-150');
+                        cellElement.dataset.row = rIndex;
+                        cellElement.dataset.col = cIndex;
+                        
+                        const shapeElementWrapper = document.createElement('div');
+                        shapeElementWrapper.classList.add('w-[75%]', 'h-[75%]', 'grid-cell-content', 'flex', 'items-center', 'justify-center', 'pointer-events-none');
+                        
+                        const shapeVisual = document.createElement('div');
+                        shapeVisual.classList.add('w-full', 'h-full', 'shape-visual', colorInfo.bg, 'border-2', colorInfo.border, 'shadow-md');
+
+                        if (cell.shape === SHAPES.SQUARE) {
+                            shapeVisual.classList.add('rounded-sm', 'sm:rounded-md');
+                        } else if (cell.shape === SHAPES.CIRCLE) {
+                            shapeVisual.classList.add('rounded-full');
+                        } else if (cell.shape === SHAPES.TRIANGLE) {
+                            shapeVisual.style.clipPath = 'polygon(50% 10%, 5% 90%, 95% 90%)';
+                        }
+                        
+                        shapeElementWrapper.appendChild(shapeVisual);
+                        cellElement.appendChild(shapeElementWrapper);
+                        cellElement.onclick = () => handleCellClick(rIndex, cIndex);
+                    } else {
+                         cellElement.classList.add('opacity-60'); // Make empty slots a bit more faded
+                    }
+                    gridContainer.appendChild(cellElement);
+                });
+            });
+        }
+
+        function renderUI() {
+            document.getElementById('level-indicator').textContent = `Level: ${state.currentLevelIndex + 1}`;
+            document.getElementById('moves-counter').textContent = `Moves: ${state.moves}`;
+        }
+
+        // GAME LOGIC
+        function handleCellClick(row, col) {
+            if (state.status !== 'playing') return;
+            const clickedCell = state.grid[row][col];
+            if (!clickedCell) return; 
+
+            const newGrid = applyReaction(state.grid, row, col, clickedCell.shape, clickedCell.color);
+            
+            // A click that results in a reaction (even if only self-removal) is a move.
+            state.grid = newGrid;
+            state.moves++;
+            renderGame(); 
+            checkWinOrLose();
+        }
+
+        function applyReaction(currentGrid, r, c, shape, color) {
+            let newGrid = cloneGrid(currentGrid);
+            const originalClickedItem = { ...newGrid[r][c] }; 
+            
+            newGrid[r][c] = null; // Clicked item is removed by default
+
+            const R_MAX = newGrid.length;
+            const C_MAX = newGrid[0].length;
+
+            const getAdjacent = (row, col) => {
+                const adj = [];
+                const dirs = [[-1,0], [1,0], [0,-1], [0,1]]; // N, S, W, E
+                for (const [dr, dc] of dirs) {
+                    const nr = row + dr;
+                    const nc = col + dc;
+                    if (nr >= 0 && nr < R_MAX && nc >= 0 && nc < C_MAX) {
+                        adj.push({ r: nr, c: nc });
+                    }
+                }
+                return adj;
+            };
+
+            if (originalClickedItem.color === COLORS.RED) {
+                getAdjacent(r, c).forEach(adjPos => {
+                    const targetCell = newGrid[adjPos.r][adjPos.c];
+                    if (targetCell && targetCell.color !== originalClickedItem.color) { 
+                        newGrid[adjPos.r][adjPos.c] = null; 
+                    }
+                });
+            } else if (originalClickedItem.color === COLORS.GREEN) {
+                getAdjacent(r, c).forEach(adjPos => {
+                    const targetCell = newGrid[adjPos.r][adjPos.c];
+                    if (targetCell) { 
+                        newGrid[adjPos.r][adjPos.c] = { 
+                            shape: originalClickedItem.shape, 
+                            color: originalClickedItem.color, 
+                            id: generateItemId() 
+                        };
+                    }
+                });
+            } else if (originalClickedItem.color === COLORS.BLUE) {
+                for (let i = 0; i < C_MAX; i++) { // Row check
+                    if (i === c) continue; 
+                    const targetCell = newGrid[r][i];
+                    if (targetCell && targetCell.shape === originalClickedItem.shape && targetCell.color !== originalClickedItem.color) {
+                        newGrid[r][i] = null;
+                    }
+                }
+                for (let i = 0; i < R_MAX; i++) { // Column check
+                    if (i === r) continue; 
+                    const targetCell = newGrid[i][c];
+                    if (targetCell && targetCell.shape === originalClickedItem.shape && targetCell.color !== originalClickedItem.color) {
+                        newGrid[i][c] = null;
+                    }
+                }
+            }
+            return newGrid;
+        }
+
+        function checkWinOrLose() {
+            const levelConfig = levels[state.currentLevelIndex];
+            if (levelConfig.winCondition(state.grid)) {
+                state.status = 'levelComplete';
+                setTimeout(() => { 
+                    showModal(
+                        `Level ${state.currentLevelIndex + 1} Complete!`,
+                        `Moves: ${state.moves}. Well done!`,
+                        () => { initLevel(state.currentLevelIndex + 1); },
+                        "Next Level"
+                    );
+                }, 300); // Short delay for player to see final state
+            }
+        }
+
+        // MODAL
+        function showModal(title, message, onConfirm, confirmText = "OK") {
+            const modalElement = document.getElementById('game-modal');
+            const modalContent = modalElement.querySelector('div');
+            const modalTitle = document.getElementById('modal-title');
+            const modalMessage = document.getElementById('modal-message');
+            const modalConfirmButton = document.getElementById('modal-confirm-button');
+
+            modalTitle.textContent = title;
+            modalMessage.textContent = message;
+            modalConfirmButton.textContent = confirmText;
+
+            const confirmHandler = () => {
+                modalElement.classList.add('opacity-0');
+                modalContent.classList.remove('scale-100', 'opacity-100');
+                modalContent.classList.add('scale-95', 'opacity-0');
+                setTimeout(() => {
+                    modalElement.classList.add('hidden');
+                    if (onConfirm) { onConfirm(); }
+                }, 300); 
+                modalConfirmButton.removeEventListener('click', confirmHandler); // Clean up
+            };
+            
+            modalConfirmButton.addEventListener('click', confirmHandler, { once: true });
+
+            modalElement.classList.remove('hidden');
+            requestAnimationFrame(() => { // Ensure 'hidden' is removed before starting animation
+                modalElement.classList.remove('opacity-0');
+                modalContent.classList.remove('scale-95', 'opacity-0');
+                modalContent.classList.add('scale-100', 'opacity-100');
+            });
+        }
+
+        // EVENT LISTENERS & INITIAL SETUP
+        document.addEventListener('DOMContentLoaded', () => {
+            document.getElementById('reset-button').addEventListener('click', () => {
+                initLevel(state.currentLevelIndex); 
+            });
+            document.getElementById('new-game-button').addEventListener('click', () => {
+                newGame(true); 
+            });
+            
+            newGame(); // Start game
+        });
+    </script>
+</body>
+</html>

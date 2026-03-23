@@ -1,0 +1,9 @@
+{
+  "web_id": "web_84",
+  "task_id": 1,
+  "task_type": "dynamic",
+  "instruction": "Task: Press 'i' key to open a component browser, select a component (e.g., a resistor) from a list within the browser, and then click a location on the main canvas.\nExpected Result: A component browser dialog appears after pressing 'i'. Upon selecting a component from the dialog and clicking on the canvas, the chosen component instance (e.g., resistor symbol) is rendered on the schematic at the clicked location.\n\nNote: The task is only considered successful if the expected result is achieved; otherwise, it is deemed infeasible.",
+  "max_steps": 15,
+  "expected": "A component browser dialog appears after pressing 'i'. Upon selecting a component from the dialog and clicking on the canvas, the chosen component instance (e.g., resistor symbol) is rendered on the schematic at the clicked location.",
+  "label": 1
+}

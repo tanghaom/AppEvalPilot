@@ -1,0 +1,9 @@
+{
+  "web_id": "web_43",
+  "task_id": 3,
+  "task_type": "dynamic",
+  "instruction": "Task: Select a city from a filter control on the 'Local Attractions' page.\nExpected Result: The displayed list of attractions updates to show only entries relevant to the selected city, using pre-loaded static data.\n\nNote: The task is only considered successful if the expected result is achieved; otherwise, it is deemed infeasible.",
+  "max_steps": 15,
+  "expected": "The displayed list of attractions updates to show only entries relevant to the selected city, using pre-loaded static data.",
+  "label": 0
+}

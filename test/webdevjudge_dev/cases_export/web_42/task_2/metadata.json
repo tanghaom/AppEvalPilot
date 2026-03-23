@@ -1,0 +1,9 @@
+{
+  "web_id": "web_42",
+  "task_id": 2,
+  "task_type": "dynamic",
+  "instruction": "Task: Tap the 'Explore' icon in a bottom navigation bar.\nExpected Result: The main content area switches to display the 'Explore' page, showing a grid of post thumbnails.\n\nNote: The task is only considered successful if the expected result is achieved; otherwise, it is deemed infeasible.",
+  "max_steps": 15,
+  "expected": "The main content area switches to display the 'Explore' page, showing a grid of post thumbnails.",
+  "label": 1
+}

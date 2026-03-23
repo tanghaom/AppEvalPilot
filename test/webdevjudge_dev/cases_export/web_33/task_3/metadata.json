@@ -1,0 +1,9 @@
+{
+  "web_id": "web_33",
+  "task_id": 3,
+  "task_type": "dynamic",
+  "instruction": "Task: Click a 'Start Game' button.\nExpected Result: The game board becomes active for gameplay using the current piece definitions, and the piece customization interface is hidden/disabled.\n\nNote: The task is only considered successful if the expected result is achieved; otherwise, it is deemed infeasible.",
+  "max_steps": 15,
+  "expected": "The game board becomes active for gameplay using the current piece definitions, and the piece customization interface is hidden/disabled.",
+  "label": 1
+}

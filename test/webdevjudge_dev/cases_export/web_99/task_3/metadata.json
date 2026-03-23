@@ -1,0 +1,9 @@
+{
+  "web_id": "web_99",
+  "task_id": 3,
+  "task_type": "dynamic",
+  "instruction": "Task: Click a 'Reset Game' button.\nExpected Result: The game board resets to its initial state: all 16 words are active and in their original positions, lives are restored to the starting count (e.g., four), any previously solved categories are cleared, and game messages (like 'Congratulations' or 'Game Over') are removed.\n\nNote: The task is only considered successful if the expected result is achieved; otherwise, it is deemed infeasible.",
+  "max_steps": 15,
+  "expected": "The game board resets to its initial state: all 16 words are active and in their original positions, lives are restored to the starting count (e.g., four), any previously solved categories are cleared, and game messages (like 'Congratulations' or 'Game Over') are removed.",
+  "label": 1
+}

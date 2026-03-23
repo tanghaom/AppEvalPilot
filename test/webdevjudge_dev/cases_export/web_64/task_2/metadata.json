@@ -1,0 +1,9 @@
+{
+  "web_id": "web_64",
+  "task_id": 2,
+  "task_type": "dynamic",
+  "instruction": "Task: Input sample data into the 'Request Access' form fields (e.g., name, email, response to a question) and click the form's submit button.\nExpected Result: A client-side confirmation message (e.g., 'Your application has been received') is displayed, and the form may reset or indicate completion.\n\nNote: The task is only considered successful if the expected result is achieved; otherwise, it is deemed infeasible.",
+  "max_steps": 15,
+  "expected": "A client-side confirmation message (e.g., 'Your application has been received') is displayed, and the form may reset or indicate completion.",
+  "label": 0
+}

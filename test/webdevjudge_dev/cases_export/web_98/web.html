@@ -1,0 +1,523 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Interactive Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Custom scrollbar styles */
+        .custom-scrollbar::-webkit-scrollbar { width: 8px; height: 8px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #9ca3af; /* Tailwind gray-400 */ border-radius: 4px; }
+        .custom-scrollbar:hover::-webkit-scrollbar-thumb { background: #6b7280; /* Tailwind gray-500 */ }
+        .dark .custom-scrollbar::-webkit-scrollbar-thumb { background: #4b5563; /* Tailwind gray-600 */ }
+        .dark .custom-scrollbar:hover::-webkit-scrollbar-thumb { background: #374151; /* Tailwind gray-700 */ }
+
+        /* Firefox scrollbar styles */
+        .custom-scrollbar { scrollbar-width: thin; scrollbar-color: #9ca3af transparent; }
+        .dark .custom-scrollbar { scrollbar-color: #4b5563 transparent; }
+        
+        /* CSS for sidebar text visibility based on parent group state */
+        /* When sidebar has .is-narrow, hide .sidebar-text-label */
+        .is-narrow .sidebar-text-label { display: none; }
+        /* When sidebar has .is-wide, display .sidebar-text-label */
+        .is-wide .sidebar-text-label { display: inline; }
+
+        /* Smooth transition for main content margin */
+        #main-content-area {
+            transition: margin-left 0.3s ease-in-out;
+        }
+    </style>
+    <script>
+        tailwind.config = {
+            darkMode: 'class', // or 'media'
+            theme: {
+                extend: {
+                    colors: {
+                        primary: {
+                            DEFAULT: '#0ea5e9', // sky-500
+                            hover: '#0284c7', // sky-600
+                            text: '#f0f9ff' // sky-50
+                        },
+                        secondary: {
+                            DEFAULT: '#6366f1', // indigo-500
+                            hover: '#4f46e5', // indigo-600
+                        },
+                        surface: {
+                            light: '#ffffff', // white
+                            dark: '#1f2937'  // gray-800
+                        },
+                        background: {
+                            light: '#f1f5f9', // slate-100
+                            dark: '#0f172a'   // slate-900
+                        },
+                        textPrimary: {
+                            light: '#1e293b', // slate-800
+                            dark: '#e2e8f0'   // slate-200
+                        },
+                        textSecondary: {
+                            light: '#64748b', // slate-500
+                            dark: '#94a3b8'   // slate-400
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+<body class="bg-background-light dark:bg-background-dark text-textPrimary-light dark:text-textPrimary-dark antialiased">
+
+    <!-- Top Search Bar -->
+    <header class="fixed top-0 left-0 right-0 h-16 bg-surface-light dark:bg-surface-dark shadow-md z-30 flex items-center px-6">
+        <div class="text-xl font-bold text-primary-DEFAULT">MyDashboard</div>
+        <input type="search" placeholder="Search..." class="ml-auto w-1/3 px-4 py-2 rounded-lg bg-slate-100 dark:bg-slate-700 focus:ring-2 focus:ring-primary-DEFAULT focus:outline-none">
+    </header>
+
+    <div class="flex pt-16 h-screen">
+        <!-- Sidebar -->
+        <nav id="sidebar" class="fixed top-16 bottom-0 left-0 bg-surface-light dark:bg-surface-dark shadow-lg z-20 flex flex-col transition-all duration-300 ease-in-out">
+            <!-- Profile/Login/Logout Section -->
+            <div id="sidebar-profile-section" class="p-3 border-b border-slate-200 dark:border-slate-700">
+                <div class="flex items-center space-x-3 mb-3">
+                    <div class="bg-gray-300 dark:bg-gray-600 border-2 border-dashed rounded-full w-10 h-10 flex-shrink-0"></div>
+                    <div class="overflow-hidden">
+                        <p class="font-semibold text-sm sidebar-text-label truncate">User Name</p>
+                        <a href="#" class="text-xs text-primary-DEFAULT hover:underline sidebar-text-label truncate">View Profile</a>
+                    </div>
+                </div>
+                <div class="space-y-1">
+                    <a href="#" class="flex items-center space-x-2 p-2 text-sm rounded-md hover:bg-slate-200 dark:hover:bg-slate-700 group">
+                        <svg class="w-5 h-5 flex-shrink-0 text-slate-500 dark:text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1" /></svg>
+                        <span class="sidebar-text-label">Login</span>
+                    </a>
+                     <a href="#" class="flex items-center space-x-2 p-2 text-sm rounded-md hover:bg-slate-200 dark:hover:bg-slate-700 group">
+                        <svg class="w-5 h-5 flex-shrink-0 text-slate-500 dark:text-slate-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z" /></svg>
+                        <span class="sidebar-text-label">Profile</span>
+                    </a>
+                    <a href="#" class="flex items-center space-x-2 p-2 text-sm rounded-md hover:bg-slate-200 dark:hover:bg-slate-700 group">
+                         <svg class="w-5 h-5 flex-shrink-0 text-slate-500 dark:text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" /></svg>
+                        <span class="sidebar-text-label">Logout</span>
+                    </a>
+                </div>
+            </div>
+            
+            <!-- Theme Toggle -->
+            <div class="p-3 border-b border-slate-200 dark:border-slate-700">
+                <button id="theme-toggle-button" class="w-full flex items-center space-x-2 p-2 text-sm rounded-md hover:bg-slate-200 dark:hover:bg-slate-700">
+                    <svg id="theme-icon-sun" class="w-5 h-5 flex-shrink-0 text-slate-500 dark:text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" /></svg>
+                    <svg id="theme-icon-moon" class="w-5 h-5 flex-shrink-0 text-slate-500 dark:text-slate-400 hidden" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" /></svg>
+                    <span class="sidebar-text-label">Toggle Theme</span>
+                </button>
+            </div>
+
+            <!-- Collections & Decks Scrollable Area -->
+            <div id="sidebar-nav-scroll-area" class="flex-1 overflow-y-auto custom-scrollbar p-3 space-y-4">
+                <!-- Collections Section -->
+                <div>
+                    <div id="collections-section-header" class="flex justify-between items-center p-2 cursor-pointer rounded-md hover:bg-slate-200 dark:hover:bg-slate-700">
+                        <h3 class="font-semibold text-sm sidebar-text-label">Collections</h3>
+                        <svg id="collections-toggle-icon" class="w-5 h-5 flex-shrink-0 text-slate-500 dark:text-slate-400 transition-transform duration-200" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7" /></svg>
+                    </div>
+                    <div id="collections-list" class="mt-1 space-y-1">
+                        <!-- Collection items will be rendered here by JS -->
+                    </div>
+                </div>
+
+                <!-- Decks Section -->
+                <div>
+                    <h3 class="font-semibold text-sm p-2 sidebar-text-label">Decks</h3>
+                    <div id="decks-list" class="mt-1 space-y-1">
+                        <!-- Deck items will be rendered here by JS -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- Sidebar Toggle Button -->
+            <div class="p-3 mt-auto border-t border-slate-200 dark:border-slate-700">
+                <button id="sidebar-toggle-button" class="w-full flex items-center justify-center p-2 rounded-md hover:bg-slate-200 dark:hover:bg-slate-700" title="Toggle Sidebar">
+                    <!-- Icon will change based on state -->
+                </button>
+            </div>
+        </nav>
+
+        <!-- Main Content Area -->
+        <div id="main-content-area" class="flex-1 overflow-y-auto">
+            <main id="main-display" class="p-6">
+                <!-- Main content will be rendered here by JS -->
+                <h1 class="text-2xl font-semibold">Welcome!</h1>
+                <p class="mt-2 text-textSecondary-light dark:text-textSecondary-dark">Select a collection or deck from the sidebar to view its details here.</p>
+                <div class="mt-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    <div class="bg-surface-light dark:bg-surface-dark p-6 rounded-xl shadow-lg">
+                        <div class="bg-gray-200 dark:bg-gray-700 border-2 border-dashed rounded-xl w-16 h-16 mb-4"></div>
+                        <h2 class="text-xl font-semibold mb-2">Placeholder Item 1</h2>
+                        <p class="text-sm text-textSecondary-light dark:text-textSecondary-dark">This is some mock text for a placeholder item. It gives an idea of how content might look.</p>
+                    </div>
+                    <div class="bg-surface-light dark:bg-surface-dark p-6 rounded-xl shadow-lg">
+                        <div class="bg-gray-200 dark:bg-gray-700 border-2 border-dashed rounded-xl w-16 h-16 mb-4"></div>
+                        <h2 class="text-xl font-semibold mb-2">Placeholder Item 2</h2>
+                        <p class="text-sm text-textSecondary-light dark:text-textSecondary-dark">Another block of mock text to fill up space and demonstrate the layout of items in the main display area.</p>
+                    </div>
+                    <div class="bg-surface-light dark:bg-surface-dark p-6 rounded-xl shadow-lg">
+                        <div class="bg-gray-200 dark:bg-gray-700 border-2 border-dashed rounded-xl w-16 h-16 mb-4"></div>
+                        <h2 class="text-xl font-semibold mb-2">Placeholder Item 3</h2>
+                        <p class="text-sm text-textSecondary-light dark:text-textSecondary-dark">More mock text content here. Each item can have its own unique information displayed.</p>
+                    </div>
+                </div>
+            </main>
+        </div>
+    </div>
+
+<script>
+    // --- Application State ---
+    let currentTheme = localStorage.getItem('theme') || 'light';
+    let sidebarLockedExpanded = true; // True: always expanded (w-64), False: hover-expandable (w-20 collapsed, w-64 on hover)
+    let activeCollectionId = null; 
+    let isCollectionsListExpanded = true; // For the "Collections" section collapsibility itself
+
+    const appData = {
+        collections: [
+            { id: 'col1', name: 'Ancient Civilizations', description: 'A collection of decks focusing on historical ancient civilizations.', decks: [
+                { id: 'deck1a', name: 'Roman Empire', description: 'Cards related to the Roman Empire.' },
+                { id: 'deck1b', name: 'Ancient Egypt', description: 'Cards related to Ancient Egypt.' },
+            ]},
+            { id: 'col2', name: 'Space Exploration', description: 'Explore the cosmos with decks about planets, stars, and spacecraft.', decks: [
+                { id: 'deck2a', name: 'Solar System', description: 'Decks about planets in our Solar System.' },
+                { id: 'deck2b', name: 'Galaxies', description: 'Decks about distant galaxies.' },
+                { id: 'deck2c', name: 'Astronauts', description: 'Decks about famous astronauts.' },
+            ]},
+            { id: 'col3', name: 'Fantasy Creatures', description: 'Mythical beasts and magical beings.', decks: [
+                { id: 'deck3a', name: 'Dragons', description: 'All about dragons.' },
+                { id: 'deck3b', name: 'Elves', description: 'The graceful elves.' },
+            ]},
+            { id: 'col4', name: 'Programming Languages', description: 'Decks about different programming languages.', decks: [{id: 'deck4a', name: 'JavaScript', description: 'The language of the web.'}] },
+            { id: 'col5', name: 'World Capitals', description: 'Learn about capital cities.', decks: [{id: 'deck5a', name: 'Paris', description: 'The capital of France.'}] },
+            { id: 'col6', name: 'Culinary Delights', description: 'Decks about food from around the world.', decks: [{id: 'deck6a', name: 'Italian Cuisine', description: 'Pasta, Pizza, and more.'}] },
+        ]
+    };
+    if (appData.collections.length > 0) {
+        activeCollectionId = appData.collections[0].id;
+    }
+
+    // --- DOM Elements ---
+    let sidebar, mainContentArea, collectionsListEl, decksListEl, mainDisplayEl;
+    let themeToggleButton, themeIconSun, themeIconMoon;
+    let sidebarToggleButton, collectionsSectionHeader, collectionsToggleIcon;
+    
+    // --- Icons ---
+    const ICONS = {
+        chevronLeft: `<svg class="w-5 h-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7" /></svg>`,
+        chevronRight: `<svg class="w-5 h-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" /></svg>`,
+        collection: `<svg class="w-5 h-5 flex-shrink-0 text-slate-500 dark:text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" /></svg>`,
+        deck: `<svg class="w-5 h-5 flex-shrink-0 text-slate-500 dark:text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V7M3 7l9-4 9 4M3 7h18M5 5h14a2 2 0 012 2v2a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2z" /></svg>`,
+        viewInMain: `<svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 6H5.25A2.25 2.25 0 003 8.25v10.5A2.25 2.25 0 005.25 21h10.5A2.25 2.25 0 0018 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25" /></svg>`
+    };
+
+    // --- Initialization ---
+    document.addEventListener('DOMContentLoaded', () => {
+        sidebar = document.getElementById('sidebar');
+        mainContentArea = document.getElementById('main-content-area');
+        collectionsListEl = document.getElementById('collections-list');
+        decksListEl = document.getElementById('decks-list');
+        mainDisplayEl = document.getElementById('main-display');
+        themeToggleButton = document.getElementById('theme-toggle-button');
+        themeIconSun = document.getElementById('theme-icon-sun');
+        themeIconMoon = document.getElementById('theme-icon-moon');
+        sidebarToggleButton = document.getElementById('sidebar-toggle-button');
+        collectionsSectionHeader = document.getElementById('collections-section-header');
+        collectionsToggleIcon = document.getElementById('collections-toggle-icon');
+
+        // Initial setup
+        applyTheme();
+        updateSidebarAppearance();
+        renderCollectionsList();
+        renderDecksList();
+        //renderMainDisplay('collections_overview'); // Default view
+
+        // Event Listeners
+        themeToggleButton.addEventListener('click', toggleTheme);
+        sidebarToggleButton.addEventListener('click', handleSidebarToggle);
+        sidebar.addEventListener('mouseenter', handleSidebarMouseEnter);
+        sidebar.addEventListener('mouseleave', handleSidebarMouseLeave);
+        collectionsSectionHeader.addEventListener('click', toggleCollectionsListVisibility);
+    });
+
+    // --- Theme Management ---
+    function applyTheme() {
+        if (currentTheme === 'dark') {
+            document.documentElement.classList.add('dark');
+            themeIconSun.classList.add('hidden');
+            themeIconMoon.classList.remove('hidden');
+        } else {
+            document.documentElement.classList.remove('dark');
+            themeIconSun.classList.remove('hidden');
+            themeIconMoon.classList.add('hidden');
+        }
+    }
+
+    function toggleTheme() {
+        currentTheme = currentTheme === 'light' ? 'dark' : 'light';
+        localStorage.setItem('theme', currentTheme);
+        applyTheme();
+    }
+
+    // --- Sidebar Management ---
+    function updateSidebarAppearance(instantCollapse = false) {
+        const isWide = sidebarLockedExpanded || sidebar.matches(':hover');
+        
+        if (instantCollapse) {
+            sidebar.classList.remove('duration-300');
+        }
+
+        if (sidebarLockedExpanded) { // Always expanded
+            sidebar.classList.remove('w-20', 'is-narrow');
+            sidebar.classList.add('w-64', 'is-wide');
+            mainContentArea.style.marginLeft = '16rem'; // w-64
+            sidebarToggleButton.innerHTML = ICONS.chevronLeft + `<span class="sidebar-text-label ml-2">Collapse</span>`;
+            sidebarToggleButton.title = "Collapse Sidebar";
+        } else { // Hover-expandable
+            if (sidebar.matches(':hover')) { // Hovering on collapsed sidebar
+                sidebar.classList.remove('w-20', 'is-narrow');
+                sidebar.classList.add('w-64', 'is-wide');
+                mainContentArea.style.marginLeft = '16rem';
+            } else { // Collapsed, not hovered
+                sidebar.classList.remove('w-64', 'is-wide');
+                sidebar.classList.add('w-20', 'is-narrow');
+                mainContentArea.style.marginLeft = '5rem'; // w-20
+            }
+            sidebarToggleButton.innerHTML = ICONS.chevronRight + `<span class="sidebar-text-label ml-2">Expand</span>`;
+            sidebarToggleButton.title = "Expand Sidebar";
+        }
+        
+        // Re-enable transition if it was disabled for instant collapse
+        if (instantCollapse) {
+            // Force reflow might be needed for some browsers, but usually not for width.
+            // void sidebar.offsetWidth; 
+            setTimeout(() => sidebar.classList.add('duration-300'), 50); // A small delay to ensure instant effect
+        }
+    }
+    
+    function handleSidebarToggle() {
+        sidebarLockedExpanded = !sidebarLockedExpanded;
+        const instant = !sidebarLockedExpanded; // Instant collapse if moving to hoverable state
+        updateSidebarAppearance(instant);
+    }
+
+    function handleSidebarMouseEnter() {
+        if (!sidebarLockedExpanded) {
+            updateSidebarAppearance();
+        }
+    }
+
+    function handleSidebarMouseLeave() {
+        if (!sidebarLockedExpanded) {
+            updateSidebarAppearance();
+        }
+    }
+
+    // --- Collections & Decks Rendering ---
+    function renderCollectionsList() {
+        let html = '';
+        // "All Collections" item
+        html += `
+            <div class="flex rounded-md overflow-hidden text-sm font-medium cursor-pointer group border border-transparent hover:border-primary-DEFAULT">
+                <div class="w-1/2 p-2 bg-sky-100 dark:bg-sky-800 hover:bg-sky-200 dark:hover:bg-sky-700 flex items-center space-x-2" 
+                     onclick="handleAllCollectionsLeftClick()">
+                    ${ICONS.collection}
+                    <span class="sidebar-text-label truncate">All Collections</span>
+                </div>
+                <div class="w-1/2 p-2 bg-indigo-100 dark:bg-indigo-800 hover:bg-indigo-200 dark:hover:bg-indigo-700 flex items-center justify-center" 
+                     onclick="handleAllCollectionsRightClick()" title="View all collections in main display">
+                    ${ICONS.viewInMain}
+                </div>
+            </div>`;
+
+        const collectionsToDisplay = isCollectionsListExpanded ? appData.collections : appData.collections.slice(0, 3);
+
+        collectionsToDisplay.forEach(collection => {
+            const isActive = collection.id === activeCollectionId;
+            html += `
+            <div class="flex rounded-md overflow-hidden text-sm cursor-pointer group border ${isActive ? 'border-primary-DEFAULT ring-1 ring-primary-DEFAULT' : 'border-transparent hover:border-primary-DEFAULT'}">
+                <div class="w-1/2 p-2 ${isActive ? 'bg-sky-200 dark:bg-sky-700' : 'bg-slate-100 dark:bg-slate-750 hover:bg-sky-100 dark:hover:bg-sky-800'} flex items-center space-x-2" 
+                     onclick="handleCollectionLeftClick('${collection.id}')" title="Show decks for ${collection.name}">
+                    <span class="sidebar-text-label truncate">${collection.name}</span>
+                     <span class="is-narrow:inline is-wide:hidden flex-shrink-0">${collection.name.substring(0,1)}</span> <!-- Initial for narrow -->
+                </div>
+                <div class="w-1/2 p-2 ${isActive ? 'bg-indigo-200 dark:bg-indigo-700' : 'bg-slate-100 dark:bg-slate-750 hover:bg-indigo-100 dark:hover:bg-indigo-800'} flex items-center justify-center" 
+                     onclick="handleCollectionRightClick('${collection.id}')" title="View ${collection.name} in main display">
+                    ${ICONS.viewInMain}
+                </div>
+            </div>`;
+        });
+
+        if (!isCollectionsListExpanded && appData.collections.length > 3) {
+            html += `<button onclick="toggleCollectionsListVisibility(true)" class="text-xs text-primary-DEFAULT hover:underline p-2 sidebar-text-label w-full text-left">Show All (${appData.collections.length})</button>`;
+        }
+        collectionsListEl.innerHTML = html;
+        collectionsToggleIcon.style.transform = isCollectionsListExpanded ? 'rotate(0deg)' : 'rotate(-90deg)';
+    }
+    
+    function toggleCollectionsListVisibility(forceExpand = null) {
+        isCollectionsListExpanded = forceExpand !== null ? forceExpand : !isCollectionsListExpanded;
+        renderCollectionsList();
+    }
+
+    function renderDecksList() {
+        let html = '';
+        const currentCollection = appData.collections.find(c => c.id === activeCollectionId);
+        if (currentCollection && currentCollection.decks.length > 0) {
+            currentCollection.decks.forEach(deck => {
+                html += `
+                <div onclick="handleDeckClick('${currentCollection.id}','${deck.id}')" 
+                     class="flex items-center space-x-2 p-2 text-sm rounded-md hover:bg-slate-200 dark:hover:bg-slate-700 cursor-pointer group"
+                     title="View deck: ${deck.name}">
+                    ${ICONS.deck}
+                    <span class="sidebar-text-label truncate">${deck.name}</span>
+                    <span class="is-narrow:inline is-wide:hidden flex-shrink-0">${deck.name.substring(0,1)}</span> <!-- Initial for narrow -->
+                </div>`;
+            });
+        } else if (activeCollectionId) {
+             html = `<p class="text-xs text-textSecondary-light dark:text-textSecondary-dark p-2 sidebar-text-label">No decks in this collection.</p>`;
+        } else {
+             html = `<p class="text-xs text-textSecondary-light dark:text-textSecondary-dark p-2 sidebar-text-label">Select a collection to see decks.</p>`;
+        }
+        decksListEl.innerHTML = html;
+    }
+
+    // --- Event Handlers for Clicks ---
+    function handleAllCollectionsLeftClick() {
+        activeCollectionId = null; // Or some other logic for "all decks"
+        renderCollectionsList(); // To update active state visual
+        renderDecksList(); // Show decks from all collections or a message
+        console.log("All collections left click: Show all decks (or clear selection)");
+        renderMainDisplay('message', { title: 'All Decks View', message: 'Feature to show all decks from all collections is not fully implemented yet.' });
+    }
+
+    function handleAllCollectionsRightClick() {
+        renderMainDisplay('collections_overview');
+        console.log("All collections right click: Show collections overview in main display");
+    }
+    
+    function handleCollectionLeftClick(collectionId) {
+        activeCollectionId = collectionId;
+        renderCollectionsList(); // Re-render to show active state
+        renderDecksList();
+    }
+
+    function handleCollectionRightClick(collectionId) {
+        renderMainDisplay('collection', collectionId);
+    }
+
+    function handleDeckClick(collectionId, deckId) {
+        // activeCollectionId = collectionId; // Optionally set active collection too
+        // renderCollectionsList(); 
+        // renderDecksList();
+        renderMainDisplay('deck', { collectionId, deckId });
+    }
+
+    // --- Main Display Rendering ---
+    function renderMainDisplay(type, idOrData) {
+        let html = '';
+        if (type === 'collection') {
+            const collection = appData.collections.find(c => c.id === idOrData);
+            if (!collection) { html = `<p>Collection not found.</p>`; }
+            else {
+                html = `
+                <div class="bg-surface-light dark:bg-surface-dark shadow-xl rounded-xl p-6 animate-fadeIn">
+                    <h1 class="text-3xl font-bold mb-1 text-primary-DEFAULT">${collection.name}</h1>
+                    <p class="text-textSecondary-light dark:text-textSecondary-dark mb-6 text-sm">${collection.description}</p>
+                    <div class="mb-6"><div class="bg-gray-200 dark:bg-gray-700 border-2 border-dashed rounded-xl w-full h-40 flex items-center justify-center text-gray-400 dark:text-gray-500">Collection Banner Area</div></div>
+                    <h2 class="text-2xl font-semibold mb-4">Decks in this Collection (${collection.decks.length})</h2>
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                        ${collection.decks.map(deck => `
+                            <div class="bg-slate-50 dark:bg-slate-700 p-4 rounded-lg shadow hover:shadow-md transition-shadow" onclick="handleDeckClick('${collection.id}','${deck.id}')">
+                                <h3 class="font-semibold text-lg text-primary-DEFAULT">${deck.name}</h3>
+                                <p class="text-sm text-textSecondary-light dark:text-textSecondary-dark mt-1">${deck.description}</p>
+                                <div class="mt-3"><div class="bg-gray-200 dark:bg-gray-600 border-2 border-dashed rounded-xl w-16 h-16"></div></div>
+                            </div>
+                        `).join('') || '<p class="text-textSecondary-light dark:text-textSecondary-dark md:col-span-2 lg:col-span-3">No decks in this collection.</p>'}
+                    </div>
+                </div>`;
+            }
+        } else if (type === 'deck') {
+            const collection = appData.collections.find(c => c.id === idOrData.collectionId);
+            const deck = collection ? collection.decks.find(d => d.id === idOrData.deckId) : null;
+            if (!deck) { html = `<p>Deck not found.</p>`; }
+            else {
+                html = `
+                <div class="bg-surface-light dark:bg-surface-dark shadow-xl rounded-xl p-6 animate-fadeIn">
+                    <p class="text-sm text-textSecondary-light dark:text-textSecondary-dark mb-1">Collection: ${collection.name}</p>
+                    <h1 class="text-3xl font-bold mb-1 text-primary-DEFAULT">${deck.name}</h1>
+                    <p class="text-textSecondary-light dark:text-textSecondary-dark mb-6 text-sm">${deck.description}</p>
+                    <div class="mb-6"><div class="bg-gray-200 dark:bg-gray-700 border-2 border-dashed rounded-xl w-full h-40 flex items-center justify-center text-gray-400 dark:text-gray-500">Deck Image/Details Area</div></div>
+                    <h2 class="text-2xl font-semibold mb-4">Cards / Content</h2>
+                    <div class="space-y-3">
+                        ${[1,2,3].map(i => `
+                            <div class="bg-slate-50 dark:bg-slate-700 p-4 rounded-lg shadow flex items-center space-x-4">
+                                <div class="bg-gray-200 dark:bg-gray-600 border-2 border-dashed rounded-xl w-16 h-24"></div>
+                                <div>
+                                    <h3 class="font-semibold text-lg">Placeholder Card ${i}</h3>
+                                    <p class="text-sm text-textSecondary-light dark:text-textSecondary-dark">Some details about this card or item.</p>
+                                </div>
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>`;
+            }
+        } else if (type === 'collections_overview') {
+            html = `
+            <div class="animate-fadeIn">
+                <h1 class="text-3xl font-bold mb-6 text-primary-DEFAULT">All Collections</h1>
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    ${appData.collections.map(collection => `
+                        <div class="bg-surface-light dark:bg-surface-dark p-6 rounded-xl shadow-lg hover:shadow-xl transition-shadow cursor-pointer" onclick="handleCollectionRightClick('${collection.id}')">
+                            <div class="bg-gray-200 dark:bg-gray-700 border-2 border-dashed rounded-xl w-full h-32 mb-4 flex items-center justify-center text-gray-400 dark:text-gray-500">
+                                <span class="text-lg">${collection.name.substring(0,3)}..</span> <!-- Placeholder Icon/Text -->
+                            </div>
+                            <h2 class="text-xl font-semibold mb-2 text-primary-DEFAULT">${collection.name}</h2>
+                            <p class="text-sm text-textSecondary-light dark:text-textSecondary-dark truncate-3-lines">${collection.description}</p>
+                             <button class="mt-4 text-sm text-indigo-500 dark:text-indigo-400 hover:underline" onclick="event.stopPropagation(); handleCollectionLeftClick('${collection.id}');">View Decks (${collection.decks.length})</button>
+                        </div>
+                    `).join('')}
+                </div>
+            </div>
+            <style>.truncate-3-lines { display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }</style>
+            `;
+        } else if (type === 'message') {
+            html = `
+            <div class="bg-surface-light dark:bg-surface-dark shadow-xl rounded-xl p-6 animate-fadeIn">
+                <h1 class="text-2xl font-semibold mb-2">${idOrData.title}</h1>
+                <p class="text-textSecondary-light dark:text-textSecondary-dark">${idOrData.message}</p>
+            </div>`;
+        } else {
+            html = `
+            <div class="animate-fadeIn">
+                <h1 class="text-2xl font-semibold">Welcome!</h1>
+                <p class="mt-2 text-textSecondary-light dark:text-textSecondary-dark">Select a collection or deck from the sidebar to view its details here.</p>
+                <div class="mt-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    <div class="bg-surface-light dark:bg-surface-dark p-6 rounded-xl shadow-lg">
+                        <div class="bg-gray-200 dark:bg-gray-700 border-2 border-dashed rounded-xl w-16 h-16 mb-4"></div>
+                        <h2 class="text-xl font-semibold mb-2">Placeholder Item 1</h2>
+                        <p class="text-sm text-textSecondary-light dark:text-textSecondary-dark">This is some mock text for a placeholder item. It gives an idea of how content might look.</p>
+                    </div>
+                    <div class="bg-surface-light dark:bg-surface-dark p-6 rounded-xl shadow-lg">
+                        <div class="bg-gray-200 dark:bg-gray-700 border-2 border-dashed rounded-xl w-16 h-16 mb-4"></div>
+                        <h2 class="text-xl font-semibold mb-2">Placeholder Item 2</h2>
+                        <p class="text-sm text-textSecondary-light dark:text-textSecondary-dark">Another block of mock text to fill up space and demonstrate the layout of items in the main display area.</p>
+                    </div>
+                </div>
+            </div>
+            <style> @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } } .animate-fadeIn { animation: fadeIn 0.3s ease-out forwards; } </style>
+            `;
+        }
+        mainDisplayEl.innerHTML = html;
+    }
+
+    // Initial call to render default main display content
+    document.addEventListener('DOMContentLoaded', () => {
+         renderMainDisplay('default');
+    });
+
+</script>
+</body>
+</html>

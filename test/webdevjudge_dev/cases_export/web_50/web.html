@@ -1,0 +1,785 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pacman by Frontend Expert</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Custom styles if needed, though Tailwind should cover most */
+        body {
+            font-family: 'Press Start 2P', cursive; /* A pixel-art font would be cool, but stick to system fonts for simplicity in single file */
+            overscroll-behavior: none; /* Prevents pull-to-refresh on mobile */
+        }
+        .pixelated {
+            image-rendering: pixelated;
+            image-rendering: -moz-crisp-edges;
+            image-rendering: crisp-edges;
+        }
+        /* Basic fallback font if Tailwind's default sans-serif is too modern */
+        .game-font {
+            font-family: 'Courier New', Courier, monospace;
+        }
+    </style>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        'pacman-bg': '#000000',
+                        'pacman-wall': '#1E3A8A', // blue-800
+                        'pacman-pellet': '#FDE047', // yellow-300
+                        'pacman-power-pellet': '#FACC15', // yellow-400
+                        'pacman-yellow': '#FDE047', // yellow-300
+                        'ghost-red': '#EF4444', // red-500
+                        'ghost-pink': '#EC4899', // pink-500
+                        'ghost-cyan': '#22D3EE', // cyan-400
+                        'ghost-orange': '#F97316', // orange-500
+                        'ghost-frightened': '#60A5FA', // blue-400
+                        'ghost-eyes': '#FFFFFF',
+                        'ui-text': '#FDE047', // yellow-300
+                        'ui-bg': '#111827', // gray-900
+                    },
+                    fontFamily: {
+                        // Example: 'pixel': ['"Press Start 2P"', 'cursive'], // If you were to include a font
+                        'sans': ['"Inter"', 'ui-sans-serif', 'system-ui'], // Ensure a nice default
+                        'mono': ['"Courier New"', 'monospace']
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+<body class="bg-slate-950 text-slate-100 flex flex-col items-center justify-center min-h-screen p-4 game-font select-none">
+
+    <div id="game-container" class="bg-pacman-bg border-4 border-blue-600 shadow-2xl rounded-lg overflow-hidden">
+        <div id="ui-top" class="px-4 py-2 flex justify-between items-center bg-ui-bg border-b-2 border-blue-600">
+            <div>
+                <span class="text-ui-text">SCORE: </span>
+                <span id="score" class="text-white font-bold">0</span>
+            </div>
+            <div>
+                <span class="text-ui-text">LIVES: </span>
+                <span id="lives" class="text-white font-bold">3</span>
+            </div>
+        </div>
+
+        <canvas id="gameCanvas" class="pixelated"></canvas>
+
+        <div id="message-overlay" class="absolute inset-0 bg-black bg-opacity-75 flex flex-col items-center justify-center text-center hidden z-10">
+            <h2 id="message-title" class="text-4xl text-yellow-400 font-bold mb-4"></h2>
+            <p id="message-text" class="text-xl text-white mb-6"></p>
+            <button id="actionButton" class="bg-yellow-400 hover:bg-yellow-500 text-black font-bold py-3 px-6 rounded-lg text-xl transition-colors"></button>
+        </div>
+    </div>
+    
+    <div class="mt-6 text-center text-sm text-slate-400">
+        <p>Use Arrow Keys to Move Pacman.</p>
+        <p>Eat all pellets to win! Avoid the ghosts.</p>
+    </div>
+
+    <script>
+        const TILE_SIZE = 20; // Size of each tile in pixels
+        const PACMAN_SPEED = 1.75; // Tiles per second (effectively) - adjust for feel. Needs to be less than TILE_SIZE / (frames per move check)
+        const GHOST_SPEED = 1.5;
+        const GHOST_FRIGHTENED_SPEED = 1.0;
+        const GHOST_EATEN_SPEED = 4.0; // Faster when returning to base
+        const FRIGHTEN_DURATION_MS = 7000; // 7 seconds
+
+        const EMPTY = 0;
+        const WALL = 1;
+        const PELLET = 2;
+        const POWER_PELLET = 3;
+        const GHOST_HOUSE = 4; // Area ghosts start in / return to (Pacman can't enter)
+        const GHOST_DOOR = 5; // Ghosts can pass, Pacman cannot
+
+        // Maze layout (W=Wall, P=Pellet, O=Power Pellet, G=Ghost House, D=Door, S=Pacman Start, E=Empty)
+        // B, K, I, C are Blinky, Pinky, Inky, Clyde start positions within ghost house
+        const MAZE_STRING_LAYOUT = [
+            "WWWWWWWWWWWWWWWWWWWWW", // 0
+            "WPPPPPPPPPWPPPPPPPW", // 1
+            "WO WWPWWWW WPWW PWO W", // 2
+            "W WWPWWWW WPWWPWW W", // 3
+            "WPPPPPPPPPPPPPPPPPW", // 4
+            "WPWWPWPWWWWW WPWPWWPW", // 5
+            "WPPP PWPPPP PWPPP PW", // 6
+            "WWWWPWP DDD PWPWWWW", // 7
+            "EEEEWPW GGG PWPEEEE", // 8 - Tunnel (E path handled by teleport logic)
+            "WWWWPWP GGG PWPWWWW", // 9
+            "WWWWPWP WWWWW PWPWWWW", // 10
+            "WWWWPWP SBBBP PWPWWWW", // 11 S=Pacman, B=Blinky/Pinky/Inky Initial
+            "WWWWPWWWWWWWWW PWWWW", // 12
+            "WPPPPPPPPPWPPPPPPPW", // 13
+            "WO WWPWWWW WPWW PWO W", // 14
+            "WPP PWPPPPCPPP PWPPW", // 15 C=Clyde Initial
+            "WWPWPWPWWWWW WPWPWPWW", // 16
+            "WPPPP P P P P P PPPPW", // 17
+            "WWWWWWWWWWWWWWWWWWWWW", // 18
+        ];
+        
+        let maze = [];
+        let canvas, ctx;
+        let scoreEl, livesEl, messageOverlayEl, messageTitleEl, messageTextEl, actionButtonEl;
+
+        let pacman;
+        let ghosts = [];
+        let score = 0;
+        let lives = 3;
+        let pelletsToEat = 0;
+        let frightenedModeActive = false;
+        let frightenTimer = 0;
+        let gameLoopId;
+        let gamePaused = true;
+        let gameOverState = false;
+        let currentFrame = 0; // For animations
+
+        // Ghost personalities (simplified targetting)
+        const GHOST_CONFIG = [
+            { color: 'ghost-red',    startX: 10, startY: 11, id: 'blinky' }, // Blinky
+            { color: 'ghost-pink',   startX: 9,  startY: 11, id: 'pinky' },  // Pinky
+            { color: 'ghost-cyan',   startX: 11, startY: 11, id: 'inky' },   // Inky
+            { color: 'ghost-orange', startX: 10, startY: 15, id: 'clyde' },  // Clyde (starts a bit away)
+        ];
+        const GHOST_HOUSE_EXIT = { x: 10, y: 7 }; // Tile ghosts aim for to exit house
+        const GHOST_RETURN_POS = { x: 10, y: 9 }; // Tile inside house for eaten ghosts
+
+        function isWall(x, y, forGhost = false) {
+            if (x < 0 || x >= maze[0].length || y < 0 || y >= maze.length) return true; // Out of bounds is a wall
+            const tile = maze[y][x];
+            if (forGhost) {
+                return tile === WALL; // Ghosts can pass GHOST_DOOR to exit, otherwise it's a wall for them too unless exiting
+            }
+            return tile === WALL || tile === GHOST_HOUSE || tile === GHOST_DOOR;
+        }
+
+        function getTileCenter(gridX, gridY) {
+            return {
+                x: gridX * TILE_SIZE + TILE_SIZE / 2,
+                y: gridY * TILE_SIZE + TILE_SIZE / 2
+            };
+        }
+        
+        function parseMaze() {
+            maze = [];
+            pelletsToEat = 0;
+            const pacmanStartPos = { x: 0, y: 0 };
+            const ghostStartPositions = GHOST_CONFIG.map(g => ({ x: g.startX, y: g.startY, id: g.id}));
+
+            for (let y = 0; y < MAZE_STRING_LAYOUT.length; y++) {
+                maze[y] = [];
+                for (let x = 0; x < MAZE_STRING_LAYOUT[y].length; x++) {
+                    const char = MAZE_STRING_LAYOUT[y][x];
+                    switch (char) {
+                        case 'W': maze[y][x] = WALL; break;
+                        case 'P': maze[y][x] = PELLET; pelletsToEat++; break;
+                        case 'O': maze[y][x] = POWER_PELLET; pelletsToEat++; break;
+                        case 'S': 
+                            maze[y][x] = EMPTY; 
+                            pacmanStartPos.x = x;
+                            pacmanStartPos.y = y;
+                            break;
+                        case 'G': maze[y][x] = GHOST_HOUSE; break;
+                        case 'D': maze[y][x] = GHOST_DOOR; break;
+                        case 'B': // Blinky specific start, treat as house for now
+                        case 'K': // Pinky specific start
+                        case 'I': // Inky specific start
+                        case 'C': // Clyde specific start
+                            maze[y][x] = GHOST_HOUSE; 
+                            // Ghost start positions are set by GHOST_CONFIG grid coords
+                            break;
+                        case 'E': // Empty for tunnel, handled by teleport
+                        default:  maze[y][x] = EMPTY; break;
+                    }
+                }
+            }
+            return { pacmanStartPos, ghostStartPositions };
+        }
+
+        function initPacman(startPos) {
+            const center = getTileCenter(startPos.x, startPos.y);
+            pacman = {
+                x: center.x,
+                y: center.y,
+                gridX: startPos.x,
+                gridY: startPos.y,
+                speed: PACMAN_SPEED,
+                dx: 0, dy: 0, // Current movement vector
+                nextDx: 0, nextDy: 0, // Queued movement vector
+                radius: TILE_SIZE * 0.4,
+                color: tailwind.theme.extend.colors['pacman-yellow'],
+                mouthOpen: true,
+                mouthAngle: 0.2 * Math.PI, // Angle of mouth opening
+                angle: 0, // Direction Pacman is facing (0: right, PI/2: down, PI: left, 3PI/2: up)
+            };
+        }
+        
+        function initGhosts(startPositions) {
+            ghosts = [];
+            GHOST_CONFIG.forEach(config => {
+                const ghostStart = startPositions.find(p => p.id === config.id) || {x: config.startX, y: config.startY};
+                const center = getTileCenter(ghostStart.x, ghostStart.y);
+                ghosts.push({
+                    id: config.id,
+                    x: center.x,
+                    y: center.y,
+                    gridX: ghostStart.x,
+                    gridY: ghostStart.y,
+                    speed: GHOST_SPEED,
+                    dx: 0, dy: 0,
+                    radius: TILE_SIZE * 0.45,
+                    color: tailwind.theme.extend.colors[config.color],
+                    baseColor: tailwind.theme.extend.colors[config.color],
+                    state: 'HOUSE', // HOUSE, SCATTER, CHASE, FRIGHTENED, EATEN
+                    frightenedTimer: 0,
+                    targetTile: null, // For AI
+                    lastTurnPoint: { x: ghostStart.x, y: ghostStart.y }, // To prevent immediate turn-backs
+                    releaseTimer: (config.id === 'blinky' ? 0 : (config.id === 'pinky' ? 50 : (config.id === 'inky' ? 100 : 150))), // Frames before leaving house
+                });
+            });
+        }
+
+        function resetPacmanAndGhosts() {
+            const { pacmanStartPos, ghostStartPositions } = parseMaze(); // Re-parse to reset pellets for new game
+            initPacman(pacmanStartPos);
+            initGhosts(ghostStartPositions); // This now uses start positions from GHOST_CONFIG directly
+        }
+        
+        function setupGame() {
+            canvas = document.getElementById('gameCanvas');
+            ctx = canvas.getContext('2d');
+            scoreEl = document.getElementById('score');
+            livesEl = document.getElementById('lives');
+            messageOverlayEl = document.getElementById('message-overlay');
+            messageTitleEl = document.getElementById('message-title');
+            messageTextEl = document.getElementById('message-text');
+            actionButtonEl = document.getElementById('actionButton');
+
+            canvas.width = MAZE_STRING_LAYOUT[0].length * TILE_SIZE;
+            canvas.height = MAZE_STRING_LAYOUT.length * TILE_SIZE;
+            
+            // Center the message overlay within the game-container, not the whole page
+            const gameContainerRect = document.getElementById('game-container').getBoundingClientRect();
+            const canvasRect = canvas.getBoundingClientRect();
+            messageOverlayEl.style.top = `${canvasRect.top - gameContainerRect.top}px`;
+            messageOverlayEl.style.left = `${canvasRect.left - gameContainerRect.left}px`;
+            messageOverlayEl.style.width = `${canvas.width}px`;
+            messageOverlayEl.style.height = `${canvas.height}px`;
+
+            actionButtonEl.addEventListener('click', () => {
+                if (gameOverState || gamePaused) {
+                    startGame();
+                }
+            });
+            
+            window.addEventListener('keydown', handleKeyDown);
+
+            showStartMessage();
+            drawInitialState(); // Draw maze etc. even before game starts
+        }
+
+        function drawInitialState() {
+            // Parse maze to have it available for drawing, but don't init characters yet
+            if (maze.length === 0) parseMaze(); 
+            ctx.fillStyle = tailwind.theme.extend.colors['pacman-bg'];
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            drawMaze();
+        }
+
+        function showStartMessage() {
+            gamePaused = true;
+            gameOverState = false;
+            messageTitleEl.textContent = "PACMAN";
+            messageTextEl.textContent = "Get Ready!";
+            actionButtonEl.textContent = "Start Game";
+            messageOverlayEl.classList.remove('hidden');
+        }
+        
+        function showGameOverMessage(won = false) {
+            gamePaused = true;
+            gameOverState = true;
+            if (won) {
+                messageTitleEl.textContent = "YOU WIN!";
+                messageTextEl.textContent = `Final Score: ${score}`;
+            } else {
+                messageTitleEl.textContent = "GAME OVER";
+                messageTextEl.textContent = `Score: ${score}`;
+            }
+            actionButtonEl.textContent = "Play Again";
+            messageOverlayEl.classList.remove('hidden');
+        }
+
+        function startGame() {
+            score = 0;
+            lives = 3;
+            frightenedModeActive = false;
+            frightenTimer = 0;
+            currentFrame = 0;
+            updateScoreAndLives();
+            resetPacmanAndGhosts(); // This re-parses maze and resets pellets
+            
+            gamePaused = false;
+            gameOverState = false;
+            messageOverlayEl.classList.add('hidden');
+            
+            if (gameLoopId) cancelAnimationFrame(gameLoopId);
+            gameLoop();
+        }
+
+        function handlePlayerDeath() {
+            lives--;
+            updateScoreAndLives();
+            frightenedModeActive = false; // Cancel frightened mode
+            ghosts.forEach(g => g.state = 'HOUSE'); // Send ghosts back to house temporarily
+
+            if (lives <= 0) {
+                showGameOverMessage(false);
+            } else {
+                gamePaused = true; // Pause briefly
+                // Reset positions
+                const { pacmanStartPos } = parseMaze(); // Don't reset pellets, just get start pos
+                initPacman(pacmanStartPos);
+                // Ghosts reset more carefully
+                GHOST_CONFIG.forEach(config => {
+                    const ghost = ghosts.find(g => g.id === config.id);
+                    if (ghost) {
+                        const center = getTileCenter(config.startX, config.startY);
+                        ghost.x = center.x;
+                        ghost.y = center.y;
+                        ghost.gridX = config.startX;
+                        ghost.gridY = config.startY;
+                        ghost.state = 'HOUSE';
+                        ghost.dx = 0; ghost.dy = 0;
+                        ghost.releaseTimer = (config.id === 'blinky' ? 0 : (config.id === 'pinky' ? 50 : (config.id === 'inky' ? 100 : 150)));
+                    }
+                });
+                
+                // Simple flashing effect or message
+                messageTitleEl.textContent = "CAUGHT!";
+                messageTextEl.textContent = `Lives remaining: ${lives}`;
+                actionButtonEl.textContent = "Continue";
+                messageOverlayEl.classList.remove('hidden');
+                // Automatically continue after a delay, or require button press
+                // For now, button press via actionButton is fine.
+            }
+        }
+
+        function updateScoreAndLives() {
+            scoreEl.textContent = score;
+            livesEl.textContent = lives;
+        }
+
+        function drawMaze() {
+            for (let y = 0; y < maze.length; y++) {
+                for (let x = 0; x < maze[y].length; x++) {
+                    const tile = maze[y][x];
+                    ctx.beginPath();
+                    if (tile === WALL) {
+                        ctx.fillStyle = tailwind.theme.extend.colors['pacman-wall'];
+                        ctx.fillRect(x * TILE_SIZE, y * TILE_SIZE, TILE_SIZE, TILE_SIZE);
+                    } else if (tile === PELLET) {
+                        ctx.fillStyle = tailwind.theme.extend.colors['pacman-pellet'];
+                        ctx.arc(x * TILE_SIZE + TILE_SIZE / 2, y * TILE_SIZE + TILE_SIZE / 2, TILE_SIZE * 0.15, 0, Math.PI * 2);
+                        ctx.fill();
+                    } else if (tile === POWER_PELLET) {
+                        ctx.fillStyle = tailwind.theme.extend.colors['pacman-power-pellet'];
+                        // Pulsing effect for power pellet
+                        const pulseSize = (Math.sin(currentFrame * 0.1) + 1) / 2 * (TILE_SIZE * 0.1) + (TILE_SIZE * 0.25); // size between 0.25 and 0.35
+                        ctx.arc(x * TILE_SIZE + TILE_SIZE / 2, y * TILE_SIZE + TILE_SIZE / 2, pulseSize, 0, Math.PI * 2);
+                        ctx.fill();
+                    } else if (tile === GHOST_DOOR) { // Draw ghost door
+                        ctx.fillStyle = tailwind.theme.extend.colors['ghost-pink']; // Use a distinct color
+                        ctx.fillRect(x * TILE_SIZE, y * TILE_SIZE + TILE_SIZE*0.4, TILE_SIZE, TILE_SIZE*0.2);
+                    }
+                    // GHOST_HOUSE and EMPTY are just background
+                }
+            }
+        }
+
+        function drawPacman() {
+            ctx.save();
+            ctx.translate(pacman.x, pacman.y);
+            ctx.rotate(pacman.angle);
+            
+            ctx.fillStyle = pacman.color;
+            ctx.beginPath();
+            if (pacman.mouthOpen) {
+                ctx.arc(0, 0, pacman.radius, pacman.mouthAngle, Math.PI * 2 - pacman.mouthAngle);
+            } else {
+                ctx.arc(0, 0, pacman.radius, 0, Math.PI * 2);
+            }
+            ctx.lineTo(0, 0);
+            ctx.fill();
+            ctx.restore();
+
+            // Animate mouth
+            if (currentFrame % 10 < 5) { // Open for 5 frames, close for 5
+                pacman.mouthOpen = true;
+            } else {
+                pacman.mouthOpen = false;
+            }
+        }
+
+        function drawGhosts() {
+            ghosts.forEach(ghost => {
+                ctx.fillStyle = ghost.state === 'FRIGHTENED' ? tailwind.theme.extend.colors['ghost-frightened'] : (ghost.state === 'EATEN' ? tailwind.theme.extend.colors['ghost-eyes'] : ghost.baseColor);
+                
+                if (ghost.state === 'EATEN') { // Draw eyes only
+                    ctx.beginPath();
+                    ctx.arc(ghost.x - TILE_SIZE * 0.15, ghost.y - TILE_SIZE * 0.1, TILE_SIZE * 0.1, 0, Math.PI * 2); // Left eye
+                    ctx.fill();
+                    ctx.beginPath();
+                    ctx.arc(ghost.x + TILE_SIZE * 0.15, ghost.y - TILE_SIZE * 0.1, TILE_SIZE * 0.1, 0, Math.PI * 2); // Right eye
+                    ctx.fill();
+                } else {
+                    // Body
+                    ctx.beginPath();
+                    ctx.arc(ghost.x, ghost.y, ghost.radius, Math.PI, 0); // Top semi-circle
+                    ctx.lineTo(ghost.x + ghost.radius, ghost.y + ghost.radius * 0.8); // Bottom-right
+                    // Wavy bottom - simplified to 3 points
+                    const waveAmount = ghost.radius * 0.2;
+                    const waveY = ghost.y + ghost.radius * 0.8;
+                    ctx.quadraticCurveTo(ghost.x + ghost.radius * 0.5, waveY + (currentFrame % 20 < 10 ? waveAmount : -waveAmount), ghost.x, waveY + waveAmount * 0.5);
+                    ctx.quadraticCurveTo(ghost.x - ghost.radius * 0.5, waveY + (currentFrame % 20 < 10 ? -waveAmount : waveAmount), ghost.x - ghost.radius, waveY);
+                    ctx.lineTo(ghost.x - ghost.radius, ghost.y); // Bottom-left up to arc start
+                    ctx.fill();
+
+                    // Eyes
+                    ctx.fillStyle = tailwind.theme.extend.colors['ghost-eyes'];
+                    const eyeOffsetX = ghost.radius * 0.3;
+                    const eyeOffsetY = ghost.radius * 0.2;
+                    ctx.beginPath();
+                    ctx.arc(ghost.x - eyeOffsetX, ghost.y - eyeOffsetY, ghost.radius * 0.25, 0, Math.PI * 2); // Left eye
+                    ctx.fill();
+                    ctx.beginPath();
+                    ctx.arc(ghost.x + eyeOffsetX, ghost.y - eyeOffsetY, ghost.radius * 0.25, 0, Math.PI * 2); // Right eye
+                    ctx.fill();
+
+                    // Pupils (look in direction of movement, or scared if frightened)
+                    ctx.fillStyle = 'black';
+                    let pupilOffsetX = 0;
+                    let pupilOffsetY = 0;
+                    if (ghost.state === 'FRIGHTENED') {
+                        // Scared pupils (small, centered or shaking)
+                        pupilOffsetX = (Math.random() - 0.5) * 2; 
+                        pupilOffsetY = (Math.random() - 0.5) * 2;
+                    } else if (ghost.dx !== 0 || ghost.dy !== 0) {
+                        const norm = Math.sqrt(ghost.dx * ghost.dx + ghost.dy * ghost.dy);
+                        pupilOffsetX = (ghost.dx / norm) * ghost.radius * 0.08;
+                        pupilOffsetY = (ghost.dy / norm) * ghost.radius * 0.08;
+                    }
+                    ctx.beginPath();
+                    ctx.arc(ghost.x - eyeOffsetX + pupilOffsetX, ghost.y - eyeOffsetY + pupilOffsetY, ghost.radius * 0.1, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.beginPath();
+                    ctx.arc(ghost.x + eyeOffsetX + pupilOffsetX, ghost.y - eyeOffsetY + pupilOffsetY, ghost.radius * 0.1, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+            });
+        }
+        
+        function handleKeyDown(e) {
+            if (gamePaused && !gameOverState && actionButtonEl.textContent === "Continue") { // If paused mid-game for "CAUGHT"
+                 if (e.key === "Enter" || e.key === " ") {
+                    gamePaused = false;
+                    messageOverlayEl.classList.add('hidden');
+                    if (gameLoopId) cancelAnimationFrame(gameLoopId); // Ensure no double loops
+                    gameLoop();
+                    return;
+                }
+            }
+            if (gamePaused) return; // Don't process keys if game isn't active (e.g. on start/game over screen)
+
+            let changed = false;
+            if (e.key === 'ArrowUp' || e.key === 'w')    { pacman.nextDx = 0; pacman.nextDy = -1; changed = true; }
+            if (e.key === 'ArrowDown' || e.key === 's')  { pacman.nextDx = 0; pacman.nextDy = 1; changed = true; }
+            if (e.key === 'ArrowLeft' || e.key === 'a')  { pacman.nextDx = -1; pacman.nextDy = 0; changed = true; }
+            if (e.key === 'ArrowRight' || e.key === 'd') { pacman.nextDx = 1; pacman.nextDy = 0; changed = true; }
+            
+            if (changed) e.preventDefault(); // Prevent page scrolling
+        }
+
+        function canMove(entity, dx, dy, isGhost = false) {
+            const currentGridX = Math.round((entity.x - TILE_SIZE / 2) / TILE_SIZE);
+            const currentGridY = Math.round((entity.y - TILE_SIZE / 2) / TILE_SIZE);
+            const targetGridX = currentGridX + dx;
+            const targetGridY = currentGridY + dy;
+
+            // Tunnel logic
+            if (targetGridX < 0 && targetGridY === 8) return true; // Tunnel left
+            if (targetGridX >= maze[0].length && targetGridY === 8) return true; // Tunnel right
+
+            const tileType = (targetGridY >=0 && targetGridY < maze.length && targetGridX >=0 && targetGridX < maze[0].length) ? maze[targetGridY][targetGridX] : WALL;
+
+            if (isGhost) {
+                // Ghosts can pass through GHOST_DOOR if exiting/entering house
+                if (tileType === GHOST_DOOR && (entity.state === 'HOUSE' || entity.state === 'EATEN')) {
+                    // Specific condition: if ghost is in house and target is door, or eaten and target is door
+                    if ((entity.state === 'HOUSE' && targetGridY < entity.gridY) || // Trying to move UP through door to exit
+                        (entity.state === 'EATEN' && targetGridY > entity.gridY && targetGridX === GHOST_RETURN_POS.x)) { // Trying to move DOWN through door to re-enter
+                         return true;
+                    }
+                }
+                return tileType !== WALL && tileType !== GHOST_HOUSE; // Ghosts cannot enter normal GHOST_HOUSE tiles from outside, but can move within
+            } else { // Pacman
+                return tileType !== WALL && tileType !== GHOST_HOUSE && tileType !== GHOST_DOOR;
+            }
+        }
+        
+        function updatePacman() {
+            const currentGridX = Math.round((pacman.x - TILE_SIZE / 2) / TILE_SIZE);
+            const currentGridY = Math.round((pacman.y - TILE_SIZE / 2) / TILE_SIZE);
+            
+            // Check alignment for turning: Pacman should be reasonably centered on a tile
+            const isAlignedX = Math.abs(pacman.x - (currentGridX * TILE_SIZE + TILE_SIZE / 2)) < pacman.speed * 1.1;
+            const isAlignedY = Math.abs(pacman.y - (currentGridY * TILE_SIZE + TILE_SIZE / 2)) < pacman.speed * 1.1;
+
+            if (isAlignedX && isAlignedY) { // Only try to turn if aligned
+                // Snap to grid center to correct small drifts if turning or stopping
+                 if (pacman.nextDx !== 0 || pacman.nextDy !== 0 || (pacman.dx === 0 && pacman.dy === 0)) {
+                    pacman.x = currentGridX * TILE_SIZE + TILE_SIZE / 2;
+                    pacman.y = currentGridY * TILE_SIZE + TILE_SIZE / 2;
+                 }
+
+                if (pacman.nextDx !== 0 || pacman.nextDy !== 0) { // If there's a queued turn
+                    if (canMove(pacman, pacman.nextDx, pacman.nextDy)) {
+                        pacman.dx = pacman.nextDx;
+                        pacman.dy = pacman.nextDy;
+                        pacman.nextDx = 0; pacman.nextDy = 0; // Clear queued turn
+                        // Update angle based on new direction
+                        if (pacman.dx === 1) pacman.angle = 0;          // Right
+                        else if (pacman.dx === -1) pacman.angle = Math.PI; // Left
+                        else if (pacman.dy === 1) pacman.angle = Math.PI / 2; // Down
+                        else if (pacman.dy === -1) pacman.angle = Math.PI * 1.5; // Up
+                    }
+                }
+            }
+            
+            // Try to continue current movement
+            const nextX = pacman.x + pacman.dx * pacman.speed;
+            const nextY = pacman.y + pacman.dy * pacman.speed;
+            
+            const nextGridX = Math.round((nextX - TILE_SIZE / 2 + pacman.dx * TILE_SIZE * 0.4) / TILE_SIZE);
+            const nextGridY = Math.round((nextY - TILE_SIZE / 2 + pacman.dy * TILE_SIZE * 0.4) / TILE_SIZE);
+
+            if (canMove(pacman, pacman.dx, pacman.dy) || (pacman.gridX === nextGridX && pacman.gridY === nextGridY)) { // Allow movement within current tile or if next tile is clear
+                 pacman.x = nextX;
+                 pacman.y = nextY;
+            } else { // Hit a wall
+                 // Snap to current tile center if cannot move further
+                 pacman.x = currentGridX * TILE_SIZE + TILE_SIZE / 2;
+                 pacman.y = currentGridY * TILE_SIZE + TILE_SIZE / 2;
+                 pacman.dx = 0; pacman.dy = 0; // Stop
+            }
+
+            // Tunneling logic
+            if (pacman.x < -pacman.radius) { // Exited left
+                pacman.x = canvas.width + pacman.radius;
+            } else if (pacman.x > canvas.width + pacman.radius) { // Exited right
+                pacman.x = -pacman.radius;
+            }
+            
+            pacman.gridX = Math.round((pacman.x - TILE_SIZE / 2) / TILE_SIZE);
+            pacman.gridY = Math.round((pacman.y - TILE_SIZE / 2) / TILE_SIZE);
+
+            // Pellet eating
+            if (pacman.gridX >= 0 && pacman.gridX < maze[0].length && pacman.gridY >= 0 && pacman.gridY < maze.length) {
+                const tileType = maze[pacman.gridY][pacman.gridX];
+                if (tileType === PELLET) {
+                    maze[pacman.gridY][pacman.gridX] = EMPTY;
+                    score += 10;
+                    pelletsToEat--;
+                    updateScoreAndLives();
+                } else if (tileType === POWER_PELLET) {
+                    maze[pacman.gridY][pacman.gridX] = EMPTY;
+                    score += 50;
+                    pelletsToEat--;
+                    updateScoreAndLives();
+                    activateFrightenedMode();
+                }
+            }
+            
+            if (pelletsToEat <= 0) {
+                showGameOverMessage(true); // Player wins
+            }
+        }
+
+        function activateFrightenedMode() {
+            frightenedModeActive = true;
+            frightenTimer = FRIGHTEN_DURATION_MS;
+            ghosts.forEach(ghost => {
+                if (ghost.state !== 'EATEN' && ghost.state !== 'HOUSE') { // Don't affect eaten ghosts or those in house
+                    ghost.state = 'FRIGHTENED';
+                    ghost.speed = GHOST_FRIGHTENED_SPEED;
+                    // Reverse direction
+                    ghost.dx *= -1;
+                    ghost.dy *= -1;
+                }
+            });
+        }
+        
+        function updateGhosts() {
+            if (frightenedModeActive) {
+                frightenTimer -= 1000/60; // Assuming 60 FPS for timer decrement
+                if (frightenTimer <= 0) {
+                    frightenedModeActive = false;
+                    ghosts.forEach(ghost => {
+                        if (ghost.state === 'FRIGHTENED') {
+                            ghost.state = 'CHASE'; // Or SCATTER, simplified to CHASE
+                            ghost.speed = GHOST_SPEED;
+                        }
+                    });
+                }
+            }
+
+            ghosts.forEach(ghost => {
+                if (ghost.releaseTimer > 0) {
+                    ghost.releaseTimer--;
+                    return; // Still waiting in house
+                }
+                
+                const currentSpeed = ghost.state === 'FRIGHTENED' ? GHOST_FRIGHTENED_SPEED : (ghost.state === 'EATEN' ? GHOST_EATEN_SPEED : GHOST_SPEED);
+
+                // Ghost AI and Movement
+                const currentGridX = Math.round((ghost.x - TILE_SIZE / 2) / TILE_SIZE);
+                const currentGridY = Math.round((ghost.y - TILE_SIZE / 2) / TILE_SIZE);
+                ghost.gridX = currentGridX;
+                ghost.gridY = currentGridY;
+
+                const isAlignedX = Math.abs(ghost.x - (currentGridX * TILE_SIZE + TILE_SIZE / 2)) < currentSpeed * 1.1;
+                const isAlignedY = Math.abs(ghost.y - (currentGridY * TILE_SIZE / 2)) < currentSpeed * 1.1;
+
+                if (isAlignedX && isAlignedY) { // At an intersection or decision point
+                    ghost.x = currentGridX * TILE_SIZE + TILE_SIZE / 2; // Snap to grid
+                    ghost.y = currentGridY * TILE_SIZE + TILE_SIZE / 2;
+
+                    // Determine target based on state
+                    if (ghost.state === 'HOUSE') {
+                        ghost.targetTile = GHOST_HOUSE_EXIT;
+                        if (currentGridX === GHOST_HOUSE_EXIT.x && currentGridY === GHOST_HOUSE_EXIT.y) {
+                            ghost.state = 'CHASE'; // Exited house
+                        }
+                    } else if (ghost.state === 'EATEN') {
+                        ghost.targetTile = GHOST_RETURN_POS;
+                        if (currentGridX === GHOST_RETURN_POS.x && currentGridY === GHOST_RETURN_POS.y) {
+                            ghost.state = 'HOUSE'; // Back in house, ready to respawn
+                            ghost.color = ghost.baseColor;
+                            ghost.speed = GHOST_SPEED;
+                            ghost.releaseTimer = 120; // Wait a bit before leaving again
+                        }
+                    } else if (ghost.state === 'FRIGHTENED') {
+                        // Move randomly or away from Pacman (simplified: random valid)
+                        ghost.targetTile = null; // Indicate random movement
+                    } else { // CHASE or SCATTER (simplified to CHASE)
+                        ghost.targetTile = { x: pacman.gridX, y: pacman.gridY };
+                    }
+                    
+                    // Choose next direction
+                    const possibleMoves = [];
+                    if (canMove(ghost, 0, -1, true) && ghost.dy !== 1) possibleMoves.push({ dx: 0, dy: -1 }); // Up
+                    if (canMove(ghost, 0, 1, true) && ghost.dy !== -1) possibleMoves.push({ dx: 0, dy: 1 });  // Down
+                    if (canMove(ghost, -1, 0, true) && ghost.dx !== 1) possibleMoves.push({ dx: -1, dy: 0 }); // Left
+                    if (canMove(ghost, 1, 0, true) && ghost.dx !== -1) possibleMoves.push({ dx: 1, dy: 0 });  // Right
+
+                    if (possibleMoves.length > 0) {
+                        let bestMove = possibleMoves[Math.floor(Math.random() * possibleMoves.length)]; // Default to random
+
+                        if (ghost.targetTile) { // If has a target (not random frightened)
+                            let minDistance = Infinity;
+                            possibleMoves.forEach(move => {
+                                const nextGridX = currentGridX + move.dx;
+                                const nextGridY = currentGridY + move.dy;
+                                const dist = Math.hypot(nextGridX - ghost.targetTile.x, nextGridY - ghost.targetTile.y);
+                                if (ghost.state === 'FRIGHTENED') { // Move away if frightened
+                                   if (dist > minDistance) { // Note: this is not quite right for "away", should be > old distance
+                                        minDistance = dist; // Actually, pick the one that results in largest distance to Pacman
+                                        bestMove = move;
+                                   }
+                                } else { // Move towards
+                                    if (dist < minDistance) {
+                                        minDistance = dist;
+                                        bestMove = move;
+                                    }
+                                }
+                            });
+                        }  else if (ghost.state === 'FRIGHTENED' && pacman) { // Frightened, try to move away from Pacman
+                            let maxDistance = -1;
+                             possibleMoves.forEach(move => {
+                                const nextGridX = currentGridX + move.dx;
+                                const nextGridY = currentGridY + move.dy;
+                                const distToPacman = Math.hypot(nextGridX - pacman.gridX, nextGridY - pacman.gridY);
+                                if (distToPacman > maxDistance) {
+                                    maxDistance = distToPacman;
+                                    bestMove = move;
+                                }
+                            });
+                        }
+                        ghost.dx = bestMove.dx;
+                        ghost.dy = bestMove.dy;
+                    } else { // Stuck (shouldn't happen in a good maze with above logic)
+                        ghost.dx = -ghost.dx; // Turn around
+                        ghost.dy = -ghost.dy;
+                    }
+                }
+                
+                // Actual movement
+                ghost.x += ghost.dx * currentSpeed;
+                ghost.y += ghost.dy * currentSpeed;
+
+                // Tunneling for ghosts
+                if (ghost.x < -ghost.radius) ghost.x = canvas.width + ghost.radius;
+                else if (ghost.x > canvas.width + ghost.radius) ghost.x = -ghost.radius;
+            });
+        }
+        
+        function checkCollisions() {
+            ghosts.forEach(ghost => {
+                const distance = Math.hypot(pacman.x - ghost.x, pacman.y - ghost.y);
+                if (distance < pacman.radius + ghost.radius - TILE_SIZE*0.2) { // Added tolerance
+                    if (ghost.state === 'FRIGHTENED') {
+                        score += 200; // Score for eating ghost
+                        updateScoreAndLives();
+                        ghost.state = 'EATEN';
+                        ghost.speed = GHOST_EATEN_SPEED;
+                        // No color change for eyes, handled in drawGhosts
+                    } else if (ghost.state !== 'EATEN' && ghost.state !== 'HOUSE') {
+                        handlePlayerDeath();
+                    }
+                }
+            });
+        }
+
+        function gameLoop() {
+            if (gamePaused || gameOverState) {
+                if (gameOverState) draw(); // Draw final state if game over
+                return;
+            }
+            
+            currentFrame++;
+            update();
+            draw();
+            
+            gameLoopId = requestAnimationFrame(gameLoop);
+        }
+
+        function update() {
+            updatePacman();
+            updateGhosts();
+            checkCollisions();
+        }
+
+        function draw() {
+            ctx.fillStyle = tailwind.theme.extend.colors['pacman-bg'];
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            drawMaze();
+            drawPacman();
+            drawGhosts();
+            // UI elements (score, lives) are updated via DOM, not canvas
+        }
+        
+        // Initialize game on load
+        window.addEventListener('DOMContentLoaded', setupGame);
+
+    </script>
+</body>
+</html>

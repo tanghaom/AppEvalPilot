@@ -1,0 +1,9 @@
+{
+  "web_id": "web_90",
+  "task_id": 3,
+  "task_type": "dynamic",
+  "instruction": "Task: Input a specific date (e.g., '02.12.2024') into a date filter input field and apply the filter (e.g., by pressing Enter or clicking a 'Filter' button).\nExpected Result: The news feed list updates to show only articles published on the specified date. Articles from other dates are hidden.\n\nNote: The task is only considered successful if the expected result is achieved; otherwise, it is deemed infeasible.",
+  "max_steps": 15,
+  "expected": "The news feed list updates to show only articles published on the specified date. Articles from other dates are hidden.",
+  "label": 0
+}

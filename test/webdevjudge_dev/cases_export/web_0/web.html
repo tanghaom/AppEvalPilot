@@ -1,0 +1,701 @@
+<!DOCTYPE html>
+<html lang="en" class="scroll-smooth">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SCORE - Professional Development. At Your Fingertips.</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        /* Custom styles for Apple Health dark mode inspiration */
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";
+        }
+        .hero-gradient-text {
+            background: linear-gradient(to right, #2dd4bf, #34d399); /* teal-400 to green-400 */
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .btn-primary-gradient {
+            background-image: linear-gradient(to right, #10B981, #059669); /* green-600 to green-700 */
+        }
+        .btn-primary-gradient:hover {
+            background-image: linear-gradient(to right, #059669, #047857); /* green-700 to green-800 */
+        }
+        /* Custom scrollbar for a more modern look (optional) */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #1e293b; /* slate-800 */
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #334155; /* slate-700 */
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #475569; /* slate-600 */
+        }
+        .testimonial-card {
+            min-width: 300px; /* Ensure cards have a minimum width */
+            scroll-snap-align: start;
+        }
+    </style>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        'brand-black': '#000000',
+                        'brand-gray-dark': '#111827', // gray-900
+                        'brand-gray-medium': '#1f2937', // gray-800
+                        'brand-gray-light': '#374151', // gray-700
+                        'brand-accent-green': '#10B981', // green-500
+                        'brand-accent-teal': '#06B6D4', // cyan-500 (using for a brighter green range)
+                        'brand-text-primary': '#F3F4F6', // gray-100
+                        'brand-text-secondary': '#9CA3AF', // gray-400
+                    },
+                    animation: {
+                        'fade-in-up': 'fadeInUp 0.5s ease-out forwards',
+                    },
+                    keyframes: {
+                        fadeInUp: {
+                            '0%': { opacity: '0', transform: 'translateY(20px)' },
+                            '100%': { opacity: '1', transform: 'translateY(0)' },
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+<body class="bg-brand-black text-brand-text-primary antialiased">
+
+    <!-- Navigation Bar -->
+    <nav id="navbar" class="bg-brand-black/80 backdrop-blur-md sticky top-0 z-50 transition-all duration-300">
+        <div class="container mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex items-center justify-between h-20">
+                <div class="flex items-center">
+                    <a href="#" class="text-3xl font-bold hero-gradient-text">SCORE</a>
+                </div>
+                <div class="hidden md:flex items-center space-x-8">
+                    <a href="#features" class="text-brand-text-secondary hover:text-brand-text-primary transition-colors">Features</a>
+                    <a href="#how-it-works" class="text-brand-text-secondary hover:text-brand-text-primary transition-colors">How It Works</a>
+                    <a href="#testimonials" class="text-brand-text-secondary hover:text-brand-text-primary transition-colors">Testimonials</a>
+                </div>
+                <div class="hidden md:flex items-center space-x-4">
+                    <a href="#" class="text-brand-text-secondary hover:text-brand-text-primary transition-colors px-4 py-2">Sign In</a>
+                    <a href="#" class="bg-brand-accent-green hover:bg-green-600 text-white font-semibold px-6 py-2.5 rounded-lg shadow-md hover:shadow-lg transition-all duration-300 ease-in-out transform hover:scale-105">Sign Up</a>
+                </div>
+                <div class="md:hidden flex items-center">
+                    <button id="mobile-menu-button" class="text-brand-text-secondary hover:text-brand-text-primary focus:outline-none">
+                        <svg class="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16m-7 6h7"></path></svg>
+                    </button>
+                </div>
+            </div>
+        </div>
+        <!-- Mobile Menu -->
+        <div id="mobile-menu" class="md:hidden hidden bg-brand-gray-medium pb-4">
+            <a href="#features" class="block py-2 px-4 text-sm text-brand-text-secondary hover:bg-brand-gray-light hover:text-brand-text-primary">Features</a>
+            <a href="#how-it-works" class="block py-2 px-4 text-sm text-brand-text-secondary hover:bg-brand-gray-light hover:text-brand-text-primary">How It Works</a>
+            <a href="#testimonials" class="block py-2 px-4 text-sm text-brand-text-secondary hover:bg-brand-gray-light hover:text-brand-text-primary">Testimonials</a>
+            <a href="#" class="block py-2 px-4 text-sm text-brand-text-secondary hover:bg-brand-gray-light hover:text-brand-text-primary">Sign In</a>
+            <a href="#" class="block mx-4 my-2 text-center bg-brand-accent-green hover:bg-green-600 text-white font-semibold px-6 py-2.5 rounded-lg shadow-md hover:shadow-lg transition-all duration-300 ease-in-out transform hover:scale-105">Sign Up</a>
+        </div>
+    </nav>
+
+    <!-- Hero Section -->
+    <header class="bg-brand-black relative overflow-hidden min-h-screen flex items-center justify-center py-20 lg:py-32">
+        <div class="absolute inset-0 opacity-10">
+             <!-- Subtle background pattern or gradient -->
+            <div class="absolute inset-0 bg-gradient-to-br from-green-500/10 via-transparent to-teal-500/10"></div>
+        </div>
+        <div class="container mx-auto px-4 sm:px-6 lg:px-8 text-center relative z-10">
+            <h1 class="text-5xl sm:text-6xl lg:text-7xl font-extrabold text-brand-text-primary mb-6 animate-fade-in-up" style="animation-delay: 0.1s;">
+                Track It. Manage It. <span class="hero-gradient-text">Master It</span> with SCORE
+            </h1>
+            <p class="text-xl sm:text-2xl text-brand-text-secondary max-w-3xl mx-auto mb-10 animate-fade-in-up" style="animation-delay: 0.3s;">
+                Professional Development. At Your Fingertips.
+            </p>
+            <div class="flex flex-col sm:flex-row items-center justify-center space-y-4 sm:space-y-0 sm:space-x-6 animate-fade-in-up" style="animation-delay: 0.5s;">
+                <a href="#" class="btn-primary-gradient text-white font-semibold px-10 py-4 rounded-lg shadow-xl hover:shadow-2xl text-lg transition-all duration-300 ease-in-out transform hover:scale-105 w-full sm:w-auto">
+                    Start Your Free Trial
+                </a>
+                <a href="#features" class="border-2 border-brand-gray-light text-brand-text-secondary font-semibold px-10 py-4 rounded-lg hover:bg-brand-gray-light hover:text-brand-text-primary transition-all duration-300 ease-in-out w-full sm:w-auto">
+                    Learn More
+                </a>
+            </div>
+        </div>
+    </header>
+
+    <!-- Intro Copy Section -->
+    <section class="py-16 sm:py-24 bg-brand-gray-dark">
+        <div class="container mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="max-w-3xl mx-auto text-center mb-12">
+                <h2 class="text-base font-semibold leading-7 text-brand-accent-green">Compliance and Efficiency, Simplified</h2>
+                <p class="mt-2 text-3xl font-bold tracking-tight text-brand-text-primary sm:text-4xl">For healthcare professionals, students, and anyone who values compliance and efficiency.</p>
+                <p class="mt-6 text-lg leading-8 text-brand-text-secondary">
+                    Are you tired of juggling multiple tools to track your competencies? With SCORE, keep all your certifications, assessments, and supervisor sign-offs in one place—effortlessly.
+                </p>
+            </div>
+        </div>
+    </section>
+
+    <!-- Why SCORE? Section -->
+    <section id="features" class="py-16 sm:py-24 bg-brand-black">
+        <div class="container mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="text-center mb-16">
+                <h2 class="text-4xl font-bold tracking-tight text-brand-text-primary sm:text-5xl">Why SCORE?</h2>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-x-8 gap-y-12">
+                <div class="bg-brand-gray-dark p-8 rounded-xl shadow-2xl transition-all duration-300 hover:scale-105">
+                    <div class="flex items-center justify-center w-16 h-16 rounded-full bg-gradient-to-br from-brand-accent-green to-brand-accent-teal mb-6">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-8 h-8 text-white">
+                          <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
+                        </svg>
+                    </div>
+                    <h3 class="text-2xl font-semibold text-brand-text-primary mb-3">Simplify Compliance</h3>
+                    <p class="text-brand-text-secondary leading-relaxed">Track certifications, revalidation, and deadlines automatically, with timely reminders for every step.</p>
+                </div>
+                <div class="bg-brand-gray-dark p-8 rounded-xl shadow-2xl transition-all duration-300 hover:scale-105">
+                    <div class="flex items-center justify-center w-16 h-16 rounded-full bg-gradient-to-br from-brand-accent-green to-brand-accent-teal mb-6">
+                         <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-8 h-8 text-white">
+                          <path stroke-linecap="round" stroke-linejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0115.75 21H5.25A2.25 2.25 0 013 18.75V8.25A2.25 2.25 0 015.25 6H10" />
+                        </svg>
+                    </div>
+                    <h3 class="text-2xl font-semibold text-brand-text-primary mb-3">Supervisor Sign-Offs Made Easy</h3>
+                    <p class="text-brand-text-secondary leading-relaxed">Request, track, and store approvals without disrupting your workflow.</p>
+                </div>
+                <div class="bg-brand-gray-dark p-8 rounded-xl shadow-2xl transition-all duration-300 hover:scale-105">
+                    <div class="flex items-center justify-center w-16 h-16 rounded-full bg-gradient-to-br from-brand-accent-green to-brand-accent-teal mb-6">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-8 h-8 text-white">
+                          <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 9.75h16.5m-16.5 4.5h16.5m-16.5 4.5h16.5M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                    </div>
+                    <h3 class="text-2xl font-semibold text-brand-text-primary mb-3">Stay Organised</h3>
+                    <p class="text-brand-text-secondary leading-relaxed">All your competencies in one place—no more scattered documents or confusion.</p>
+                </div>
+                <div class="bg-brand-gray-dark p-8 rounded-xl shadow-2xl transition-all duration-300 hover:scale-105">
+                    <div class="flex items-center justify-center w-16 h-16 rounded-full bg-gradient-to-br from-brand-accent-green to-brand-accent-teal mb-6">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-8 h-8 text-white">
+                          <path stroke-linecap="round" stroke-linejoin="round" d="M14.857 17.082a23.848 23.848 0 005.454-1.31A8.967 8.967 0 0118 9.75v-.7V9A6 6 0 006 9v.75a8.967 8.967 0 01-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 01-5.714 0m5.714 0a3 3 0 11-5.714 0" />
+                        </svg>
+                    </div>
+                    <h3 class="text-2xl font-semibold text-brand-text-primary mb-3">Always Ready</h3>
+                    <p class="text-brand-text-secondary leading-relaxed">Stay up-to-date with proactive notifications and actionable insights into your progress.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+    
+    <!-- How It Works Section -->
+    <section id="how-it-works" class="py-16 sm:py-24 bg-brand-gray-dark">
+        <div class="container mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="text-center mb-16">
+                <h2 class="text-4xl font-bold tracking-tight text-brand-text-primary sm:text-5xl">How SCORE Works for You</h2>
+                <p class="mt-4 text-lg text-brand-text-secondary max-w-2xl mx-auto">Discover the core features that make SCORE the ultimate competency management tool.</p>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+                <!-- Feature 1 -->
+                <div class="flex flex-col items-center text-center p-6 bg-brand-black rounded-lg shadow-lg">
+                    <div class="p-4 bg-brand-accent-green/20 rounded-full mb-4">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-10 h-10 text-brand-accent-green">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 18L9 11.25l4.306 4.307a11.95 11.95 0 015.814-5.519l2.74-1.22m0 0l-5.94-2.28m5.94 2.28l-2.28 5.941" />
+                        </svg>
+                    </div>
+                    <h3 class="text-xl font-semibold text-brand-text-primary mb-2">Track Progress</h3>
+                    <p class="text-brand-text-secondary text-sm">Visualize your progress with interactive charts and dashboards.</p>
+                </div>
+                <!-- Feature 2 -->
+                <div class="flex flex-col items-center text-center p-6 bg-brand-black rounded-lg shadow-lg">
+                    <div class="p-4 bg-brand-accent-green/20 rounded-full mb-4">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-10 h-10 text-brand-accent-green">
+                           <path stroke-linecap="round" stroke-linejoin="round" d="M14.857 17.082a23.848 23.848 0 005.454-1.31A8.967 8.967 0 0118 9.75v-.7V9A6 6 0 006 9v.75a8.967 8.967 0 01-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 01-5.714 0m5.714 0a3 3 0 11-5.714 0" />
+                        </svg>
+                    </div>
+                    <h3 class="text-xl font-semibold text-brand-text-primary mb-2">Receive Timely Reminders</h3>
+                    <p class="text-brand-text-secondary text-sm">Stay up-to-date with notifications and alerts for deadlines and revalidations.</p>
+                </div>
+                <!-- Feature 3 -->
+                <div class="flex flex-col items-center text-center p-6 bg-brand-black rounded-lg shadow-lg">
+                    <div class="p-4 bg-brand-accent-green/20 rounded-full mb-4">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-10 h-10 text-brand-accent-green">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M18 18.72a9.094 9.094 0 003.741-.479 3 3 0 00-4.682-2.72m.94 3.198l.001.031c0 .225-.012.447-.037.666A11.944 11.944 0 0112 21c-2.17 0-4.207-.576-5.963-1.584A6.062 6.062 0 016 18.719m12 0a5.971 5.971 0 00-.941-3.197m0 0A5.995 5.995 0 0012 12.75a5.995 5.995 0 00-5.058 2.772m0 0a3 3 0 00-4.681 2.72 E" />
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M12 6.75a2.25 2.25 0 110 4.5 2.25 2.25 0 010-4.5zM12 12.75a2.25 2.25 0 110 4.5 2.25 2.25 0 010-4.5z" />
+                        </svg>
+                    </div>
+                    <h3 class="text-xl font-semibold text-brand-text-primary mb-2">Collaborate Seamlessly</h3>
+                    <p class="text-brand-text-secondary text-sm">Work efficiently with supervisors for requests, tracking, and sign-offs.</p>
+                </div>
+                <!-- Feature 4 -->
+                <div class="flex flex-col items-center text-center p-6 bg-brand-black rounded-lg shadow-lg">
+                    <div class="p-4 bg-brand-accent-green/20 rounded-full mb-4">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-10 h-10 text-brand-accent-green">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 13.5l10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75z" />
+                        </svg>
+                    </div>
+                    <h3 class="text-xl font-semibold text-brand-text-primary mb-2">Data-Driven Insights</h3>
+                    <p class="text-brand-text-secondary text-sm">Utilize insights to identify improvement areas and optimize professional development.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+    
+    <!-- Data Snapshot Section -->
+    <section class="py-16 sm:py-24 bg-brand-black">
+        <div class="container mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="text-center mb-16">
+                <h2 class="text-4xl font-bold tracking-tight text-brand-text-primary sm:text-5xl">Your Development Snapshot</h2>
+                <p class="mt-4 text-lg text-brand-text-secondary max-w-2xl mx-auto">Visualize your competency and currency status at a glance. Click on a chart segment for more details.</p>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-8 lg:gap-12 items-center">
+                <div class="bg-brand-gray-dark p-6 sm:p-8 rounded-xl shadow-2xl">
+                    <h3 class="text-2xl font-semibold text-brand-text-primary mb-6 text-center">Competency Status</h3>
+                    <div class="relative h-64 sm:h-80 w-full max-w-sm mx-auto">
+                        <canvas id="competencyChart"></canvas>
+                    </div>
+                </div>
+                <div class="bg-brand-gray-dark p-6 sm:p-8 rounded-xl shadow-2xl">
+                    <h3 class="text-2xl font-semibold text-brand-text-primary mb-6 text-center">Currency Status</h3>
+                    <div class="relative h-64 sm:h-80 w-full max-w-sm mx-auto">
+                        <canvas id="currencyChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Built for Governance & Quality Section -->
+    <section class="py-16 sm:py-24 bg-brand-gray-dark">
+        <div class="container mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="max-w-3xl mx-auto text-center">
+                <h2 class="text-3xl font-bold tracking-tight text-brand-text-primary sm:text-4xl">Built for Governance & Quality</h2>
+                <p class="mt-6 text-lg leading-8 text-brand-text-secondary">
+                    Keep your practice safe and compliant with best-in-class tools for tracking, monitoring, and improving your competencies. Leverage real-time data insights to support quality improvement and governance.
+                </p>
+            </div>
+        </div>
+    </section>
+
+    <!-- Testimonials Section -->
+    <section id="testimonials" class="py-16 sm:py-24 bg-brand-black">
+        <div class="container mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="text-center mb-16">
+                <h2 class="text-4xl font-bold tracking-tight text-brand-text-primary sm:text-5xl">Loved by Professionals</h2>
+                <p class="mt-4 text-lg text-brand-text-secondary max-w-2xl mx-auto">Hear what our users say about SCORE.</p>
+            </div>
+            <div class="relative">
+                <div id="testimonial-carousel" class="flex overflow-x-auto snap-x snap-mandatory scroll-smooth pb-6 -mb-6 space-x-6">
+                    <!-- Testimonial 1 -->
+                    <div class="testimonial-card flex-shrink-0 w-full sm:w-1/2 lg:w-1/3 snap-center bg-brand-gray-dark p-8 rounded-xl shadow-2xl">
+                        <div class="flex items-center mb-6">
+                            <div class="bg-slate-700 border-2 border-dashed border-slate-500 rounded-full w-16 h-16 flex-shrink-0 mr-4"></div>
+                            <div>
+                                <p class="font-semibold text-brand-text-primary">Dr. Emily Carter</p>
+                                <p class="text-sm text-brand-text-secondary">Lead Physician</p>
+                            </div>
+                        </div>
+                        <blockquote class="text-brand-text-secondary italic">
+                            "SCORE has revolutionized how I manage my team's competencies. The automated reminders and easy sign-off process save us hours each month. Highly recommended!"
+                        </blockquote>
+                    </div>
+                    <!-- Testimonial 2 -->
+                    <div class="testimonial-card flex-shrink-0 w-full sm:w-1/2 lg:w-1/3 snap-center bg-brand-gray-dark p-8 rounded-xl shadow-2xl">
+                        <div class="flex items-center mb-6">
+                            <div class="bg-slate-700 border-2 border-dashed border-slate-500 rounded-full w-16 h-16 flex-shrink-0 mr-4"></div>
+                            <div>
+                                <p class="font-semibold text-brand-text-primary">Sarah Miller, RN</p>
+                                <p class="text-sm text-brand-text-secondary">Nursing Student</p>
+                            </div>
+                        </div>
+                        <blockquote class="text-brand-text-secondary italic">
+                            "As a student, keeping track of clinical hours and skill sign-offs was a nightmare. SCORE made it incredibly simple and stress-free. My supervisors love it too!"
+                        </blockquote>
+                    </div>
+                    <!-- Testimonial 3 -->
+                    <div class="testimonial-card flex-shrink-0 w-full sm:w-1/2 lg:w-1/3 snap-center bg-brand-gray-dark p-8 rounded-xl shadow-2xl">
+                        <div class="flex items-center mb-6">
+                             <div class="bg-slate-700 border-2 border-dashed border-slate-500 rounded-full w-16 h-16 flex-shrink-0 mr-4"></div>
+                            <div>
+                                <p class="font-semibold text-brand-text-primary">John B. Adebayo</p>
+                                <p class="text-sm text-brand-text-secondary">Compliance Officer</p>
+                            </div>
+                        </div>
+                        <blockquote class="text-brand-text-secondary italic">
+                            "The governance features in SCORE are top-notch. Real-time data insights have been invaluable for our quality improvement initiatives. It's a game-changer for compliance."
+                        </blockquote>
+                    </div>
+                     <!-- Testimonial 4 -->
+                    <div class="testimonial-card flex-shrink-0 w-full sm:w-1/2 lg:w-1/3 snap-center bg-brand-gray-dark p-8 rounded-xl shadow-2xl">
+                        <div class="flex items-center mb-6">
+                             <div class="bg-slate-700 border-2 border-dashed border-slate-500 rounded-full w-16 h-16 flex-shrink-0 mr-4"></div>
+                            <div>
+                                <p class="font-semibold text-brand-text-primary">Maria Rodriguez</p>
+                                <p class="text-sm text-brand-text-secondary">Paramedic</p>
+                            </div>
+                        </div>
+                        <blockquote class="text-brand-text-secondary italic">
+                            "Staying current with certifications is crucial in my field. SCORE's reminders and tracking are fantastic. I feel much more organized and prepared."
+                        </blockquote>
+                    </div>
+                </div>
+                <div class="absolute top-1/2 -translate-y-1/2 flex justify-between w-full px-2 pointer-events-none">
+                    <button id="prevTestimonial" class="pointer-events-auto bg-brand-gray-medium/50 hover:bg-brand-gray-medium text-brand-text-primary p-3 rounded-full shadow-md focus:outline-none transition-opacity opacity-50 hover:opacity-100 disabled:opacity-20">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-6 h-6"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" /></svg>
+                    </button>
+                    <button id="nextTestimonial" class="pointer-events-auto bg-brand-gray-medium/50 hover:bg-brand-gray-medium text-brand-text-primary p-3 rounded-full shadow-md focus:outline-none transition-opacity opacity-50 hover:opacity-100 disabled:opacity-20">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-6 h-6"><path stroke-linecap="round" stroke-linejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" /></svg>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Call-to-Action Section -->
+    <section class="py-16 sm:py-24 bg-gradient-to-r from-brand-accent-green to-brand-accent-teal">
+        <div class="container mx-auto px-4 sm:px-6 lg:px-8 text-center">
+            <h2 class="text-3xl sm:text-4xl font-extrabold text-white mb-6">
+                Track it, manage it, and <span class="underline decoration-wavy decoration-yellow-300">master it</span> with SCORE.
+            </h2>
+            <p class="text-lg sm:text-xl text-green-50 max-w-2xl mx-auto mb-10">
+                Take the stress out of competency management—sign up today and unlock your full potential!
+            </p>
+            <a href="#" class="bg-white text-brand-accent-green font-bold px-12 py-4 rounded-lg shadow-2xl hover:bg-gray-100 text-xl transition-all duration-300 ease-in-out transform hover:scale-105 inline-block">
+                Start Your Free Trial Now
+            </a>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="bg-brand-gray-dark text-brand-text-secondary">
+        <div class="container mx-auto px-4 sm:px-6 lg:px-8 py-12">
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-8 items-center">
+                <div class="flex flex-col items-center md:items-start">
+                    <a href="#" class="text-3xl font-bold hero-gradient-text mb-2">SCORE</a>
+                    <p class="text-sm text-center md:text-left">&copy; 2024 SCORE Inc. All rights reserved.</p>
+                </div>
+                <div class="flex flex-col items-center space-y-2 text-sm">
+                    <a href="#" class="hover:text-brand-text-primary transition-colors">About Us</a>
+                    <a href="#" class="hover:text-brand-text-primary transition-colors">Contact</a>
+                    <a href="#" class="hover:text-brand-text-primary transition-colors">Pricing</a>
+                </div>
+                <div class="flex flex-col items-center md:items-end space-y-2 text-sm">
+                    <a href="#" class="hover:text-brand-text-primary transition-colors">Privacy Policy</a>
+                    <a href="#" class="hover:text-brand-text-primary transition-colors">Terms of Service</a>
+                    <div class="flex space-x-4 mt-4 md:mt-0">
+                        <a href="#" class="hover:text-brand-text-primary transition-colors">
+                            <svg class="w-6 h-6" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path fill-rule="evenodd" d="M22 12c0-5.523-4.477-10-10-10S2 6.477 2 12c0 4.991 3.657 9.128 8.438 9.878v-6.987h-2.54V12h2.54V9.797c0-2.506 1.492-3.89 3.777-3.89 1.094 0 2.238.195 2.238.195v2.46h-1.26c-1.243 0-1.63.771-1.63 1.562V12h2.773l-.443 2.89h-2.33v6.988C18.343 21.128 22 16.991 22 12z" clip-rule="evenodd" /></svg>
+                        </a>
+                        <a href="#" class="hover:text-brand-text-primary transition-colors">
+                            <svg class="w-6 h-6" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path d="M8.29 20.251c7.547 0 11.675-6.253 11.675-11.675 0-.178 0-.355-.012-.53A8.348 8.348 0 0022 5.92a8.19 8.19 0 01-2.357.646 4.118 4.118 0 001.804-2.27 8.224 8.224 0 01-2.605.996 4.107 4.107 0 00-6.993 3.743 11.65 11.65 0 01-8.457-4.287 4.106 4.106 0 001.27 5.477A4.072 4.072 0 012.8 9.713v.052a4.105 4.105 0 003.292 4.022 4.095 4.095 0 01-1.853.07 4.108 4.108 0 003.834 2.85A8.233 8.233 0 012 18.407a11.616 11.616 0 006.29 1.84" /></svg>
+                        </a>
+                        <a href="#" class="hover:text-brand-text-primary transition-colors">
+                            <svg class="w-6 h-6" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path fill-rule="evenodd" d="M12 2C6.477 2 2 6.477 2 12s4.477 10 10 10 10-4.477 10-10S17.523 2 12 2zm3.887 13.459h-1.824v-4.575c0-1.083-.02-.2467-.555-2.467-.534 0-.615.513-.615 1.005v5.037H9.07V8.997h1.746v.805h.024c.246-.465.847-.955 1.722-.955 1.845 0 2.186 1.214 2.186 2.793v3.81zM6.903 7.93H6.89c-.59 0-.962-.39-.962-.882 0-.498.382-.882.986-.882s.962.383.973.882c0 .492-.382.882-.986.882zm.13 7.528H5.204V8.997h1.828v6.461z" clip-rule="evenodd"></path></svg>
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Modal for Chart Details -->
+    <div id="chartModal" class="fixed inset-0 bg-brand-black bg-opacity-80 backdrop-blur-sm flex items-center justify-center p-4 z-[100] hidden animate-fade-in-up" style="animation-duration: 0.3s;">
+        <div class="bg-brand-gray-dark p-6 sm:p-8 rounded-xl shadow-2xl w-full max-w-lg max-h-[80vh] overflow-y-auto">
+            <div class="flex justify-between items-center mb-4">
+                <h3 id="modalTitle" class="text-2xl font-semibold text-brand-text-primary">Detailed View</h3>
+                <button id="closeModalButton" class="text-brand-text-secondary hover:text-brand-text-primary">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-7 h-7"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+                </button>
+            </div>
+            <div id="modalContent" class="text-brand-text-secondary space-y-4">
+                <p>Detailed information about the selected category will appear here.</p>
+                <p>For example, if you clicked on "In Progress" competencies, you might see a list like:</p>
+                <ul class="list-disc list-inside space-y-1">
+                    <li>Advanced Cardiac Life Support - practical assessment pending</li>
+                    <li>Pediatric Advanced Life Support - theory module 75% complete</li>
+                    <li>Basic Surgical Skills - awaiting supervisor sign-off</li>
+                </ul>
+                 <div class="bg-gray-200 border-2 border-dashed rounded-xl w-full h-48 mt-4 flex items-center justify-center text-gray-500">
+                    Placeholder for detailed data/list
+                </div>
+            </div>
+        </div>
+    </div>
+
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            // Mobile Menu Toggle
+            const mobileMenuButton = document.getElementById('mobile-menu-button');
+            const mobileMenu = document.getElementById('mobile-menu');
+            mobileMenuButton.addEventListener('click', () => {
+                mobileMenu.classList.toggle('hidden');
+            });
+            
+            // Smooth scroll for navbar links
+            document.querySelectorAll('nav a[href^="#"]').forEach(anchor => {
+                anchor.addEventListener('click', function (e) {
+                    e.preventDefault();
+                    const targetId = this.getAttribute('href');
+                    const targetElement = document.querySelector(targetId);
+                    if (targetElement) {
+                        targetElement.scrollIntoView({
+                            behavior: 'smooth'
+                        });
+                        if (mobileMenu.classList.contains('hidden') === false) {
+                           mobileMenu.classList.add('hidden');
+                        }
+                    }
+                });
+            });
+            
+            // Navbar shadow on scroll
+            const navbar = document.getElementById('navbar');
+            window.addEventListener('scroll', () => {
+                if (window.scrollY > 50) {
+                    navbar.classList.add('shadow-lg');
+                } else {
+                    navbar.classList.remove('shadow-lg');
+                }
+            });
+
+            // Chart.js - Donut Charts
+            const chartColors = {
+                competency: {
+                    signedOff: '#34D399', // green-400
+                    inProgress: '#60A5FA', // blue-400
+                    notStarted: '#94A3B8', // slate-400
+                },
+                currency: {
+                    current: '#34D399', // green-400
+                    expiringSoon: '#F59E0B', // amber-500
+                    expired: '#EF4444', // red-500
+                }
+            };
+            const commonChartOptions = (titleText) => ({
+                responsive: true,
+                maintainAspectRatio: false,
+                cutout: '70%',
+                plugins: {
+                    legend: {
+                        position: 'bottom',
+                        labels: {
+                            color: '#9CA3AF', // gray-400 text-brand-text-secondary
+                            font: { size: 12 }
+                        }
+                    },
+                    tooltip: {
+                        backgroundColor: '#1f2937', // gray-800 brand-gray-medium
+                        titleColor: '#F3F4F6', // gray-100 brand-text-primary
+                        bodyColor: '#D1D5DB', // gray-300
+                        borderColor: '#374151', // gray-700 brand-gray-light
+                        borderWidth: 1,
+                        padding: 10,
+                        callbacks: {
+                            label: function(context) {
+                                let label = context.label || '';
+                                if (label) {
+                                    label += ': ';
+                                }
+                                if (context.parsed !== null) {
+                                    label += context.parsed;
+                                }
+                                return label;
+                            }
+                        }
+                    }
+                },
+                onClick: (event, elements) => {
+                    if (elements.length > 0) {
+                        const chart = elements[0].chart;
+                        const activeElement = chart.getElementsAtEventForMode(event, 'nearest', { intersect: true }, true)[0];
+                        const dataIndex = activeElement.index;
+                        const label = chart.data.labels[dataIndex];
+                        const value = chart.data.datasets[0].data[dataIndex];
+                        const chartType = chart.canvas.id === 'competencyChart' ? 'Competency' : 'Currency';
+                        openModal(`${chartType}: ${label}`, `You have ${value} items in the '${label}' status for ${chartType.toLowerCase()}. More details would be shown here, potentially listing the specific items, their due dates, and actions required.`);
+                    }
+                }
+            });
+
+            const competencyCtx = document.getElementById('competencyChart')?.getContext('2d');
+            if (competencyCtx) {
+                new Chart(competencyCtx, {
+                    type: 'doughnut',
+                    data: {
+                        labels: ['Signed Off', 'In Progress', 'Not Started'],
+                        datasets: [{
+                            label: 'Competency Status',
+                            data: [65, 25, 10],
+                            backgroundColor: [
+                                chartColors.competency.signedOff,
+                                chartColors.competency.inProgress,
+                                chartColors.competency.notStarted
+                            ],
+                            borderColor: '#111827', // brand-gray-dark (bg of chart card)
+                            borderWidth: 3,
+                            hoverOffset: 8
+                        }]
+                    },
+                    options: commonChartOptions('Competency Status')
+                });
+            }
+
+            const currencyCtx = document.getElementById('currencyChart')?.getContext('2d');
+            if (currencyCtx) {
+                new Chart(currencyCtx, {
+                    type: 'doughnut',
+                    data: {
+                        labels: ['Current', 'Expiring Soon', 'Expired'],
+                        datasets: [{
+                            label: 'Currency Status',
+                            data: [120, 15, 5],
+                            backgroundColor: [
+                                chartColors.currency.current,
+                                chartColors.currency.expiringSoon,
+                                chartColors.currency.expired
+                            ],
+                            borderColor: '#111827', // brand-gray-dark
+                            borderWidth: 3,
+                            hoverOffset: 8
+                        }]
+                    },
+                    options: commonChartOptions('Currency Status')
+                });
+            }
+
+            // Modal Functionality
+            const chartModal = document.getElementById('chartModal');
+            const closeModalButton = document.getElementById('closeModalButton');
+            const modalTitle = document.getElementById('modalTitle');
+            const modalContent = document.getElementById('modalContent');
+
+            function openModal(title, contentText) {
+                modalTitle.textContent = title;
+                // Clear previous content and add new
+                modalContent.innerHTML = `<p>${contentText}</p>
+                <div class="bg-slate-700 border-2 border-dashed border-slate-500 rounded-xl w-full h-48 mt-4 flex items-center justify-center text-slate-400">
+                    Placeholder for detailed data/list
+                </div>`;
+                chartModal.classList.remove('hidden');
+                document.body.style.overflow = 'hidden'; // Prevent background scrolling
+            }
+
+            function closeModal() {
+                chartModal.classList.add('hidden');
+                document.body.style.overflow = '';
+            }
+
+            closeModalButton.addEventListener('click', closeModal);
+            chartModal.addEventListener('click', (event) => {
+                if (event.target === chartModal) { // Click outside the modal content
+                    closeModal();
+                }
+            });
+            document.addEventListener('keydown', (event) => {
+                if (event.key === 'Escape' && !chartModal.classList.contains('hidden')) {
+                    closeModal();
+                }
+            });
+
+            // Testimonial Carousel
+            const carousel = document.getElementById('testimonial-carousel');
+            const prevButton = document.getElementById('prevTestimonial');
+            const nextButton = document.getElementById('nextTestimonial');
+            const testimonialCards = carousel.querySelectorAll('.testimonial-card');
+            let currentCardIndex = 0;
+
+            function updateCarouselButtons() {
+                prevButton.disabled = currentCardIndex === 0;
+                // Consider cards per view for disabling next button. If using scroll-snap, it's a bit different.
+                // For simplicity, let's assume we want to show one card fully.
+                // This logic needs to be smarter if multiple cards are visible.
+                const cardWidth = testimonialCards[0].offsetWidth + parseInt(getComputedStyle(testimonialCards[0]).marginRight); // card width + gap
+                const visibleWidth = carousel.offsetWidth;
+                const maxScroll = carousel.scrollWidth - visibleWidth;
+                
+                // Simplified: disable next if we are at the last card start
+                nextButton.disabled = currentCardIndex >= testimonialCards.length - Math.floor(visibleWidth / cardWidth);
+
+                prevButton.classList.toggle('opacity-20', prevButton.disabled);
+                prevButton.classList.toggle('opacity-50', !prevButton.disabled);
+                nextButton.classList.toggle('opacity-20', nextButton.disabled);
+                nextButton.classList.toggle('opacity-50', !nextButton.disabled);
+            }
+
+            function scrollToCard(index) {
+                if (testimonialCards[index]) {
+                    testimonialCards[index].scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'start' });
+                    currentCardIndex = index; // This needs to be based on actual scroll position for robustness with scroll-snap
+                }
+            }
+            
+            // Update currentCardIndex based on scroll snap
+            carousel.addEventListener('scroll', () => {
+                let closestCardIndex = 0;
+                let minDistance = Infinity;
+                testimonialCards.forEach((card, index) => {
+                    const distance = Math.abs(card.getBoundingClientRect().left - carousel.getBoundingClientRect().left);
+                    if (distance < minDistance) {
+                        minDistance = distance;
+                        closestCardIndex = index;
+                    }
+                });
+                currentCardIndex = closestCardIndex;
+                updateCarouselButtons();
+            });
+
+
+            prevButton.addEventListener('click', () => {
+                if (currentCardIndex > 0) {
+                     // Find the card that is currently at the start of the viewport or just before
+                    let targetIndex = -1;
+                    const carouselLeft = carousel.getBoundingClientRect().left;
+                    for (let i = testimonialCards.length - 1; i >= 0; i--) {
+                        const cardLeft = testimonialCards[i].getBoundingClientRect().left;
+                        if (cardLeft < carouselLeft - 10) { // card is to the left of viewport
+                            targetIndex = i;
+                            break;
+                        }
+                    }
+                    if (targetIndex === -1 && currentCardIndex > 0) targetIndex = currentCardIndex -1; // fallback
+                     if (targetIndex < 0) targetIndex = 0;
+
+                    scrollToCard(targetIndex);
+                }
+            });
+
+            nextButton.addEventListener('click', () => {
+                const cardWidth = testimonialCards[0].offsetWidth + parseInt(getComputedStyle(testimonialCards[0]).marginRight || '0');
+                const visibleCards = Math.floor(carousel.offsetWidth / cardWidth);
+
+                if (currentCardIndex < testimonialCards.length - 1) {
+                     // Find the card that is currently at the start of the viewport
+                    let targetIndex = -1;
+                    const carouselLeft = carousel.getBoundingClientRect().left;
+                    for (let i = 0; i < testimonialCards.length; i++) {
+                        const cardLeft = testimonialCards[i].getBoundingClientRect().left;
+                         // if a card is starting at or just after the carousel's left edge, the *next* card is our target
+                        if (cardLeft >= carouselLeft -10 && cardLeft <= carouselLeft + 10 ) { 
+                            targetIndex = i + 1;
+                            break;
+                        }
+                    }
+                    if(targetIndex === -1 && currentCardIndex < testimonialCards.length -1) targetIndex = currentCardIndex + 1; // fallback
+                    if (targetIndex >= testimonialCards.length) targetIndex = testimonialCards.length -1;
+                    
+                    scrollToCard(targetIndex);
+                }
+            });
+            
+            // Initial setup
+            updateCarouselButtons();
+             window.addEventListener('resize', () => { // Recalculate on resize
+                updateCarouselButtons();
+            });
+
+        });
+    </script>
+
+</body>
+</html>

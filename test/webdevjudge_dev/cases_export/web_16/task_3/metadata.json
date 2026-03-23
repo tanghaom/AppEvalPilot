@@ -1,0 +1,9 @@
+{
+  "web_id": "web_16",
+  "task_id": 3,
+  "task_type": "dynamic",
+  "instruction": "Task: Click the 'Back' button on the movie/TV show details page.\nExpected Result: The application returns to the search view, hiding the details page and showing the search input.\n\nNote: The task is only considered successful if the expected result is achieved; otherwise, it is deemed infeasible.",
+  "max_steps": 15,
+  "expected": "The application returns to the search view, hiding the details page and showing the search input.",
+  "label": 0
+}

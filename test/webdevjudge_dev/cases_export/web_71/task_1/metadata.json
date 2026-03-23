@@ -1,0 +1,9 @@
+{
+  "web_id": "web_71",
+  "task_id": 1,
+  "task_type": "dynamic",
+  "instruction": "Task: Enter text into a search input field and submit (e.g., click 'Search' button or press Enter).\nExpected Result: The displayed list of products filters to show only items matching the search term (client-side search on hardcoded/locally defined product data).\n\nNote: The task is only considered successful if the expected result is achieved; otherwise, it is deemed infeasible.",
+  "max_steps": 15,
+  "expected": "The displayed list of products filters to show only items matching the search term (client-side search on hardcoded/locally defined product data).",
+  "label": 0
+}

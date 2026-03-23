@@ -1,0 +1,9 @@
+{
+  "web_id": "web_63",
+  "task_id": 4,
+  "task_type": "dynamic",
+  "instruction": "Task: Enter text into the 'URL' input field of the post creation form.\nExpected Result: The 'URL' input field updates to display the entered text.\n\nNote: The task is only considered successful if the expected result is achieved; otherwise, it is deemed infeasible.",
+  "max_steps": 15,
+  "expected": "The 'URL' input field updates to display the entered text.",
+  "label": 1
+}

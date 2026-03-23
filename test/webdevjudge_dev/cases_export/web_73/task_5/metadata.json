@@ -1,0 +1,9 @@
+{
+  "web_id": "web_73",
+  "task_id": 5,
+  "task_type": "dynamic",
+  "instruction": "Task: User types an email address into a newsletter subscription input field and clicks the 'Subscribe' button.\nExpected Result: A success message (e.g., 'Thank you for subscribing!') is displayed near the input field, and the input field may be cleared.\n\nNote: The task is only considered successful if the expected result is achieved; otherwise, it is deemed infeasible.",
+  "max_steps": 15,
+  "expected": "A success message (e.g., 'Thank you for subscribing!') is displayed near the input field, and the input field may be cleared.",
+  "label": 1
+}

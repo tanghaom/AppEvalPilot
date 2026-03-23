@@ -1,0 +1,9 @@
+{
+  "web_id": "web_77",
+  "task_id": 3,
+  "task_type": "dynamic",
+  "instruction": "Task: On the Quiz Generation page, click a checkbox next to a specific question from a list of available questions.\nExpected Result: The question is visually marked as selected (e.g., checkbox ticked), and its selection state is toggled for quiz inclusion.\n\nNote: The task is only considered successful if the expected result is achieved; otherwise, it is deemed infeasible.",
+  "max_steps": 15,
+  "expected": "The question is visually marked as selected (e.g., checkbox ticked), and its selection state is toggled for quiz inclusion.",
+  "label": 1
+}

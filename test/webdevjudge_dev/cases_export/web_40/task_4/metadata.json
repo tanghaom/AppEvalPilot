@@ -1,0 +1,9 @@
+{
+  "web_id": "web_40",
+  "task_id": 4,
+  "task_type": "dynamic",
+  "instruction": "Task: Click on the AI assistant element (e.g., icon or character).\nExpected Result: The AI assistant displays a contextual message (e.g., hint, information about the current section, or a general tip) in a designated area.\n\nNote: The task is only considered successful if the expected result is achieved; otherwise, it is deemed infeasible.",
+  "max_steps": 15,
+  "expected": "The AI assistant displays a contextual message (e.g., hint, information about the current section, or a general tip) in a designated area.",
+  "label": 0
+}

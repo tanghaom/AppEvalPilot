@@ -1,0 +1,811 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Reddit Clone</title>
+    <script src="https://cdn.tailwindcss.com?plugins=forms,typography,line-clamp"></script>
+    <style>
+        /* Custom scrollbar for WebKit browsers */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #0f172a; /* slate-900 */
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #334155; /* slate-700 */
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #475569; /* slate-600 */
+        }
+
+        /* Animations */
+        .fade-in {
+            animation: fadeIn 0.3s ease-in-out;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        .fade-in-slide-up {
+            animation: fadeInSlideUp 0.3s ease-in-out forwards;
+            opacity: 0;
+        }
+        @keyframes fadeInSlideUp {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        .comment-reply-form-container {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.3s ease-in-out, margin-top 0.3s ease-in-out;
+        }
+        .comment-reply-form-container.active {
+            max-height: 200px; /* Adjust as needed */
+            margin-top: 0.5rem; /* 8px */
+        }
+
+        /* Ensure consistent font */
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
+        }
+    </style>
+</head>
+<body class="bg-slate-900 text-slate-100 antialiased">
+    <div id="reddit-clone-app" class="min-h-screen flex flex-col">
+        <!-- Header -->
+        <header class="bg-slate-800 shadow-lg sticky top-0 z-50 border-b border-slate-700">
+            <div class="container mx-auto px-4 py-3 flex items-center justify-between">
+                <div class="flex items-center space-x-2 cursor-pointer" onclick="App.navigate('home')">
+                    <!-- Placeholder logo -->
+                    <div class="w-8 h-8 bg-sky-500 rounded-full flex items-center justify-center text-white font-bold text-lg">R</div>
+                    <span class="text-xl font-bold text-slate-100">Reddity</span>
+                </div>
+                <div class="flex-1 px-4 md:px-8">
+                    <div class="relative">
+                        <input type="text" placeholder="Search Reddity (placeholder)" class="w-full bg-slate-700 border-slate-600 placeholder-slate-400 text-slate-100 rounded-lg py-2 px-4 focus:ring-2 focus:ring-sky-500 focus:border-sky-500 transition-colors">
+                        <div class="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
+                            <svg class="w-5 h-5 text-slate-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" /></svg>
+                        </div>
+                    </div>
+                </div>
+                <div class="flex items-center space-x-4">
+                    <button class="p-2 rounded-full hover:bg-slate-700 transition-colors" aria-label="User Profile">
+                        <svg class="w-6 h-6 text-slate-300" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M17.982 18.725A7.488 7.488 0 0012 15.75a7.488 7.488 0 00-5.982 2.975m11.963 0a9 9 0 10-11.963 0m11.963 0A8.966 8.966 0 0112 21a8.966 8.966 0 01-5.982-2.275M15 9.75a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+                    </button>
+                </div>
+            </div>
+        </header>
+
+        <!-- Main Content Area -->
+        <main id="app-content" class="flex-grow container mx-auto p-4 md:p-6 space-y-6 overflow-y-auto">
+            <!-- Dynamic content will be injected here -->
+        </main>
+    </div>
+
+<script>
+const ICONS = {
+    ARROW_UP: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-5 h-5"><path fill-rule="evenodd" d="M9.47 3.22a.75.75 0 011.06 0l6.25 6.25a.75.75 0 11-1.06 1.06L10 5.06l-5.72 5.47a.75.75 0 11-1.06-1.06l6.25-6.25z" clip-rule="evenodd" /></svg>`,
+    ARROW_DOWN: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-5 h-5"><path fill-rule="evenodd" d="M10.53 16.78a.75.75 0 01-1.06 0l-6.25-6.25a.75.75 0 111.06-1.06L10 14.94l5.72-5.47a.75.75 0 111.06 1.06l-6.25 6.25z" clip-rule="evenodd" /></svg>`,
+    CHAT_BUBBLE: `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 12.76c0 1.6 1.123 2.994 2.707 3.227 1.087.16 2.185.283 3.293.369V21l4.076-4.076a1.526 1.526 0 011.037-.443 48.282 48.282 0 005.68-.494c1.584-.233 2.707-1.626 2.707-3.228V6.741c0-1.602-1.123-2.995-2.707-3.228A48.394 48.394 0 0012 3c-2.392 0-4.744.175-7.043.513C3.373 3.746 2.25 5.14 2.25 6.741v6.018z" /></svg>`,
+    PLUS: `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" /></svg>`,
+    SUBMIT_ARROW: `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5"><path stroke-linecap="round" stroke-linejoin="round" d="M6 12L3.269 3.126A59.768 59.768 0 0121.485 12 59.77 59.77 0 013.27 20.876L5.999 12zm0 0h7.5" /></svg>`,
+};
+
+const App = {
+    state: {
+        currentView: 'home', // 'home', 'subreddit', 'postDetail'
+        activeSubredditId: null,
+        activePostId: null,
+        subredditTabView: 'posts', // 'posts', 'about'
+        replyingToCommentId: null, // To manage which comment's reply form is active
+        // User's votes (to persist visual state of votes)
+        // Structure: { 'postId_xyz': 'up', 'commentId_abc': 'down' }
+        userVotes: {}, 
+    },
+    data: {
+        subreddits: [
+            {
+                id: 'r/aww', name: 'r/aww', iconColor: 'bg-pink-500', description: 'Things that make you go AWW! Like puppies, bunnies, babies, and so on... A place for really cute pictures and videos!', createdAt: '2008-03-15', members: 30500000,
+                rules: ['Only SFW cute content', 'No sad content', 'Credit the original source if possible'],
+                moderators: ['u/cuteMod', 'u/animalFriend'],
+                posts: [
+                    { id: 'post1_aww', title: 'My sleepy kitten', author: 'u/catLover88', timestamp: new Date(Date.now() - 3600000 * 2).toISOString(), contentText: 'Look at this little furball sleeping soundly. Melts my heart every time!', upvotes: 1250, commentsCount: 3, comments: [
+                        { id: 'c1_p1_aww', author: 'u/dogPerson', timestamp: new Date(Date.now() - 3600000 * 1.5).toISOString(), text: 'So adorable! Makes me want a kitten.', upvotes: 45, replies: [
+                            { id: 'r1_c1_p1_aww', author: 'u/catLover88', timestamp: new Date(Date.now() - 3600000 * 1).toISOString(), text: 'You should get one! They are amazing companions.', upvotes: 15, replies: [] }
+                        ]},
+                        { id: 'c2_p1_aww', author: 'u/anotherUser', timestamp: new Date(Date.now() - 3600000 * 1).toISOString(), text: 'Tiny paws!', upvotes: 22, replies: [] }
+                    ]},
+                    { id: 'post2_aww', title: 'Golden retriever puppies playing', author: 'u/puppyFan', timestamp: new Date(Date.now() - 3600000 * 5).toISOString(), contentText: 'A whole bunch of golden retriever puppies tumbling around. The definition of joy!', upvotes: 2300, commentsCount: 2, comments: [
+                         { id: 'c1_p2_aww', author: 'u/awwstruck', timestamp: new Date(Date.now() - 3600000 * 4).toISOString(), text: 'This is weaponized cuteness.', upvotes: 72, replies: [] }
+                    ]}
+                ]
+            },
+            {
+                id: 'r/webdev', name: 'r/webdev', iconColor: 'bg-blue-500', description: 'A community for web developers to share news, articles, and projects.', createdAt: '2009-07-20', members: 1200000,
+                rules: ['Be respectful', 'No spam', 'Stay on topic'],
+                moderators: ['u/devMod', 'u/codeGuru'],
+                posts: [
+                    { id: 'post1_webdev', title: 'What are your favorite CSS tricks?', author: 'u/cssWizard', timestamp: new Date(Date.now() - 3600000 * 24 * 2).toISOString(), contentText: 'Share some cool CSS techniques you often use or recently discovered!', upvotes: 350, commentsCount: 4, comments: [
+                        { id: 'c1_p1_webdev', author: 'u/gridMaster', timestamp: new Date(Date.now() - 3600000 * 24).toISOString(), text: 'CSS Grid for layout is a game changer. `gap` property is my best friend.', upvotes: 55, replies: [] },
+                        { id: 'c2_p1_webdev', author: 'u/flexFan', timestamp: new Date(Date.now() - 3600000 * 22).toISOString(), text: 'Flexbox for component alignment is still my go-to for most things.', upvotes: 32, replies: [
+                             { id: 'r1_c2_p1_webdev', author: 'u/cssWizard', timestamp: new Date(Date.now() - 3600000 * 20).toISOString(), text: 'Agreed, they both have their strong use cases!', upvotes: 12, replies: [] }
+                        ]}
+                    ]},
+                    { id: 'post2_webdev', title: 'JavaScript fatigue is real. How do you cope?', author: 'u/jsDev123', timestamp: new Date(Date.now() - 3600000 * 8).toISOString(), contentText: 'With new frameworks and tools popping up constantly, how do you stay up-to-date without burning out?', upvotes: 420, commentsCount: 1, comments: [
+                        { id: 'c1_p2_webdev', author: 'u/seniorDev', timestamp: new Date(Date.now() - 3600000 * 7).toISOString(), text: 'Focus on fundamentals. Frameworks change, but core JS principles remain.', upvotes: 98, replies: []}
+                    ]}
+                ]
+            },
+            {
+                id: 'r/food', name: 'r/food', iconColor: 'bg-orange-500', description: 'Food, recipes, and culinary discussions.', createdAt: '2007-11-01', members: 25000000,
+                rules: ['Post your own food photos', 'Include recipes if possible', 'Be kind'],
+                moderators: ['u/chef Ramsay', 'u/foodieMod'],
+                posts: [
+                    { id: 'post1_food', title: 'Homemade Sourdough Bread', author: 'u/bakerLife', timestamp: new Date(Date.now() - 3600000 * 10).toISOString(), contentText: 'My latest attempt at sourdough. The crust was perfect!', upvotes: 876, commentsCount: 2, comments: [
+                        { id: 'c1_p1_food', author: 'u/breadLover', timestamp: new Date(Date.now() - 3600000 * 9).toISOString(), text: 'Looks amazing! Can you share the recipe?', upvotes: 62, replies: []}
+                    ]},
+                    { id: 'post2_food', title: 'Spicy Thai Green Curry', author: 'u/spiceMaster', timestamp: new Date(Date.now() - 3600000 * 36).toISOString(), contentText: 'Cooked up some delicious and fiery Thai green curry for dinner.', upvotes: 540, commentsCount: 1, comments: []}
+                ]
+            },
+             {
+                id: 'r/gaming', name: 'r/gaming', iconColor: 'bg-purple-500', description: 'A community for all things gaming: news, reviews, discussions, and memes.', createdAt: '2007-10-10', members: 35000000,
+                rules: ['No spoilers in titles', 'Be civil', 'Link to sources for news'],
+                moderators: ['u/gameMod', 'u/controllerKing'],
+                posts: [
+                    { id: 'post1_gaming', title: 'What game are you currently addicted to?', author: 'u/gamerX', timestamp: new Date(Date.now() - 3600000 * 4).toISOString(), contentText: 'For me, it\'s the latest indie RPG that just dropped. Can\'t stop playing!', upvotes: 1500, commentsCount: 3, comments: [
+                        { id: 'c1_p1_gaming', author: 'u/retroGamer', timestamp: new Date(Date.now() - 3600000 * 3).toISOString(), text: 'Still hooked on Stardew Valley after all these years.', upvotes: 120, replies: []},
+                        { id: 'c2_p1_gaming', author: 'u/fpsPro', timestamp: new Date(Date.now() - 3600000 * 2).toISOString(), text: 'Grinding ranks in Valorant.', upvotes: 80, replies: []}
+                    ]},
+                    { id: 'post2_gaming', title: 'Elden Ring DLC announced!', author: 'u/fromSoftFan', timestamp: new Date(Date.now() - 3600000 * 48).toISOString(), contentText: 'Hype levels are through the roof! What are you expecting?', upvotes: 4200, commentsCount: 2, comments: [
+                        { id: 'c1_p2_gaming', author: 'u/loreMaster', timestamp: new Date(Date.now() - 3600000 * 47).toISOString(), text: 'More obscure lore and impossibly hard bosses, hopefully!', upvotes: 300, replies: []}
+                    ]}
+                ]
+            }
+        ]
+    },
+
+    init() {
+        this.render();
+        window.addEventListener('popstate', () => this.handlePopState());
+        this.updateURL(); // Set initial URL
+    },
+
+    handlePopState() {
+        const params = new URLSearchParams(window.location.search);
+        const view = params.get('view') || 'home';
+        const subId = params.get('sub');
+        const postId = params.get('post');
+
+        this.state.currentView = view;
+        this.state.activeSubredditId = subId;
+        this.state.activePostId = postId;
+        this.state.subredditTabView = params.get('tab') || 'posts';
+        
+        this.render();
+    },
+
+    updateURL() {
+        const params = new URLSearchParams();
+        if (this.state.currentView !== 'home') {
+            params.set('view', this.state.currentView);
+        }
+        if (this.state.activeSubredditId) {
+            params.set('sub', this.state.activeSubredditId);
+        }
+        if (this.state.activePostId) {
+            params.set('post', this.state.activePostId);
+        }
+        if (this.state.currentView === 'subreddit' && this.state.subredditTabView) {
+            params.set('tab', this.state.subredditTabView);
+        }
+        
+        const newUrl = `${window.location.pathname}?${params.toString()}`;
+        // Only push state if URL changed to avoid duplicate entries on initial load or refresh
+        if (window.location.href !== newUrl) {
+             // history.pushState(this.state, '', newUrl);
+        }
+    },
+    
+    navigate(view, id = null, tab = 'posts') {
+        const appContent = document.getElementById('app-content');
+        appContent.style.transition = 'opacity 0.15s ease-out';
+        appContent.style.opacity = '0';
+
+        setTimeout(() => {
+            if (view === 'home') {
+                this.state.currentView = 'home';
+                this.state.activeSubredditId = null;
+                this.state.activePostId = null;
+            } else if (view === 'subreddit') {
+                this.state.currentView = 'subreddit';
+                this.state.activeSubredditId = id;
+                this.state.activePostId = null;
+                this.state.subredditTabView = tab;
+            } else if (view === 'postDetail') {
+                this.state.currentView = 'postDetail';
+                // activeSubredditId should already be set
+                this.state.activePostId = id;
+            }
+            this.state.replyingToCommentId = null; // Reset reply state on navigation
+            
+            this.render();
+            this.updateURL();
+            appContent.style.opacity = '1';
+            window.scrollTo(0, 0); // Scroll to top on view change
+        }, 150);
+    },
+
+    render() {
+        const appContent = document.getElementById('app-content');
+        appContent.innerHTML = ''; // Clear previous content
+
+        switch (this.state.currentView) {
+            case 'home':
+                this.renderHomePage(appContent);
+                break;
+            case 'subreddit':
+                this.renderSubredditPage(appContent);
+                break;
+            case 'postDetail':
+                this.renderPostDetailPage(appContent);
+                break;
+        }
+        // Apply staggered animations for lists if needed (e.g., after rendering posts)
+        this.applyStaggeredAnimations();
+    },
+
+    applyStaggeredAnimations(selector = '.animate-item', delay = 50) {
+        const items = document.querySelectorAll(selector);
+        items.forEach((item, index) => {
+            item.style.opacity = '0';
+            item.style.transform = 'translateY(10px)';
+            item.style.transition = 'opacity 0.3s ease-out, transform 0.3s ease-out';
+            item.style.transitionDelay = `${index * delay}ms`;
+            
+            setTimeout(() => {
+                item.style.opacity = '1';
+                item.style.transform = 'translateY(0px)';
+            }, 20); // Small delay to ensure initial styles are applied
+        });
+    },
+
+    renderHomePage(container) {
+        const header = document.createElement('h1');
+        header.className = 'text-3xl font-bold text-slate-100 mb-6';
+        header.textContent = 'Popular Communities';
+        container.appendChild(header);
+
+        const grid = document.createElement('div');
+        grid.className = 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6';
+        
+        this.data.subreddits.forEach((sub, index) => {
+            const card = document.createElement('div');
+            card.className = 'bg-slate-800 p-6 rounded-xl shadow-lg hover:shadow-sky-500/30 transition-all duration-300 transform hover:-translate-y-1 cursor-pointer animate-item';
+            card.style.animationDelay = `${index * 75}ms`;
+            card.onclick = () => this.navigate('subreddit', sub.id);
+            
+            const icon = `<div class="w-10 h-10 ${sub.iconColor || 'bg-gray-500'} rounded-full flex items-center justify-center text-white font-bold text-xl mr-3">${sub.name.charAt(2).toUpperCase()}</div>`;
+            const members = this.formatNumber(sub.members);
+
+            card.innerHTML = `
+                <div class="flex items-center mb-3">
+                    ${icon}
+                    <div>
+                        <h2 class="text-xl font-semibold text-sky-400">${sub.name}</h2>
+                        <p class="text-xs text-slate-400">${members} members</p>
+                    </div>
+                </div>
+                <p class="text-sm text-slate-300 line-clamp-2">${sub.description}</p>
+            `;
+            grid.appendChild(card);
+        });
+        container.appendChild(grid);
+    },
+
+    renderSubredditPage(container) {
+        const subreddit = this.data.subreddits.find(s => s.id === this.state.activeSubredditId);
+        if (!subreddit) {
+            container.innerHTML = '<p class="text-red-400">Subreddit not found.</p>';
+            return;
+        }
+
+        // Subreddit Header
+        const headerDiv = document.createElement('div');
+        headerDiv.className = 'bg-slate-800 p-6 rounded-xl shadow-lg mb-6 fade-in';
+        const icon = `<div class="w-16 h-16 ${subreddit.iconColor || 'bg-gray-500'} rounded-full flex items-center justify-center text-white font-bold text-3xl mr-4">${subreddit.name.charAt(2).toUpperCase()}</div>`;
+        headerDiv.innerHTML = `
+            <div class="flex items-center">
+                ${icon}
+                <div>
+                    <h1 class="text-3xl font-bold text-slate-100">${subreddit.name}</h1>
+                    <p class="text-sm text-slate-400">${subreddit.description}</p>
+                </div>
+            </div>
+            <div class="mt-4 pt-4 border-t border-slate-700 flex space-x-4">
+                <button onclick="App.setSubredditTabView('posts')" class="${this.state.subredditTabView === 'posts' ? 'text-sky-400 border-b-2 border-sky-400' : 'text-slate-400 hover:text-slate-200'} pb-2 font-medium transition-colors">Posts</button>
+                <button onclick="App.setSubredditTabView('about')" class="${this.state.subredditTabView === 'about' ? 'text-sky-400 border-b-2 border-sky-400' : 'text-slate-400 hover:text-slate-200'} pb-2 font-medium transition-colors">About</button>
+            </div>
+        `;
+        container.appendChild(headerDiv);
+
+        const contentDiv = document.createElement('div');
+        contentDiv.id = 'subreddit-content';
+        if (this.state.subredditTabView === 'posts') {
+            this.renderSubredditPosts(contentDiv, subreddit);
+        } else {
+            this.renderSubredditAbout(contentDiv, subreddit);
+        }
+        container.appendChild(contentDiv);
+    },
+    
+    setSubredditTabView(tab) {
+        this.state.subredditTabView = tab;
+        const subreddit = this.data.subreddits.find(s => s.id === this.state.activeSubredditId);
+        const contentDiv = document.getElementById('subreddit-content');
+        const headerButtons = document.querySelectorAll('#app-content div > div:first-child button'); // targeting tab buttons
+
+        headerButtons.forEach(button => {
+            button.classList.remove('text-sky-400', 'border-sky-400');
+            button.classList.add('text-slate-400', 'hover:text-slate-200');
+            if ((tab === 'posts' && button.textContent === 'Posts') || (tab === 'about' && button.textContent === 'About')) {
+                button.classList.add('text-sky-400', 'border-sky-400');
+                button.classList.remove('text-slate-400', 'hover:text-slate-200');
+            }
+        });
+        
+        contentDiv.style.opacity = '0';
+        setTimeout(() => {
+            contentDiv.innerHTML = '';
+            if (tab === 'posts') {
+                this.renderSubredditPosts(contentDiv, subreddit);
+            } else {
+                this.renderSubredditAbout(contentDiv, subreddit);
+            }
+            this.applyStaggeredAnimations('#subreddit-content .animate-item');
+            contentDiv.style.transition = 'opacity 0.3s ease-in-out';
+            contentDiv.style.opacity = '1';
+        }, 150);
+        this.updateURL();
+    },
+
+    renderSubredditPosts(container, subreddit) {
+        if (!subreddit.posts || subreddit.posts.length === 0) {
+            container.innerHTML = '<p class="text-slate-400 text-center py-8">No posts in this community yet.</p>';
+            return;
+        }
+
+        subreddit.posts.forEach((post, index) => {
+            const postCard = document.createElement('div');
+            postCard.className = 'bg-slate-800 p-4 rounded-lg shadow-md hover:shadow-sky-500/20 transition-shadow duration-300 mb-4 animate-item';
+            postCard.id = `post-${post.id}`;
+            const score = post.upvotes - (post.downvotes || 0);
+            const userVote = this.state.userVotes[post.id];
+
+            postCard.innerHTML = `
+                <div class="flex">
+                    <div class="flex flex-col items-center space-y-1 pr-4 text-slate-400">
+                        <button onclick="App.handleVote('${post.id}', null, 'up')" class="p-1 rounded-full hover:bg-slate-700 ${userVote === 'up' ? 'text-orange-500' : 'hover:text-orange-400'} transition-colors">${ICONS.ARROW_UP}</button>
+                        <span class="font-bold text-sm text-slate-200 score-${post.id}">${score}</span>
+                        <button onclick="App.handleVote('${post.id}', null, 'down')" class="p-1 rounded-full hover:bg-slate-700 ${userVote === 'down' ? 'text-indigo-500' : 'hover:text-indigo-400'} transition-colors">${ICONS.ARROW_DOWN}</button>
+                    </div>
+                    <div class="flex-grow cursor-pointer" onclick="App.navigate('postDetail', '${post.id}')">
+                        <p class="text-xs text-slate-500">Posted by <span class="text-slate-400 font-medium">${post.author}</span> &bull; ${this.timeAgo(post.timestamp)}</p>
+                        <h3 class="text-lg font-semibold text-slate-100 mt-1 mb-2 hover:text-sky-400 transition-colors">${post.title}</h3>
+                        <p class="text-sm text-slate-300 line-clamp-3 mb-3">${post.contentText || ''}</p>
+                        <div class="flex items-center text-sm text-slate-400 hover:text-sky-300 transition-colors">
+                            ${ICONS.CHAT_BUBBLE}
+                            <span class="ml-2">${post.commentsCount} Comments</span>
+                        </div>
+                    </div>
+                </div>
+            `;
+            container.appendChild(postCard);
+        });
+    },
+
+    renderSubredditAbout(container, subreddit) {
+        container.className = 'bg-slate-800 p-6 rounded-xl shadow-lg space-y-6 fade-in';
+        
+        const descriptionSection = `
+            <div>
+                <h2 class="text-xl font-semibold text-slate-100 mb-2">About Community</h2>
+                <p class="text-slate-300">${subreddit.description}</p>
+            </div>
+        `;
+
+        const infoSection = `
+            <div class="grid grid-cols-2 gap-4 text-sm">
+                <div>
+                    <p class="font-semibold text-slate-100">${this.formatNumber(subreddit.members)}</p>
+                    <p class="text-slate-400">Members</p>
+                </div>
+                <div>
+                    <p class="font-semibold text-slate-100">Online (Placeholder)</p>
+                    <p class="text-slate-400">Currently viewing</p>
+                </div>
+                <div>
+                    <p class="font-semibold text-slate-100">Created ${new Date(subreddit.createdAt).toLocaleDateString()}</p>
+                    <p class="text-slate-400">Community Birthday</p>
+                </div>
+            </div>
+        `;
+        
+        const rulesSection = `
+            <div>
+                <h2 class="text-xl font-semibold text-slate-100 mb-3">Community Rules</h2>
+                <ul class="space-y-2">
+                    ${subreddit.rules.map((rule, index) => `
+                        <li class="bg-slate-700 p-3 rounded-lg text-slate-300">
+                            <span class="font-medium text-slate-200">${index + 1}.</span> ${rule}
+                        </li>
+                    `).join('')}
+                </ul>
+            </div>
+        `;
+
+        const moderatorsSection = `
+            <div>
+                <h2 class="text-xl font-semibold text-slate-100 mb-3">Moderators</h2>
+                <ul class="space-y-2">
+                    ${subreddit.moderators.map(mod => `
+                        <li class="text-sky-400 hover:underline cursor-pointer">${mod}</li>
+                    `).join('')}
+                </ul>
+            </div>
+        `;
+        container.innerHTML = descriptionSection + '<hr class="border-slate-700">' + infoSection + '<hr class="border-slate-700">' + rulesSection + '<hr class="border-slate-700">' + moderatorsSection;
+    },
+
+    renderPostDetailPage(container) {
+        const subreddit = this.data.subreddits.find(s => s.id === this.state.activeSubredditId);
+        if (!subreddit) { container.innerHTML = '<p>Error: Subreddit context lost.</p>'; return; }
+        const post = subreddit.posts.find(p => p.id === this.state.activePostId);
+        if (!post) { container.innerHTML = '<p>Post not found.</p>'; return; }
+
+        // Back to subreddit button
+        const backButton = document.createElement('button');
+        backButton.className = 'mb-4 text-sm text-sky-400 hover:text-sky-300 font-medium flex items-center transition-colors';
+        backButton.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-5 h-5 mr-1"><path fill-rule="evenodd" d="M17 10a.75.75 0 01-.75.75H5.612l4.158 3.96a.75.75 0 11-1.04 1.08l-5.5-5.25a.75.75 0 010-1.08l5.5-5.25a.75.75 0 111.04 1.08L5.612 9.25H16.25A.75.75 0 0117 10z" clip-rule="evenodd" /></svg> Back to ${subreddit.name}`;
+        backButton.onclick = () => this.navigate('subreddit', subreddit.id);
+        container.appendChild(backButton);
+        
+        // Post Content
+        const postContentDiv = document.createElement('div');
+        postContentDiv.className = 'bg-slate-800 p-5 rounded-xl shadow-lg mb-6 fade-in';
+        postContentDiv.id = `post-${post.id}`; // For vote updates
+        const score = post.upvotes - (post.downvotes || 0);
+        const userVote = this.state.userVotes[post.id];
+
+        postContentDiv.innerHTML = `
+            <div class="flex">
+                <div class="flex flex-col items-center space-y-1 pr-4 text-slate-400">
+                    <button onclick="App.handleVote('${post.id}', null, 'up')" class="p-1 rounded-full hover:bg-slate-700 ${userVote === 'up' ? 'text-orange-500' : 'hover:text-orange-400'} transition-colors">${ICONS.ARROW_UP}</button>
+                    <span class="font-bold text-sm text-slate-200 score-${post.id}">${score}</span>
+                    <button onclick="App.handleVote('${post.id}', null, 'down')" class="p-1 rounded-full hover:bg-slate-700 ${userVote === 'down' ? 'text-indigo-500' : 'hover:text-indigo-400'} transition-colors">${ICONS.ARROW_DOWN}</button>
+                </div>
+                <div class="flex-grow">
+                    <p class="text-xs text-slate-500">Posted by <span class="text-slate-400 font-medium">${post.author}</span> in <span class="text-sky-400 cursor-pointer" onclick="App.navigate('subreddit', '${subreddit.id}')">${subreddit.name}</span> &bull; ${this.timeAgo(post.timestamp)}</p>
+                    <h2 class="text-2xl font-bold text-slate-100 mt-2 mb-3">${post.title}</h2>
+                    <div class="prose prose-sm prose-invert max-w-none text-slate-300">
+                        ${post.contentText ? `<p>${post.contentText.replace(/\n/g, '</p><p>')}</p>` : ''}
+                        ${post.imageSrc ? `<img src="${post.imageSrc}" alt="${post.title}" class="rounded-lg my-4 max-h-96 object-contain">` : ''}
+                        ${post.linkUrl ? `<a href="${post.linkUrl}" target="_blank" rel="noopener noreferrer" class="text-sky-400 hover:underline">${post.linkUrl}</a>` : ''}
+                    </div>
+                </div>
+            </div>
+            <!-- Comment Form -->
+            <div class="mt-6 pt-4 border-t border-slate-700">
+                <h3 class="text-sm font-semibold text-slate-300 mb-2">Comment as u/GuestUser</h3>
+                <textarea id="new-comment-text" class="w-full bg-slate-700 border-slate-600 placeholder-slate-400 text-slate-100 rounded-lg p-3 focus:ring-2 focus:ring-sky-500 focus:border-sky-500 transition-colors" rows="3" placeholder="What are your thoughts?"></textarea>
+                <button onclick="App.handleAddComment('${post.id}')" class="mt-2 bg-sky-600 hover:bg-sky-500 text-white font-semibold py-2 px-4 rounded-lg transition-colors flex items-center">
+                    ${ICONS.SUBMIT_ARROW} <span class="ml-2">Comment</span>
+                </button>
+            </div>
+        `;
+        container.appendChild(postContentDiv);
+
+        // Comments Section
+        const commentsSectionDiv = document.createElement('div');
+        commentsSectionDiv.id = 'comments-section';
+        commentsSectionDiv.className = 'mt-6 space-y-4';
+        this.renderComments(commentsSectionDiv, post.comments || [], 0, post.id);
+        container.appendChild(commentsSectionDiv);
+    },
+
+    renderComments(container, comments, level, postId) {
+        if (comments.length === 0 && level === 0) {
+             container.innerHTML = '<p class="text-slate-400 py-4 text-sm">No comments yet. Be the first!</p>';
+             return;
+        }
+        comments.forEach((comment, index) => {
+            const commentDiv = document.createElement('div');
+            commentDiv.className = `bg-slate-800 p-3 rounded-lg shadow ${level > 0 ? 'ml-4 md:ml-6' : ''} animate-item`;
+            commentDiv.style.borderLeft = level > 0 ? '2px solid #334155' : 'none'; // slate-700
+            commentDiv.id = `comment-${comment.id}`; // For vote updates
+            
+            const score = (comment.upvotes || 0) - (comment.downvotes || 0);
+            const userVote = this.state.userVotes[comment.id];
+
+            commentDiv.innerHTML = `
+                <div class="flex items-center text-xs text-slate-500 mb-1">
+                    <span class="text-slate-400 font-medium">${comment.author}</span>
+                    <span class="mx-1.5">&bull;</span>
+                    <span>${this.timeAgo(comment.timestamp)}</span>
+                </div>
+                <p class="text-sm text-slate-200 mb-2">${comment.text}</p>
+                <div class="flex items-center space-x-3 text-xs text-slate-400">
+                    <button onclick="App.handleVote('${postId}', '${comment.id}', 'up')" class="flex items-center hover:text-orange-400 ${userVote === 'up' ? 'text-orange-500' : ''} transition-colors">
+                        ${ICONS.ARROW_UP.replace('w-5 h-5', 'w-4 h-4')} <span class="ml-1 score-${comment.id}">${score}</span>
+                    </button>
+                    <button onclick="App.handleVote('${postId}', '${comment.id}', 'down')" class="flex items-center hover:text-indigo-400 ${userVote === 'down' ? 'text-indigo-500' : ''} transition-colors">
+                        ${ICONS.ARROW_DOWN.replace('w-5 h-5', 'w-4 h-4')}
+                    </button>
+                    <button onclick="App.toggleReplyForm('${comment.id}')" class="hover:text-sky-400 transition-colors">Reply</button>
+                </div>
+                <div id="reply-form-container-${comment.id}" class="comment-reply-form-container">
+                    <!-- Reply form will be injected here -->
+                </div>
+            `;
+            
+            container.appendChild(commentDiv);
+
+            // Render replies recursively
+            if (comment.replies && comment.replies.length > 0) {
+                const repliesContainer = document.createElement('div');
+                repliesContainer.className = 'mt-3 space-y-3';
+                this.renderComments(repliesContainer, comment.replies, level + 1, postId);
+                commentDiv.appendChild(repliesContainer);
+            }
+        });
+    },
+
+    toggleReplyForm(commentId) {
+        // Close any other active reply form
+        if (this.state.replyingToCommentId && this.state.replyingToCommentId !== commentId) {
+            const oldFormContainer = document.getElementById(`reply-form-container-${this.state.replyingToCommentId}`);
+            if (oldFormContainer) {
+                oldFormContainer.classList.remove('active');
+                oldFormContainer.innerHTML = '';
+            }
+        }
+
+        const formContainer = document.getElementById(`reply-form-container-${commentId}`);
+        if (!formContainer) return;
+
+        if (this.state.replyingToCommentId === commentId) { // Form is active, so close it
+            formContainer.classList.remove('active');
+            formContainer.innerHTML = '';
+            this.state.replyingToCommentId = null;
+        } else { // Form is not active, so open it
+            formContainer.innerHTML = `
+                <textarea id="reply-text-${commentId}" class="w-full bg-slate-700 border-slate-600 placeholder-slate-400 text-slate-100 rounded-lg p-2 text-sm focus:ring-1 focus:ring-sky-500 focus:border-sky-500 transition-colors" rows="2" placeholder="Write a reply..."></textarea>
+                <button onclick="App.handleAddReply('${this.state.activePostId}', '${commentId}')" class="mt-1 bg-sky-600 hover:bg-sky-500 text-white font-medium py-1 px-3 text-xs rounded-md transition-colors flex items-center">
+                    ${ICONS.SUBMIT_ARROW.replace('w-5 h-5', 'w-4 h-4')} <span class="ml-1.5">Reply</span>
+                </button>
+            `;
+            // Need a slight delay for CSS transition to work when content is added
+            setTimeout(() => formContainer.classList.add('active'), 10);
+            this.state.replyingToCommentId = commentId;
+            document.getElementById(`reply-text-${commentId}`).focus();
+        }
+    },
+
+    handleAddComment(postId) {
+        const subreddit = this.data.subreddits.find(s => s.id === this.state.activeSubredditId);
+        if (!subreddit) return;
+        const post = subreddit.posts.find(p => p.id === postId);
+        if (!post) return;
+
+        const textarea = document.getElementById('new-comment-text');
+        const text = textarea.value.trim();
+        if (!text) return;
+
+        const newComment = {
+            id: `c${Date.now()}_${postId}`,
+            author: 'u/GuestUser', // Placeholder user
+            timestamp: new Date().toISOString(),
+            text: text,
+            upvotes: 0,
+            downvotes: 0,
+            replies: []
+        };
+
+        if (!post.comments) post.comments = [];
+        post.comments.unshift(newComment); // Add to the beginning
+        post.commentsCount = (post.commentsCount || 0) + 1;
+        
+        textarea.value = ''; // Clear textarea
+        this.state.replyingToCommentId = null; // Close any open reply forms
+        
+        // Re-render comments section
+        const commentsSectionDiv = document.getElementById('comments-section');
+        if (commentsSectionDiv) {
+            commentsSectionDiv.innerHTML = ''; // Clear existing comments
+            this.renderComments(commentsSectionDiv, post.comments, 0, postId);
+            this.applyStaggeredAnimations('#comments-section .animate-item', 30);
+        }
+        // Also update comment count on post card if visible elsewhere
+        const postCardCommentCount = document.querySelector(`#post-${postId} .text-sm span`);
+        if (postCardCommentCount && postCardCommentCount.textContent.includes('Comments')) {
+            postCardCommentCount.textContent = `${post.commentsCount} Comments`;
+        }
+    },
+
+    handleAddReply(postId, parentCommentId) {
+        const subreddit = this.data.subreddits.find(s => s.id === this.state.activeSubredditId);
+        if (!subreddit) return;
+        const post = subreddit.posts.find(p => p.id === postId);
+        if (!post) return;
+
+        const findComment = (comments, id) => {
+            for (let comment of comments) {
+                if (comment.id === id) return comment;
+                if (comment.replies) {
+                    const foundInReply = findComment(comment.replies, id);
+                    if (foundInReply) return foundInReply;
+                }
+            }
+            return null;
+        };
+        
+        const parentComment = findComment(post.comments, parentCommentId);
+        if (!parentComment) return;
+
+        const textarea = document.getElementById(`reply-text-${parentCommentId}`);
+        const text = textarea.value.trim();
+        if (!text) return;
+
+        const newReply = {
+            id: `r${Date.now()}_${parentCommentId}`,
+            author: 'u/GuestUser',
+            timestamp: new Date().toISOString(),
+            text: text,
+            upvotes: 0,
+            downvotes: 0,
+            replies: []
+        };
+
+        if (!parentComment.replies) parentComment.replies = [];
+        parentComment.replies.unshift(newReply);
+        post.commentsCount = (post.commentsCount || 0) + 1; // Increment total post comments
+
+        this.state.replyingToCommentId = null; // Reset reply state
+        
+        // Re-render the entire comments section for simplicity
+        const commentsSectionDiv = document.getElementById('comments-section');
+        if (commentsSectionDiv) {
+            commentsSectionDiv.innerHTML = '';
+            this.renderComments(commentsSectionDiv, post.comments, 0, postId);
+            this.applyStaggeredAnimations('#comments-section .animate-item', 30);
+        }
+        // Update comment count on post card
+        const postCardCommentCount = document.querySelector(`#post-${postId} .text-sm span`);
+         if (postCardCommentCount && postCardCommentCount.textContent.includes('Comments')) {
+            postCardCommentCount.textContent = `${post.commentsCount} Comments`;
+        }
+    },
+
+    handleVote(postId, commentId, direction) {
+        const subreddit = this.data.subreddits.find(s => s.id === this.state.activeSubredditId);
+        if (!subreddit) return;
+        const post = subreddit.posts.find(p => p.id === postId);
+        if (!post) return;
+
+        let item; // Can be post or comment
+        if (commentId) {
+            const findCommentRecursive = (comments, id) => {
+                for (const c of comments) {
+                    if (c.id === id) return c;
+                    if (c.replies) {
+                        const found = findCommentRecursive(c.replies, id);
+                        if (found) return found;
+                    }
+                }
+                return null;
+            };
+            item = findCommentRecursive(post.comments, commentId);
+        } else {
+            item = post;
+        }
+
+        if (!item) return;
+
+        const voteKey = commentId || postId;
+        const currentVote = this.state.userVotes[voteKey];
+
+        // Initialize votes if not present
+        item.upvotes = item.upvotes || 0;
+        item.downvotes = item.downvotes || 0;
+
+        if (currentVote === direction) { // User is undoing their vote
+            if (direction === 'up') item.upvotes--;
+            else item.downvotes--;
+            delete this.state.userVotes[voteKey];
+        } else {
+            if (currentVote === 'up') item.upvotes--; // Was upvoted, now changing
+            if (currentVote === 'down') item.downvotes--; // Was downvoted, now changing
+            
+            if (direction === 'up') item.upvotes++;
+            else item.downvotes++;
+            this.state.userVotes[voteKey] = direction;
+        }
+        
+        const score = item.upvotes - item.downvotes;
+        const scoreElement = document.querySelector(`.score-${voteKey}`);
+        if (scoreElement) scoreElement.textContent = score;
+        
+        // Update button styles (re-render specific vote buttons or small part for efficiency)
+        const voteButtonsContainer = document.getElementById(commentId ? `comment-${commentId}` : `post-${postId}`);
+        if (voteButtonsContainer) {
+             const upvoteButton = voteButtonsContainer.querySelector(`button[onclick*="'${direction === 'up' ? 'up' : 'down'}')"]`); // this is crude
+             // Better to re-render the item's vote controls directly or part of the card
+             // For now, let's re-render the minimal part (the whole post or comment card/element for simplicity for now)
+             // if currentView is postDetail, re-render it
+             if (this.state.currentView === 'postDetail') {
+                // This might be too much, ideally only update specific part
+                // A simpler way for just visual update of buttons:
+                const allUpButtons = voteButtonsContainer.querySelectorAll(`button[onclick*="up"]`);
+                const allDownButtons = voteButtonsContainer.querySelectorAll(`button[onclick*="down"]`);
+
+                allUpButtons.forEach(btn => btn.classList.remove('text-orange-500'));
+                allDownButtons.forEach(btn => btn.classList.remove('text-indigo-500'));
+
+                if(this.state.userVotes[voteKey] === 'up') {
+                    allUpButtons.forEach(btn => btn.classList.add('text-orange-500'));
+                } else if (this.state.userVotes[voteKey] === 'down') {
+                    allDownButtons.forEach(btn => btn.classList.add('text-indigo-500'));
+                }
+             } else if (this.state.currentView === 'subreddit' && this.state.subredditTabView === 'posts') {
+                 // If on subreddit posts list, re-render that specific post card (or its vote part)
+                 // For now, the button style update logic above should also work if selectors are general enough
+                const postCard = document.getElementById(`post-${postId}`); // For subreddit view
+                if (postCard) {
+                    const upBtn = postCard.querySelector(`button[onclick*="'up'"]`);
+                    const downBtn = postCard.querySelector(`button[onclick*="'down'"]`);
+                    upBtn.classList.remove('text-orange-500');
+                    downBtn.classList.remove('text-indigo-500');
+                    if(this.state.userVotes[postId] === 'up') upBtn.classList.add('text-orange-500');
+                    else if (this.state.userVotes[postId] === 'down') downBtn.classList.add('text-indigo-500');
+                }
+             }
+        }
+    },
+
+    timeAgo(isoTimestamp) {
+        const now = new Date();
+        const then = new Date(isoTimestamp);
+        const seconds = Math.round((now - then) / 1000);
+
+        if (seconds < 60) return `${seconds}s ago`;
+        const minutes = Math.round(seconds / 60);
+        if (minutes < 60) return `${minutes}m ago`;
+        const hours = Math.round(minutes / 60);
+        if (hours < 24) return `${hours}h ago`;
+        const days = Math.round(hours / 24);
+        if (days < 7) return `${days}d ago`;
+        const weeks = Math.round(days / 7);
+        if (weeks < 4) return `${weeks}w ago`;
+        const months = Math.round(days / 30);
+        if (months < 12) return `${months}mo ago`;
+        const years = Math.round(days / 365);
+        return `${years}y ago`;
+    },
+
+    formatNumber(num) {
+        if (num >= 1000000) return (num / 1000000).toFixed(1) + 'm';
+        if (num >= 1000) return (num / 1000).toFixed(1) + 'k';
+        return num.toString();
+    }
+};
+
+document.addEventListener('DOMContentLoaded', () => App.init());
+
+</script>
+</body>
+</html>

@@ -1,0 +1,9 @@
+{
+  "web_id": "web_33",
+  "task_id": 1,
+  "task_type": "dynamic",
+  "instruction": "Task: Click a piece on the initial board to customize its moves.\nExpected Result: The piece's current move list (relative coordinates) is displayed for editing.\n\nNote: The task is only considered successful if the expected result is achieved; otherwise, it is deemed infeasible.",
+  "max_steps": 15,
+  "expected": "The piece's current move list (relative coordinates) is displayed for editing.",
+  "label": 1
+}

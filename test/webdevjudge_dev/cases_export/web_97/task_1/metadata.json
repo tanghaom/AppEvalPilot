@@ -1,0 +1,9 @@
+{
+  "web_id": "web_97",
+  "task_id": 1,
+  "task_type": "dynamic",
+  "instruction": "Task: Click the 'Next Dialogue' button to progress the cutscene\nExpected Result: The cutscene progresses to the next dialogue segment. Text streams character-by-character with a 'blip' sound for each letter. The camera smoothly pans to the current speaker (Gorilla or God). If it's the final dialogue segment, a 'To be continued...' message appears after its completion.\n\nNote: The task is only considered successful if the expected result is achieved; otherwise, it is deemed infeasible.",
+  "max_steps": 15,
+  "expected": "The cutscene progresses to the next dialogue segment. Text streams character-by-character with a 'blip' sound for each letter. The camera smoothly pans to the current speaker (Gorilla or God). If it's the final dialogue segment, a 'To be continued...' message appears after its completion.",
+  "label": 1
+}

@@ -1,0 +1,9 @@
+{
+  "web_id": "web_25",
+  "task_id": 4,
+  "task_type": "dynamic",
+  "instruction": "Task: Click a 'Next Level' button (e.g., displayed after a level is successfully completed)\nExpected Result: The game loads and displays the grid configuration for the subsequent level, ready for interaction.\n\nNote: The task is only considered successful if the expected result is achieved; otherwise, it is deemed infeasible.",
+  "max_steps": 15,
+  "expected": "The game loads and displays the grid configuration for the subsequent level, ready for interaction.",
+  "label": 1
+}

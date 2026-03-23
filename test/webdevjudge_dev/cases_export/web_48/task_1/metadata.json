@@ -1,0 +1,9 @@
+{
+  "web_id": "web_48",
+  "task_id": 1,
+  "task_type": "dynamic",
+  "instruction": "Task: Click a button (e.g., '+') or type '/' to open a block selection menu, then select 'Text Block'.\nExpected Result: A new empty text block is added to the page, focused for input.\n\nNote: The task is only considered successful if the expected result is achieved; otherwise, it is deemed infeasible.",
+  "max_steps": 15,
+  "expected": "A new empty text block is added to the page, focused for input.",
+  "label": 1
+}

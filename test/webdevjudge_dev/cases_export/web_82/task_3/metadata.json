@@ -1,0 +1,9 @@
+{
+  "web_id": "web_82",
+  "task_id": 3,
+  "task_type": "dynamic",
+  "instruction": "Task: Click on a different channel or direct message conversation in the navigation list.\nExpected Result: Selected channel/conversation's messages are displayed; it becomes the active chat.\n\nNote: The task is only considered successful if the expected result is achieved; otherwise, it is deemed infeasible.",
+  "max_steps": 15,
+  "expected": "Selected channel/conversation's messages are displayed; it becomes the active chat.",
+  "label": 1
+}

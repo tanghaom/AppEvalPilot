@@ -1,0 +1,9 @@
+{
+  "web_id": "web_4",
+  "task_id": 1,
+  "task_type": "dynamic",
+  "instruction": "Task: Input task details (e.g., name) into a designated field and click an 'Add Task' button.\nExpected Result: The new task appears in the default task list or view.\n\nNote: The task is only considered successful if the expected result is achieved; otherwise, it is deemed infeasible.",
+  "max_steps": 15,
+  "expected": "The new task appears in the default task list or view.",
+  "label": 1
+}

@@ -1,0 +1,9 @@
+{
+  "web_id": "web_50",
+  "task_id": 3,
+  "task_type": "dynamic",
+  "instruction": "Task: Click a 'Restart Game' button (e.g., after a game over).\nExpected Result: The game resets to its initial state (score 0, lives restored, characters repositioned), ready for a new game session.\n\nNote: The task is only considered successful if the expected result is achieved; otherwise, it is deemed infeasible.",
+  "max_steps": 15,
+  "expected": "The game resets to its initial state (score 0, lives restored, characters repositioned), ready for a new game session.",
+  "label": 0
+}

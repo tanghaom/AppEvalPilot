@@ -1,0 +1,9 @@
+{
+  "web_id": "web_56",
+  "task_id": 3,
+  "task_type": "dynamic",
+  "instruction": "Task: After selecting a circle, interact with the UI color picker control to change its color.\nExpected Result: The selected circle's color on the canvas updates in real-time to reflect the color chosen in the color picker.\n\nNote: The task is only considered successful if the expected result is achieved; otherwise, it is deemed infeasible.",
+  "max_steps": 15,
+  "expected": "The selected circle's color on the canvas updates in real-time to reflect the color chosen in the color picker.",
+  "label": 1
+}

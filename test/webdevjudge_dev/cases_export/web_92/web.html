@@ -1,0 +1,1056 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Invoicing System - Frontend Prototype</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdn.jsdelivr.net/npm/daisyui@4.10.2/dist/full.min.css" rel="stylesheet" type="text/css" />
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/feather-icons/dist/feather.min.js"></script>
+    <style>
+        .main-content-area {
+            min-height: calc(100vh - 4rem); /* Adjust if header height changes */
+        }
+        [x-cloak] { display: none !important; }
+        .modal-box { max-width: 50rem; } /* Wider modals for forms */
+        .sidebar-icon { width: 1.25rem; height: 1.25rem; margin-right: 0.75rem; }
+        .table th, .table td { white-space: nowrap; }
+    </style>
+</head>
+<body class="bg-gray-100 font-sans">
+
+    <div id="app">
+        <!-- Login Screen -->
+        <div id="loginScreen" class="flex items-center justify-center min-h-screen bg-gradient-to-br from-blue-500 to-indigo-600 p-4">
+            <div class="bg-white p-8 md:p-12 rounded-xl shadow-2xl w-full max-w-md">
+                <div class="text-center mb-8">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="60" height="60" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-file-text inline-block text-blue-600 mb-2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
+                    <h1 class="text-3xl font-bold text-gray-800">InvoicePro</h1>
+                    <p class="text-gray-500">Sign in to your account</p>
+                </div>
+                <form id="loginForm" class="space-y-6">
+                    <div>
+                        <label for="email" class="block text-sm font-medium text-gray-700">Email Address</label>
+                        <input type="email" id="loginEmail" value="admin@example.com" class="input input-bordered w-full mt-1" required>
+                    </div>
+                    <div>
+                        <label for="password" class="block text-sm font-medium text-gray-700">Password</label>
+                        <input type="password" id="loginPassword" value="password" class="input input-bordered w-full mt-1" required>
+                    </div>
+                    <div>
+                        <button type="submit" class="btn btn-primary w-full text-base">Login</button>
+                    </div>
+                </form>
+                <p id="loginError" class="text-red-500 text-sm mt-4 text-center"></p>
+            </div>
+        </div>
+
+        <!-- Main Application -->
+        <div id="mainApp" class="hidden">
+            <div class="flex h-screen bg-gray-100">
+                <!-- Sidebar -->
+                <aside id="sidebar" class="w-64 bg-gray-800 text-white p-5 space-y-3 transition-all duration-300 ease-in-out -translate-x-full md:translate-x-0 fixed md:static h-full z-30">
+                    <div class="flex items-center justify-between mb-6">
+                        <div class="flex items-center">
+                           <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-file-text inline-block text-blue-400 mr-2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
+                            <h1 class="text-2xl font-semibold">InvoicePro</h1>
+                        </div>
+                        <button id="closeSidebarButton" class="md:hidden text-gray-400 hover:text-white">
+                            <i data-feather="x"></i>
+                        </button>
+                    </div>
+                    <nav class="space-y-1 flex-grow">
+                        <a href="#" class="nav-link" data-page="dashboard"><i data-feather="home" class="sidebar-icon"></i>Dashboard</a>
+                        <a href="#" class="nav-link" data-page="clients"><i data-feather="users" class="sidebar-icon"></i>Clients</a>
+                        <a href="#" class="nav-link" data-page="products"><i data-feather="package" class="sidebar-icon"></i>Products</a>
+                        <a href="#" class="nav-link" data-page="quotations"><i data-feather="file-text" class="sidebar-icon"></i>Quotations</a>
+                        <a href="#" class="nav-link" data-page="invoices"><i data-feather="file-plus" class="sidebar-icon"></i>Invoices</a>
+                        <a href="#" class="nav-link" data-page="purchaseOrders"><i data-feather="shopping-cart" class="sidebar-icon"></i>Purchase Orders</a>
+                        <a href="#" class="nav-link" data-page="users"><i data-feather="user-check" class="sidebar-icon"></i>User Management</a>
+                        <!-- <a href="#" class="nav-link" data-page="settings"><i data-feather="settings" class="sidebar-icon"></i>Settings</a> -->
+                    </nav>
+                    <div class="pt-4 mt-auto border-t border-gray-700">
+                         <div class="flex items-center p-2 text-sm rounded-md hover:bg-gray-700 mb-2">
+                            <img id="userAvatar" src="https://ui-avatars.com/api/?name=Admin+User&background=0D8ABC&color=fff&rounded=true&size=32" alt="User Avatar" class="w-8 h-8 rounded-full mr-3">
+                            <div>
+                                <p id="loggedInUserName" class="font-medium">Admin User</p>
+                                <p id="loggedInUserEmail" class="text-xs text-gray-400">admin@example.com</p>
+                            </div>
+                        </div>
+                        <a href="#" id="logoutButton" class="nav-link !mt-0"><i data-feather="log-out" class="sidebar-icon"></i>Logout</a>
+                    </div>
+                </aside>
+
+                <!-- Main Content Area -->
+                <div class="flex-1 flex flex-col overflow-hidden">
+                    <header class="bg-white shadow-md p-4 flex items-center justify-between md:justify-end">
+                        <button id="openSidebarButton" class="md:hidden text-gray-600 hover:text-blue-600">
+                            <i data-feather="menu" class="w-6 h-6"></i>
+                        </button>
+                        <h2 id="pageTitle" class="text-xl font-semibold text-gray-700 hidden md:block">Dashboard</h2>
+                         <!-- Placeholder for potential top-right user menu or notifications -->
+                        <div class="flex items-center space-x-4">
+                           <!-- <button class="text-gray-500 hover:text-blue-600 relative">
+                                <i data-feather="bell" class="w-5 h-5"></i>
+                                <span class="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-4 w-4 flex items-center justify-center">3</span>
+                            </button> -->
+                            <div class="text-right">
+                                <p class="text-sm font-medium text-gray-700" id="headerUserName">Admin User</p>
+                                <p class="text-xs text-gray-500" id="headerUserRole">Administrator</p>
+                            </div>
+                        </div>
+                    </header>
+                    <main class="flex-1 p-4 md:p-6 overflow-x-hidden overflow-y-auto main-content-area">
+                        <div id="pageContentContainer">
+                            <!-- Content will be dynamically injected here -->
+                        </div>
+                    </main>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODALS & TEMPLATES -->
+
+    <!-- Generic Item Form Modal -->
+    <dialog id="itemFormModal" class="modal">
+        <div class="modal-box">
+            <h3 id="itemFormModalTitle" class="font-bold text-lg">Add New Item</h3>
+            <form id="itemForm" class="py-4 space-y-4">
+                <!-- Form fields will be injected here by JS -->
+            </form>
+            <div class="modal-action">
+                <button id="itemFormModalCloseButton" class="btn btn-ghost">Cancel</button>
+                <button id="itemFormModalSaveButton" class="btn btn-primary">Save</button>
+            </div>
+        </div>
+        <form method="dialog" class="modal-backdrop"><button>close</button></form>
+    </dialog>
+    
+    <!-- Generic Confirmation Modal -->
+    <dialog id="confirmationModal" class="modal">
+        <div class="modal-box w-11/12 max-w-md">
+            <h3 id="confirmationModalTitle" class="font-bold text-lg">Confirm Action</h3>
+            <p id="confirmationModalMessage" class="py-4">Are you sure?</p>
+            <div class="modal-action">
+                <button id="confirmationModalCancelButton" class="btn btn-ghost">Cancel</button>
+                <button id="confirmationModalConfirmButton" class="btn btn-error">Confirm</button>
+            </div>
+        </div>
+        <form method="dialog" class="modal-backdrop"><button>close</button></form>
+    </dialog>
+
+
+    <script>
+        // Helper to quickly create DOM elements
+        function createElement(tag, attributes = {}, children = []) {
+            const el = document.createElement(tag);
+            for (const key in attributes) {
+                if (key === 'class') {
+                    el.className = attributes[key];
+                } else if (key === 'textContent') {
+                    el.textContent = attributes[key];
+                } else if (key === 'innerHTML') {
+                    el.innerHTML = attributes[key];
+                } else {
+                    el.setAttribute(key, attributes[key]);
+                }
+            }
+            children.forEach(child => {
+                if (typeof child === 'string') {
+                    el.appendChild(document.createTextNode(child));
+                } else {
+                    el.appendChild(child);
+                }
+            });
+            return el;
+        }
+
+
+        const App = {
+            state: {
+                currentPage: 'login',
+                loggedInUser: null,
+                clients: [
+                    { id: 1, name: 'Tech Solutions Inc.', email: 'contact@techsolutions.com', phone: '555-1234', address: '123 Tech Park, Silicon Valley, CA', balance: 1500.00, dateAdded: '2023-01-15' },
+                    { id: 2, name: 'GreenScape Landscaping', email: 'info@greenscape.com', phone: '555-5678', address: '456 Garden Ave, Greentown, FL', balance: -250.00, dateAdded: '2023-02-20' },
+                    { id: 3, name: 'Innovate Labs', email: 'hello@innovatelabs.io', phone: '555-8765', address: '789 Innovation Dr, Future City, TX', balance: 0.00, dateAdded: '2023-03-10' },
+                ],
+                products: [
+                    { id: 1, name: 'Web Development Hours', description: 'Hourly rate for web development services', price: 75.00, type: 'Service', stock: null },
+                    { id: 2, name: 'Standard Laptop', description: '15-inch standard business laptop', price: 1200.00, type: 'Product', stock: 50 },
+                    { id: 3, name: 'SEO Consulting Package', description: 'Monthly SEO strategy and reporting', price: 500.00, type: 'Service', stock: null },
+                    { id: 4, name: 'Cloud Storage (1TB)', description: '1TB of secure cloud storage, yearly subscription', price: 99.00, type: 'Service', stock: null },
+                ],
+                quotations: [
+                    { id: 'Q-2024-001', clientId: 1, clientName: 'Tech Solutions Inc.', date: '2024-05-01', expiryDate: '2024-05-15', items: [{ productId: 1, quantity: 10, unitPrice: 75.00 }], total: 750.00, status: 'Sent' },
+                    { id: 'Q-2024-002', clientId: 2, clientName: 'GreenScape Landscaping', date: '2024-05-05', expiryDate: '2024-05-20', items: [{ productId: 3, quantity: 1, unitPrice: 500.00 }], total: 500.00, status: 'Draft' },
+                ],
+                invoices: [
+                    { id: 'INV-2024-001', clientId: 1, clientName: 'Tech Solutions Inc.', quotationId: 'Q-2024-001', date: '2024-05-16', dueDate: '2024-06-15', items: [{ productId: 1, quantity: 10, unitPrice: 75.00 }], total: 750.00, paid: 0.00, status: 'Sent' },
+                    { id: 'INV-2024-002', clientId: 3, clientName: 'Innovate Labs', date: '2024-04-20', dueDate: '2024-05-20', items: [{ productId: 2, quantity: 2, unitPrice: 1200.00 }, {productId: 4, quantity:1, unitPrice: 99.00}], total: 2499.00, paid: 2499.00, status: 'Paid' },
+                ],
+                purchaseOrders: [
+                     { id: 'PO-2024-001', supplierName: 'Bulk Components Ltd.', date: '2024-05-10', expectedDelivery: '2024-05-25', items: [{ itemName: 'Laptop Model X', quantity: 20, unitPrice: 800.00 }], total: 16000.00, status: 'Ordered' }
+                ],
+                users: [
+                    { id: 1, name: 'Admin User', email: 'admin@example.com', role: 'Administrator', dateAdded: '2023-01-01' },
+                    { id: 2, name: 'Sales Rep', email: 'sales@example.com', role: 'Sales', dateAdded: '2023-02-01' },
+                ],
+                nextIds: {
+                    client: 4,
+                    product: 5,
+                    user: 3,
+                    quotation: 3,
+                    invoice: 3,
+                    purchaseOrder: 2,
+                },
+                currentForm: {
+                    type: null, // 'client', 'product', etc.
+                    mode: 'add', // 'add' or 'edit'
+                    itemId: null
+                },
+                confirmationCallback: null,
+            },
+
+            // DOM Elements
+            els: {
+                loginScreen: null, mainApp: null, pageContentContainer: null, pageTitle: null,
+                sidebar: null, openSidebarButton: null, closeSidebarButton: null,
+                loginForm: null, loginEmail: null, loginPassword: null, loginError: null,
+                logoutButton: null, loggedInUserName: null, loggedInUserEmail: null, headerUserName: null, headerUserRole: null,
+                itemFormModal: null, itemFormModalTitle: null, itemForm: null, itemFormModalCloseButton: null, itemFormModalSaveButton: null,
+                confirmationModal: null, confirmationModalTitle: null, confirmationModalMessage: null, confirmationModalCancelButton: null, confirmationModalConfirmButton: null,
+            },
+
+            init() {
+                // Cache DOM elements
+                this.els.loginScreen = document.getElementById('loginScreen');
+                this.els.mainApp = document.getElementById('mainApp');
+                this.els.pageContentContainer = document.getElementById('pageContentContainer');
+                this.els.pageTitle = document.getElementById('pageTitle');
+                this.els.sidebar = document.getElementById('sidebar');
+                this.els.openSidebarButton = document.getElementById('openSidebarButton');
+                this.els.closeSidebarButton = document.getElementById('closeSidebarButton');
+                
+                this.els.loginForm = document.getElementById('loginForm');
+                this.els.loginEmail = document.getElementById('loginEmail');
+                this.els.loginPassword = document.getElementById('loginPassword');
+                this.els.loginError = document.getElementById('loginError');
+                
+                this.els.logoutButton = document.getElementById('logoutButton');
+                this.els.loggedInUserName = document.getElementById('loggedInUserName');
+                this.els.loggedInUserEmail = document.getElementById('loggedInUserEmail');
+                this.els.headerUserName = document.getElementById('headerUserName');
+                this.els.headerUserRole = document.getElementById('headerUserRole');
+
+                this.els.itemFormModal = document.getElementById('itemFormModal');
+                this.els.itemFormModalTitle = document.getElementById('itemFormModalTitle');
+                this.els.itemForm = document.getElementById('itemForm');
+                this.els.itemFormModalCloseButton = document.getElementById('itemFormModalCloseButton');
+                this.els.itemFormModalSaveButton = document.getElementById('itemFormModalSaveButton');
+
+                this.els.confirmationModal = document.getElementById('confirmationModal');
+                this.els.confirmationModalTitle = document.getElementById('confirmationModalTitle');
+                this.els.confirmationModalMessage = document.getElementById('confirmationModalMessage');
+                this.els.confirmationModalCancelButton = document.getElementById('confirmationModalCancelButton');
+                this.els.confirmationModalConfirmButton = document.getElementById('confirmationModalConfirmButton');
+
+                // Attach event listeners
+                this.els.loginForm.addEventListener('submit', this.handleLogin.bind(this));
+                this.els.logoutButton.addEventListener('click', this.handleLogout.bind(this));
+                
+                document.querySelectorAll('.nav-link').forEach(link => {
+                    link.addEventListener('click', (e) => {
+                        e.preventDefault();
+                        this.navigateTo(link.dataset.page);
+                        if (window.innerWidth < 768) { // Close sidebar on mobile after navigation
+                           this.els.sidebar.classList.add('-translate-x-full');
+                        }
+                    });
+                });
+
+                this.els.openSidebarButton.addEventListener('click', () => this.els.sidebar.classList.remove('-translate-x-full'));
+                this.els.closeSidebarButton.addEventListener('click', () => this.els.sidebar.classList.add('-translate-x-full'));
+
+                this.els.itemFormModalSaveButton.addEventListener('click', this.handleItemFormSave.bind(this));
+                this.els.itemFormModalCloseButton.addEventListener('click', () => this.els.itemFormModal.close());
+                this.els.confirmationModalCancelButton.addEventListener('click', () => this.els.confirmationModal.close());
+                this.els.confirmationModalConfirmButton.addEventListener('click', this.handleConfirmation.bind(this));
+
+
+                feather.replace(); // Initial icon replacement
+
+                // Check for "remembered" login (very basic, for demo)
+                if (localStorage.getItem('loggedInUser')) {
+                    this.state.loggedInUser = JSON.parse(localStorage.getItem('loggedInUser'));
+                    this.showMainApp();
+                    this.navigateTo('dashboard');
+                } else {
+                    this.showLoginScreen();
+                }
+            },
+
+            showLoginScreen() {
+                this.state.currentPage = 'login';
+                this.els.loginScreen.classList.remove('hidden');
+                this.els.mainApp.classList.add('hidden');
+            },
+
+            showMainApp() {
+                this.els.loginScreen.classList.add('hidden');
+                this.els.mainApp.classList.remove('hidden');
+                if (this.state.loggedInUser) {
+                    this.els.loggedInUserName.textContent = this.state.loggedInUser.name;
+                    this.els.loggedInUserEmail.textContent = this.state.loggedInUser.email;
+                    this.els.headerUserName.textContent = this.state.loggedInUser.name;
+                    this.els.headerUserRole.textContent = this.state.loggedInUser.role || 'User';
+                    const avatarName = this.state.loggedInUser.name.split(' ').map(n=>n[0]).join('');
+                    document.getElementById('userAvatar').src = `https://ui-avatars.com/api/?name=${encodeURIComponent(this.state.loggedInUser.name)}&background=0D8ABC&color=fff&rounded=true&size=32`;
+                }
+            },
+
+            handleLogin(event) {
+                event.preventDefault();
+                const email = this.els.loginEmail.value;
+                const password = this.els.loginPassword.value;
+                // Simulated authentication
+                const foundUser = this.state.users.find(u => u.email === email);
+                if (foundUser && password === 'password') { // In a real app, password would be hashed and checked
+                    this.state.loggedInUser = foundUser;
+                    localStorage.setItem('loggedInUser', JSON.stringify(foundUser)); // Basic "remember me"
+                    this.showMainApp();
+                    this.navigateTo('dashboard');
+                    this.els.loginError.textContent = '';
+                } else {
+                    this.els.loginError.textContent = 'Invalid email or password.';
+                }
+            },
+
+            handleLogout(event) {
+                event.preventDefault();
+                this.state.loggedInUser = null;
+                localStorage.removeItem('loggedInUser');
+                this.showLoginScreen();
+            },
+
+            navigateTo(page) {
+                if (!this.state.loggedInUser && page !== 'login') {
+                    this.navigateTo('login'); // or showLoginScreen()
+                    return;
+                }
+                this.state.currentPage = page;
+                this.updateActiveNavLink(page);
+                this.renderPageContent(page);
+                this.els.pageTitle.textContent = page.charAt(0).toUpperCase() + page.slice(1).replace(/([A-Z])/g, ' $1'); // Add space before caps
+                feather.replace(); // Re-render icons after content change
+            },
+            
+            updateActiveNavLink(page) {
+                document.querySelectorAll('.nav-link').forEach(link => {
+                    link.classList.remove('bg-blue-600', 'text-white', 'font-semibold');
+                    link.classList.add('text-gray-300', 'hover:bg-gray-700', 'hover:text-white');
+                    if (link.dataset.page === page) {
+                        link.classList.add('bg-blue-600', 'text-white', 'font-semibold');
+                        link.classList.remove('text-gray-300', 'hover:bg-gray-700');
+                    }
+                });
+            },
+
+            renderPageContent(page) {
+                this.els.pageContentContainer.innerHTML = ''; // Clear previous content
+                switch (page) {
+                    case 'dashboard': this.renderDashboard(); break;
+                    case 'clients': this.renderList('clients', ['ID', 'Name', 'Email', 'Phone', 'Balance'], ['id', 'name', 'email', 'phone', 'balance']); break;
+                    case 'products': this.renderList('products', ['ID', 'Name', 'Price', 'Type', 'Stock'], ['id', 'name', 'price', 'type', 'stock']); break;
+                    case 'quotations': this.renderList('quotations', ['ID', 'Client', 'Date', 'Total', 'Status'], ['id', 'clientName', 'date', 'total', 'status'], this.renderQuotationActions); break;
+                    case 'invoices': this.renderList('invoices', ['ID', 'Client', 'Date', 'Total', 'Status'], ['id', 'clientName', 'date', 'total', 'status'], this.renderInvoiceActions); break;
+                    case 'purchaseOrders': this.renderList('purchaseOrders', ['ID', 'Supplier', 'Date', 'Total', 'Status'], ['id', 'supplierName', 'date', 'total', 'status']); break;
+                    case 'users': this.renderList('users', ['ID', 'Name', 'Email', 'Role'], ['id', 'name', 'email', 'role']); break;
+                    default: this.els.pageContentContainer.innerHTML = `<p class="text-gray-600">Page not found or not yet implemented: ${page}</p>`;
+                }
+                feather.replace();
+            },
+            
+            // --- Generic List Rendering ---
+            renderList(itemType, headers, itemKeys, customActionsRenderer = null) {
+                const title = itemType.charAt(0).toUpperCase() + itemType.slice(1);
+                const items = this.state[itemType];
+
+                const container = createElement('div');
+                const headerDiv = createElement('div', { class: 'flex justify-between items-center mb-6' });
+                headerDiv.appendChild(createElement('h2', { class: 'text-2xl font-semibold text-gray-800', textContent: `${title}` }));
+                if (itemType !== 'quotations' && itemType !== 'invoices' && itemType !== 'purchaseOrders') { // For simple CRUD
+                    const addButton = createElement('button', { class: 'btn btn-primary', textContent: `Add New ${title.slice(0, -1)}` });
+                    addButton.innerHTML = `<i data-feather="plus" class="mr-2 h-4 w-4"></i> Add New ${title.slice(0, -1)}`;
+                    addButton.addEventListener('click', () => this.openItemForm(itemType, 'add'));
+                    headerDiv.appendChild(addButton);
+                } else { // For complex items like invoices/quotations
+                     const createButton = createElement('button', { class: 'btn btn-primary', textContent: `Create ${title.slice(0, -1)}` });
+                     createButton.innerHTML = `<i data-feather="plus" class="mr-2 h-4 w-4"></i> Create ${title.slice(0, -1)}`;
+                     createButton.addEventListener('click', () => this.openCreateDocumentForm(itemType));
+                     headerDiv.appendChild(createButton);
+                }
+
+
+                container.appendChild(headerDiv);
+
+                if (!items || items.length === 0) {
+                    container.appendChild(createElement('p', { class: 'text-gray-500 italic', textContent: `No ${itemType} found.` }));
+                    this.els.pageContentContainer.appendChild(container);
+                    feather.replace();
+                    return;
+                }
+
+                const tableContainer = createElement('div', { class: 'bg-white shadow-md rounded-lg overflow-x-auto' });
+                const table = createElement('table', { class: 'table w-full' });
+                const thead = createElement('thead');
+                const trHead = createElement('tr');
+                headers.forEach(header => trHead.appendChild(createElement('th', { textContent: header })));
+                trHead.appendChild(createElement('th', { class: 'text-right', textContent: 'Actions' }));
+                thead.appendChild(trHead);
+                table.appendChild(thead);
+
+                const tbody = createElement('tbody');
+                items.forEach(item => {
+                    const tr = createElement('tr', { class: 'hover' });
+                    itemKeys.forEach(key => {
+                        let value = item[key];
+                        if (key === 'balance' || key === 'price' || key === 'total') {
+                            value = `$${parseFloat(value).toFixed(2)}`;
+                        }
+                        if (key === 'status') {
+                           value = this.getStatusBadge(value);
+                           const td = createElement('td');
+                           td.appendChild(value);
+                           tr.appendChild(td);
+                        } else {
+                           tr.appendChild(createElement('td', { textContent: value }));
+                        }
+                    });
+                    
+                    const actionsTd = createElement('td', { class: 'text-right space-x-2' });
+                    if (customActionsRenderer) {
+                        customActionsRenderer(item, actionsTd);
+                    } else {
+                        const viewButton = createElement('button', { class: 'btn btn-xs btn-ghost text-blue-600', title: 'View' });
+                        viewButton.innerHTML = `<i data-feather="eye"></i>`;
+                        // viewButton.addEventListener('click', () => this.viewItem(itemType, item.id));
+                        actionsTd.appendChild(viewButton);
+
+                        const editButton = createElement('button', { class: 'btn btn-xs btn-ghost text-yellow-600', title: 'Edit' });
+                        editButton.innerHTML = `<i data-feather="edit"></i>`;
+                        editButton.addEventListener('click', () => this.openItemForm(itemType, 'edit', item.id));
+                        actionsTd.appendChild(editButton);
+                        
+                        const deleteButton = createElement('button', { class: 'btn btn-xs btn-ghost text-red-600', title: 'Delete' });
+                        deleteButton.innerHTML = `<i data-feather="trash-2"></i>`;
+                        deleteButton.addEventListener('click', () => this.confirmDeleteItem(itemType, item.id, item.name || item.id));
+                        actionsTd.appendChild(deleteButton);
+                    }
+                    tr.appendChild(actionsTd);
+                    tbody.appendChild(tr);
+                });
+                table.appendChild(tbody);
+                tableContainer.appendChild(table);
+                container.appendChild(tableContainer);
+                this.els.pageContentContainer.appendChild(container);
+            },
+
+            getStatusBadge(status) {
+                let badgeClass = 'badge badge-ghost';
+                if (status === 'Paid' || status === 'Completed' || status === 'Delivered') badgeClass = 'badge badge-success';
+                else if (status === 'Sent' || status === 'Pending' || status === 'Processing' || status === 'Ordered') badgeClass = 'badge badge-warning';
+                else if (status === 'Overdue' || status === 'Cancelled') badgeClass = 'badge badge-error';
+                else if (status === 'Draft') badgeClass = 'badge badge-info';
+                return createElement('span', { class: badgeClass, textContent: status });
+            },
+
+            renderQuotationActions(item, actionsTd) {
+                const viewButton = createElement('button', { class: 'btn btn-xs btn-ghost text-blue-600', title: 'View' });
+                viewButton.innerHTML = `<i data-feather="eye"></i>`;
+                // viewButton.addEventListener('click', () => this.viewQuotation(item.id));
+                actionsTd.appendChild(viewButton);
+
+                if (item.status !== 'Accepted' && item.status !== 'Invoiced') {
+                    const editButton = createElement('button', { class: 'btn btn-xs btn-ghost text-yellow-600', title: 'Edit' });
+                    editButton.innerHTML = `<i data-feather="edit"></i>`;
+                    // editButton.addEventListener('click', () => this.openCreateDocumentForm('quotations', item.id));
+                    actionsTd.appendChild(editButton);
+                }
+                
+                if (item.status === 'Sent' || item.status === 'Accepted') {
+                     const convertButton = createElement('button', { class: 'btn btn-xs btn-ghost text-green-600', title: 'Convert to Invoice' });
+                     convertButton.innerHTML = `<i data-feather="file-plus"></i>`;
+                     // convertButton.addEventListener('click', () => this.convertToInvoice(item.id));
+                     actionsTd.appendChild(convertButton);
+                }
+                
+                const deleteButton = createElement('button', { class: 'btn btn-xs btn-ghost text-red-600', title: 'Delete' });
+                deleteButton.innerHTML = `<i data-feather="trash-2"></i>`;
+                deleteButton.addEventListener('click', () => this.confirmDeleteItem('quotations', item.id, item.id));
+                actionsTd.appendChild(deleteButton);
+            },
+            
+            renderInvoiceActions(item, actionsTd) {
+                const viewButton = createElement('button', { class: 'btn btn-xs btn-ghost text-blue-600', title: 'View' });
+                viewButton.innerHTML = `<i data-feather="eye"></i>`;
+                // viewButton.addEventListener('click', () => this.viewInvoice(item.id));
+                actionsTd.appendChild(viewButton);
+
+                if (item.status !== 'Paid') {
+                    const editButton = createElement('button', { class: 'btn btn-xs btn-ghost text-yellow-600', title: 'Edit' });
+                    editButton.innerHTML = `<i data-feather="edit"></i>`;
+                    // editButton.addEventListener('click', () => this.openCreateDocumentForm('invoices', item.id));
+                    actionsTd.appendChild(editButton);
+                }
+                 if (item.status !== 'Paid') {
+                    const recordPaymentButton = createElement('button', { class: 'btn btn-xs btn-ghost text-green-600', title: 'Record Payment' });
+                    recordPaymentButton.innerHTML = `<i data-feather="dollar-sign"></i>`;
+                    // recordPaymentButton.addEventListener('click', () => this.recordPayment(item.id));
+                    actionsTd.appendChild(recordPaymentButton);
+                }
+                
+                const deleteButton = createElement('button', { class: 'btn btn-xs btn-ghost text-red-600', title: 'Delete' });
+                deleteButton.innerHTML = `<i data-feather="trash-2"></i>`;
+                deleteButton.addEventListener('click', () => this.confirmDeleteItem('invoices', item.id, item.id));
+                actionsTd.appendChild(deleteButton);
+            },
+
+            // --- Item Form Modal Logic ---
+            openItemForm(itemType, mode, itemId = null) {
+                this.state.currentForm = { type: itemType, mode, itemId };
+                this.els.itemFormModalTitle.textContent = `${mode === 'add' ? 'Add New' : 'Edit'} ${itemType.slice(0,-1).charAt(0).toUpperCase() + itemType.slice(1,-1)}`;
+                this.els.itemForm.innerHTML = ''; // Clear previous form fields
+
+                let fields = [];
+                let currentItem = null;
+
+                if (mode === 'edit') {
+                    currentItem = this.state[itemType].find(item => item.id === itemId);
+                }
+
+                switch (itemType) {
+                    case 'clients':
+                        fields = [
+                            { name: 'name', label: 'Name', type: 'text', required: true },
+                            { name: 'email', label: 'Email', type: 'email', required: true },
+                            { name: 'phone', label: 'Phone', type: 'tel' },
+                            { name: 'address', label: 'Address', type: 'textarea' }
+                        ];
+                        break;
+                    case 'products':
+                        fields = [
+                            { name: 'name', label: 'Name', type: 'text', required: true },
+                            { name: 'description', label: 'Description', type: 'textarea' },
+                            { name: 'price', label: 'Price', type: 'number', step: '0.01', required: true },
+                            { name: 'type', label: 'Type', type: 'select', options: [{value:'Product', text:'Product'}, {value:'Service', text:'Service'}], required: true },
+                            { name: 'stock', label: 'Stock Quantity (if Product)', type: 'number', step: '1' }
+                        ];
+                        break;
+                    case 'users':
+                         fields = [
+                            { name: 'name', label: 'Name', type: 'text', required: true },
+                            { name: 'email', label: 'Email', type: 'email', required: true },
+                            { name: 'role', label: 'Role', type: 'select', options: [{value:'Administrator', text:'Administrator'}, {value:'Sales', text:'Sales'}, {value:'Staff', text:'Staff'}], required: true },
+                            // Password field would normally be here, handled separately for security
+                        ];
+                        break;
+                }
+
+                fields.forEach(field => {
+                    const formGroup = createElement('div', { class: 'form-control' });
+                    const label = createElement('label', { class: 'label' }, [createElement('span', { class: 'label-text', textContent: field.label })]);
+                    formGroup.appendChild(label);
+
+                    let input;
+                    if (field.type === 'textarea') {
+                        input = createElement('textarea', { id: `form-${field.name}`, name: field.name, class: 'textarea textarea-bordered h-24', required: field.required });
+                    } else if (field.type === 'select') {
+                        input = createElement('select', { id: `form-${field.name}`, name: field.name, class: 'select select-bordered', required: field.required });
+                        field.options.forEach(opt => {
+                            input.appendChild(createElement('option', { value: opt.value, textContent: opt.text }));
+                        });
+                    } else {
+                        input = createElement('input', { id: `form-${field.name}`, name: field.name, type: field.type, class: 'input input-bordered', required: field.required });
+                        if (field.step) input.step = field.step;
+                    }
+                    
+                    if (currentItem && currentItem[field.name] !== undefined) {
+                        input.value = currentItem[field.name];
+                    }
+                    formGroup.appendChild(input);
+                    this.els.itemForm.appendChild(formGroup);
+                });
+
+                this.els.itemFormModal.showModal();
+            },
+
+            handleItemFormSave() {
+                const { type, mode, itemId } = this.state.currentForm;
+                const formData = new FormData(this.els.itemForm);
+                const newItemData = {};
+                let isValid = true;
+                this.els.itemForm.querySelectorAll('[required]').forEach(el => {
+                    if (!el.value) isValid = false;
+                });
+
+                if (!isValid) {
+                    alert('Please fill all required fields.'); // Simple validation
+                    return;
+                }
+
+                for (let [key, value] of formData.entries()) {
+                    const inputElement = this.els.itemForm.elements[key];
+                    if (inputElement.type === 'number') {
+                         newItemData[key] = parseFloat(value) || null; // Allow empty for non-required numbers
+                    } else {
+                        newItemData[key] = value;
+                    }
+                }
+
+                if (mode === 'add') {
+                    newItemData.id = this.generateId(type);
+                    if (type === 'clients') newItemData.balance = 0; // Default balance
+                    if (type === 'users') newItemData.dateAdded = new Date().toISOString().split('T')[0];
+
+                    this.state[type].push(newItemData);
+                } else { // edit mode
+                    const itemIndex = this.state[type].findIndex(item => item.id === itemId);
+                    if (itemIndex > -1) {
+                        this.state[type][itemIndex] = { ...this.state[type][itemIndex], ...newItemData };
+                    }
+                }
+                this.els.itemFormModal.close();
+                this.renderPageContent(type); // Re-render the list
+            },
+
+            generateId(type) {
+                const idKey = type.endsWith('s') ? type.slice(0, -1) : type; // e.g. clients -> client
+                if (this.state.nextIds[idKey]) {
+                    return this.state.nextIds[idKey]++;
+                }
+                // Fallback for quotation, invoice, PO IDs which are strings
+                const prefix = type.substring(0,1).toUpperCase() + (type.includes('purchase') ? 'PO' : type.substring(1,3).toUpperCase());
+                return `${prefix}-${new Date().getFullYear()}-${String(this.state.nextIds[idKey]++).padStart(3, '0')}`;
+            },
+            
+            confirmDeleteItem(itemType, itemId, itemName) {
+                this.state.confirmationCallback = () => this.deleteItem(itemType, itemId);
+                this.els.confirmationModalTitle.textContent = `Delete ${itemType.slice(0,-1)}`;
+                this.els.confirmationModalMessage.textContent = `Are you sure you want to delete ${itemName}? This action cannot be undone.`;
+                this.els.confirmationModal.showModal();
+            },
+            
+            deleteItem(itemType, itemId) {
+                this.state[itemType] = this.state[itemType].filter(item => item.id !== itemId);
+                this.renderPageContent(itemType);
+            },
+
+            handleConfirmation() {
+                if (this.state.confirmationCallback) {
+                    this.state.confirmationCallback();
+                    this.state.confirmationCallback = null; // Reset callback
+                }
+                this.els.confirmationModal.close();
+            },
+
+            // --- Dashboard Rendering ---
+            renderDashboard() {
+                const container = createElement('div', { class: 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6' });
+                
+                const totalRevenue = this.state.invoices.filter(inv => inv.status === 'Paid').reduce((sum, inv) => sum + inv.total, 0);
+                const outstandingAmount = this.state.invoices.filter(inv => inv.status === 'Sent' || inv.status === 'Overdue').reduce((sum, inv) => sum + (inv.total - inv.paid), 0);
+
+                const summaryCards = [
+                    { title: 'Total Revenue (Paid)', value: `$${totalRevenue.toFixed(2)}`, icon: 'trending-up', color: 'bg-green-500' },
+                    { title: 'Outstanding Amount', value: `$${outstandingAmount.toFixed(2)}`, icon: 'alert-circle', color: 'bg-yellow-500' },
+                    { title: 'Active Clients', value: this.state.clients.length, icon: 'users', color: 'bg-blue-500' },
+                    { title: 'Pending Invoices', value: this.state.invoices.filter(inv => inv.status === 'Sent').length, icon: 'file-text', color: 'bg-indigo-500' },
+                ];
+
+                summaryCards.forEach(card => {
+                    const cardEl = createElement('div', { class: `card shadow-lg text-white ${card.color}` });
+                    const cardBody = createElement('div', { class: 'card-body p-5' });
+                    const flexDiv = createElement('div', {class: 'flex justify-between items-center'});
+                    const textDiv = createElement('div');
+                    textDiv.appendChild(createElement('h3', { class: 'text-3xl font-bold', textContent: card.value }));
+                    textDiv.appendChild(createElement('p', { class: 'text-sm opacity-80', textContent: card.title }));
+                    flexDiv.appendChild(textDiv);
+                    const iconEl = createElement('i', { 'data-feather': card.icon, class: 'w-10 h-10 opacity-70'});
+                    flexDiv.appendChild(iconEl);
+                    cardBody.appendChild(flexDiv);
+                    cardEl.appendChild(cardBody);
+                    container.appendChild(cardEl);
+                });
+                this.els.pageContentContainer.appendChild(container);
+
+                const chartsContainer = createElement('div', { class: 'grid grid-cols-1 lg:grid-cols-2 gap-6' });
+                
+                // Revenue Chart
+                const revenueChartContainer = createElement('div', { class: 'bg-white p-6 rounded-lg shadow-md' });
+                revenueChartContainer.appendChild(createElement('h3', { class: 'text-lg font-semibold mb-4 text-gray-700', textContent: 'Revenue Over Time (Mock)' }));
+                const revenueCanvas = createElement('canvas', { id: 'revenueChart' });
+                revenueChartContainer.appendChild(revenueCanvas);
+                chartsContainer.appendChild(revenueChartContainer);
+
+                // Invoice Status Chart
+                const statusChartContainer = createElement('div', { class: 'bg-white p-6 rounded-lg shadow-md' });
+                statusChartContainer.appendChild(createElement('h3', { class: 'text-lg font-semibold mb-4 text-gray-700', textContent: 'Invoice Statuses' }));
+                const statusCanvas = createElement('canvas', { id: 'statusChart' });
+                statusChartContainer.appendChild(statusCanvas);
+                chartsContainer.appendChild(statusChartContainer);
+
+                this.els.pageContentContainer.appendChild(chartsContainer);
+                this.loadDashboardCharts();
+            },
+            
+            loadDashboardCharts() {
+                // Mock Revenue Chart
+                const revenueCtx = document.getElementById('revenueChart')?.getContext('2d');
+                if (revenueCtx) {
+                    new Chart(revenueCtx, {
+                        type: 'line',
+                        data: {
+                            labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'],
+                            datasets: [{
+                                label: 'Revenue',
+                                data: [5000, 7500, 6000, 9000, 8000, 12000], // Mock data
+                                borderColor: 'rgb(59, 130, 246)', // blue-500
+                                tension: 0.1,
+                                fill: false
+                            }]
+                        },
+                        options: { responsive: true, maintainAspectRatio: false }
+                    });
+                }
+
+                // Invoice Status Chart
+                const statusCtx = document.getElementById('statusChart')?.getContext('2d');
+                if (statusCtx) {
+                    const statusCounts = this.state.invoices.reduce((acc, inv) => {
+                        acc[inv.status] = (acc[inv.status] || 0) + 1;
+                        return acc;
+                    }, {});
+                    new Chart(statusCtx, {
+                        type: 'doughnut',
+                        data: {
+                            labels: Object.keys(statusCounts),
+                            datasets: [{
+                                label: 'Invoice Statuses',
+                                data: Object.values(statusCounts),
+                                backgroundColor: [ // Tailwind colors
+                                    'rgb(34, 197, 94)',  // green-500 (Paid)
+                                    'rgb(245, 158, 11)', // yellow-500 (Sent/Pending)
+                                    'rgb(239, 68, 68)',  // red-500 (Overdue)
+                                    'rgb(99, 102, 241)', // indigo-500 (Draft)
+                                    'rgb(107, 114, 128)' // gray-500 (Other)
+                                ],
+                            }]
+                        },
+                        options: { responsive: true, maintainAspectRatio: false }
+                    });
+                }
+            },
+            
+            // --- Complex Document Creation (Quotations, Invoices, POs) ---
+            openCreateDocumentForm(docType, docId = null) {
+                this.state.currentForm = { type: docType, mode: docId ? 'edit' : 'add', itemId: docId };
+                const title = docType.charAt(0).toUpperCase() + docType.slice(1, -1); // Quotation, Invoice, PurchaseOrder
+                this.els.pageContentContainer.innerHTML = ''; // Clear list view
+
+                const formContainer = createElement('div', { class: 'bg-white p-6 md:p-8 rounded-lg shadow-md' });
+                formContainer.appendChild(createElement('h2', { class: 'text-2xl font-semibold text-gray-800 mb-6', textContent: `${docId ? 'Edit' : 'Create'} ${title}` }));
+
+                const form = createElement('form', { id: `${docType}Form`, class: 'space-y-6' });
+                
+                // Basic Info Section
+                const basicInfoGrid = createElement('div', {class: 'grid grid-cols-1 md:grid-cols-2 gap-6'});
+                
+                // Client/Supplier Dropdown
+                const clientOrSupplierLabel = docType === 'purchaseOrders' ? 'Supplier' : 'Client';
+                const clientOrSupplierData = docType === 'purchaseOrders' ? [] /* Add mock suppliers if needed */ : this.state.clients;
+                const clientOrSupplierOptions = clientOrSupplierData.map(c => ({ value: c.id, text: c.name }));
+                if (clientOrSupplierData.length === 0 && docType !== 'purchaseOrders') {
+                    alert(`Please add ${clientOrSupplierLabel}s first.`); return;
+                }
+                basicInfoGrid.appendChild(this.createFormGroup(`${docType}ClientOrSupplier`, clientOrSupplierLabel, 'select', clientOrSupplierOptions, true));
+                
+                // Dates
+                basicInfoGrid.appendChild(this.createFormGroup(`${docType}Date`, 'Date', 'date', [], true, new Date().toISOString().split('T')[0]));
+                if (docType === 'quotations') {
+                    basicInfoGrid.appendChild(this.createFormGroup(`${docType}ExpiryDate`, 'Expiry Date', 'date', [], true));
+                } else if (docType === 'invoices') {
+                    basicInfoGrid.appendChild(this.createFormGroup(`${docType}DueDate`, 'Due Date', 'date', [], true));
+                } else if (docType === 'purchaseOrders') {
+                     basicInfoGrid.appendChild(this.createFormGroup(`${docType}ExpectedDelivery`, 'Expected Delivery', 'date'));
+                }
+                
+                form.appendChild(basicInfoGrid);
+                
+                // Items Section
+                form.appendChild(createElement('h3', { class: 'text-xl font-semibold text-gray-700 pt-4 border-t mt-6', textContent: 'Items' }));
+                const itemsContainer = createElement('div', { id: `${docType}ItemsContainer`, class: 'space-y-4' });
+                form.appendChild(itemsContainer);
+                
+                const addItemButton = createElement('button', { type: 'button', class: 'btn btn-sm btn-outline btn-primary mt-2', textContent: 'Add Item' });
+                addItemButton.innerHTML = `<i data-feather="plus" class="mr-1 h-4 w-4"></i> Add Item`;
+                addItemButton.addEventListener('click', () => this.addDocumentItemRow(docType, itemsContainer));
+                form.appendChild(addItemButton);
+
+                // Notes & Total Section
+                form.appendChild(createElement('h3', { class: 'text-xl font-semibold text-gray-700 pt-4 border-t mt-6', textContent: 'Summary' }));
+                form.appendChild(this.createFormGroup(`${docType}Notes`, 'Notes/Terms', 'textarea'));
+                
+                const totalDisplay = createElement('div', { class: 'text-right text-2xl font-bold text-gray-800 mt-4' });
+                totalDisplay.innerHTML = `Total: <span id="${docType}TotalDisplay">$0.00</span>`;
+                form.appendChild(totalDisplay);
+
+                // Action Buttons
+                const actionsDiv = createElement('div', { class: 'flex justify-end space-x-3 mt-8' });
+                const cancelButton = createElement('button', { type: 'button', class: 'btn btn-ghost', textContent: 'Cancel' });
+                cancelButton.addEventListener('click', () => this.navigateTo(docType));
+                actionsDiv.appendChild(cancelButton);
+                const saveButton = createElement('button', { type: 'submit', class: 'btn btn-primary', textContent: `Save ${title}` });
+                actionsDiv.appendChild(saveButton);
+                form.appendChild(actionsDiv);
+
+                form.addEventListener('submit', (e) => {
+                    e.preventDefault();
+                    this.handleSaveDocument(docType, form);
+                });
+
+                formContainer.appendChild(form);
+                this.els.pageContentContainer.appendChild(formContainer);
+                
+                // Add initial item row
+                this.addDocumentItemRow(docType, itemsContainer);
+                
+                // If editing, populate form
+                if (docId) {
+                    const doc = this.state[docType].find(d => d.id === docId);
+                    if (doc) this.populateDocumentForm(docType, form, doc);
+                }
+                feather.replace();
+            },
+
+            addDocumentItemRow(docType, container, itemData = null) {
+                const itemRow = createElement('div', { class: 'grid grid-cols-12 gap-x-3 gap-y-2 items-end border p-3 rounded-md bg-gray-50' });
+                const productOptions = this.state.products.map(p => ({ value: p.id, text: `${p.name} ($${p.price.toFixed(2)})` }));
+                if (this.state.products.length === 0) {
+                    itemRow.innerHTML = '<p class="text-red-500 col-span-12">Please add products/services first.</p>';
+                    container.appendChild(itemRow);
+                    return;
+                }
+
+                // Product/Service Select (col-span-5)
+                const productSelectGroup = this.createFormGroupNoLabel(`${docType}ItemProduct`, 'select', productOptions, true, itemData?.productId, 'product-select');
+                productSelectGroup.classList.add('col-span-12', 'md:col-span-5');
+                itemRow.appendChild(productSelectGroup);
+
+                // Quantity (col-span-2)
+                const quantityInputGroup = this.createFormGroupNoLabel(`${docType}ItemQuantity`, 'number', [], true, itemData?.quantity || 1, 'item-quantity');
+                quantityInputGroup.querySelector('input').min = 1;
+                quantityInputGroup.classList.add('col-span-4', 'md:col-span-2');
+                itemRow.appendChild(quantityInputGroup);
+
+                // Unit Price (col-span-2)
+                const unitPriceInputGroup = this.createFormGroupNoLabel(`${docType}ItemUnitPrice`, 'number', [], true, itemData?.unitPrice || 0, 'item-unit-price');
+                unitPriceInputGroup.querySelector('input').step = "0.01";
+                unitPriceInputGroup.querySelector('input').readOnly = true; // Auto-filled based on product
+                unitPriceInputGroup.classList.add('col-span-4', 'md:col-span-2');
+                itemRow.appendChild(unitPriceInputGroup);
+                
+                // Total (col-span-2)
+                const itemTotalDiv = createElement('div', { class: 'col-span-3 md:col-span-2 flex items-center justify-end' });
+                const itemTotalSpan = createElement('span', { class: 'font-medium text-gray-700 item-total', textContent: '$0.00' });
+                itemTotalDiv.appendChild(itemTotalSpan);
+                itemRow.appendChild(itemTotalDiv);
+
+                // Remove Button (col-span-1)
+                const removeButtonDiv = createElement('div', { class: 'col-span-1 flex items-center justify-end' });
+                const removeButton = createElement('button', { type: 'button', class: 'btn btn-xs btn-ghost text-red-500', title: 'Remove Item' });
+                removeButton.innerHTML = `<i data-feather="trash-2"></i>`;
+                removeButton.addEventListener('click', () => { 
+                    itemRow.remove();
+                    this.updateDocumentTotal(docType);
+                });
+                removeButtonDiv.appendChild(removeButton);
+                itemRow.appendChild(removeButtonDiv);
+
+                container.appendChild(itemRow);
+                
+                // Event listeners for dynamic price update
+                const productSelect = itemRow.querySelector('.product-select');
+                const quantityInput = itemRow.querySelector('.item-quantity');
+                const unitPriceInput = itemRow.querySelector('.item-unit-price');
+                
+                productSelect.addEventListener('change', () => {
+                    const selectedProduct = this.state.products.find(p => p.id == productSelect.value);
+                    if (selectedProduct) {
+                        unitPriceInput.value = selectedProduct.price.toFixed(2);
+                    }
+                    this.updateDocumentItemTotal(itemRow);
+                    this.updateDocumentTotal(docType);
+                });
+                quantityInput.addEventListener('input', () => {
+                    this.updateDocumentItemTotal(itemRow);
+                    this.updateDocumentTotal(docType);
+                });
+                
+                // Trigger change on product select to populate initial price if itemData is provided
+                if (itemData && itemData.productId) {
+                     productSelect.value = itemData.productId;
+                     productSelect.dispatchEvent(new Event('change')); // Triggers price update
+                     quantityInput.value = itemData.quantity;
+                     quantityInput.dispatchEvent(new Event('input')); // Triggers total update
+                } else if (productOptions.length > 0){
+                     productSelect.dispatchEvent(new Event('change')); // Populate for first item
+                }
+
+                feather.replace();
+            },
+            
+            updateDocumentItemTotal(itemRow) {
+                const quantity = parseFloat(itemRow.querySelector('.item-quantity').value) || 0;
+                const unitPrice = parseFloat(itemRow.querySelector('.item-unit-price').value) || 0;
+                const total = quantity * unitPrice;
+                itemRow.querySelector('.item-total').textContent = `$${total.toFixed(2)}`;
+            },
+
+            updateDocumentTotal(docType) {
+                let grandTotal = 0;
+                document.querySelectorAll(`#${docType}ItemsContainer .grid`).forEach(itemRow => {
+                    const quantity = parseFloat(itemRow.querySelector('.item-quantity')?.value) || 0;
+                    const unitPrice = parseFloat(itemRow.querySelector('.item-unit-price')?.value) || 0;
+                    grandTotal += quantity * unitPrice;
+                });
+                document.getElementById(`${docType}TotalDisplay`).textContent = `$${grandTotal.toFixed(2)}`;
+            },
+
+            createFormGroup(id, labelText, type, options = [], required = false, defaultValue = '', className = '') {
+                const group = createElement('div', { class: `form-control ${className}` });
+                const label = createElement('label', { class: 'label' }, [createElement('span', { class: 'label-text', textContent: labelText })]);
+                group.appendChild(label);
+                let input;
+                if (type === 'select') {
+                    input = createElement('select', { id, name: id, class: 'select select-bordered w-full', required });
+                    options.forEach(opt => input.appendChild(createElement('option', { value: opt.value, textContent: opt.text })));
+                } else if (type === 'textarea') {
+                    input = createElement('textarea', { id, name: id, class: 'textarea textarea-bordered h-24 w-full', required });
+                } else {
+                    input = createElement('input', { type, id, name: id, class: 'input input-bordered w-full', required });
+                }
+                if (defaultValue) input.value = defaultValue;
+                group.appendChild(input);
+                return group;
+            },
+
+            createFormGroupNoLabel(idPrefix, type, options = [], required = false, defaultValue = '', className = '') {
+                // Used for item rows where labels are implicit or column headers
+                const group = createElement('div', { class: `form-control ${className}` });
+                let input;
+                 // Ensure unique IDs for inputs in item rows by appending a timestamp or counter if needed, though name attribute will be used by FormData
+                const name = `${idPrefix}_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`; 
+
+                if (type === 'select') {
+                    input = createElement('select', { name: idPrefix, class: `select select-bordered w-full ${className}`, required });
+                    options.forEach(opt => input.appendChild(createElement('option', { value: opt.value, textContent: opt.text })));
+                } else {
+                    input = createElement('input', { type, name: idPrefix, class: `input input-bordered w-full ${className}`, required });
+                }
+                if (defaultValue) input.value = defaultValue;
+                group.appendChild(input);
+                return group;
+            },
+
+            handleSaveDocument(docType, formElement) {
+                const formData = new FormData(formElement);
+                const docData = { items: [] };
+                let isValid = true;
+                formElement.querySelectorAll('[required]').forEach(el => {
+                    if (!el.value) isValid = false;
+                });
+
+                if (!isValid) {
+                    alert('Please fill all required fields.');
+                    return;
+                }
+                
+                // Extract main fields
+                if (docType === 'purchaseOrders') {
+                     docData.supplierName = formData.get(`${docType}ClientOrSupplier`); // This assumes supplier ID is name for simplicity
+                } else {
+                    docData.clientId = parseInt(formData.get(`${docType}ClientOrSupplier`));
+                    const client = this.state.clients.find(c => c.id === docData.clientId);
+                    docData.clientName = client ? client.name : 'N/A';
+                }
+                docData.date = formData.get(`${docType}Date`);
+                if (docType === 'quotations') docData.expiryDate = formData.get(`${docType}ExpiryDate`);
+                if (docType === 'invoices') docData.dueDate = formData.get(`${docType}DueDate`);
+                if (docType === 'purchaseOrders') docData.expectedDelivery = formData.get(`${docType}ExpectedDelivery`);
+                docData.notes = formData.get(`${docType}Notes`);
+
+                // Extract items
+                const itemRows = formElement.querySelectorAll(`#${docType}ItemsContainer .grid`);
+                itemRows.forEach(row => {
+                    const productId = parseInt(row.querySelector('.product-select')?.value);
+                    const quantity = parseInt(row.querySelector('.item-quantity')?.value);
+                    const unitPrice = parseFloat(row.querySelector('.item-unit-price')?.value);
+                    if (productId && quantity > 0 && unitPrice >= 0) {
+                         docData.items.push({ productId, quantity, unitPrice });
+                    }
+                });
+
+                if (docData.items.length === 0) {
+                    alert('Please add at least one item.');
+                    return;
+                }
+
+                docData.total = docData.items.reduce((sum, item) => sum + (item.quantity * item.unitPrice), 0);
+                docData.status = (docType === 'quotations' || docType === 'purchaseOrders') ? 'Draft' : 'Draft'; // Default status
+                if (docType === 'invoices') docData.paid = 0;
+
+
+                const { mode, itemId } = this.state.currentForm;
+                if (mode === 'add') {
+                    docData.id = this.generateId(docType);
+                    this.state[docType].push(docData);
+                } else { // edit mode
+                    const itemIndex = this.state[docType].findIndex(item => item.id === itemId);
+                    if (itemIndex > -1) {
+                        // Preserve original ID and merge other properties
+                        this.state[docType][itemIndex] = { ...this.state[docType][itemIndex], ...docData, id: itemId };
+                    }
+                }
+                
+                this.navigateTo(docType); // Go back to the list view
+            },
+
+            populateDocumentForm(docType, formElement, docData) {
+                // Populate basic fields
+                formElement.elements[`${docType}ClientOrSupplier`].value = docType === 'purchaseOrders' ? docData.supplierName : docData.clientId;
+                formElement.elements[`${docType}Date`].value = docData.date;
+                if (docType === 'quotations') formElement.elements[`${docType}ExpiryDate`].value = docData.expiryDate;
+                if (docType === 'invoices') formElement.elements[`${docType}DueDate`].value = docData.dueDate;
+                if (docType === 'purchaseOrders') formElement.elements[`${docType}ExpectedDelivery`].value = docData.expectedDelivery;
+                if (formElement.elements[`${docType}Notes`]) formElement.elements[`${docType}Notes`].value = docData.notes || '';
+
+                // Populate items
+                const itemsContainer = formElement.querySelector(`#${docType}ItemsContainer`);
+                itemsContainer.innerHTML = ''; // Clear initial empty row
+                docData.items.forEach(item => {
+                    this.addDocumentItemRow(docType, itemsContainer, item);
+                });
+                this.updateDocumentTotal(docType); // Recalculate total display
+            }
+
+        };
+
+        document.addEventListener('DOMContentLoaded', () => {
+            App.init();
+        });
+    </script>
+</body>
+</html>

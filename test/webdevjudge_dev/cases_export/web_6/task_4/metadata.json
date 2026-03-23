@@ -1,0 +1,9 @@
+{
+  "web_id": "web_6",
+  "task_id": 4,
+  "task_type": "dynamic",
+  "instruction": "Task: Click on a 'Comment' button or icon associated with a post.\nExpected Result: A comment input field becomes active/visible, and/or a section displaying mock comments for that post expands or is shown.\n\nNote: The task is only considered successful if the expected result is achieved; otherwise, it is deemed infeasible.",
+  "max_steps": 15,
+  "expected": "A comment input field becomes active/visible, and/or a section displaying mock comments for that post expands or is shown.",
+  "label": 0
+}

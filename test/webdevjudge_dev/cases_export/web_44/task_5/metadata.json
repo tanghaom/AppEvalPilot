@@ -1,0 +1,9 @@
+{
+  "web_id": "web_44",
+  "task_id": 5,
+  "task_type": "dynamic",
+  "instruction": "Task: Hover the mouse cursor over the service title text\nExpected Result: An animated underline appears below the title text.\n\nNote: The task is only considered successful if the expected result is achieved; otherwise, it is deemed infeasible.",
+  "max_steps": 15,
+  "expected": "An animated underline appears below the title text.",
+  "label": 1
+}

@@ -1,0 +1,9 @@
+{
+  "web_id": "web_50",
+  "task_id": 1,
+  "task_type": "dynamic",
+  "instruction": "Task: Control Pacman's movement using arrow keys.\nExpected Result: Pacman avatar moves within the maze grid according to key presses, collects items, and avoids/interacts with ghosts.\n\nNote: The task is only considered successful if the expected result is achieved; otherwise, it is deemed infeasible.",
+  "max_steps": 15,
+  "expected": "Pacman avatar moves within the maze grid according to key presses, collects items, and avoids/interacts with ghosts.",
+  "label": 0
+}

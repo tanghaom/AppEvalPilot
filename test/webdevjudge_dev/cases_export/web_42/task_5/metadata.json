@@ -1,0 +1,9 @@
+{
+  "web_id": "web_42",
+  "task_id": 5,
+  "task_type": "dynamic",
+  "instruction": "Task: Tap the 'like' icon on a post.\nExpected Result: The 'like' icon changes its visual state (e.g., fills with color, icon changes) to indicate the post is liked. Tapping again may toggle the like state.\n\nNote: The task is only considered successful if the expected result is achieved; otherwise, it is deemed infeasible.",
+  "max_steps": 15,
+  "expected": "The 'like' icon changes its visual state (e.g., fills with color, icon changes) to indicate the post is liked. Tapping again may toggle the like state.",
+  "label": 1
+}

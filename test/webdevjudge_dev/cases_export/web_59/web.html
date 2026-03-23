@@ -1,0 +1,537 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tailwind Tetris</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .board-cell {
+            transition: background-color 0.05s ease-out; /* Smooth color changes for cells */
+        }
+        /* Prevent selection during fast key presses */
+        body {
+            user-select: none;
+            -webkit-user-select: none; /* Safari */
+            -ms-user-select: none; /* IE 10+ */
+        }
+    </style>
+</head>
+<body class="bg-slate-900 text-slate-100 flex flex-col items-center justify-center min-h-screen p-2 sm:p-4 font-mono selection:bg-sky-500 selection:text-white">
+
+    <div class="game-container flex flex-col lg:flex-row gap-4 sm:gap-6 items-start max-w-5xl w-full">
+
+        <!-- Game Board Side -->
+        <div class="flex-grow flex flex-col items-center w-full lg:w-auto">
+            <div id="game-board-outer" class="p-1 sm:p-2 bg-slate-800 rounded-xl shadow-2xl border border-slate-700">
+                <div id="game-board" class="grid grid-cols-10 gap-px bg-black rounded-md">
+                    <!-- Cells dynamically generated: 20 rows * 10 cols -->
+                </div>
+            </div>
+            <div id="instructions" class="mt-3 sm:mt-4 text-center text-xs sm:text-sm text-slate-400 space-y-1">
+                <p><kbd>←</kbd> <kbd>→</kbd>: Move | <kbd>↑</kbd>: Rotate | <kbd>↓</kbd>: Soft Drop</p>
+                <p><kbd>Space</kbd>: Hard Drop | <kbd>P</kbd>: Pause/Resume</p>
+                 <!-- <p>'C': Hold Piece (Future)</p> -->
+            </div>
+        </div>
+
+        <!-- Info & Controls Side -->
+        <div class="info-panel w-full lg:w-60 xl:w-72 space-y-3 sm:space-y-4 flex-shrink-0">
+            <div class="bg-slate-800 p-3 sm:p-4 rounded-lg shadow-lg border border-slate-700">
+                <h2 class="text-xl sm:text-2xl font-bold text-sky-400 mb-2 sm:mb-3 text-center tracking-wider">TETRIS</h2>
+                <div class="space-y-1 text-sm sm:text-lg">
+                    <p>Score: <span id="score" class="font-semibold text-yellow-400 float-right">0</span></p>
+                    <p>Level: <span id="level" class="font-semibold text-yellow-400 float-right">1</span></p>
+                    <p>Lines: <span id="lines" class="font-semibold text-yellow-400 float-right">0</span></p>
+                </div>
+            </div>
+
+            <div class="bg-slate-800 p-3 sm:p-4 rounded-lg shadow-lg border border-slate-700">
+                <h3 class="text-base sm:text-lg font-semibold text-sky-400 mb-2 text-center">Next Piece</h3>
+                <div id="next-piece-container-wrapper" class="flex justify-center items-center h-20 sm:h-24">
+                    <div id="next-piece-container" class="grid grid-cols-4 gap-px bg-black p-px rounded border border-slate-600">
+                        <!-- Next piece cells: 4x4 grid -->
+                    </div>
+                </div>
+            </div>
+            
+            <div class="space-y-2 pt-1 sm:pt-2">
+                <button id="startButton" class="w-full bg-green-500 hover:bg-green-600 text-white font-bold py-2 sm:py-3 px-4 rounded-lg shadow-md transition duration-150 ease-in-out focus:outline-none focus:ring-2 focus:ring-green-400 focus:ring-opacity-75">Start Game</button>
+                <button id="pauseButton" class="w-full bg-yellow-500 hover:bg-yellow-600 text-white font-bold py-2 sm:py-3 px-4 rounded-lg shadow-md transition duration-150 ease-in-out focus:outline-none focus:ring-2 focus:ring-yellow-400 focus:ring-opacity-75 hidden">Pause</button>
+                <button id="resetButton" class="w-full bg-red-500 hover:bg-red-600 text-white font-bold py-2 sm:py-3 px-4 rounded-lg shadow-md transition duration-150 ease-in-out focus:outline-none focus:ring-2 focus:ring-red-400 focus:ring-opacity-75 hidden">Reset</button>
+            </div>
+
+            <div id="gameOverMessage" class="bg-slate-800 p-4 sm:p-6 rounded-lg shadow-xl border-2 border-red-500 text-center hidden">
+                <h2 class="text-xl sm:text-2xl font-bold text-red-500 mb-2 sm:mb-3">Game Over!</h2>
+                <p class="text-base sm:text-xl mb-1">Final Score: <span id="finalScore" class="font-semibold text-yellow-300">0</span></p>
+                <p class="text-sm sm:text-md mb-3 sm:mb-4">Level Reached: <span id="finalLevel" class="font-semibold text-yellow-300">0</span></p>
+                <button id="playAgainButton" class="w-full bg-sky-500 hover:bg-sky-600 text-white font-bold py-2 sm:py-3 px-4 rounded-lg shadow-md transition duration-150 ease-in-out focus:outline-none focus:ring-2 focus:ring-sky-400">Play Again</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const COLS = 10;
+            const ROWS = 20;
+            const GHOST_OPACITY_CLASS = 'opacity-40'; // Tailwind class for ghost piece opacity
+
+            // Tailwind cell size classes
+            const MAIN_CELL_SIZE_CLASS = 'w-5 h-5 sm:w-6 sm:h-6'; // Responsive cell size
+            const PREVIEW_CELL_SIZE_CLASS = 'w-3 h-3 sm:w-4 sm:h-4'; // Responsive preview cell size
+            
+            const EMPTY_COLOR_CLASS = 'bg-slate-700'; // Color for empty cells on the main board
+            const PREVIEW_EMPTY_COLOR_CLASS = 'bg-slate-800'; // Color for empty cells in preview
+
+            const TETROMINOES = {
+                'I': { id: 1, color: 'bg-cyan-400', states: [[[0,0,0,0],[1,1,1,1],[0,0,0,0],[0,0,0,0]], [[0,1,0,0],[0,1,0,0],[0,1,0,0],[0,1,0,0]]]},
+                'J': { id: 2, color: 'bg-blue-600', states: [[[2,0,0],[2,2,2],[0,0,0]], [[0,2,2],[0,2,0],[0,2,0]], [[0,0,0],[2,2,2],[0,0,2]], [[0,2,0],[0,2,0],[2,2,0]]]},
+                'L': { id: 3, color: 'bg-orange-500', states: [[[0,0,3],[3,3,3],[0,0,0]], [[0,3,0],[0,3,0],[0,3,3]], [[0,0,0],[3,3,3],[3,0,0]], [[3,3,0],[0,3,0],[0,3,0]]]},
+                'O': { id: 4, color: 'bg-yellow-400', states: [[[4,4],[4,4]]]}, // O piece does not need 0-padding for rotation states
+                'S': { id: 5, color: 'bg-green-500', states: [[[0,5,5],[5,5,0],[0,0,0]], [[0,5,0],[0,5,5],[0,0,5]], [[0,0,0],[0,5,5],[5,5,0]], [[5,0,0],[5,5,0],[0,5,0]]]},
+                'T': { id: 6, color: 'bg-purple-600', states: [[[0,6,0],[6,6,6],[0,0,0]], [[0,6,0],[0,6,6],[0,6,0]], [[0,0,0],[6,6,6],[0,6,0]], [[0,6,0],[6,6,0],[0,6,0]]]},
+                'Z': { id: 7, color: 'bg-red-500', states: [[[7,7,0],[0,7,7],[0,0,0]], [[0,0,7],[0,7,7],[0,7,0]], [[0,0,0],[7,7,0],[0,7,7]], [[0,7,0],[7,7,0],[7,0,0]]]}
+            };
+            const PIECE_KEYS = Object.keys(TETROMINOES);
+
+            let board = [];
+            let currentPiece = null;
+            let nextPiece = null;
+            let ghostPiece = null;
+            
+            let score = 0;
+            let level = 1;
+            let linesCleared = 0;
+            
+            let dropInterval;
+            let gameLoopTimeout;
+            let isPlaying = false;
+            let isPaused = false;
+            let isGameOver = false;
+
+            let pieceBag = [];
+
+            const gameBoardElement = document.getElementById('game-board');
+            const nextPieceContainerElement = document.getElementById('next-piece-container');
+            const scoreElement = document.getElementById('score');
+            const levelElement = document.getElementById('level');
+            const linesElement = document.getElementById('lines');
+            const startButton = document.getElementById('startButton');
+            const pauseButton = document.getElementById('pauseButton');
+            const resetButton = document.getElementById('resetButton');
+            const gameOverMessageElement = document.getElementById('gameOverMessage');
+            const finalScoreElement = document.getElementById('finalScore');
+            const finalLevelElement = document.getElementById('finalLevel');
+            const playAgainButton = document.getElementById('playAgainButton');
+
+            let mainBoardCells = [];
+            let previewBoardCells = [];
+
+            function createBoard() {
+                board = Array.from({ length: ROWS }, () => Array(COLS).fill(0));
+                gameBoardElement.innerHTML = '';
+                mainBoardCells = [];
+                for (let r = 0; r < ROWS; r++) {
+                    for (let c = 0; c < COLS; c++) {
+                        const cell = document.createElement('div');
+                        cell.className = `board-cell ${MAIN_CELL_SIZE_CLASS} ${EMPTY_COLOR_CLASS}`;
+                        gameBoardElement.appendChild(cell);
+                        mainBoardCells.push(cell);
+                    }
+                }
+            }
+
+            function createPreviewBoard() {
+                nextPieceContainerElement.innerHTML = '';
+                previewBoardCells = [];
+                // Max piece bounding box is 4x4
+                for (let i = 0; i < 16; i++) {
+                    const cell = document.createElement('div');
+                    cell.className = `next-piece-cell ${PREVIEW_CELL_SIZE_CLASS} ${PREVIEW_EMPTY_COLOR_CLASS}`;
+                    nextPieceContainerElement.appendChild(cell);
+                    previewBoardCells.push(cell);
+                }
+            }
+            
+            function refillPieceBag() {
+                pieceBag = [...PIECE_KEYS];
+                for (let i = pieceBag.length - 1; i > 0; i--) {
+                    const j = Math.floor(Math.random() * (i + 1));
+                    [pieceBag[i], pieceBag[j]] = [pieceBag[j], pieceBag[i]]; // Shuffle
+                }
+            }
+
+            function getRandomPiece() {
+                if (pieceBag.length === 0) {
+                    refillPieceBag();
+                }
+                const key = pieceBag.pop();
+                const pieceData = TETROMINOES[key];
+                return {
+                    id: pieceData.id,
+                    color: pieceData.color,
+                    states: pieceData.states,
+                    rotationIndex: 0,
+                    shape: pieceData.states[0],
+                    row: 0,
+                    // Adjust col to center based on actual shape, not bounding box if O piece
+                    col: Math.floor(COLS / 2) - Math.floor(pieceData.states[0][0].length / 2) 
+                };
+            }
+            
+            function spawnNewPiece() {
+                currentPiece = nextPiece || getRandomPiece();
+                nextPiece = getRandomPiece();
+                currentPiece.row = 0; // Start at the top
+                 // Adjust spawn col for O piece if its state matrix is smaller
+                if (currentPiece.id === TETROMINOES.O.id) { // O piece
+                    currentPiece.col = Math.floor(COLS / 2) - Math.floor(currentPiece.shape[0].length / 2);
+                } else { // Other pieces usually in 4x4 or 3x3 bounding box for states
+                    currentPiece.col = Math.floor(COLS / 2) - 2; // Centered for 4x4 box
+                    if (currentPiece.shape[0].length === 3) currentPiece.col = Math.floor(COLS / 2) - 1; // For 3x3 box
+                }
+
+
+                // For pieces like 'I' that are long, adjust spawn row to be partially off-screen
+                // if their representation starts "high" in their matrix.
+                // E.g. if I is [[0,0,0,0],[1,1,1,1],[0,0,0,0],[0,0,0,0]], it effectively spawns at row -1
+                // This needs careful handling with collision detection and initial piece matrices.
+                // The current matrices are mostly minimal or padded slightly.
+                // For 'I': state [[0,0,0,0],[1,1,1,1],[0,0,0,0],[0,0,0,0]], actual piece starts at matrix row 1.
+                // If piece origin is top-left of matrix:
+                if (currentPiece.id === TETROMINOES.I.id && currentPiece.rotationIndex % 2 === 0) { // Horizontal I
+                    currentPiece.row = -1;
+                }
+                // For O piece (2x2 matrix), it might need a slight row offset to appear like others.
+                if (currentPiece.id === TETROMINOES.O.id) {
+                     currentPiece.row = 0; // O piece typically starts at row 0
+                }
+
+
+                updateGhostPiece();
+
+                if (!isValidMove(currentPiece.shape, currentPiece.row, currentPiece.col)) {
+                    gameOver();
+                }
+                drawNextPiece();
+            }
+
+            function isValidMove(shape, row, col) {
+                for (let r_offset = 0; r_offset < shape.length; r_offset++) {
+                    for (let c_offset = 0; c_offset < shape[r_offset].length; c_offset++) {
+                        if (shape[r_offset][c_offset] !== 0) {
+                            const boardRow = row + r_offset;
+                            const boardCol = col + c_offset;
+                            if (boardRow >= ROWS || boardCol < 0 || boardCol >= COLS || (boardRow >=0 && board[boardRow][boardCol] !== 0) ) {
+                                return false;
+                            }
+                        }
+                    }
+                }
+                return true;
+            }
+
+            function lockPiece() {
+                currentPiece.shape.forEach((rowArr, r_offset) => {
+                    rowArr.forEach((value, c_offset) => {
+                        if (value !== 0) {
+                            const boardRow = currentPiece.row + r_offset;
+                            const boardCol = currentPiece.col + c_offset;
+                            if (boardRow >= 0 && boardRow < ROWS && boardCol >= 0 && boardCol < COLS) {
+                                board[boardRow][boardCol] = currentPiece.id;
+                            }
+                        }
+                    });
+                });
+                clearLines();
+                spawnNewPiece();
+            }
+
+            function clearLines() {
+                let linesToClear = 0;
+                for (let r = ROWS - 1; r >= 0; r--) {
+                    if (board[r].every(cell => cell !== 0)) {
+                        linesToClear++;
+                        board.splice(r, 1);
+                        board.unshift(Array(COLS).fill(0));
+                        r++; // Re-check the current row index as rows shifted
+                    }
+                }
+                if (linesToClear > 0) {
+                    updateScore(linesToClear);
+                    linesCleared += linesToClear;
+                    updateLevel();
+                    linesElement.textContent = linesCleared;
+                }
+            }
+
+            function updateScore(clearedCount) {
+                let points = 0;
+                if (clearedCount === 1) points = 40 * level;
+                else if (clearedCount === 2) points = 100 * level;
+                else if (clearedCount === 3) points = 300 * level;
+                else if (clearedCount >= 4) points = 1200 * level; // Tetris
+                score += points;
+                scoreElement.textContent = score;
+            }
+            
+            function addScore(points) { // For soft/hard drop
+                score += points;
+                scoreElement.textContent = score;
+            }
+
+            function updateLevel() {
+                const newLevel = Math.floor(linesCleared / 10) + 1;
+                if (newLevel > level) {
+                    level = newLevel;
+                    levelElement.textContent = level;
+                    dropInterval = Math.max(100, 1000 - (level - 1) * 75); // Faster increments
+                }
+            }
+
+            function updateGhostPiece() {
+                if (!currentPiece) return;
+                ghostPiece = { ...currentPiece, shape: currentPiece.shape, id: currentPiece.id, color: currentPiece.color }; // Make a copy
+                ghostPiece.row = currentPiece.row;
+                while (isValidMove(ghostPiece.shape, ghostPiece.row + 1, ghostPiece.col)) {
+                    ghostPiece.row++;
+                }
+            }
+
+            function drawBoard() {
+                for (let r = 0; r < ROWS; r++) {
+                    for (let c = 0; c < COLS; c++) {
+                        const cellIndex = r * COLS + c;
+                        let colorClass = EMPTY_COLOR_CLASS;
+                        if (board[r][c] !== 0) {
+                            const pieceKey = PIECE_KEYS.find(key => TETROMINOES[key].id === board[r][c]);
+                            if (pieceKey) colorClass = TETROMINOES[pieceKey].color;
+                        }
+                        mainBoardCells[cellIndex].className = `board-cell ${MAIN_CELL_SIZE_CLASS} ${colorClass}`;
+                    }
+                }
+            }
+            
+            function drawPiece(piece, isGhost = false) {
+                if (!piece) return;
+                const pieceColor = isGhost ? `${piece.color} ${GHOST_OPACITY_CLASS}` : piece.color;
+                piece.shape.forEach((rowArr, r_offset) => {
+                    rowArr.forEach((value, c_offset) => {
+                        if (value !== 0) {
+                            const boardRow = piece.row + r_offset;
+                            const boardCol = piece.col + c_offset;
+                            if (boardRow >= 0 && boardRow < ROWS && boardCol >= 0 && boardCol < COLS) {
+                                const cellIndex = boardRow * COLS + boardCol;
+                                // Only draw if cell is not part of already locked piece (for ghost)
+                                if (!isGhost || board[boardRow][boardCol] === 0) {
+                                     mainBoardCells[cellIndex].className = `board-cell ${MAIN_CELL_SIZE_CLASS} ${pieceColor}`;
+                                }
+                            }
+                        }
+                    });
+                });
+            }
+
+            function drawNextPiece() {
+                // Clear preview board
+                previewBoardCells.forEach(cell => cell.className = `next-piece-cell ${PREVIEW_CELL_SIZE_CLASS} ${PREVIEW_EMPTY_COLOR_CLASS}`);
+                
+                if (!nextPiece) return;
+
+                const shape = nextPiece.states[0]; // Always show default orientation
+                const color = nextPiece.color;
+                const shapeRows = shape.length;
+                const shapeCols = shape[0].length;
+
+                // Calculate offsets to center the piece in the 4x4 preview grid
+                const rowOffset = Math.floor((4 - shapeRows) / 2);
+                const colOffset = Math.floor((4 - shapeCols) / 2);
+
+                shape.forEach((rowArr, r) => {
+                    rowArr.forEach((value, c) => {
+                        if (value !== 0) {
+                            const previewR = r + rowOffset;
+                            const previewC = c + colOffset;
+                            if (previewR >= 0 && previewR < 4 && previewC >= 0 && previewC < 4) {
+                                const cellIndex = previewR * 4 + previewC;
+                                previewBoardCells[cellIndex].className = `next-piece-cell ${PREVIEW_CELL_SIZE_CLASS} ${color}`;
+                            }
+                        }
+                    });
+                });
+            }
+            
+            function render() {
+                if (!isPlaying || isPaused || isGameOver) return;
+                drawBoard(); // Draw locked pieces
+                if (ghostPiece && !isPaused) drawPiece(ghostPiece, true); // Draw ghost piece first
+                if (currentPiece && !isPaused) drawPiece(currentPiece); // Draw current piece over ghost
+            }
+
+            function movePiece(dr, dc) {
+                if (!currentPiece || isPaused || isGameOver) return;
+                const newRow = currentPiece.row + dr;
+                const newCol = currentPiece.col + dc;
+                if (isValidMove(currentPiece.shape, newRow, newCol)) {
+                    currentPiece.row = newRow;
+                    currentPiece.col = newCol;
+                    if (dr > 0) addScore(1); // Soft drop points
+                    updateGhostPiece();
+                    render();
+                    return true;
+                }
+                return false;
+            }
+
+            function rotatePiece() {
+                if (!currentPiece || isPaused || isGameOver) return;
+                const originalRotationIndex = currentPiece.rotationIndex;
+                const newRotationIndex = (currentPiece.rotationIndex + 1) % currentPiece.states.length;
+                const newShape = currentPiece.states[newRotationIndex];
+
+                // Basic wall kick checks (SRS is more complex)
+                const kickOffsets = [0, 1, -1, 2, -2]; // Try current, then shift by 1, then by 2
+                let rotated = false;
+                for (const offset of kickOffsets) {
+                    if (isValidMove(newShape, currentPiece.row, currentPiece.col + offset)) {
+                        currentPiece.rotationIndex = newRotationIndex;
+                        currentPiece.shape = newShape;
+                        currentPiece.col += offset;
+                        rotated = true;
+                        break;
+                    }
+                }
+                
+                if (rotated) {
+                    updateGhostPiece();
+                    render();
+                }
+            }
+            
+            function hardDrop() {
+                if (!currentPiece || isPaused || isGameOver) return;
+                let cellsDropped = 0;
+                while (isValidMove(currentPiece.shape, currentPiece.row + 1, currentPiece.col)) {
+                    currentPiece.row++;
+                    cellsDropped++;
+                }
+                addScore(cellsDropped * 2); // Hard drop points
+                lockPiece();
+                render();
+            }
+
+            function gameLoop() {
+                if (!isPlaying || isPaused || isGameOver) return;
+
+                if (!movePiece(1, 0)) { // Move down
+                    lockPiece();
+                }
+                render();
+                gameLoopTimeout = setTimeout(gameLoop, dropInterval);
+            }
+            
+            function startGame() {
+                isPlaying = true;
+                isPaused = false;
+                isGameOver = false;
+                score = 0;
+                level = 1;
+                linesCleared = 0;
+                dropInterval = 1000;
+                
+                scoreElement.textContent = score;
+                levelElement.textContent = level;
+                linesElement.textContent = linesCleared;
+
+                createBoard();
+                refillPieceBag(); // Initialize piece bag
+                nextPiece = getRandomPiece(); // Preload next piece
+                spawnNewPiece(); // Spawns current piece, sets nextPiece again
+                
+                startButton.classList.add('hidden');
+                pauseButton.classList.remove('hidden');
+                resetButton.classList.remove('hidden');
+                gameOverMessageElement.classList.add('hidden');
+                
+                clearTimeout(gameLoopTimeout); // Clear any existing loop
+                gameLoop();
+                render();
+            }
+
+            function togglePause() {
+                if (!isPlaying || isGameOver) return;
+                isPaused = !isPaused;
+                pauseButton.textContent = isPaused ? 'Resume' : 'Pause';
+                if (isPaused) {
+                    clearTimeout(gameLoopTimeout);
+                     // Optionally show a "Paused" overlay or message on game board
+                } else {
+                    gameLoop();
+                }
+                render(); // Re-render to show/hide piece or message
+            }
+
+            function resetGame() {
+                clearTimeout(gameLoopTimeout);
+                isPlaying = false;
+                isPaused = false;
+                isGameOver = true; // To stop any ongoing processes
+                startGame();
+            }
+
+            function gameOver() {
+                isPlaying = false;
+                isGameOver = true;
+                isPaused = false;
+                clearTimeout(gameLoopTimeout);
+                
+                finalScoreElement.textContent = score;
+                finalLevelElement.textContent = level;
+                gameOverMessageElement.classList.remove('hidden');
+                pauseButton.classList.add('hidden');
+                // Keep reset button visible or rely on playAgain
+            }
+
+            document.addEventListener('keydown', (e) => {
+                if (!isPlaying || isGameOver) return;
+
+                if (e.key === 'p' || e.key === 'P') {
+                    togglePause();
+                    return;
+                }
+
+                if (isPaused) return;
+
+                switch (e.key) {
+                    case 'ArrowLeft':
+                        movePiece(0, -1);
+                        break;
+                    case 'ArrowRight':
+                        movePiece(0, 1);
+                        break;
+                    case 'ArrowDown':
+                        movePiece(1, 0); // Soft drop
+                        break;
+                    case 'ArrowUp':
+                        rotatePiece();
+                        break;
+                    case ' ': // Space for hard drop
+                        e.preventDefault(); // Prevent page scroll
+                        hardDrop();
+                        break;
+                }
+            });
+
+            startButton.addEventListener('click', startGame);
+            pauseButton.addEventListener('click', togglePause);
+            resetButton.addEventListener('click', resetGame);
+            playAgainButton.addEventListener('click', startGame);
+
+            // Initial setup
+            createBoard();
+            createPreviewBoard();
+            drawNextPiece(); // Show something in next piece box initially (empty or placeholder)
+        });
+    </script>
+</body>
+</html>

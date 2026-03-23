@@ -1,0 +1,9 @@
+{
+  "web_id": "web_34",
+  "task_id": 5,
+  "task_type": "dynamic",
+  "instruction": "Task: Select a different User Agent string (e.g., 'Firefox on Linux') from a dropdown menu or similar selection UI.\nExpected Result: A visual element on the page (e.g., a text label) updates to display 'Firefox on Linux' as the currently selected (simulated) User Agent.\n\nNote: The task is only considered successful if the expected result is achieved; otherwise, it is deemed infeasible.",
+  "max_steps": 15,
+  "expected": "A visual element on the page (e.g., a text label) updates to display 'Firefox on Linux' as the currently selected (simulated) User Agent.",
+  "label": 0
+}

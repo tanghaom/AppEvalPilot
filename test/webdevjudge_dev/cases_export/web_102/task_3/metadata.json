@@ -1,0 +1,9 @@
+{
+  "web_id": "web_102",
+  "task_id": 3,
+  "task_type": "dynamic",
+  "instruction": "Task: Initiate a shooting action by the player character (e.g., by clicking the primary mouse button or pressing a designated key).\nExpected Result: A visual and/or auditory shooting effect is produced from the player's perspective, and a projectile is simulated towards the current aim point.\n\nNote: The task is only considered successful if the expected result is achieved; otherwise, it is deemed infeasible.",
+  "max_steps": 15,
+  "expected": "A visual and/or auditory shooting effect is produced from the player's perspective, and a projectile is simulated towards the current aim point.",
+  "label": 0
+}

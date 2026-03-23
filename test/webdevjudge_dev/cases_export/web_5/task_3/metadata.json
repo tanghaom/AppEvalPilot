@@ -1,0 +1,9 @@
+{
+  "web_id": "web_5",
+  "task_id": 3,
+  "task_type": "dynamic",
+  "instruction": "Task: Click the 'close' icon/button on an application window.\nExpected Result: The respective application window is hidden or removed from the display.\n\nNote: The task is only considered successful if the expected result is achieved; otherwise, it is deemed infeasible.",
+  "max_steps": 15,
+  "expected": "The respective application window is hidden or removed from the display.",
+  "label": 1
+}

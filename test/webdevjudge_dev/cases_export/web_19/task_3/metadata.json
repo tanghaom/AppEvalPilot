@@ -1,0 +1,9 @@
+{
+  "web_id": "web_19",
+  "task_id": 3,
+  "task_type": "dynamic",
+  "instruction": "Task: Click the toggle button to open/close the retractable side panel.\nExpected Result: The side panel displays or hides, showing/concealing (simulated) suggestions and advanced options.\n\nNote: The task is only considered successful if the expected result is achieved; otherwise, it is deemed infeasible.",
+  "max_steps": 15,
+  "expected": "The side panel displays or hides, showing/concealing (simulated) suggestions and advanced options.",
+  "label": 1
+}

@@ -1,0 +1,9 @@
+{
+  "web_id": "web_88",
+  "task_id": 1,
+  "task_type": "dynamic",
+  "instruction": "Task: Click the 'Start Quiz' button on the initial screen.\nExpected Result: The first question of a pre-defined quiz is displayed, including question text, multiple-choice answer options, and navigation controls (e.g., 'Next' button, possibly an inactive 'Previous' button).\n\nNote: The task is only considered successful if the expected result is achieved; otherwise, it is deemed infeasible.",
+  "max_steps": 15,
+  "expected": "The first question of a pre-defined quiz is displayed, including question text, multiple-choice answer options, and navigation controls (e.g., 'Next' button, possibly an inactive 'Previous' button).",
+  "label": 0
+}

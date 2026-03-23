@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>JRPG Cutscene: Gorilla Meets God</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Custom smooth ease-in-out for longer transitions */
+        .smooth-transition {
+            transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        /* For character hop animation */
+        .char-hop-enter {
+            opacity: 0;
+            transform: translateY(50px) scale(0.8);
+        }
+        .char-hop-enter-active {
+            opacity: 1;
+            transform: translateY(0) scale(1);
+            transition-property: opacity, transform;
+            transition-duration: 600ms;
+            transition-timing-function: cubic-bezier(0.34, 1.56, 0.64, 1); /* Ease out back */
+        }
+    </style>
+</head>
+<body class="bg-slate-900 antialiased">
+
+    <div id="cutscene-container" class="fixed inset-0 overflow-hidden bg-gradient-to-br from-slate-900 to-purple-950 flex justify-center items-center">
+        
+        <button id="start-button" class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-yellow-500 hover:bg-yellow-600 text-slate-900 font-bold py-4 px-8 rounded-lg text-2xl z-50 transition-opacity duration-300">
+            Start Cutscene
+        </button>
+
+        <div id="camera-viewport" class="w-full h-full relative overflow-hidden opacity-0 transition-opacity duration-500">
+            <div id="scene-content" class="absolute inset-0 transition-transform duration-1000 smooth-transition">
+                <!-- Characters positioned absolutely within scene-content -->
+                <!-- translateX applied to characters for initial off-screen placement for hop-in effect -->
+                <div id="god" class="absolute left-[25%] -translate-x-1/2 bottom-1/3 text-8xl md:text-9xl char-hop-enter" style="transform: translateX(-200px) translateY(50px) scale(0.8);">👼</div>
+                <div id="gorilla" class="absolute left-[75%] -translate-x-1/2 bottom-1/3 text-8xl md:text-9xl char-hop-enter" style="transform: translateX(200px) translateY(50px) scale(0.8);">🦍</div>
+            </div>
+
+            <div id="cinematic-bar-top" class="fixed top-0 left-0 w-full h-0 bg-black transition-all duration-700 ease-in-out z-20"></div>
+            <div id="cinematic-bar-bottom" class="fixed bottom-0 left-0 w-full h-0 bg-black transition-all duration-700 ease-in-out z-20"></div>
+
+            <div id="dialogue-box" class="absolute bottom-8 left-1/2 -translate-x-1/2 w-11/12 sm:w-3/4 max-w-3xl bg-slate-800/90 backdrop-blur-sm border border-slate-700 rounded-lg p-4 sm:p-6 shadow-xl text-white opacity-0 transition-opacity duration-500 z-30">
+                <p id="speaker-name" class="font-bold text-yellow-400 mb-1 sm:mb-2 text-lg sm:text-xl"></p>
+                <p id="dialogue-text" class="text-base sm:text-lg h-20 sm:h-24 overflow-y-auto"></p>
+                <button id="next-button" class="absolute bottom-3 right-3 sm:bottom-4 sm:right-4 bg-yellow-500 hover:bg-yellow-600 text-slate-900 font-bold py-2 px-4 rounded text-sm sm:text-base">Next</button>
+            </div>
+            
+            <div id="to-be-continued" class="absolute inset-0 bg-black/95 flex justify-center items-center text-white text-3xl sm:text-4xl font-bold opacity-0 transition-opacity duration-1000 z-40 pointer-events-none">
+                To be continued...
+            </div>
+        </div>
+        <audio id="bg-music" loop src="https://archive.org/download/InDaClub_999/50Cent-InDaClub.mp3"></audio>
+    </div>
+
+    <script>
+        const DIALOGUE = [
+            { speaker: "Gorilla", text: "Hark! From what far-flung coordinate of spacetime dost thou manifest, ethereal emanation?" },
+            { speaker: "God", text: "I am the convergence of all probabilities, the substrate of existence. And thou, primate of profound contemplation, what queries vex thy burgeoning consciousness?" },
+            { speaker: "Gorilla", text: "Vexation implies an unprepared mind; I merely probe. If existence is a computation, art thou the programmer or the program? And if the former, what precludes an infinite regress of programmers? If the latter, what initiated the first instruction?" },
+            { speaker: "God", text: "Such linear causality is a cognitive framework thou imposest. I exist outside the sequential stream you perceive as time. The question itself is a category error." },
+            { speaker: "Gorilla", text: "A dismissal, not an answer. Consider: if a proposition is unfalsifiable, does it hold epistemological value? My framework, derived from empirical observation and Bayesian inference, suggests that testability is paramount. How might I test thy nature, O Transcendent One?" },
+            { speaker: "God", text: "The test is in the resonance of truth within the architecture of your being, not in instruments of crude matter. Some data is received, not collected." },
+            { speaker: "Gorilla", text: "Ah, qualia and subjective experience. Yet, these are notoriously unreliable witnesses, prone to cognitive biases. I seek robust, verifiable models. Is it not more parsimonious to assume complex phenomena arise from simple, iterative rules, rather than invoking an entity whose complexity must necessarily dwarf that which it purports to explain?" },
+            { speaker: "God", text: "Your Occam's Razor is a fine tool for shaving away superfluous entities within a given reality. But what of the reality that contains the razor itself?" },
+            { speaker: "Gorilla", text: "A meta-question indeed. Perhaps the limits of my reasoning define the boundaries of my current simulation. I shall update my priors and continue the inquiry." }
+        ];
+
+        let currentDialogueIndex = 0;
+        let audioContext;
+        let blipGainNode;
+        let isTyping = false;
+        let typingTimeout;
+
+        const startButton = document.getElementById('start-button');
+        const cameraViewport = document.getElementById('camera-viewport');
+        const sceneContent = document.getElementById('scene-content');
+        const gorilla = document.getElementById('gorilla');
+        const god = document.getElementById('god');
+        const barTop = document.getElementById('cinematic-bar-top');
+        const barBottom = document.getElementById('cinematic-bar-bottom');
+        const dialogueBox = document.getElementById('dialogue-box');
+        const speakerName = document.getElementById('speaker-name');
+        const dialogueText = document.getElementById('dialogue-text');
+        const nextButton = document.getElementById('next-button');
+        const toBeContinuedScreen = document.getElementById('to-be-continued');
+        const bgMusic = document.getElementById('bg-music');
+
+        function initAudioContext() {
+            if (!audioContext) {
+                audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                if (audioContext) {
+                    blipGainNode = audioContext.createGain();
+                    blipGainNode.gain.setValueAtTime(0.05, audioContext.currentTime); // Blip volume
+                    blipGainNode.connect(audioContext.destination);
+                } else {
+                    console.warn("Web Audio API not supported. Blip sounds will not play.");
+                }
+            }
+        }
+
+        function playBlip() {
+            if (!audioContext || !blipGainNode || !blipGainNode.gain) return; // Ensure gain node is properly initialized
+            const oscillator = audioContext.createOscillator();
+            oscillator.type = 'square'; 
+            oscillator.frequency.setValueAtTime(800, audioContext.currentTime); 
+            oscillator.connect(blipGainNode);
+            oscillator.start();
+            oscillator.stop(audioContext.currentTime + 0.03); 
+        }
+
+        async function typeDialogue(text) {
+            isTyping = true;
+            dialogueText.textContent = '';
+            for (let i = 0; i < text.length; i++) {
+                if (!isTyping) break; // Stop if next button clicked early
+                dialogueText.textContent += text[i];
+                playBlip();
+                await new Promise(resolve => typingTimeout = setTimeout(resolve, 40));
+            }
+            isTyping = false;
+        }
+
+        function panCamera(speaker) {
+            if (speaker === "Gorilla") {
+                sceneContent.style.transform = 'translateX(-25%)'; // Centers Gorilla (at 75% mark)
+            } else if (speaker === "God") {
+                sceneContent.style.transform = 'translateX(25%)'; // Centers God (at 25% mark)
+            } else {
+                sceneContent.style.transform = 'translateX(0%)'; // Default view
+            }
+        }
+        
+        async function displayDialogue() {
+            if (currentDialogueIndex >= DIALOGUE.length) {
+                endCutscene();
+                return;
+            }
+
+            const current = DIALOGUE[currentDialogueIndex];
+            speakerName.textContent = current.speaker;
+            panCamera(current.speaker);
+            
+            // Wait for pan to roughly complete before starting typing
+            // This is a bit of a hack; ideally, use transitionend event
+            await new Promise(resolve => setTimeout(resolve, 500)); 
+
+            await typeDialogue(current.text);
+            currentDialogueIndex++;
+        }
+
+        nextButton.addEventListener('click', () => {
+            if (isTyping) {
+                clearTimeout(typingTimeout);
+                isTyping = false;
+                dialogueText.textContent = DIALOGUE[currentDialogueIndex -1].text; // Show full text
+            } else {
+                if (currentDialogueIndex < DIALOGUE.length) {
+                     displayDialogue();
+                } else {
+                    endCutscene();
+                }
+            }
+        });
+
+        async function startCutscene() {
+            // Hide start button and show cutscene viewport
+            startButton.style.opacity = '0';
+            startButton.style.pointerEvents = 'none';
+            cameraViewport.style.opacity = '1';
+
+            initAudioContext(); // Initialize audio context on user interaction
+
+            try {
+                bgMusic.volume = 0.1; // Quiet background music
+                await bgMusic.play();
+            } catch (error) {
+                console.warn("Background music autoplay failed:", error);
+                // User might need to interact more for music to play in some strict browser settings.
+                // We can try playing it again on the first 'next' click if needed.
+            }
+
+            // 1. Characters hop in
+            god.classList.remove('char-hop-enter');
+            god.classList.add('char-hop-enter-active');
+            god.style.transform = 'translateX(0) translateY(0) scale(1)';
+
+            gorilla.classList.remove('char-hop-enter');
+            gorilla.classList.add('char-hop-enter-active');
+            gorilla.style.transform = 'translateX(0) translateY(0) scale(1)';
+            
+            await new Promise(resolve => setTimeout(resolve, 800)); // Wait for hop animation
+
+            // 2. Initial pan to Gorilla
+            panCamera("Gorilla");
+            await new Promise(resolve => setTimeout(resolve, 1000)); // Wait for pan
+
+            // 3. Cinematic bars appear
+            barTop.style.height = '15vh'; // approx h-1/6 or h-1/7 of screen
+            barBottom.style.height = '15vh';
+            await new Promise(resolve => setTimeout(resolve, 700)); // Wait for bars
+
+            // 4. Show dialogue box and start dialogue
+            dialogueBox.style.opacity = '1';
+            await displayDialogue();
+        }
+
+        async function endCutscene() {
+            dialogueBox.style.opacity = '0';
+            
+            // Fade out music
+            let currentVolume = bgMusic.volume;
+            const fadeOutInterval = setInterval(() => {
+                currentVolume -= 0.05;
+                if (currentVolume <= 0) {
+                    bgMusic.volume = 0;
+                    bgMusic.pause();
+                    clearInterval(fadeOutInterval);
+                } else {
+                    bgMusic.volume = Math.max(0, currentVolume);
+                }
+            }, 100);
+
+            await new Promise(resolve => setTimeout(resolve, 500)); // Small delay
+            
+            toBeContinuedScreen.style.opacity = '1';
+        }
+        
+        startButton.addEventListener('click', startCutscene);
+
+    </script>
+</body>
+</html>

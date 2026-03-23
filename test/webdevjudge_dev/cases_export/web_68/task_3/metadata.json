@@ -1,0 +1,9 @@
+{
+  "web_id": "web_68",
+  "task_id": 3,
+  "task_type": "dynamic",
+  "instruction": "Task: Click on a product item in the product showcase.\nExpected Result: A dedicated section representing the Product Detail Page for the selected product is displayed, showing larger product images/videos and detailed descriptions.\n\nNote: The task is only considered successful if the expected result is achieved; otherwise, it is deemed infeasible.",
+  "max_steps": 15,
+  "expected": "A dedicated section representing the Product Detail Page for the selected product is displayed, showing larger product images/videos and detailed descriptions.",
+  "label": 1
+}

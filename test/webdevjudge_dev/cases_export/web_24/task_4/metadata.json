@@ -1,0 +1,9 @@
+{
+  "web_id": "web_24",
+  "task_id": 4,
+  "task_type": "dynamic",
+  "instruction": "Task: Enter a numerical amount in a 'Sell quantity' input field and click the 'Sell' or 'Execute Sell' button.\nExpected Result: A confirmation message for the mock sale is displayed, and the user's mock portfolio (stored locally) is updated to reflect the reduced holding or increased mock currency.\n\nNote: The task is only considered successful if the expected result is achieved; otherwise, it is deemed infeasible.",
+  "max_steps": 15,
+  "expected": "A confirmation message for the mock sale is displayed, and the user's mock portfolio (stored locally) is updated to reflect the reduced holding or increased mock currency.",
+  "label": 0
+}

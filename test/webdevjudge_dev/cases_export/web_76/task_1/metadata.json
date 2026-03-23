@@ -1,0 +1,9 @@
+{
+  "web_id": "web_76",
+  "task_id": 1,
+  "task_type": "dynamic",
+  "instruction": "Task: User inputs a predefined text string (simulating a QR code scan result for store access) into an input field and clicks a 'View Products' button.\nExpected Result: A list of available products (e.g., item name, price) is displayed on the page.\n\nNote: The task is only considered successful if the expected result is achieved; otherwise, it is deemed infeasible.",
+  "max_steps": 15,
+  "expected": "A list of available products (e.g., item name, price) is displayed on the page.",
+  "label": 0
+}

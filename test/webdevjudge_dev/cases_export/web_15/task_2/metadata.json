@@ -1,0 +1,9 @@
+{
+  "web_id": "web_15",
+  "task_id": 2,
+  "task_type": "dynamic",
+  "instruction": "Task: Click a 'Create New Channel' button, enter a channel name in an input field, and click a 'Create' button.\nExpected Result: The new channel appears in the channel list, becomes the active channel, and the message area for it is displayed (initially empty).\n\nNote: The task is only considered successful if the expected result is achieved; otherwise, it is deemed infeasible.",
+  "max_steps": 15,
+  "expected": "The new channel appears in the channel list, becomes the active channel, and the message area for it is displayed (initially empty).",
+  "label": 1
+}

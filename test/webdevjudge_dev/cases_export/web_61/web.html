@@ -1,0 +1,821 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SmartNotes</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Custom scrollbar for a cleaner look */
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: #f1f1f1; border-radius: 10px; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+        ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+
+        /* Style for [x-cloak] to prevent flash of unstyled content if using a library like Alpine.js */
+        [x-cloak] { display: none !important; }
+
+        /* Ensure modals are above everything */
+        .modal-container { z-index: 50; }
+        .modal-content { max-height: 80vh; }
+
+        /* Custom class for active note in sidebar */
+        .active-note {
+            background-color: #0ea5e9; /* sky-600 */
+            color: white;
+        }
+        .active-note .note-meta, .active-note .delete-note-btn {
+            color: #e0f2fe; /* sky-100 */
+        }
+        .active-note .delete-note-btn:hover {
+            color: white;
+            background-color: #0284c7; /* sky-700 */
+        }
+    </style>
+</head>
+<body class="bg-slate-100 text-slate-800">
+    <div id="app" class="flex h-screen font-sans antialiased">
+        <!-- Sidebar -->
+        <aside class="w-72 bg-slate-800 text-slate-200 p-5 flex flex-col space-y-4 shrink-0">
+            <div class="flex items-center space-x-2 mb-2">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-8 h-8 text-sky-400">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0115.75 21H5.25A2.25 2.25 0 013 18.75V8.25A2.25 2.25 0 015.25 6H10" />
+                </svg>
+                <h1 class="text-2xl font-bold text-white">SmartNotes</h1>
+            </div>
+            
+            <button id="newNoteBtn" class="w-full flex items-center justify-center bg-sky-500 hover:bg-sky-600 text-white font-semibold py-2 px-4 rounded-md transition-colors duration-150">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5 mr-2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+                </svg>
+                Neue Notiz
+            </button>
+
+            <div class="flex-grow overflow-y-auto pr-1 -mr-1">
+                <ul id="noteList" class="space-y-2">
+                    <!-- Note items will be populated by JavaScript -->
+                </ul>
+            </div>
+            
+            <div class="mt-auto pt-4 border-t border-slate-700">
+                <p class="text-xs text-slate-400">© 2023 SmartNotes</p>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <main id="mainContent" class="flex-1 flex flex-col bg-white shadow-lg overflow-hidden">
+            <!-- Placeholder when no note is selected -->
+            <div id="noNoteSelected" class="flex-1 flex flex-col items-center justify-center text-center p-8">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-24 h-24 text-slate-300 mb-4">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M11.35 3.836c-.463.089-.936.143-1.421.167C6.165 4.283 2.25 7.906 2.25 12.375c0 2.153.863 4.143 2.286 5.625H5.07c.106 0 .213.012.317.036m1.837-1.528C9.654 17.5 12 17.5 12 17.5s2.346 0 4.524-.988M5.071 17.964A8.211 8.211 0 0112 12.375c1.687 0 3.244.508 4.524 1.388m-.317-4.688a9.75 9.75 0 01-6.906-4.119m6.906 4.119c.463-.089.936-.143 1.421-.167C17.835 8.093 21.75 4.47 21.75 .001c0-2.153-.863-4.143-2.286-5.625H18.93c-.106 0-.213-.012-.317-.036m-1.837 1.528C14.346-.5 12-.5 12-.5s-2.346 0-4.524.988m9.366 2.876A8.211 8.211 0 0112 .001c-1.687 0-3.244.508-4.524 1.388m-.317 4.688a9.75 9.75 0 016.906 4.119" />
+                </svg>
+                <h2 class="text-xl font-semibold text-slate-600">Keine Notiz ausgewählt</h2>
+                <p class="text-slate-500">Wählen Sie eine Notiz aus der Liste oder erstellen Sie eine neue.</p>
+            </div>
+
+            <!-- Note Editor Area (hidden if noNoteSelected is visible) -->
+            <div id="noteEditorContainer" class="hidden flex-1 flex flex-col">
+                <div id="noteToolbar" class="p-4 border-b border-slate-200 flex flex-wrap gap-2 justify-between items-center shrink-0">
+                    <input type="text" id="noteTitleInput" class="text-xl font-semibold text-slate-700 border border-transparent hover:border-slate-300 focus:border-sky-500 rounded-md px-2 py-1 flex-grow min-w-0 md:max-w-md outline-none" placeholder="Notiztitel">
+                    <div id="aiFeaturesToolbar" class="flex items-center space-x-1 sm:space-x-2 flex-wrap">
+                        <button title="Smart Summary" id="smartSummaryBtn" class="ai-feature-btn p-2 rounded-md hover:bg-slate-100 text-slate-600 hover:text-sky-600 transition-colors">
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" /></svg>
+                        </button>
+                        <button title="Smart Quiz" id="smartQuizBtn" class="ai-feature-btn p-2 rounded-md hover:bg-slate-100 text-slate-600 hover:text-sky-600 transition-colors">
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5"><path stroke-linecap="round" stroke-linejoin="round" d="M9.879 7.519c1.171-1.025 3.071-1.025 4.242 0 1.172 1.025 1.172 2.687 0 3.712-.203.179-.43.326-.67.442-.745.361-1.45.999-1.45 1.827v.75M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-9 5.25h.008v.008H12v-.008z" /></svg>
+                        </button>
+                        <button title="Smart Search" id="smartSearchBtn" class="ai-feature-btn p-2 rounded-md hover:bg-slate-100 text-slate-600 hover:text-sky-600 transition-colors">
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" /></svg>
+                        </button>
+                        <button title="Smart Translate" id="smartTranslateBtn" class="ai-feature-btn p-2 rounded-md hover:bg-slate-100 text-slate-600 hover:text-sky-600 transition-colors">
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5"><path stroke-linecap="round" stroke-linejoin="round" d="M10.5 21l5.25-11.25L21 21m-9-3h7.5M3 5.621a48.474 48.474 0 016-.371m0 0c1.12 0 2.233.038 3.334.114M9 5.25V3m3.334 2.364C11.176 10.658 7.69 15.08 3 17.502m9.334-12.138c.896.061 1.785.147 2.666.257m-4.589 8.495a18.023 18.023 0 01-3.827-5.802" /></svg>
+                        </button>
+                        <button title="Smart Share" id="smartShareBtn" class="ai-feature-btn p-2 rounded-md hover:bg-slate-100 text-slate-600 hover:text-sky-600 transition-colors">
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5"><path stroke-linecap="round" stroke-linejoin="round" d="M7.217 10.907a2.25 2.25 0 100 2.186m0-2.186c.18.324.283.696.283 1.093s-.103.77-.283 1.093m0-2.186l9.566-5.314m-9.566 7.5l9.566 5.314m0 0a2.25 2.25 0 103.935 2.186 2.25 2.25 0 00-3.935-2.186zm0-12.814a2.25 2.25 0 103.933-2.185 2.25 2.25 0 00-3.933 2.185z" /></svg>
+                        </button>
+                    </div>
+                </div>
+                <div class="flex-1 p-1 sm:p-2 md:p-4 overflow-hidden">
+                    <textarea id="noteContentArea" class="w-full h-full resize-none border border-slate-200 rounded-md p-4 focus:ring-1 focus:ring-sky-500 focus:border-sky-500 outline-none leading-relaxed" placeholder="Beginnen Sie hier mit Ihrer intelligenten Notiz... Fügen Sie Text, Ideen oder sogar Verweise auf [Bilder], [Videos] oder [Diagramme] hinzu."></textarea>
+                </div>
+            </div>
+        </main>
+
+        <!-- Modals Container -->
+        <div id="modalContainer" class="fixed inset-0 modal-container" style="display: none;">
+            <div class="flex items-center justify-center min-h-screen p-4 text-center sm:block sm:p-0">
+                <div class="fixed inset-0 bg-slate-800/75 transition-opacity" id="modalBackdrop" aria-hidden="true"></div>
+                
+                <!-- This element is to trick the browser into centering the modal contents. -->
+                <span class="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
+
+                <!-- Smart Summary Modal -->
+                <div id="smartSummaryModal" class="modal-content hidden inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full">
+                    <div class="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
+                        <div class="sm:flex sm:items-start">
+                            <div class="mx-auto flex-shrink-0 flex items-center justify-center h-12 w-12 rounded-full bg-sky-100 sm:mx-0 sm:h-10 sm:w-10">
+                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6 text-sky-600"><use xlink:href="#icon-summary" /></svg>
+                            </div>
+                            <div class="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-left w-full">
+                                <h3 class="text-lg leading-6 font-medium text-slate-900" id="modal-title">Smart Summary</h3>
+                                <div class="mt-2">
+                                    <p class="text-sm text-slate-500 mb-2">Hier ist eine KI-generierte Zusammenfassung Ihrer Notiz:</p>
+                                    <textarea id="summaryOutput" readonly class="w-full h-40 p-2 border border-slate-300 rounded-md bg-slate-50 resize-none"></textarea>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="bg-slate-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
+                        <button type="button" class="modal-close-btn mt-3 w-full inline-flex justify-center rounded-md border border-slate-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-slate-700 hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-sky-500 sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm">Schließen</button>
+                    </div>
+                </div>
+
+                <!-- Smart Quiz Modal -->
+                <div id="smartQuizModal" class="modal-content hidden inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-xl sm:w-full">
+                    <div class="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
+                        <div class="sm:flex sm:items-start">
+                           <div class="mx-auto flex-shrink-0 flex items-center justify-center h-12 w-12 rounded-full bg-sky-100 sm:mx-0 sm:h-10 sm:w-10">
+                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6 text-sky-600"><use xlink:href="#icon-quiz" /></svg>
+                            </div>
+                            <div class="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-left w-full">
+                                <h3 class="text-lg leading-6 font-medium text-slate-900">Smart Quiz</h3>
+                                <div id="quizContent" class="mt-4">
+                                    <!-- Quiz questions will be rendered here -->
+                                </div>
+                                <div id="quizFeedback" class="mt-4 p-3 rounded-md hidden"></div>
+                                <div id="quizResult" class="mt-4 hidden">
+                                    <h4 class="font-semibold">Quiz beendet!</h4>
+                                    <p id="quizScore" class="text-slate-600"></p>
+                                    <div id="quizReview" class="mt-2 space-y-2 max-h-60 overflow-y-auto"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="bg-slate-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse items-center">
+                        <button id="quizNextBtn" type="button" class="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-sky-600 text-base font-medium text-white hover:bg-sky-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-sky-500 sm:ml-3 sm:w-auto sm:text-sm">Nächste Frage</button>
+                        <button id="quizSubmitAnswerBtn" type="button" class="hidden w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-amber-500 text-base font-medium text-white hover:bg-amber-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-amber-400 sm:ml-3 sm:w-auto sm:text-sm">Antwort prüfen</button>
+                        <button type="button" class="modal-close-btn mt-3 w-full inline-flex justify-center rounded-md border border-slate-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-slate-700 hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-sky-500 sm:mt-0 sm:w-auto sm:text-sm">Schließen</button>
+                    </div>
+                </div>
+
+                <!-- Smart Search Modal -->
+                <div id="smartSearchModal" class="modal-content hidden inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-2xl sm:w-full">
+                     <div class="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
+                        <div class="sm:flex sm:items-start">
+                            <div class="mx-auto flex-shrink-0 flex items-center justify-center h-12 w-12 rounded-full bg-sky-100 sm:mx-0 sm:h-10 sm:w-10">
+                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6 text-sky-600"><use xlink:href="#icon-search" /></svg>
+                            </div>
+                            <div class="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-left w-full">
+                                <h3 class="text-lg leading-6 font-medium text-slate-900">Smart Search</h3>
+                                <div class="mt-2">
+                                    <p class="text-sm text-slate-500 mb-2">Suchen Sie nach Themen basierend auf Ihrer Notiz oder geben Sie eine eigene Anfrage ein.</p>
+                                    <div class="flex space-x-2">
+                                        <input type="text" id="searchInput" class="flex-grow p-2 border border-slate-300 rounded-md focus:ring-sky-500 focus:border-sky-500" placeholder="Suchbegriff eingeben...">
+                                        <button id="performSearchBtn" class="px-4 py-2 bg-sky-600 text-white rounded-md hover:bg-sky-700">Suchen</button>
+                                    </div>
+                                    <div id="searchResults" class="mt-4 max-h-60 overflow-y-auto space-y-3">
+                                        <!-- Search results here -->
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="bg-slate-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
+                        <button type="button" class="modal-close-btn mt-3 w-full inline-flex justify-center rounded-md border border-slate-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-slate-700 hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-sky-500 sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm">Schließen</button>
+                    </div>
+                </div>
+
+                <!-- Smart Translate Modal -->
+                <div id="smartTranslateModal" class="modal-content hidden inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-2xl sm:w-full">
+                    <div class="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
+                        <div class="sm:flex sm:items-start">
+                            <div class="mx-auto flex-shrink-0 flex items-center justify-center h-12 w-12 rounded-full bg-sky-100 sm:mx-0 sm:h-10 sm:w-10">
+                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6 text-sky-600"><use xlink:href="#icon-translate" /></svg>
+                            </div>
+                            <div class="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-left w-full">
+                                <h3 class="text-lg leading-6 font-medium text-slate-900">Smart Translate</h3>
+                                <div class="mt-2">
+                                    <div class="flex items-center space-x-2 mb-3">
+                                        <span class="text-sm text-slate-500">Übersetzen nach:</span>
+                                        <select id="translateLanguageSelect" class="p-2 border border-slate-300 rounded-md focus:ring-sky-500 focus:border-sky-500">
+                                            <option value="en">Englisch</option>
+                                            <option value="es">Spanisch</option>
+                                            <option value="fr">Französisch</option>
+                                            <option value="ja">Japanisch</option>
+                                        </select>
+                                        <button id="performTranslateBtn" class="px-3 py-2 bg-sky-600 text-white text-sm rounded-md hover:bg-sky-700">Übersetzen</button>
+                                    </div>
+                                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        <div>
+                                            <h4 class="font-medium text-slate-700 mb-1">Original (Deutsch):</h4>
+                                            <textarea id="translateOriginalText" readonly class="w-full h-40 p-2 border border-slate-300 rounded-md bg-slate-50 resize-none"></textarea>
+                                        </div>
+                                        <div>
+                                            <h4 class="font-medium text-slate-700 mb-1">Übersetzung:</h4>
+                                            <textarea id="translateOutputText" readonly class="w-full h-40 p-2 border border-slate-300 rounded-md bg-slate-50 resize-none"></textarea>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="bg-slate-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
+                        <button type="button" class="modal-close-btn mt-3 w-full inline-flex justify-center rounded-md border border-slate-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-slate-700 hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-sky-500 sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm">Schließen</button>
+                    </div>
+                </div>
+
+                <!-- Smart Share Modal -->
+                <div id="smartShareModal" class="modal-content hidden inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full">
+                    <div class="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
+                        <div class="sm:flex sm:items-start">
+                            <div class="mx-auto flex-shrink-0 flex items-center justify-center h-12 w-12 rounded-full bg-sky-100 sm:mx-0 sm:h-10 sm:w-10">
+                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6 text-sky-600"><use xlink:href="#icon-share" /></svg>
+                            </div>
+                            <div class="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-left w-full">
+                                <h3 class="text-lg leading-6 font-medium text-slate-900">Smart Share</h3>
+                                <div class="mt-2">
+                                    <p class="text-sm text-slate-500 mb-2">Teilen Sie diese Notiz oder arbeiten Sie gemeinsam daran.</p>
+                                    <div class="space-y-3">
+                                        <div>
+                                            <label for="shareEmailInput" class="block text-sm font-medium text-slate-700">Mit E-Mail teilen:</label>
+                                            <div class="mt-1 flex rounded-md shadow-sm">
+                                                <input type="email" id="shareEmailInput" class="focus:ring-sky-500 focus:border-sky-500 flex-1 block w-full rounded-none rounded-l-md sm:text-sm border-slate-300 p-2" placeholder="anna.muster@beispiel.com">
+                                                <button id="performShareEmailBtn" class="inline-flex items-center px-3 rounded-r-md border border-l-0 border-slate-300 bg-slate-50 text-slate-500 hover:bg-slate-100 text-sm">Senden</button>
+                                            </div>
+                                        </div>
+                                        <div>
+                                            <label class="block text-sm font-medium text-slate-700">Teilbaren Link erhalten:</label>
+                                            <div class="mt-1 flex rounded-md shadow-sm">
+                                                <input type="text" id="shareLinkInput" readonly value="https://smartnotes.app/share/..." class="focus:ring-sky-500 focus:border-sky-500 flex-1 block w-full rounded-none rounded-l-md sm:text-sm border-slate-300 p-2 bg-slate-100">
+                                                <button id="copyShareLinkBtn" class="inline-flex items-center px-3 rounded-r-md border border-l-0 border-slate-300 bg-slate-50 text-slate-500 hover:bg-slate-100 text-sm">Kopieren</button>
+                                            </div>
+                                        </div>
+                                        <p id="shareFeedback" class="text-sm text-green-600"></p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="bg-slate-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
+                         <button type="button" class="modal-close-btn mt-3 w-full inline-flex justify-center rounded-md border border-slate-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-slate-700 hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-sky-500 sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm">Schließen</button>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </div>
+
+    <!-- SVG Icon Definitions -->
+    <svg width="0" height="0" class="absolute">
+        <defs>
+            <symbol id="icon-summary" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" />
+            </symbol>
+            <symbol id="icon-quiz" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M9.879 7.519c1.171-1.025 3.071-1.025 4.242 0 1.172 1.025 1.172 2.687 0 3.712-.203.179-.43.326-.67.442-.745.361-1.45.999-1.45 1.827v.75M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-9 5.25h.008v.008H12v-.008z" />
+            </symbol>
+            <symbol id="icon-search" viewBox="0 0 24 24">
+                 <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" />
+            </symbol>
+            <symbol id="icon-translate" viewBox="0 0 24 24">
+                 <path stroke-linecap="round" stroke-linejoin="round" d="M10.5 21l5.25-11.25L21 21m-9-3h7.5M3 5.621a48.474 48.474 0 016-.371m0 0c1.12 0 2.233.038 3.334.114M9 5.25V3m3.334 2.364C11.176 10.658 7.69 15.08 3 17.502m9.334-12.138c.896.061 1.785.147 2.666.257m-4.589 8.495a18.023 18.023 0 01-3.827-5.802" />
+            </symbol>
+            <symbol id="icon-share" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M7.217 10.907a2.25 2.25 0 100 2.186m0-2.186c.18.324.283.696.283 1.093s-.103.77-.283 1.093m0-2.186l9.566-5.314m-9.566 7.5l9.566 5.314m0 0a2.25 2.25 0 103.935 2.186 2.25 2.25 0 00-3.935-2.186zm0-12.814a2.25 2.25 0 103.933-2.185 2.25 2.25 0 00-3.933 2.185z" />
+            </symbol>
+        </defs>
+    </svg>
+
+    <script>
+    const appState = {
+        notes: [],
+        currentNoteId: null,
+        activeModal: null,
+        quiz: {
+            questions: [],
+            currentQuestionIndex: 0,
+            userAnswers: [],
+            mode: 'question', // 'question', 'feedback', 'result'
+        }
+    };
+
+    // DOM Elements
+    const noteListEl = document.getElementById('noteList');
+    const newNoteBtn = document.getElementById('newNoteBtn');
+    const noteTitleInput = document.getElementById('noteTitleInput');
+    const noteContentArea = document.getElementById('noteContentArea');
+    const modalContainer = document.getElementById('modalContainer');
+    const modalBackdrop = document.getElementById('modalBackdrop');
+    
+    const noNoteSelectedEl = document.getElementById('noNoteSelected');
+    const noteEditorContainerEl = document.getElementById('noteEditorContainer');
+
+    // AI Feature Buttons
+    const smartSummaryBtn = document.getElementById('smartSummaryBtn');
+    const smartQuizBtn = document.getElementById('smartQuizBtn');
+    const smartSearchBtn = document.getElementById('smartSearchBtn');
+    const smartTranslateBtn = document.getElementById('smartTranslateBtn');
+    const smartShareBtn = document.getElementById('smartShareBtn');
+
+    // Modal Specific Elements
+    const summaryOutput = document.getElementById('summaryOutput');
+    const quizContentEl = document.getElementById('quizContent');
+    const quizFeedbackEl = document.getElementById('quizFeedback');
+    const quizResultEl = document.getElementById('quizResult');
+    const quizScoreEl = document.getElementById('quizScore');
+    const quizReviewEl = document.getElementById('quizReview');
+    const quizNextBtn = document.getElementById('quizNextBtn');
+    const quizSubmitAnswerBtn = document.getElementById('quizSubmitAnswerBtn');
+    const searchInput = document.getElementById('searchInput');
+    const performSearchBtn = document.getElementById('performSearchBtn');
+    const searchResultsEl = document.getElementById('searchResults');
+    const translateLanguageSelect = document.getElementById('translateLanguageSelect');
+    const performTranslateBtn = document.getElementById('performTranslateBtn');
+    const translateOriginalText = document.getElementById('translateOriginalText');
+    const translateOutputText = document.getElementById('translateOutputText');
+    const shareEmailInput = document.getElementById('shareEmailInput');
+    const performShareEmailBtn = document.getElementById('performShareEmailBtn');
+    const shareLinkInput = document.getElementById('shareLinkInput');
+    const copyShareLinkBtn = document.getElementById('copyShareLinkBtn');
+    const shareFeedbackEl = document.getElementById('shareFeedback');
+
+
+    // Utility Functions
+    const generateId = () => '_' + Math.random().toString(36).substr(2, 9);
+    const formatDate = (date) => date ? new Date(date).toLocaleDateString('de-DE', { day: '2-digit', month: 'short', year: 'numeric' }) : '';
+
+    // Persistence
+    function saveNotes() {
+        localStorage.setItem('smartnotes_notes', JSON.stringify(appState.notes));
+        localStorage.setItem('smartnotes_currentNoteId', appState.currentNoteId);
+    }
+
+    function loadNotes() {
+        const storedNotes = localStorage.getItem('smartnotes_notes');
+        const storedCurrentNoteId = localStorage.getItem('smartnotes_currentNoteId');
+        if (storedNotes) {
+            appState.notes = JSON.parse(storedNotes);
+        } else {
+            // Add a default welcome note if no notes are stored
+            appState.notes = [
+                { 
+                    id: generateId(), 
+                    title: 'Willkommen bei SmartNotes!', 
+                    content: 'Dies ist Ihre erste intelligente Notiz.\n\nProbieren Sie die KI-Funktionen in der oberen Leiste aus:\n\n* Smart Summary: Erstellt eine Zusammenfassung.\n* Smart Quiz: Generiert ein Quiz aus Ihrer Notiz.\n* Smart Search: Sucht nach verwandten Informationen.\n* Smart Translate: Übersetzt Ihre Notiz.\n* Smart Share: Teilt Ihre Notiz.\n\nSmartNotes kann auch [Bilder], [Videos], [Audio], [Links], [Diagramme] und [Tabellen] verwalten (in einer zukünftigen Version!).\n\nBeginnen Sie, indem Sie diese Notiz bearbeiten oder eine neue erstellen!', 
+                    createdAt: new Date().toISOString(), 
+                    updatedAt: new Date().toISOString() 
+                }
+            ];
+        }
+        appState.currentNoteId = storedCurrentNoteId && appState.notes.find(n => n.id === storedCurrentNoteId) ? storedCurrentNoteId : (appState.notes[0]?.id || null);
+    }
+
+    // Render Functions
+    function renderNoteList() {
+        noteListEl.innerHTML = '';
+        if (appState.notes.length === 0) {
+            noteListEl.innerHTML = `<li class="text-slate-400 text-sm text-center py-4">Keine Notizen vorhanden.</li>`;
+            return;
+        }
+        const sortedNotes = [...appState.notes].sort((a,b) => new Date(b.updatedAt) - new Date(a.updatedAt));
+        
+        sortedNotes.forEach(note => {
+            const li = document.createElement('li');
+            li.className = `p-3 rounded-md cursor-pointer hover:bg-slate-700 transition-colors group ${note.id === appState.currentNoteId ? 'active-note' : 'text-slate-300'}`;
+            li.dataset.noteId = note.id;
+            
+            const titleText = note.title.trim() || 'Unbenannte Notiz';
+            const maxTitleLength = 25;
+            const displayTitle = titleText.length > maxTitleLength ? titleText.substring(0, maxTitleLength) + '...' : titleText;
+
+            li.innerHTML = `
+                <div class="flex justify-between items-start">
+                    <h3 class="font-medium text-sm mb-1 truncate pr-2">${displayTitle}</h3>
+                    <button class="delete-note-btn opacity-0 group-hover:opacity-100 focus:opacity-100 text-slate-400 hover:text-red-400 p-1 rounded-full hover:bg-slate-600 transition-opacity" title="Notiz löschen" data-id="${note.id}">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4"><path stroke-linecap="round" stroke-linejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12.56 0c1.153 0 2.243.096 3.222.261m3.114 Klick" /></svg>
+                    </button>
+                </div>
+                <p class="text-xs note-meta truncate">${note.content.substring(0,30)}...</p>
+                <p class="text-xs note-meta mt-1">${formatDate(note.updatedAt)}</p>
+            `;
+            li.addEventListener('click', (e) => {
+                if (e.target.closest('.delete-note-btn')) return; // Prevent selection when clicking delete
+                selectNote(note.id);
+            });
+
+            const deleteBtn = li.querySelector('.delete-note-btn');
+            deleteBtn.addEventListener('click', (e) => {
+                e.stopPropagation(); // Prevent note selection
+                handleDeleteNote(note.id);
+            });
+            noteListEl.appendChild(li);
+        });
+    }
+
+    function renderCurrentNote() {
+        const currentNote = appState.notes.find(note => note.id === appState.currentNoteId);
+        if (currentNote) {
+            noteTitleInput.value = currentNote.title;
+            noteContentArea.value = currentNote.content;
+            noNoteSelectedEl.style.display = 'none';
+            noteEditorContainerEl.classList.remove('hidden');
+            noteEditorContainerEl.classList.add('flex');
+            noteTitleInput.disabled = false;
+            noteContentArea.disabled = false;
+            document.querySelectorAll('#aiFeaturesToolbar button').forEach(btn => btn.disabled = false);
+        } else {
+            noteTitleInput.value = '';
+            noteContentArea.value = '';
+            noNoteSelectedEl.style.display = 'flex';
+            noteEditorContainerEl.classList.add('hidden');
+            noteEditorContainerEl.classList.remove('flex');
+            noteTitleInput.disabled = true;
+            noteContentArea.disabled = true;
+            document.querySelectorAll('#aiFeaturesToolbar button').forEach(btn => btn.disabled = true);
+        }
+    }
+
+    // Note Actions
+    function createNewNote() {
+        const newNote = {
+            id: generateId(),
+            title: 'Neue Notiz',
+            content: '',
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+        };
+        appState.notes.push(newNote);
+        selectNote(newNote.id); // This will also save and re-render
+        noteTitleInput.focus();
+        noteTitleInput.select();
+    }
+
+    function selectNote(noteId) {
+        appState.currentNoteId = noteId;
+        saveNotes();
+        renderNoteList();
+        renderCurrentNote();
+    }
+
+    function updateNoteDetails() {
+        if (!appState.currentNoteId) return;
+        const note = appState.notes.find(n => n.id === appState.currentNoteId);
+        if (note) {
+            const newTitle = noteTitleInput.value;
+            const newContent = noteContentArea.value;
+            if (note.title !== newTitle || note.content !== newContent) {
+                note.title = newTitle;
+                note.content = newContent;
+                note.updatedAt = new Date().toISOString();
+                saveNotes();
+                renderNoteList(); // To update potential title/snippet changes
+            }
+        }
+    }
+    
+    function handleDeleteNote(noteIdToDelete) {
+        if (!confirm('Sind Sie sicher, dass Sie diese Notiz löschen möchten?')) return;
+
+        appState.notes = appState.notes.filter(note => note.id !== noteIdToDelete);
+        
+        if (appState.currentNoteId === noteIdToDelete) {
+            appState.currentNoteId = appState.notes.length > 0 ? appState.notes[0].id : null;
+        }
+        
+        saveNotes();
+        renderNoteList();
+        renderCurrentNote();
+    }
+
+    // Modal Handling
+    function openModal(modalId) {
+        appState.activeModal = modalId;
+        modalContainer.style.display = 'block';
+        document.getElementById(modalId).classList.remove('hidden');
+        // Autofocus first input in modal if available
+        const firstInput = document.getElementById(modalId).querySelector('input, textarea, select');
+        if (firstInput) firstInput.focus();
+    }
+
+    function closeModal() {
+        if (appState.activeModal) {
+            document.getElementById(appState.activeModal).classList.add('hidden');
+        }
+        modalContainer.style.display = 'none';
+        appState.activeModal = null;
+    }
+
+    // AI Feature Mock Logic
+    function showSmartSummary() {
+        const currentNote = appState.notes.find(note => note.id === appState.currentNoteId);
+        if (!currentNote || !currentNote.content.trim()) {
+            summaryOutput.value = "Die Notiz ist leer. Bitte fügen Sie Inhalt hinzu, um eine Zusammenfassung zu erstellen.";
+        } else {
+            // Mock summary: first few sentences or lines
+            const lines = currentNote.content.split('\n').filter(line => line.trim() !== '');
+            let summary = lines.slice(0, Math.min(3, lines.length)).join('\n');
+            if (lines.length > 3) summary += "\n...";
+            summaryOutput.value = summary || "Konnte keine Zusammenfassung erstellen. Versuchen Sie es mit mehr Text.";
+        }
+        openModal('smartSummaryModal');
+    }
+
+    function initSmartQuiz() {
+        const currentNote = appState.notes.find(note => note.id === appState.currentNoteId);
+        if (!currentNote || currentNote.content.trim().length < 50) { // Need some content for a quiz
+            quizContentEl.innerHTML = `<p class="text-slate-500">Nicht genügend Inhalt in der Notiz, um ein Quiz zu erstellen. Fügen Sie mehr Details hinzu.</p>`;
+            quizNextBtn.style.display = 'none';
+            quizSubmitAnswerBtn.style.display = 'none';
+            openModal('smartQuizModal');
+            return;
+        }
+
+        // Mock quiz questions (these would be dynamically generated)
+        appState.quiz.questions = [
+            { id: 'q1', text: "Was ist das Hauptthema dieser Notiz (basierend auf den ersten Sätzen)?", options: ["Technologie", "Planung", "Einleitung", "Unbestimmt"], correctAnswer: 2, explanation: "Die ersten Sätze sind oft eine Einleitung zum Thema." },
+            { id: 'q2', text: "Wie viele Absätze hat diese Notiz (mindestens 2 Zeilen pro Absatz)?", options: ["1-2", "3-4", "5+", "Keine"], correctAnswer: 0, explanation: "Zählen Sie die Textblöcke, die durch Leerzeilen getrennt sind." },
+            { id: 'q3', text: "Enthält die Notiz Schlüsselwörter wie 'Smart' oder 'KI'?", options: ["Ja", "Nein"], correctAnswer: 0, explanation: "Überprüfen Sie den Text auf das Vorkommen dieser Wörter." }
+        ];
+        
+        // Simulate dynamic options based on note content for Q1
+        const firstWords = currentNote.content.split(/\s+/).slice(0,5).join(" ");
+        appState.quiz.questions[0].options[2] = firstWords.substring(0,20) + "..."; // Make one option related to content
+        
+        appState.quiz.currentQuestionIndex = 0;
+        appState.quiz.userAnswers = [];
+        appState.quiz.mode = 'question';
+        quizResultEl.classList.add('hidden');
+        quizFeedbackEl.classList.add('hidden');
+        quizContentEl.classList.remove('hidden');
+        renderQuizQuestion();
+        openModal('smartQuizModal');
+    }
+
+    function renderQuizQuestion() {
+        if (appState.quiz.currentQuestionIndex >= appState.quiz.questions.length) {
+            showQuizResult();
+            return;
+        }
+
+        const question = appState.quiz.questions[appState.quiz.currentQuestionIndex];
+        quizContentEl.innerHTML = `
+            <p class="font-medium text-slate-700 mb-1">Frage ${appState.quiz.currentQuestionIndex + 1} von ${appState.quiz.questions.length}:</p>
+            <p class="text-slate-600 mb-3">${question.text}</p>
+            <div class="space-y-2">
+                ${question.options.map((option, index) => `
+                    <label class="flex items-center p-2 border border-slate-200 rounded-md hover:bg-slate-50 cursor-pointer">
+                        <input type="radio" name="quizOption" value="${index}" class="form-radio h-4 w-4 text-sky-600 focus:ring-sky-500 border-slate-300">
+                        <span class="ml-3 text-slate-700">${option}</span>
+                    </label>
+                `).join('')}
+            </div>
+        `;
+        quizSubmitAnswerBtn.classList.remove('hidden');
+        quizNextBtn.classList.add('hidden');
+        quizFeedbackEl.classList.add('hidden');
+        appState.quiz.mode = 'question';
+    }
+    
+    function handleQuizSubmitAnswer() {
+        const selectedOption = quizContentEl.querySelector('input[name="quizOption"]:checked');
+        if (!selectedOption) {
+            alert("Bitte wählen Sie eine Antwort.");
+            return;
+        }
+        
+        const question = appState.quiz.questions[appState.quiz.currentQuestionIndex];
+        const answerIndex = parseInt(selectedOption.value);
+        const isCorrect = answerIndex === question.correctAnswer;
+
+        appState.quiz.userAnswers.push({ questionId: question.id, answerIndex, isCorrect });
+        appState.quiz.mode = 'feedback';
+        
+        quizFeedbackEl.classList.remove('hidden');
+        quizFeedbackEl.innerHTML = `
+            <p class="font-semibold ${isCorrect ? 'text-green-600' : 'text-red-600'}">${isCorrect ? 'Richtig!' : 'Falsch.'}</p>
+            <p class="text-sm text-slate-600 mt-1">${question.explanation}</p>
+        `;
+        quizFeedbackEl.className = `mt-4 p-3 rounded-md ${isCorrect ? 'bg-green-50 border border-green-200' : 'bg-red-50 border border-red-200'}`;
+        
+        quizSubmitAnswerBtn.classList.add('hidden');
+        quizNextBtn.classList.remove('hidden');
+        quizNextBtn.textContent = (appState.quiz.currentQuestionIndex === appState.quiz.questions.length - 1) ? "Ergebnisse anzeigen" : "Nächste Frage";
+    }
+
+    function handleQuizNext() {
+        if (appState.quiz.mode === 'feedback') {
+            appState.quiz.currentQuestionIndex++;
+            if (appState.quiz.currentQuestionIndex < appState.quiz.questions.length) {
+                renderQuizQuestion();
+            } else {
+                showQuizResult();
+            }
+        }
+    }
+
+    function showQuizResult() {
+        appState.quiz.mode = 'result';
+        quizContentEl.classList.add('hidden');
+        quizFeedbackEl.classList.add('hidden');
+        quizResultEl.classList.remove('hidden');
+        quizSubmitAnswerBtn.classList.add('hidden');
+        quizNextBtn.classList.add('hidden'); // Or change to "Restart Quiz"
+
+        const correctAnswers = appState.quiz.userAnswers.filter(ans => ans.isCorrect).length;
+        const totalQuestions = appState.quiz.questions.length;
+        quizScoreEl.textContent = `Sie haben ${correctAnswers} von ${totalQuestions} Fragen richtig beantwortet. (${Math.round((correctAnswers/totalQuestions)*100)}%)`;
+
+        quizReviewEl.innerHTML = appState.quiz.questions.map((q, idx) => {
+            const userAnswer = appState.quiz.userAnswers.find(ua => ua.questionId === q.id);
+            const userAnswerText = userAnswer ? q.options[userAnswer.answerIndex] : "Nicht beantwortet";
+            const correctAnswerText = q.options[q.correctAnswer];
+            return `
+                <div class="p-2 border-b border-slate-200">
+                    <p class="font-medium text-sm">${idx + 1}. ${q.text}</p>
+                    <p class="text-xs ${userAnswer?.isCorrect ? 'text-green-600' : 'text-red-600'}">Ihre Antwort: ${userAnswerText}</p>
+                    ${!userAnswer?.isCorrect ? `<p class="text-xs text-green-600">Korrekte Antwort: ${correctAnswerText}</p>` : ''}
+                </div>
+            `;
+        }).join('');
+    }
+
+
+    function showSmartSearch() {
+        const currentNote = appState.notes.find(note => note.id === appState.currentNoteId);
+        if (currentNote && currentNote.content.trim()) {
+            // Pre-fill search with some keywords from note
+            const firstFewWords = currentNote.content.split(/\s+/).slice(0,3).join(" ");
+            searchInput.value = firstFewWords;
+        } else {
+            searchInput.value = "";
+        }
+        searchResultsEl.innerHTML = '<p class="text-sm text-slate-400">Suchergebnisse werden hier angezeigt.</p>';
+        openModal('smartSearchModal');
+    }
+
+    function performSmartSearch() {
+        const query = searchInput.value.trim();
+        if (!query) {
+            searchResultsEl.innerHTML = '<p class="text-sm text-red-500">Bitte geben Sie einen Suchbegriff ein.</p>';
+            return;
+        }
+        searchResultsEl.innerHTML = '<p class="text-sm text-slate-500">Suche nach Ergebnissen für "' + query + '"...</p>';
+        // Mock search results
+        setTimeout(() => {
+            const results = [
+                { title: `Relevanter Web-Artikel zu "${query}"`, source: "Web", snippet: "Dies ist ein sehr relevanter Artikel, der Details zu Ihrer Suchanfrage enthält..." },
+                { title: `Buchkapitel über "${query.split(" ")[0]}"`, source: "Bücher", snippet: "In diesem Kapitel wird das Konzept von ${query.split(" ")[0]} ausführlich erläutert..." },
+                { title: `Wissenschaftliche Studie: Auswirkungen von "${query}"`, source: "Artikel", snippet: "Eine aktuelle Studie untersucht die verschiedenen Aspekte und Auswirkungen von ${query}." }
+            ];
+            if (Math.random() > 0.5 && appState.currentNoteId) { // Sometimes link to another note
+                const otherNotes = appState.notes.filter(n => n.id !== appState.currentNoteId);
+                if (otherNotes.length > 0) {
+                    const randomNote = otherNotes[Math.floor(Math.random() * otherNotes.length)];
+                    results.push({ title: `Verwandte Notiz: "${randomNote.title}"`, source: "SmartNotes", snippet: randomNote.content.substring(0, 50) + "..." });
+                }
+            }
+            searchResultsEl.innerHTML = results.map(res => `
+                <div class="p-3 border border-slate-200 rounded-md hover:bg-slate-50">
+                    <h4 class="font-semibold text-sky-700">${res.title}</h4>
+                    <p class="text-xs text-slate-500">Quelle: ${res.source}</p>
+                    <p class="text-sm text-slate-600 mt-1">${res.snippet}</p>
+                    <button class="text-xs text-sky-600 hover:underline mt-1">Zur Quelle</button>
+                </div>
+            `).join('');
+        }, 1000);
+    }
+
+    function showSmartTranslate() {
+        const currentNote = appState.notes.find(note => note.id === appState.currentNoteId);
+        translateOriginalText.value = currentNote ? currentNote.content : "Kein Inhalt zum Übersetzen.";
+        translateOutputText.value = "";
+        openModal('smartTranslateModal');
+    }
+
+    function performSmartTranslate() {
+        const originalText = translateOriginalText.value;
+        const targetLang = translateLanguageSelect.value;
+        if (!originalText.trim()) {
+            translateOutputText.value = "Kein Text zum Übersetzen.";
+            return;
+        }
+        // Mock translation
+        translateOutputText.value = `Übersetze nach ${targetLang.toUpperCase()}...\n\n(Simulierte Übersetzung)\n` + originalText.split('').reverse().join(''); // Silly mock
+        
+        setTimeout(() => {
+            let translatedText = "";
+            switch(targetLang) {
+                case 'en': translatedText = "This is a simulated translation of your note into English. All your important points would be here."; break;
+                case 'es': translatedText = "Esta es una traducción simulada de tu nota al español. Todos tus puntos importantes estarían aquí."; break;
+                case 'fr': translatedText = "Ceci est une traduction simulée de votre note en français. Tous vos points importants seraient ici."; break;
+                case 'ja': translatedText = "これはあなたのノートの日本語への模擬翻訳です。あなたの重要なポイントはすべてここにあります。"; break;
+                default: translatedText = "Übersetzung nicht verfügbar.";
+            }
+            const pronounceExample = "(Aussprache: /ˌsɪmjəˈleɪtɪd transˈleɪʃən/)";
+            translateOutputText.value = `${translatedText}\n\n${pronounceExample}`;
+        }, 1000);
+    }
+
+    function showSmartShare() {
+        shareEmailInput.value = "";
+        const currentNote = appState.notes.find(note => note.id === appState.currentNoteId);
+        if (currentNote) {
+            shareLinkInput.value = `https://smartnotes.app/share/${currentNote.id}`;
+        } else {
+            shareLinkInput.value = `https://smartnotes.app/share/`;
+        }
+        shareFeedbackEl.textContent = "";
+        openModal('smartShareModal');
+    }
+
+    function performShareViaEmail() {
+        const email = shareEmailInput.value.trim();
+        if (!email || !email.includes('@')) {
+            shareFeedbackEl.textContent = "Bitte geben Sie eine gültige E-Mail-Adresse ein.";
+            shareFeedbackEl.className = "text-sm text-red-600";
+            return;
+        }
+        shareFeedbackEl.textContent = `Notiz wird an ${email} gesendet... (simuliert)`;
+        shareFeedbackEl.className = "text-sm text-sky-600";
+        setTimeout(() => {
+            shareFeedbackEl.textContent = `Notiz erfolgreich an ${email} gesendet!`;
+            shareFeedbackEl.className = "text-sm text-green-600";
+        }, 1500);
+    }
+
+    function copyShareLink() {
+        navigator.clipboard.writeText(shareLinkInput.value).then(() => {
+            shareFeedbackEl.textContent = "Link in die Zwischenablage kopiert!";
+            shareFeedbackEl.className = "text-sm text-green-600";
+        }).catch(err => {
+            shareFeedbackEl.textContent = "Konnte Link nicht kopieren.";
+            shareFeedbackEl.className = "text-sm text-red-600";
+        });
+    }
+
+
+    // Event Listeners
+    newNoteBtn.addEventListener('click', createNewNote);
+    noteTitleInput.addEventListener('input', updateNoteDetails);
+    noteContentArea.addEventListener('input', updateNoteDetails); // Could be debounced for performance
+
+    // AI Feature Button Listeners
+    smartSummaryBtn.addEventListener('click', showSmartSummary);
+    smartQuizBtn.addEventListener('click', initSmartQuiz);
+    smartSearchBtn.addEventListener('click', showSmartSearch);
+    smartTranslateBtn.addEventListener('click', showSmartTranslate);
+    smartShareBtn.addEventListener('click', showSmartShare);
+    
+    // Quiz Modal Buttons
+    quizSubmitAnswerBtn.addEventListener('click', handleQuizSubmitAnswer);
+    quizNextBtn.addEventListener('click', handleQuizNext);
+    
+    // Search Modal Button
+    performSearchBtn.addEventListener('click', performSmartSearch);
+    searchInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') performSearchBtn.click(); });
+
+    // Translate Modal Button
+    performTranslateBtn.addEventListener('click', performSmartTranslate);
+    
+    // Share Modal Buttons
+    performShareEmailBtn.addEventListener('click', performShareViaEmail);
+    copyShareLinkBtn.addEventListener('click', copyShareLink);
+
+
+    // Modal Close Listeners
+    modalBackdrop.addEventListener('click', closeModal);
+    document.querySelectorAll('.modal-close-btn').forEach(btn => {
+        btn.addEventListener('click', closeModal);
+    });
+    document.addEventListener('keydown', (event) => {
+        if (event.key === 'Escape' && appState.activeModal) {
+            closeModal();
+        }
+    });
+
+    // Initial Load
+    function init() {
+        loadNotes();
+        renderNoteList();
+        renderCurrentNote();
+
+        // Check if there are any notes and if currentNoteId is valid
+        if (appState.notes.length > 0 && !appState.notes.find(n => n.id === appState.currentNoteId)) {
+            // If currentNoteId is invalid (e.g., note was deleted in another session), select the first note
+            appState.currentNoteId = appState.notes[0].id;
+        }
+        
+        if (!appState.currentNoteId && appState.notes.length > 0) {
+            // If no currentNoteId is set but notes exist, select the first one
+             appState.currentNoteId = appState.notes[0].id;
+        }
+        
+        saveNotes(); // Save potentially corrected currentNoteId or default notes
+        renderNoteList();
+        renderCurrentNote();
+    }
+
+    init();
+    </script>
+</body>
+</html>

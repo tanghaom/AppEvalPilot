@@ -1,0 +1,867 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ReddiClone</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Custom scrollbar for webkit browsers */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #f1f1f1;
+            border-radius: 10px;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #cbd5e1; /* slate-300 */
+            border-radius: 10px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8; /* slate-500 */
+        }
+        /* Basic styles for active states or overrides if needed */
+        .active-sort-tab {
+            background-color: #e2e8f0; /* slate-200 */
+            color: #0f172a; /* slate-900 */
+        }
+        .vote-active-up { color: #f97316; } /* orange-500 */
+        .vote-active-down { color: #4f46e5; } /* indigo-600 */
+
+        /* Hide number input arrows */
+        input[type=number]::-webkit-inner-spin-button,
+        input[type=number]::-webkit-outer-spin-button {
+          -webkit-appearance: none;
+          margin: 0;
+        }
+        input[type=number] {
+          -moz-appearance: textfield;
+        }
+    </style>
+</head>
+<body class="bg-slate-100 text-slate-800">
+
+    <!-- Header -->
+    <header id="header" class="fixed top-0 left-0 right-0 z-40 bg-white border-b border-slate-300 h-14 flex items-center justify-between px-4 shadow-sm">
+        <div class="flex items-center space-x-4">
+            <div class="text-2xl font-bold text-orange-500 cursor-pointer" onclick="navigateToFeed()">ReddiClone</div>
+            <!-- Simplified Search -->
+            <div class="relative hidden md:block">
+                <input type="text" placeholder="Search ReddiClone (disabled)" class="bg-slate-100 border border-slate-300 rounded-md py-1.5 px-3 pl-8 text-sm w-64 focus:ring-2 focus:ring-blue-500 focus:border-blue-500" disabled>
+                <svg class="w-4 h-4 text-slate-400 absolute top-1/2 left-2.5 transform -translate-y-1/2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" /></svg>
+            </div>
+        </div>
+        <div class="flex items-center space-x-3">
+            <button id="headerCreatePostBtn" class="flex items-center space-x-1 bg-blue-600 hover:bg-blue-700 text-white font-semibold py-1.5 px-3 rounded-full text-sm">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-5 h-5"><path fill-rule="evenodd" d="M12 3.75a.75.75 0 01.75.75v6.75h6.75a.75.75 0 010 1.5h-6.75v6.75a.75.75 0 01-1.5 0v-6.75H4.5a.75.75 0 010-1.5h6.75V4.5a.75.75 0 01.75-.75z" clip-rule="evenodd" /></svg>
+                <span>Create</span>
+            </button>
+            <div id="currentUserDisplay" class="text-sm font-medium text-slate-700 bg-slate-200 px-3 py-1.5 rounded-md">User</div>
+        </div>
+    </header>
+
+    <!-- Main Content Area -->
+    <main id="mainContent" class="pt-16 bg-slate-100 min-h-screen">
+        
+        <!-- Feed View -->
+        <div id="feedView" class="container mx-auto py-4 px-2 md:px-0">
+            <div id="currentSubredditHeader" class="mb-4 p-4 bg-white rounded-md shadow hidden">
+                <h1 id="currentSubredditTitle" class="text-2xl font-bold"></h1>
+                <p id="currentSubredditDescription" class="text-sm text-slate-600"></p>
+            </div>
+
+            <!-- Sorting Tabs -->
+            <div id="sortingTabsContainer" class="mb-4 bg-white rounded-md p-1 shadow flex space-x-1">
+                <button data-sort="hot" class="sort-tab flex-1 sm:flex-auto text-sm font-semibold py-2 px-4 rounded-md hover:bg-slate-200 focus:outline-none">🔥 Hot</button>
+                <button data-sort="new" class="sort-tab flex-1 sm:flex-auto text-sm font-semibold py-2 px-4 rounded-md hover:bg-slate-200 focus:outline-none">✨ New</button>
+                <button data-sort="top" class="sort-tab flex-1 sm:flex-auto text-sm font-semibold py-2 px-4 rounded-md hover:bg-slate-200 focus:outline-none">🏆 Top</button>
+            </div>
+
+            <div class="md:flex md:space-x-6">
+                <!-- Posts Column -->
+                <div id="postsContainer" class="md:w-2/3 space-y-3">
+                    <!-- Posts will be rendered here -->
+                    <div id="noPostsMessage" class="hidden text-center text-slate-500 py-10">No posts to display.</div>
+                </div>
+
+                <!-- Sidebar Column -->
+                <aside id="sidebar" class="md:w-1/3 space-y-4 mt-4 md:mt-0">
+                    <div class="bg-white p-4 rounded-md shadow">
+                        <h3 class="text-md font-semibold text-slate-800 mb-3 border-b border-slate-200 pb-2">Popular Communities</h3>
+                        <ul id="popularSubredditsList" class="space-y-1">
+                            <!-- Subreddits rendered here -->
+                        </ul>
+                    </div>
+                    <div class="bg-white p-4 rounded-md shadow sticky top-20"> <!-- sticky top to account for header height + padding -->
+                         <h3 class="text-md font-semibold text-slate-800 mb-3 border-b border-slate-200 pb-2">Contribute</h3>
+                        <button id="sidebarCreatePostBtn" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded-md mb-2">
+                            Create Post
+                        </button>
+                        <button onclick="navigateToFeed(true)" class="w-full bg-slate-500 hover:bg-slate-600 text-white font-semibold py-2 px-4 rounded-md">
+                            View All Posts
+                        </button>
+                    </div>
+                </aside>
+            </div>
+        </div>
+
+        <!-- Post Detail View -->
+        <div id="postDetailViewContainer" class="hidden container mx-auto py-4 px-2 md:px-0">
+            <button onclick="goBackToFeed()" class="mb-4 text-blue-600 hover:underline font-semibold flex items-center">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-5 h-5 mr-1"><path fill-rule="evenodd" d="M12.79 5.23a.75.75 0 01-.02 1.06L8.832 10l3.938 3.71a.75.75 0 11-1.04 1.08l-4.5-4.25a.75.75 0 010-1.08l4.5-4.25a.75.75 0 011.06.02z" clip-rule="evenodd" /></svg>
+                Back to feed
+            </button>
+            <div id="postDetailContent" class="bg-white rounded-md shadow overflow-hidden">
+                <!-- Detailed post content will be rendered here -->
+            </div>
+            <div id="commentsSection" class="mt-4 bg-white rounded-md shadow p-4">
+                <h3 class="text-xl font-semibold mb-4">Comments</h3>
+                <div id="addCommentFormContainer" class="mb-6">
+                    <!-- Add comment form will be rendered here -->
+                </div>
+                <div id="commentsList" class="space-y-4">
+                    <!-- Comments will be rendered here -->
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Create Post Modal -->
+    <div id="createPostModal" class="hidden fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-4">
+        <div class="bg-white rounded-lg shadow-xl p-6 w-full max-w-lg max-h-[90vh] overflow-y-auto">
+            <div class="flex justify-between items-center mb-4">
+                <h2 class="text-xl font-semibold">Create a Post</h2>
+                <button id="closeCreatePostModalBtn" class="text-slate-500 hover:text-slate-700">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+                </button>
+            </div>
+
+            <form id="createPostForm">
+                <div class="mb-3">
+                    <label for="postSubreddit" class="block text-sm font-medium text-slate-700 mb-1">Choose a community</label>
+                    <select id="postSubreddit" name="subreddit" class="w-full border-slate-300 rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500 text-sm p-2">
+                        <!-- Options will be populated by JS -->
+                    </select>
+                </div>
+                
+                <div id="postTypeTabs" class="flex border-b border-slate-300 mb-4">
+                    <button type="button" data-type="text" class="post-type-tab flex-1 py-2 px-3 text-sm font-medium text-center border-b-2 border-blue-600 text-blue-600">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5 inline mr-1 align-text-bottom"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" /></svg>
+                        Post
+                    </button>
+                    <button type="button" data-type="image" class="post-type-tab flex-1 py-2 px-3 text-sm font-medium text-center border-b-2 border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5 inline mr-1 align-text-bottom"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 15.75l5.159-5.159a2.25 2.25 0 013.182 0l5.159 5.159m-1.5-1.5l1.409-1.409a2.25 2.25 0 013.182 0l2.909 2.909m-18 3.75h16.5a1.5 1.5 0 001.5-1.5V6a1.5 1.5 0 00-1.5-1.5H3.75A1.5 1.5 0 002.25 6v12a1.5 1.5 0 001.5 1.5zm10.5-11.25h.008v.008h-.008V8.25zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0z" /></svg>
+                        Image
+                    </button>
+                    <button type="button" data-type="link" class="post-type-tab flex-1 py-2 px-3 text-sm font-medium text-center border-b-2 border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300">
+                         <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5 inline mr-1 align-text-bottom"><path stroke-linecap="round" stroke-linejoin="round" d="M13.19 8.688a4.5 4.5 0 011.242 7.244l-4.5 4.5a4.5 4.5 0 01-6.364-6.364l1.757-1.757m13.35-.622l1.757-1.757a4.5 4.5 0 00-6.364-6.364l-4.5 4.5a4.5 4.5 0 001.242 7.244" /></svg>
+                        Link
+                    </button>
+                </div>
+
+                <input type="hidden" id="postType" name="type" value="text">
+
+                <div class="mb-3">
+                    <label for="postTitle" class="block text-sm font-medium text-slate-700 mb-1">Title</label>
+                    <input type="text" id="postTitle" name="title" required class="w-full border-slate-300 rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500 text-sm p-2" placeholder="Title">
+                </div>
+
+                <div id="postContentText" class="mb-3">
+                    <label for="postTextContent" class="block text-sm font-medium text-slate-700 mb-1">Text (Optional)</label>
+                    <textarea id="postTextContent" name="content" rows="5" class="w-full border-slate-300 rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500 text-sm p-2" placeholder="What are your thoughts?"></textarea>
+                </div>
+                
+                <div id="postContentImage" class="mb-3 hidden">
+                    <label for="postImageUrl" class="block text-sm font-medium text-slate-700 mb-1">Image URL (placeholder)</label>
+                    <input type="url" id="postImageUrl" name="imageUrl" class="w-full border-slate-300 rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500 text-sm p-2" placeholder="https://example.com/image.png">
+                    <p class="text-xs text-slate-500 mt-1">Note: Actual image uploads are not supported. This will create a placeholder.</p>
+                </div>
+
+                <div id="postContentLink" class="mb-3 hidden">
+                    <label for="postLinkUrl" class="block text-sm font-medium text-slate-700 mb-1">URL</label>
+                    <input type="url" id="postLinkUrl" name="linkUrl" class="w-full border-slate-300 rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500 text-sm p-2" placeholder="https://example.com">
+                </div>
+
+                <div class="flex justify-end space-x-2 mt-6">
+                    <button type="button" id="cancelCreatePostBtn" class="px-4 py-2 text-sm font-medium text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-md">Cancel</button>
+                    <button type="submit" class="px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-md">Post</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        // --- STATE MANAGEMENT ---
+        let state = {
+            posts: [],
+            subreddits: [],
+            currentUser: { username: 'ReddiUser', upvotedPosts: {}, downvotedPosts: {}, upvotedComments: {}, downvotedComments: {} },
+            currentView: 'feed', // 'feed', 'postDetail'
+            currentSubreddit: null, // null for r/all equivalent, or subreddit name
+            currentPostId: null,
+            sortBy: 'hot', // 'hot', 'new', 'top'
+            showCreatePostModal: false,
+        };
+
+        const ICONS = {
+            upArrow: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-5 h-5"><path fill-rule="evenodd" d="M10 17a.75.75 0 01-.75-.75V5.56l-2.47 2.47a.75.75 0 01-1.06-1.06l3.75-3.75a.75.75 0 011.06 0l3.75 3.75a.75.75 0 11-1.06 1.06L10.75 5.56V16.25A.75.75 0 0110 17z" clip-rule="evenodd" /></svg>`,
+            downArrow: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-5 h-5"><path fill-rule="evenodd" d="M10 3a.75.75 0 01.75.75v10.69l2.47-2.47a.75.75 0 111.06 1.06l-3.75 3.75a.75.75 0 01-1.06 0l-3.75-3.75a.75.75 0 111.06-1.06l2.47 2.47V3.75A.75.75 0 0110 3z" clip-rule="evenodd" /></svg>`,
+            comment: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-4 h-4 mr-1"><path fill-rule="evenodd" d="M2.5 3A1.5 1.5 0 001 4.5v8A1.5 1.5 0 002.5 14h3.486c.218 0 .435.037.642.106l2.254 1.002a.75.75 0 00.936 0l2.254-1.002a3.999 3.999 0 01.642-.106h3.486A1.5 1.5 0 0019 12.5v-8A1.5 1.5 0 0017.5 3h-15zM2.5 4.5a.5.5 0 01.5-.5h14a.5.5 0 01.5.5v8a.5.5 0 01-.5.5h-3.486a4.02 4.02 0 01-.642.106l-.001.001-2.254 1.002a.75.75 0 01-.936 0L6.623 13.11l-.001-.001a4.017 4.017 0 01-.642-.106H2.5a.5.5 0 01-.5-.5v-8z" clip-rule="evenodd" /></svg>`,
+            link: `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4 inline-block ml-1 text-blue-500"><path stroke-linecap="round" stroke-linejoin="round" d="M13.19 8.688a4.5 4.5 0 011.242 7.244l-4.5 4.5a4.5 4.5 0 01-6.364-6.364l1.757-1.757m13.35-.622l1.757-1.757a4.5 4.5 0 00-6.364-6.364l-4.5 4.5a4.5 4.5 0 001.242 7.244" /></svg>`
+        };
+
+        // --- UTILITY FUNCTIONS ---
+        function generateId() {
+            return Date.now().toString(36) + Math.random().toString(36).substring(2, 9);
+        }
+
+        function formatTimeAgo(timestamp) {
+            const now = Date.now();
+            const seconds = Math.round((now - timestamp) / 1000);
+            if (seconds < 5) return 'just now';
+            const minutes = Math.round(seconds / 60);
+            const hours = Math.round(minutes / 60);
+            const days = Math.round(hours / 24);
+
+            if (seconds < 60) return `${seconds}s ago`;
+            if (minutes < 60) return `${minutes}m ago`;
+            if (hours < 24) return `${hours}h ago`;
+            return `${days}d ago`;
+        }
+
+        function loadState() {
+            const savedState = localStorage.getItem('reddiCloneState');
+            if (savedState) {
+                const parsedState = JSON.parse(savedState);
+                // Ensure essential structures are present
+                state = {
+                    ...parsedState,
+                    currentUser: parsedState.currentUser || { username: 'ReddiUser', upvotedPosts: {}, downvotedPosts: {}, upvotedComments: {}, downvotedComments: {} },
+                    subreddits: parsedState.subreddits || getDefaultSubreddits(),
+                    posts: parsedState.posts || getDefaultPosts(),
+                };
+                 // Re-initialize comment IDs if they are missing (for older saved states)
+                state.posts.forEach(post => {
+                    if (!post.comments) post.comments = [];
+                    post.comments.forEach(comment => {
+                        if (!comment.id) comment.id = generateId();
+                        if (comment.score === undefined) comment.score = 0;
+                        if (!comment.replies) comment.replies = []; // Ensure replies array exists
+                    });
+                });
+            } else {
+                state.subreddits = getDefaultSubreddits();
+                state.posts = getDefaultPosts();
+            }
+        }
+
+        function saveState() {
+            localStorage.setItem('reddiCloneState', JSON.stringify(state));
+        }
+
+        function getDefaultSubreddits() {
+            return [
+                { name: 'general', description: 'General discussions and announcements.', icon: '🌐' },
+                { name: 'webdev', description: 'All about modern web development.', icon: '💻' },
+                { name: 'aww', description: 'Cute and adorable pictures.', icon: '🐾' },
+                { name: 'gaming', description: 'Video games, news, and discussions.', icon: '🎮' },
+                { name: 'askReddiClone', description: 'Ask the ReddiClone community anything.', icon: '❓' }
+            ];
+        }
+
+        function getDefaultPosts() {
+             return [
+                {
+                    id: generateId(), title: 'Welcome to ReddiClone!', author: 'AdminUser', subreddit: 'general', score: 42, timestamp: Date.now() - 3600000 * 3, type: 'text',
+                    content: 'This is a simplified Reddit clone built with HTML, TailwindCSS, and JavaScript. Explore, create posts, and comment!',
+                    comments: [
+                        { id: generateId(), author: 'DevGuy', text: 'Impressive for a single HTML file!', score: 5, timestamp: Date.now() - 3600000 * 2, replies: [] },
+                        { id: generateId(), author: 'UXFan', text: 'The UI is quite clean. Good job!', score: 3, timestamp: Date.now() - 3600000 * 1, replies: [] }
+                    ]
+                },
+                {
+                    id: generateId(), title: 'TailwindCSS is awesome for rapid UI development', author: 'CSSWizard', subreddit: 'webdev', score: 128, timestamp: Date.now() - 3600000 * 24 * 2, type: 'link',
+                    linkUrl: 'https://tailwindcss.com',
+                    comments: [
+                        { id: generateId(), author: 'FrontendDev', text: 'Agreed! It speeds up my workflow a lot.', score: 10, timestamp: Date.now() - 3600000 * 5, replies: []}
+                    ]
+                },
+                {
+                    id: generateId(), title: 'My new kitten discovering a sunbeam', author: 'CatLover', subreddit: 'aww', score: 255, timestamp: Date.now() - 3600000 * 6, type: 'image',
+                    imageUrl: 'placeholder', // Will use placeholder div
+                    comments: []
+                }
+            ];
+        }
+
+
+        // --- RENDER FUNCTIONS ---
+        function renderApp() {
+            document.getElementById('currentUserDisplay').textContent = state.currentUser.username;
+            renderSubredditList();
+            renderCreatePostModalSubreddits();
+            updateActiveSortTab();
+
+            if (state.currentView === 'feed') {
+                document.getElementById('feedView').classList.remove('hidden');
+                document.getElementById('postDetailViewContainer').classList.add('hidden');
+                renderPosts();
+                renderCurrentSubredditHeader();
+            } else if (state.currentView === 'postDetail') {
+                document.getElementById('feedView').classList.add('hidden');
+                document.getElementById('postDetailViewContainer').classList.remove('hidden');
+                renderPostDetail();
+            }
+            // Manage modal visibility based on state.showCreatePostModal
+            const modal = document.getElementById('createPostModal');
+            if (state.showCreatePostModal) {
+                modal.classList.remove('hidden');
+            } else {
+                modal.classList.add('hidden');
+            }
+        }
+
+        function renderCurrentSubredditHeader() {
+            const headerEl = document.getElementById('currentSubredditHeader');
+            const titleEl = document.getElementById('currentSubredditTitle');
+            const descriptionEl = document.getElementById('currentSubredditDescription');
+
+            if (state.currentSubreddit) {
+                const subreddit = state.subreddits.find(s => s.name === state.currentSubreddit);
+                if (subreddit) {
+                    titleEl.textContent = `${subreddit.icon || ''} r/${subreddit.name}`;
+                    descriptionEl.textContent = subreddit.description || '';
+                    headerEl.classList.remove('hidden');
+                } else {
+                    headerEl.classList.add('hidden'); // Should not happen if state is consistent
+                }
+            } else {
+                 titleEl.textContent = `🌐 All Posts`;
+                 descriptionEl.textContent = "Showing posts from all communities.";
+                 headerEl.classList.remove('hidden');
+            }
+        }
+        
+        function renderPosts() {
+            const postsContainer = document.getElementById('postsContainer');
+            postsContainer.innerHTML = ''; // Clear existing posts
+
+            let filteredPosts = state.posts;
+            if (state.currentSubreddit) {
+                filteredPosts = state.posts.filter(post => post.subreddit === state.currentSubreddit);
+            }
+
+            // Sort posts
+            if (state.sortBy === 'new') {
+                filteredPosts.sort((a, b) => b.timestamp - a.timestamp);
+            } else if (state.sortBy === 'top') {
+                filteredPosts.sort((a, b) => b.score - a.score);
+            } else { // 'hot' - simplified to score for now
+                filteredPosts.sort((a, b) => b.score - a.score); // Could add time decay factor for true hot
+            }
+            
+            const noPostsMessage = document.getElementById('noPostsMessage');
+            if (filteredPosts.length === 0) {
+                noPostsMessage.classList.remove('hidden');
+            } else {
+                noPostsMessage.classList.add('hidden');
+                filteredPosts.forEach(post => {
+                    postsContainer.appendChild(createPostElement(post));
+                });
+            }
+        }
+
+        function createPostElement(post) {
+            const div = document.createElement('div');
+            div.className = 'bg-white rounded-md shadow-sm overflow-hidden flex border border-slate-200 hover:border-slate-400 transition-colors duration-150';
+            div.setAttribute('data-post-id', post.id);
+
+            const upvoted = state.currentUser.upvotedPosts[post.id];
+            const downvoted = state.currentUser.downvotedPosts[post.id];
+
+            let contentPreviewHTML = '';
+            if (post.type === 'text') {
+                contentPreviewHTML = `<div class="post-content-preview text-sm text-slate-700 mb-2 max-h-24 overflow-hidden prose prose-sm">${post.content ? escapeHTML(post.content.substring(0, 200)) + (post.content.length > 200 ? '...' : '') : ''}</div>`;
+            } else if (post.type === 'link' && post.linkUrl) {
+                contentPreviewHTML = `<div class="post-content-preview text-sm text-slate-700 mb-2">
+                    <a href="${escapeHTML(post.linkUrl)}" target="_blank" rel="noopener noreferrer" class="text-blue-600 hover:underline break-all">
+                        ${escapeHTML(post.linkUrl)} ${ICONS.link}
+                    </a>
+                </div>`;
+            } else if (post.type === 'image') {
+                // For placeholder image, use a styled div. If actual imageUrl, use <img>
+                if (post.imageUrl && post.imageUrl !== 'placeholder') {
+                     contentPreviewHTML = `<div class="post-content-preview my-2 max-h-96 overflow-hidden rounded"><img src="${escapeHTML(post.imageUrl)}" alt="${escapeHTML(post.title)}" class="w-full h-auto object-contain max-h-96"></div>`;
+                } else {
+                     contentPreviewHTML = `<div class="post-content-preview my-2"><div class="bg-gray-200 border-2 border-dashed border-gray-300 rounded-xl w-full h-48 flex items-center justify-center text-gray-400 text-sm">Image Placeholder</div></div>`;
+                }
+            }
+
+            div.innerHTML = `
+                <div class="w-10 bg-slate-50 flex flex-col items-center py-2 px-1 space-y-1">
+                    <button class="upvote-btn p-1 rounded hover:bg-slate-200 ${upvoted ? 'vote-active-up' : 'text-slate-500'}" data-id="${post.id}" data-type="post" title="Upvote">
+                        ${ICONS.upArrow}
+                    </button>
+                    <span class="score font-bold text-xs text-slate-700" title="Post score">${post.score}</span>
+                    <button class="downvote-btn p-1 rounded hover:bg-slate-200 ${downvoted ? 'vote-active-down' : 'text-slate-500'}" data-id="${post.id}" data-type="post" title="Downvote">
+                        ${ICONS.downArrow}
+                    </button>
+                </div>
+                <div class="p-3 flex-1 min-w-0"> <!-- min-w-0 for flex truncation -->
+                    <div class="text-xs text-slate-500 mb-1">
+                        <span class="subreddit-link font-semibold hover:underline cursor-pointer text-slate-800" data-subreddit="${post.subreddit}">r/${post.subreddit}</span>
+                        <span class="mx-1">•</span>
+                        <span>Posted by <span class="author-link hover:underline cursor-default">u/${post.author}</span></span>
+                        <span class="mx-1">•</span>
+                        <span class="timestamp">${formatTimeAgo(post.timestamp)}</span>
+                    </div>
+                    <h2 class="text-lg font-semibold text-slate-800 mb-1 break-words">
+                        <span class="post-title-link hover:text-blue-600 cursor-pointer">${escapeHTML(post.title)}</span>
+                    </h2>
+                    ${contentPreviewHTML}
+                    <div class="flex items-center space-x-3 text-xs text-slate-500 font-medium mt-2">
+                        <button class="comments-link flex items-center hover:bg-slate-100 p-1 rounded-md">
+                            ${ICONS.comment}
+                            <span>${post.comments ? post.comments.length : 0} Comment${post.comments && post.comments.length === 1 ? '' : 's'}</span>
+                        </button>
+                        <!-- Add Share, Save, etc. placeholders if desired -->
+                    </div>
+                </div>
+            `;
+            // Event listeners for elements within this post
+            div.querySelector('.post-title-link').addEventListener('click', () => viewPostDetail(post.id));
+            div.querySelector('.comments-link').addEventListener('click', () => viewPostDetail(post.id));
+            div.querySelector('.subreddit-link').addEventListener('click', (e) => {
+                e.stopPropagation(); // Prevent triggering viewPostDetail if nested
+                navigateToSubreddit(post.subreddit);
+            });
+            return div;
+        }
+        
+        function renderSubredditList() {
+            const listEl = document.getElementById('popularSubredditsList');
+            listEl.innerHTML = '';
+            state.subreddits.forEach(sub => {
+                const li = document.createElement('li');
+                li.innerHTML = `
+                    <a href="#" data-subreddit="${sub.name}" class="subreddit-nav-link flex items-center space-x-2 text-sm text-slate-600 hover:bg-slate-100 p-1.5 rounded-md">
+                        <span class="text-lg">${sub.icon || ' comunità'}</span>
+                        <span class="font-medium">r/${sub.name}</span>
+                    </a>`;
+                listEl.appendChild(li);
+            });
+        }
+        
+        function renderCreatePostModalSubreddits() {
+            const selectEl = document.getElementById('postSubreddit');
+            selectEl.innerHTML = ''; // Clear existing
+            state.subreddits.forEach(sub => {
+                const option = document.createElement('option');
+                option.value = sub.name;
+                option.textContent = `r/${sub.name}`;
+                selectEl.appendChild(option);
+            });
+            if (state.currentSubreddit) {
+                 selectEl.value = state.currentSubreddit;
+            } else if (state.subreddits.length > 0) {
+                 selectEl.value = state.subreddits[0].name; // Default to first
+            }
+        }
+
+        function renderPostDetail() {
+            const post = state.posts.find(p => p.id === state.currentPostId);
+            if (!post) {
+                // Handle post not found, maybe redirect to feed
+                navigateToFeed();
+                return;
+            }
+
+            const detailContentEl = document.getElementById('postDetailContent');
+            const upvoted = state.currentUser.upvotedPosts[post.id];
+            const downvoted = state.currentUser.downvotedPosts[post.id];
+            
+            let fullContentHTML = '';
+            if (post.type === 'text') {
+                fullContentHTML = `<div class="prose prose-slate max-w-none p-4">${post.content ? escapeHTML(post.content).replace(/\n/g, '<br>') : ''}</div>`;
+            } else if (post.type === 'link' && post.linkUrl) {
+                fullContentHTML = `<div class="p-4">
+                    <a href="${escapeHTML(post.linkUrl)}" target="_blank" rel="noopener noreferrer" class="text-xl text-blue-600 hover:underline break-all font-semibold">
+                        ${escapeHTML(post.linkUrl)} ${ICONS.link}
+                    </a>
+                </div>`;
+            } else if (post.type === 'image') {
+                if (post.imageUrl && post.imageUrl !== 'placeholder') {
+                     fullContentHTML = `<div class="p-2 bg-slate-100 flex justify-center"><img src="${escapeHTML(post.imageUrl)}" alt="${escapeHTML(post.title)}" class="max-w-full max-h-[70vh] object-contain rounded"></div>`;
+                } else {
+                     fullContentHTML = `<div class="p-4"><div class="bg-gray-200 border-2 border-dashed border-gray-300 rounded-xl w-full h-64 flex items-center justify-center text-gray-500 text-lg">Image Placeholder</div></div>`;
+                }
+            }
+
+            detailContentEl.innerHTML = `
+                <div class="flex">
+                    <div class="w-10 bg-slate-50 flex flex-col items-center py-3 px-1 space-y-1">
+                        <button class="upvote-btn p-1 rounded hover:bg-slate-200 ${upvoted ? 'vote-active-up' : 'text-slate-500'}" data-id="${post.id}" data-type="post" title="Upvote">${ICONS.upArrow}</button>
+                        <span class="score font-bold text-sm text-slate-700">${post.score}</span>
+                        <button class="downvote-btn p-1 rounded hover:bg-slate-200 ${downvoted ? 'vote-active-down' : 'text-slate-500'}" data-id="${post.id}" data-type="post" title="Downvote">${ICONS.downArrow}</button>
+                    </div>
+                    <div class="p-4 flex-1 min-w-0">
+                        <div class="text-xs text-slate-500 mb-1">
+                            <span class="subreddit-link font-semibold hover:underline cursor-pointer text-slate-800" data-subreddit="${post.subreddit}">r/${post.subreddit}</span>
+                            <span class="mx-1">•</span>
+                            <span>Posted by <span class="author-link hover:underline">u/${post.author}</span></span>
+                            <span class="mx-1">•</span>
+                            <span class="timestamp">${formatTimeAgo(post.timestamp)}</span>
+                        </div>
+                        <h1 class="text-2xl font-semibold text-slate-800 mb-3 break-words">${escapeHTML(post.title)}</h1>
+                    </div>
+                </div>
+                ${fullContentHTML}
+            `;
+             // Attach event listeners specific to this detailed view if needed
+            detailContentEl.querySelector('.subreddit-link').addEventListener('click', (e) => {
+                navigateToSubreddit(post.subreddit);
+            });
+
+            renderAddCommentForm(post.id);
+            renderComments(post.id);
+        }
+
+        function renderAddCommentForm(postId) {
+            const formContainer = document.getElementById('addCommentFormContainer');
+            formContainer.innerHTML = `
+                <p class="text-sm mb-1">Comment as <span class="font-semibold">${state.currentUser.username}</span></p>
+                <form id="addCommentForm" data-post-id="${postId}">
+                    <textarea name="commentText" class="w-full border-slate-300 rounded-md shadow-sm p-2 text-sm focus:ring-blue-500 focus:border-blue-500" rows="3" placeholder="What are your thoughts?" required></textarea>
+                    <div class="mt-2 text-right">
+                        <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded-md text-sm">Comment</button>
+                    </div>
+                </form>
+            `;
+            document.getElementById('addCommentForm').addEventListener('submit', handleAddComment);
+        }
+
+        function renderComments(postId) {
+            const post = state.posts.find(p => p.id === postId);
+            if (!post || !post.comments) return;
+
+            const commentsListEl = document.getElementById('commentsList');
+            commentsListEl.innerHTML = ''; // Clear existing
+
+            if (post.comments.length === 0) {
+                commentsListEl.innerHTML = `<p class="text-slate-500 text-sm">No comments yet. Be the first!</p>`;
+                return;
+            }
+            
+            // Sort comments by timestamp (newest first) or score, let's do newest first for simplicity
+            const sortedComments = [...post.comments].sort((a,b) => b.timestamp - a.timestamp);
+
+            sortedComments.forEach(comment => {
+                commentsListEl.appendChild(createCommentElement(comment, postId));
+            });
+        }
+
+        function createCommentElement(comment, postId) {
+            const div = document.createElement('div');
+            div.className = 'comment-item py-2 border-b border-slate-200 last:border-b-0';
+            div.setAttribute('data-comment-id', comment.id);
+
+            const upvoted = state.currentUser.upvotedComments[comment.id];
+            const downvoted = state.currentUser.downvotedComments[comment.id];
+
+            div.innerHTML = `
+                <div class="flex space-x-2">
+                    <div class="flex flex-col items-center pt-1 space-y-0.5 w-8">
+                         <button class="upvote-btn p-0.5 rounded hover:bg-slate-200 ${upvoted ? 'vote-active-up' : 'text-slate-400'}" data-id="${comment.id}" data-post-id="${postId}" data-type="comment" title="Upvote">
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="currentColor" class="w-4 h-4"><path d="M8 13.5a.75.75 0 0 1-.75-.75V4.31l-2.22 2.22a.75.75 0 0 1-1.06-1.06l3.5-3.5a.75.75 0 0 1 1.06 0l3.5 3.5a.75.75 0 0 1-1.06 1.06L8.75 4.31v8.44A.75.75 0 0 1 8 13.5Z" /></svg>
+                        </button>
+                        <span class="score text-xs font-semibold text-slate-600">${comment.score}</span>
+                        <button class="downvote-btn p-0.5 rounded hover:bg-slate-200 ${downvoted ? 'vote-active-down' : 'text-slate-400'}" data-id="${comment.id}" data-post-id="${postId}" data-type="comment" title="Downvote">
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="currentColor" class="w-4 h-4"><path d="M8 2.5a.75.75 0 0 1 .75.75v8.44l2.22-2.22a.75.75 0 1 1 1.06 1.06l-3.5 3.5a.75.75 0 0 1-1.06 0l-3.5-3.5a.75.75 0 1 1 1.06-1.06L7.25 11.69V3.25A.75.75 0 0 1 8 2.5Z" /></svg>
+                        </button>
+                    </div>
+                    <div class="flex-1">
+                        <div class="text-xs text-slate-500 mb-0.5">
+                            <span class="font-semibold text-slate-700">${escapeHTML(comment.author)}</span>
+                            <span class="mx-1">•</span>
+                            <span>${formatTimeAgo(comment.timestamp)}</span>
+                        </div>
+                        <p class="text-sm text-slate-800 whitespace-pre-wrap">${escapeHTML(comment.text)}</p>
+                        <!-- Reply button can be added here for nested comments -->
+                    </div>
+                </div>
+            `;
+            return div;
+        }
+
+
+        // --- EVENT HANDLERS & ACTIONS ---
+        function handleVote(itemId, itemType, direction) {
+            let item;
+            let userVotesUp, userVotesDown;
+
+            if (itemType === 'post') {
+                item = state.posts.find(p => p.id === itemId);
+                userVotesUp = state.currentUser.upvotedPosts;
+                userVotesDown = state.currentUser.downvotedPosts;
+            } else { // comment
+                const postId = state.currentPostId; // Assuming voting on comment happens in detail view
+                const post = state.posts.find(p => p.id === postId);
+                if (post) item = post.comments.find(c => c.id === itemId);
+                userVotesUp = state.currentUser.upvotedComments;
+                userVotesDown = state.currentUser.downvotedComments;
+            }
+
+            if (!item) return;
+
+            const wasUpvoted = userVotesUp[itemId];
+            const wasDownvoted = userVotesDown[itemId];
+
+            if (direction === 'up') {
+                if (wasUpvoted) { // Click upvote again to remove vote
+                    item.score -= 1;
+                    delete userVotesUp[itemId];
+                } else {
+                    item.score += 1;
+                    userVotesUp[itemId] = true;
+                    if (wasDownvoted) { // Was downvoted, now upvoted
+                        item.score += 1; // Add another point because downvote is removed
+                        delete userVotesDown[itemId];
+                    }
+                }
+            } else if (direction === 'down') {
+                if (wasDownvoted) { // Click downvote again to remove vote
+                    item.score += 1;
+                    delete userVotesDown[itemId];
+                } else {
+                    item.score -= 1;
+                    userVotesDown[itemId] = true;
+                    if (wasUpvoted) { // Was upvoted, now downvoted
+                        item.score -= 1; // Subtract another point
+                        delete userVotesUp[itemId];
+                    }
+                }
+            }
+            
+            saveState();
+            renderApp(); // Re-render to update UI (scores, button states)
+        }
+
+        function handleCreatePost(event) {
+            event.preventDefault();
+            const form = event.target;
+            const formData = new FormData(form);
+            const newPost = {
+                id: generateId(),
+                title: formData.get('title'),
+                author: state.currentUser.username,
+                subreddit: formData.get('subreddit'),
+                score: 1, // Initial score
+                timestamp: Date.now(),
+                type: formData.get('type'),
+                content: formData.get('type') === 'text' ? formData.get('content') : null,
+                imageUrl: formData.get('type') === 'image' ? (formData.get('imageUrl') || 'placeholder') : null,
+                linkUrl: formData.get('type') === 'link' ? formData.get('linkUrl') : null,
+                comments: []
+            };
+
+            // Basic validation for link/image URLs if type is selected
+            if (newPost.type === 'link' && !newPost.linkUrl) {
+                alert('Please provide a URL for the link post.');
+                return;
+            }
+            if (newPost.type === 'image' && !newPost.imageUrl) {
+                // If URL is empty, default to placeholder. If you want it to be required:
+                // alert('Please provide an Image URL for the image post.'); return;
+                newPost.imageUrl = 'placeholder';
+            }
+
+
+            state.posts.unshift(newPost); // Add to beginning of array
+            state.showCreatePostModal = false;
+            form.reset(); // Reset form fields
+            setActivePostTypeTab('text'); // Reset tabs
+            
+            // If not currently in the new post's subreddit or r/all, switch to it
+            if (state.currentSubreddit !== newPost.subreddit && state.currentSubreddit !== null) {
+                state.currentSubreddit = newPost.subreddit;
+            }
+            state.sortBy = 'new'; // Show new post at top
+
+            saveState();
+            renderApp();
+        }
+
+        function handleAddComment(event) {
+            event.preventDefault();
+            const form = event.target;
+            const postId = form.dataset.postId;
+            const commentText = form.elements.commentText.value.trim();
+
+            if (!commentText) return;
+
+            const post = state.posts.find(p => p.id === postId);
+            if (post) {
+                const newComment = {
+                    id: generateId(),
+                    author: state.currentUser.username,
+                    text: commentText,
+                    score: 1,
+                    timestamp: Date.now(),
+                    replies: []
+                };
+                if (!post.comments) post.comments = [];
+                post.comments.push(newComment);
+                form.reset();
+                saveState();
+                renderComments(postId); // Re-render only comments section
+                // Potentially update comment count on feed view if it's visible (more complex)
+                // For now, comment count updates when feed is re-rendered.
+            }
+        }
+        
+        function toggleCreatePostModal(show) {
+            state.showCreatePostModal = show;
+            renderApp(); // This will handle hiding/showing the modal
+        }
+
+        function setActivePostTypeTab(type) {
+            document.querySelectorAll('.post-type-tab').forEach(tab => {
+                if (tab.dataset.type === type) {
+                    tab.classList.add('border-blue-600', 'text-blue-600');
+                    tab.classList.remove('border-transparent', 'text-slate-500');
+                } else {
+                    tab.classList.remove('border-blue-600', 'text-blue-600');
+                    tab.classList.add('border-transparent', 'text-slate-500');
+                }
+            });
+
+            document.getElementById('postType').value = type;
+            document.getElementById('postContentText').classList.toggle('hidden', type !== 'text');
+            document.getElementById('postContentImage').classList.toggle('hidden', type !== 'image');
+            document.getElementById('postContentLink').classList.toggle('hidden', type !== 'link');
+
+            // Set required attributes based on type
+            document.getElementById('postTextContent').required = (type === 'text'); // Or make optional
+            document.getElementById('postImageUrl').required = false; // Image URL is optional, creates placeholder
+            document.getElementById('postLinkUrl').required = (type === 'link');
+        }
+
+        function updateActiveSortTab() {
+            document.querySelectorAll('.sort-tab').forEach(tab => {
+                if (tab.dataset.sort === state.sortBy) {
+                    tab.classList.add('active-sort-tab');
+                } else {
+                    tab.classList.remove('active-sort-tab');
+                }
+            });
+        }
+
+        // --- NAVIGATION ---
+        function navigateToFeed(allPosts = false) {
+            state.currentView = 'feed';
+            if (allPosts) {
+                state.currentSubreddit = null;
+            }
+            // state.currentPostId = null; // Not strictly necessary here but good practice
+            renderApp();
+            window.scrollTo(0,0);
+        }
+
+        function navigateToSubreddit(subredditName) {
+            state.currentView = 'feed';
+            state.currentSubreddit = subredditName;
+            // state.currentPostId = null;
+            renderApp();
+            window.scrollTo(0,0);
+        }
+
+        function viewPostDetail(postId) {
+            state.currentView = 'postDetail';
+            state.currentPostId = postId;
+            renderApp();
+            window.scrollTo(0,0);
+        }
+
+        function goBackToFeed() {
+            state.currentView = 'feed';
+            // state.currentPostId = null; // CurrentPostId is cleared implicitly by not being used in feed view
+            renderApp();
+            window.scrollTo(0,0);
+        }
+
+        // --- HELPERS ---
+        function escapeHTML(str) {
+            if (typeof str !== 'string') return '';
+            return str.replace(/[&<>"']/g, function (match) {
+                return {
+                    '&': '&amp;',
+                    '<': '&lt;',
+                    '>': '&gt;',
+                    '"': '&quot;',
+                    "'": '&#39;'
+                }[match];
+            });
+        }
+
+
+        // --- INITIALIZATION & EVENT LISTENERS ---
+        document.addEventListener('DOMContentLoaded', () => {
+            loadState(); // Load data from localStorage or defaults
+            renderApp(); // Initial render
+
+            // Global event listeners (event delegation)
+            document.body.addEventListener('click', (event) => {
+                const target = event.target.closest('button');
+                if (!target) return;
+
+                if (target.classList.contains('upvote-btn') || target.classList.contains('downvote-btn')) {
+                    const id = target.dataset.id;
+                    const type = target.dataset.type;
+                    const direction = target.classList.contains('upvote-btn') ? 'up' : 'down';
+                    if (type === 'comment') { // If it's a comment, ensure currentPostId is set for context
+                        state.currentPostId = target.dataset.postId;
+                    }
+                    handleVote(id, type, direction);
+                }
+            });
+
+            // Header Create Post Button
+            document.getElementById('headerCreatePostBtn').addEventListener('click', () => toggleCreatePostModal(true));
+            // Sidebar Create Post Button
+            document.getElementById('sidebarCreatePostBtn').addEventListener('click', () => toggleCreatePostModal(true));
+            
+            // Create Post Modal Buttons
+            document.getElementById('closeCreatePostModalBtn').addEventListener('click', () => toggleCreatePostModal(false));
+            document.getElementById('cancelCreatePostBtn').addEventListener('click', () => toggleCreatePostModal(false));
+            document.getElementById('createPostForm').addEventListener('submit', handleCreatePost);
+
+            // Post Type Tabs in Modal
+            document.querySelectorAll('.post-type-tab').forEach(tab => {
+                tab.addEventListener('click', () => setActivePostTypeTab(tab.dataset.type));
+            });
+
+            // Sorting Tabs
+            document.querySelectorAll('.sort-tab').forEach(tab => {
+                tab.addEventListener('click', () => {
+                    state.sortBy = tab.dataset.sort;
+                    updateActiveSortTab();
+                    renderPosts(); // Re-render posts with new sort
+                    saveState();
+                });
+            });
+            
+            // Subreddit navigation from sidebar
+            document.getElementById('popularSubredditsList').addEventListener('click', (event) => {
+                const link = event.target.closest('.subreddit-nav-link');
+                if (link) {
+                    event.preventDefault();
+                    const subredditName = link.dataset.subreddit;
+                    navigateToSubreddit(subredditName);
+                }
+            });
+        });
+    </script>
+</body>
+</html>

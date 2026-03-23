@@ -1,0 +1,397 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Keyword Relevance Rater</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Custom Animations */
+        @keyframes swipe-right-out {
+            to { transform: translateX(150%) rotate(15deg); opacity: 0; }
+        }
+        @keyframes swipe-left-out {
+            to { transform: translateX(-150%) rotate(-15deg); opacity: 0; }
+        }
+        @keyframes card-pop-in {
+            from { transform: scale(0.95) translateY(10px); opacity: 0.8; }
+            to { transform: scale(1) translateY(0); opacity: 1; }
+        }
+
+        .animate-swipe-right-out { animation: swipe-right-out 0.3s ease-in forwards; }
+        .animate-swipe-left-out { animation: swipe-left-out 0.3s ease-in forwards; }
+        .animate-card-pop-in { animation: card-pop-in 0.3s ease-out; }
+
+        /* For touch interactions where direct manipulation overrides transitions temporarily */
+        .no-transition {
+            transition: none !important;
+        }
+        .perspective { /* Tailwind's perspective utility is fine for the parent */
+            perspective: 1000px;
+        }
+        .keyword-card-shadow {
+             box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1), 0 4px 6px -4px rgba(0,0,0,0.1);
+        }
+        .keyword-card-shadow-right {
+             box-shadow: 0 10px 15px -3px rgba(16, 185, 129, 0.3), 0 4px 6px -2px rgba(16, 185, 129, 0.2);
+        }
+        .keyword-card-shadow-left {
+             box-shadow: 0 10px 15px -3px rgba(239, 68, 68, 0.3), 0 4px 6px -2px rgba(239, 68, 68, 0.2);
+        }
+    </style>
+    <script>
+        // Tailwind config (optional, for extending colors if needed, but sticking to defaults)
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        slate: tailwind.colors.slate,
+                        sky: tailwind.colors.sky,
+                        emerald: tailwind.colors.emerald,
+                        red: tailwind.colors.red,
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+<body class="bg-slate-100 min-h-screen flex flex-col items-center justify-center p-4 font-sans text-slate-800 antialiased">
+
+    <div id="appContainer" class="bg-white shadow-2xl rounded-xl p-6 sm:p-8 w-full max-w-md mx-auto">
+
+        <!-- Swiper View -->
+        <div id="swiperView">
+            <div id="progressIndicator" class="text-sm text-slate-500 mb-4 text-center">Keyword 0 of 0</div>
+            
+            <div id="keywordCardContainer" class="relative h-64 md:h-72 mb-6 perspective flex items-center justify-center">
+                <div id="keywordCard" class="absolute bg-white p-6 rounded-xl border-2 border-slate-200 w-full h-full flex items-center justify-center text-center text-2xl md:text-3xl font-semibold select-none cursor-grab keyword-card-shadow" style="transform-origin: center;">
+                    <!-- Keyword text will be injected here -->
+                    <div id="cardOverlayRelevant" class="absolute top-4 right-4 bg-emerald-500 text-white text-xs font-bold uppercase px-3 py-1.5 rounded-md shadow-lg transform rotate-[10deg] opacity-0 transition-opacity duration-200 pointer-events-none">Relevant</div>
+                    <div id="cardOverlayIrrelevant" class="absolute top-4 left-4 bg-red-500 text-white text-xs font-bold uppercase px-3 py-1.5 rounded-md shadow-lg transform -rotate-[10deg] opacity-0 transition-opacity duration-200 pointer-events-none">Irrelevant</div>
+                    <span id="keywordText">Loading...</span>
+                </div>
+            </div>
+
+            <div id="actionButtons" class="flex justify-around items-center space-x-4">
+                <button id="irrelevantBtn" class="bg-red-100 text-red-600 hover:bg-red-200 font-bold p-4 rounded-full shadow-md hover:shadow-lg transition-all duration-150 transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-red-400 focus:ring-opacity-50 aspect-square flex items-center justify-center w-16 h-16 sm:w-20 sm:h-20">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-7 w-7 sm:h-8 sm:w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                </button>
+                <button id="relevantBtn" class="bg-emerald-100 text-emerald-600 hover:bg-emerald-200 font-bold p-4 rounded-full shadow-md hover:shadow-lg transition-all duration-150 transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-emerald-400 focus:ring-opacity-50 aspect-square flex items-center justify-center w-16 h-16 sm:w-20 sm:h-20">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-7 w-7 sm:h-8 sm:w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
+                    </svg>
+                </button>
+            </div>
+        </div>
+
+        <!-- Results View -->
+        <div id="resultsView" class="hidden">
+            <h2 class="text-2xl font-bold text-center text-slate-700 mb-6">Rating Results</h2>
+            
+            <div class="mb-6">
+                <h3 class="text-lg font-semibold text-emerald-700 mb-2">Relevant Keywords (<span id="relevantCount">0</span>)</h3>
+                <div class="bg-emerald-50 p-4 rounded-lg shadow max-h-48 overflow-y-auto">
+                    <ul id="relevantList" class="list-disc list-inside space-y-1 text-sm">
+                        <!-- Relevant keywords will be listed here -->
+                    </ul>
+                </div>
+            </div>
+
+            <div>
+                <h3 class="text-lg font-semibold text-red-700 mb-2">Irrelevant Keywords (<span id="irrelevantCount">0</span>)</h3>
+                 <div class="bg-red-50 p-4 rounded-lg shadow max-h-48 overflow-y-auto">
+                    <ul id="irrelevantList" class="list-disc list-inside space-y-1 text-sm">
+                        <!-- Irrelevant keywords will be listed here -->
+                    </ul>
+                </div>
+            </div>
+
+            <div class="mt-8 flex flex-col sm:flex-row justify-center items-center space-y-3 sm:space-y-0 sm:space-x-4">
+                <button id="resetBtn" class="w-full sm:w-auto bg-sky-500 hover:bg-sky-600 text-white font-semibold py-3 px-6 rounded-lg shadow-md hover:shadow-lg transition-all duration-150 transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-sky-400 focus:ring-opacity-50">
+                    Rate Again
+                </button>
+                <button id="exportCsvBtn" class="w-full sm:w-auto bg-slate-600 hover:bg-slate-700 text-white font-semibold py-3 px-6 rounded-lg shadow-md hover:shadow-lg transition-all duration-150 transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-slate-500 focus:ring-opacity-50">
+                    Export CSV
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const userProvidedRawKeywords = `{{KEYWORD_LIST}}`;
+
+        const defaultAmazonKeywords = [
+            "wireless headphones", "smart watch", "yoga mat", "kitchen blender", "running shoes",
+            "laptop stand", "water bottle", "coffee maker", "air fryer", "bluetooth speaker",
+            "gaming mouse", "office chair", "led strip lights", "security camera", "portable charger",
+            "mens grooming kit", "womens fashion dress", "baby diapers", "pet food", "gardening tools",
+            "dumbbells set", "resistance bands", "board games", "action camera", "drone with camera",
+            "electric toothbrush", "hair dryer", "vacuum cleaner robot", "essential oil diffuser", "weighted blanket",
+            "4k television", "noise cancelling earbuds", "mechanical keyboard", "protein powder whey", "memory foam pillow"
+        ];
+
+        let originalKeywords = [];
+        let keywordsToRate = [];
+        let currentIndex = 0;
+        let relevantKeywords = [];
+        let irrelevantKeywords = [];
+        let isAnimating = false; // To prevent multiple interactions during animation
+
+        // DOM Elements
+        const swiperView = document.getElementById('swiperView');
+        const resultsView = document.getElementById('resultsView');
+        const keywordCard = document.getElementById('keywordCard');
+        const keywordText = document.getElementById('keywordText');
+        const progressIndicator = document.getElementById('progressIndicator');
+        
+        const relevantListEl = document.getElementById('relevantList');
+        const irrelevantListEl = document.getElementById('irrelevantList');
+        const relevantCountEl = document.getElementById('relevantCount');
+        const irrelevantCountEl = document.getElementById('irrelevantCount');
+
+        const irrelevantBtn = document.getElementById('irrelevantBtn');
+        const relevantBtn = document.getElementById('relevantBtn');
+        const resetBtn = document.getElementById('resetBtn');
+        const exportCsvBtn = document.getElementById('exportCsvBtn');
+        
+        const cardOverlayRelevant = document.getElementById('cardOverlayRelevant');
+        const cardOverlayIrrelevant = document.getElementById('cardOverlayIrrelevant');
+
+        function parseUserKeywords(rawKeywords) {
+            if (!rawKeywords || rawKeywords.trim() === "" || rawKeywords === "{{KEYWORD_LIST}}") {
+                return [];
+            }
+            return rawKeywords.split(',').map(kw => kw.trim()).filter(kw => kw.length > 0);
+        }
+
+        function generateRandomKeywords(count) {
+            const shuffled = [...defaultAmazonKeywords].sort(() => 0.5 - Math.random());
+            return shuffled.slice(0, count);
+        }
+        
+        function initializeKeywords() {
+            const parsedUserKw = parseUserKeywords(userProvidedRawKeywords);
+            if (parsedUserKw.length < 20) {
+                originalKeywords = generateRandomKeywords(20);
+            } else {
+                originalKeywords = parsedUserKw.slice(0, 20);
+            }
+        }
+
+        function setupApp() {
+            keywordsToRate = [...originalKeywords];
+            currentIndex = 0;
+            relevantKeywords = [];
+            irrelevantKeywords = [];
+            isAnimating = false;
+
+            resultsView.classList.add('hidden');
+            swiperView.classList.remove('hidden');
+            
+            loadKeyword(currentIndex);
+            updateProgress();
+        }
+        
+        function loadKeyword(index) {
+            if (isAnimating) return;
+
+            keywordCard.classList.remove('animate-swipe-left-out', 'animate-swipe-right-out', 'border-emerald-400', 'border-red-400', 'keyword-card-shadow-left', 'keyword-card-shadow-right');
+            keywordCard.classList.add('border-slate-200', 'keyword-card-shadow');
+            keywordCard.style.transform = 'translateX(0) rotate(0)';
+            keywordCard.style.opacity = '1';
+            cardOverlayRelevant.style.opacity = '0';
+            cardOverlayIrrelevant.style.opacity = '0';
+
+            if (index < keywordsToRate.length) {
+                keywordText.textContent = keywordsToRate[index];
+                keywordCard.classList.add('animate-card-pop-in');
+                setTimeout(() => {
+                    keywordCard.classList.remove('animate-card-pop-in');
+                }, 300); // Animation duration
+            } else {
+                showResults();
+            }
+        }
+
+        function updateProgress() {
+            const total = keywordsToRate.length;
+            const currentNum = Math.min(currentIndex + 1, total);
+            progressIndicator.textContent = `Keyword ${currentNum} of ${total}`;
+        }
+
+        function handleSwipeAction(direction) {
+            if (currentIndex >= keywordsToRate.length || isAnimating) return;
+
+            isAnimating = true;
+            const currentKeyword = keywordsToRate[currentIndex];
+            let animationClass = '';
+
+            if (direction === 'right') {
+                relevantKeywords.push(currentKeyword);
+                animationClass = 'animate-swipe-right-out';
+                keywordCard.classList.remove('border-slate-200', 'keyword-card-shadow');
+                keywordCard.classList.add('border-emerald-400', 'keyword-card-shadow-right');
+            } else { // left
+                irrelevantKeywords.push(currentKeyword);
+                animationClass = 'animate-swipe-left-out';
+                keywordCard.classList.remove('border-slate-200', 'keyword-card-shadow');
+                keywordCard.classList.add('border-red-400', 'keyword-card-shadow-left');
+            }
+            
+            keywordCard.classList.add(animationClass);
+
+            setTimeout(() => {
+                currentIndex++;
+                updateProgress();
+                loadKeyword(currentIndex); // This also resets isAnimating if it loads a card
+                if (currentIndex >= keywordsToRate.length) { // If showResults is called, it will handle isAnimating
+                   if (!resultsView.classList.contains('hidden')) isAnimating = false; // Ensure reset if results shown
+                } else {
+                    isAnimating = false;
+                }
+            }, 300); // Match animation duration
+        }
+
+        function showResults() {
+            isAnimating = true; // Prevent further swipes while results are shown
+            swiperView.classList.add('hidden');
+            resultsView.classList.remove('hidden');
+
+            populateList(relevantListEl, relevantKeywords, relevantCountEl);
+            populateList(irrelevantListEl, irrelevantKeywords, irrelevantCountEl);
+            isAnimating = false; // Allow interactions on results page like reset
+        }
+        
+        function populateList(listElement, keywords, countElement) {
+            listElement.innerHTML = '';
+            if (keywords.length > 0) {
+                keywords.forEach(kw => {
+                    const li = document.createElement('li');
+                    li.className = 'text-slate-700 py-0.5';
+                    li.textContent = kw;
+                    listElement.appendChild(li);
+                });
+            } else {
+                const li = document.createElement('li');
+                li.className = 'text-slate-500 py-0.5 italic';
+                li.textContent = 'None';
+                listElement.appendChild(li);
+            }
+            if(countElement) countElement.textContent = keywords.length;
+        }
+
+        // Touch swipe handling
+        let touchstartX = 0;
+        let touchstartY = 0;
+        let cardInitialX = 0; // To store the card's initial X position if it's already transformed
+        const swipeThreshold = keywordCard.offsetWidth / 3.5; // Min distance for a swipe
+        
+        keywordCard.addEventListener('touchstart', (e) => {
+            if (isAnimating || currentIndex >= keywordsToRate.length) return;
+            touchstartX = e.changedTouches[0].screenX;
+            touchstartY = e.changedTouches[0].screenY;
+            // Get current transform to allow smooth continuation if already slightly moved (not strictly needed here)
+            const computedStyle = window.getComputedStyle(keywordCard);
+            const matrix = new WebKitCSSMatrix(computedStyle.transform);
+            cardInitialX = matrix.m41; // This is translateX value
+            keywordCard.classList.add('no-transition'); // Disable CSS transitions for direct manipulation
+            e.preventDefault(); // Prevent scrolling on touch devices
+        }, { passive: false });
+
+        keywordCard.addEventListener('touchmove', (e) => {
+            if (!touchstartX || isAnimating || currentIndex >= keywordsToRate.length) return;
+            const touchcurrentX = e.changedTouches[0].screenX;
+            let deltaX = touchcurrentX - touchstartX;
+            
+            keywordCard.style.transform = `translateX(${cardInitialX + deltaX}px) rotate(${deltaX / 20}deg)`;
+            
+            const swipeRatio = Math.abs(deltaX) / swipeThreshold;
+            
+            if (deltaX > 0) { // Swiping right
+                cardOverlayRelevant.style.opacity = Math.min(swipeRatio, 1);
+                cardOverlayIrrelevant.style.opacity = '0';
+                keywordCard.classList.remove('border-slate-200', 'border-red-400', 'keyword-card-shadow', 'keyword-card-shadow-left');
+                keywordCard.classList.add('border-emerald-400', 'keyword-card-shadow-right');
+            } else if (deltaX < 0) { // Swiping left
+                cardOverlayIrrelevant.style.opacity = Math.min(swipeRatio, 1);
+                cardOverlayRelevant.style.opacity = '0';
+                keywordCard.classList.remove('border-slate-200', 'border-emerald-400', 'keyword-card-shadow', 'keyword-card-shadow-right');
+                keywordCard.classList.add('border-red-400', 'keyword-card-shadow-left');
+            } else {
+                cardOverlayRelevant.style.opacity = '0';
+                cardOverlayIrrelevant.style.opacity = '0';
+                keywordCard.classList.remove('border-emerald-400', 'border-red-400', 'keyword-card-shadow-left', 'keyword-card-shadow-right');
+                keywordCard.classList.add('border-slate-200', 'keyword-card-shadow');
+            }
+            e.preventDefault();
+        }, { passive: false });
+
+        keywordCard.addEventListener('touchend', (e) => {
+            if (!touchstartX || isAnimating || currentIndex >= keywordsToRate.length) return;
+            keywordCard.classList.remove('no-transition'); // Re-enable CSS transitions for snap/swipe out
+            
+            const touchendX = e.changedTouches[0].screenX;
+            const deltaX = touchendX - touchstartX;
+            const deltaY = e.changedTouches[0].screenY - touchstartY;
+
+            cardOverlayRelevant.style.opacity = '0';
+            cardOverlayIrrelevant.style.opacity = '0';
+
+            // Check if it's more of a horizontal swipe
+            if (Math.abs(deltaX) > Math.abs(deltaY) && Math.abs(deltaX) > swipeThreshold) {
+                if (deltaX > 0) { // Swipe Right
+                    handleSwipeAction('right');
+                } else { // Swipe Left
+                    handleSwipeAction('left');
+                }
+            } else {
+                // Not a long enough swipe or vertical, snap back
+                keywordCard.style.transform = 'translateX(0) rotate(0)';
+                keywordCard.classList.remove('border-emerald-400', 'border-red-400', 'keyword-card-shadow-left', 'keyword-card-shadow-right');
+                keywordCard.classList.add('border-slate-200', 'keyword-card-shadow');
+            }
+            touchstartX = 0; // Reset for next touch
+        });
+
+        function exportToCSV() {
+            if (relevantKeywords.length === 0 && irrelevantKeywords.length === 0) {
+                alert("No keywords have been rated yet!");
+                return;
+            }
+
+            let csvContent = "data:text/csv;charset=utf-8,";
+            csvContent += "Keyword,Status\r\n";
+
+            relevantKeywords.forEach(keyword => {
+                csvContent += `"${keyword.replace(/"/g, '""')}",Relevant\r\n`;
+            });
+            irrelevantKeywords.forEach(keyword => {
+                csvContent += `"${keyword.replace(/"/g, '""')}",Irrelevant\r\n`;
+            });
+
+            const encodedUri = encodeURI(csvContent);
+            const link = document.createElement("a");
+            link.setAttribute("href", encodedUri);
+            link.setAttribute("download", "keyword_ratings.csv");
+            document.body.appendChild(link); 
+            link.click();
+            document.body.removeChild(link);
+        }
+
+        // Event Listeners for buttons
+        relevantBtn.addEventListener('click', () => handleSwipeAction('right'));
+        irrelevantBtn.addEventListener('click', () => handleSwipeAction('left'));
+        resetBtn.addEventListener('click', setupApp); // Re-uses originalKeywords
+        exportCsvBtn.addEventListener('click', exportToCSV);
+
+        // Initial Load
+        document.addEventListener('DOMContentLoaded', () => {
+            initializeKeywords();
+            setupApp();
+        });
+
+    </script>
+</body>
+</html>

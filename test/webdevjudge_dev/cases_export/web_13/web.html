@@ -1,0 +1,447 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Simulateur de Chaîne de Montage de Véhicules</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Custom scrollbar for error panel */
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 8px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: #334155; /* Tailwind slate-700 */
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: #0ea5e9; /* Tailwind sky-500 */
+            border-radius: 4px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+            background: #0284c7; /* Tailwind sky-600 */
+        }
+        /* Ensure SVG text is not selectable to improve click interactions */
+        svg text {
+            user-select: none;
+            -webkit-user-select: none; /* Safari */
+            -moz-user-select: none; /* Firefox */
+            -ms-user-select: none; /* IE10+ */
+        }
+        /* Fix for range input thumb in Firefox */
+        input[type="range"]::-moz-range-thumb {
+            background-color: #0ea5e9; /* sky-500 */
+            border: none;
+            border-radius: 50%;
+            height: 1rem; /* h-4 */
+            width: 1rem; /* w-4 */
+        }
+        input[type="range"]::-moz-range-track {
+            background-color: #475569; /* slate-600 */
+            height: 0.5rem; /* h-2 */
+            border-radius: 0.5rem; /* rounded-lg */
+        }
+    </style>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        // Custom intermediate dark slate for SVG background, if needed
+                        // For this version, using existing slate shades.
+                        // slate: { 850: '#172033' }, 
+                        // Ensure Tailwind default colors are available if extended
+                        slate: tailwind.colors.slate,
+                        emerald: tailwind.colors.emerald,
+                        red: tailwind.colors.red,
+                        sky: tailwind.colors.sky,
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+<body class="bg-slate-900 text-slate-200 font-sans antialiased">
+    <div id="app-container" class="flex flex-col h-screen">
+        <!-- Header/Controls -->
+        <header class="p-4 bg-slate-800 shadow-lg border-b border-slate-700">
+            <h1 class="text-2xl font-bold text-sky-400 mb-4 text-center sm:text-left">Simulateur de Chaîne de Montage</h1>
+            <div id="controls" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-x-6 gap-y-4">
+                <div>
+                    <label for="speed-control" class="block text-sm font-medium text-slate-300 mb-1">Vitesse (px/frame):</label>
+                    <div class="flex items-center gap-2">
+                        <input type="range" id="speed-control" min="0.5" max="5" step="0.1" value="1" class="w-full h-2 bg-slate-600 rounded-lg appearance-none cursor-pointer accent-sky-500">
+                        <span id="speed-value" class="text-sm text-sky-300 w-12 text-right tabular-nums">1.0</span>
+                    </div>
+                </div>
+                <div>
+                    <label for="spawn-interval-control" class="block text-sm font-medium text-slate-300 mb-1">Apparition (s):</label>
+                    <div class="flex items-center gap-2">
+                        <input type="range" id="spawn-interval-control" min="0.5" max="10" step="0.1" value="3" class="w-full h-2 bg-slate-600 rounded-lg appearance-none cursor-pointer accent-sky-500">
+                        <span id="spawn-interval-value" class="text-sm text-sky-300 w-12 text-right tabular-nums">3.0s</span>
+                    </div>
+                </div>
+                <div>
+                    <label for="error-chance-control" class="block text-sm font-medium text-slate-300 mb-1">Erreur initiale (%):</label>
+                    <div class="flex items-center gap-2">
+                        <input type="range" id="error-chance-control" min="0" max="100" step="1" value="20" class="w-full h-2 bg-slate-600 rounded-lg appearance-none cursor-pointer accent-sky-500">
+                        <span id="error-chance-value" class="text-sm text-sky-300 w-12 text-right tabular-nums">20%</span>
+                    </div>
+                </div>
+                 <div>
+                    <label for="max-vehicles-control" class="block text-sm font-medium text-slate-300 mb-1">Max Véhicules:</label>
+                    <div class="flex items-center gap-2">
+                        <input type="range" id="max-vehicles-control" min="1" max="30" step="1" value="15" class="w-full h-2 bg-slate-600 rounded-lg appearance-none cursor-pointer accent-sky-500">
+                        <span id="max-vehicles-value" class="text-sm text-sky-300 w-12 text-right tabular-nums">15</span>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <!-- Main Content Area -->
+        <main class="flex-grow flex flex-col md:flex-row p-4 gap-4 overflow-hidden">
+            <!-- Assembly Line SVG -->
+            <div class="flex-grow relative bg-slate-800/50 rounded-lg shadow-inner border border-slate-700" id="assembly-line-container">
+                <svg id="assembly-line-svg" width="100%" height="100%"></svg>
+            </div>
+
+            <!-- Error Details Panel -->
+            <aside id="error-panel" class="w-full md:w-[380px] md:flex-none bg-slate-800 p-4 rounded-lg shadow-lg flex flex-col custom-scrollbar transition-transform duration-300 ease-in-out fixed md:static inset-y-0 right-0 z-30 transform translate-x-full md:translate-x-0">
+                <div class="flex justify-between items-center mb-3 pb-3 border-b border-slate-700">
+                    <h2 class="text-xl font-semibold text-sky-400">Détails des Erreurs</h2>
+                    <button id="close-error-panel-button" class="text-slate-400 hover:text-sky-400 text-2xl md:hidden">&times;</button>
+                </div>
+                 <div id="error-panel-content-wrapper" class="flex-grow overflow-y-auto custom-scrollbar pr-1">
+                    <div id="error-vehicle-id-container" class="text-lg font-medium mb-2 hidden sticky top-0 bg-slate-800 py-1">Véhicule ID: <span id="error-vehicle-id" class="font-bold text-sky-300"></span></div>
+                    <ul id="error-list" class="space-y-2">
+                        <!-- Error items will be populated here -->
+                    </ul>
+                    <p id="no-errors-message" class="text-slate-400 italic mt-4">Sélectionnez un véhicule pour voir les détails.</p>
+                </div>
+            </aside>
+        </main>
+    </div>
+
+<script>
+    const svgNS = "http://www.w3.org/2000/svg";
+
+    // --- DOM Elements ---
+    const svg = document.getElementById('assembly-line-svg');
+    const assemblyLineContainer = document.getElementById('assembly-line-container');
+    const errorPanel = document.getElementById('error-panel');
+    const errorVehicleIdContainer = document.getElementById('error-vehicle-id-container');
+    const errorVehicleIdEl = document.getElementById('error-vehicle-id');
+    const errorListEl = document.getElementById('error-list');
+    const noErrorsMessageEl = document.getElementById('no-errors-message');
+    const closeErrorPanelButton = document.getElementById('close-error-panel-button');
+
+    // Control Elements
+    const speedControl = document.getElementById('speed-control');
+    const speedValueDisplay = document.getElementById('speed-value');
+    const spawnIntervalControl = document.getElementById('spawn-interval-control');
+    const spawnIntervalValueDisplay = document.getElementById('spawn-interval-value');
+    const errorChanceControl = document.getElementById('error-chance-control');
+    const errorChanceValueDisplay = document.getElementById('error-chance-value');
+    const maxVehiclesControl = document.getElementById('max-vehicles-control');
+    const maxVehiclesValueDisplay = document.getElementById('max-vehicles-value');
+
+    // --- Simulation State & Settings ---
+    let vehicles = [];
+    let nextVehicleId = 1;
+    let selectedVehicle = null;
+    let spawnIntervalTimerId = null;
+    let animationFrameId = null;
+
+    let settings = {
+        vehicleSpeed: parseFloat(speedControl.value),
+        spawnInterval: parseFloat(spawnIntervalControl.value) * 1000,
+        errorChanceOnSpawn: parseInt(errorChanceControl.value) / 100,
+        maxVehicles: parseInt(maxVehiclesControl.value),
+        errorChanceDuringTravel: 0.0005, // 0.05% chance per frame per vehicle
+    };
+
+    // --- Constants ---
+    const VEHICLE_WIDTH = 90;
+    const VEHICLE_HEIGHT = 45;
+    const VEHICLE_CORNER_RADIUS = 6; // Slightly smaller radius
+    const TEXT_OFFSET_Y = VEHICLE_HEIGHT / 2 + 5; 
+    const LINE_STROKE_WIDTH = 4;
+    const START_X_OFFSET = 10; 
+    const MIN_SPAWN_GAP = VEHICLE_WIDTH * 0.25; // Reduced gap for denser packing if needed
+
+    let svgWidth = 0;
+    let svgHeight = 0;
+    let lineYPosition = 0;
+
+    const POSSIBLE_ERRORS = [
+        { code: "ENG001", description: "Problème moteur critique" },
+        { code: "SEN002", description: "Capteur de proximité défectueux" },
+        { code: "CAL003", description: "Erreur de calibration du châssis" },
+        { code: "BAT004", description: "Batterie principale faible" },
+        { code: "TYR005", description: "Pression pneu avant gauche incorrecte" },
+        { code: "PNT006", description: "Défaut de peinture sur capot" },
+        { code: "BRK007", description: "Système de freinage ABS défaillant" },
+        { code: "SYS008", description: "Erreur système interne (ECU)" },
+        { code: "COM009", description: "Perte de communication avec module GPS" }
+    ];
+
+    // --- SVG & Line Update Functions ---
+    function updateSvgDimensionsAndRedraw() {
+        svgWidth = assemblyLineContainer.clientWidth;
+        svgHeight = assemblyLineContainer.clientHeight;
+        svg.setAttribute('viewBox', `0 0 ${svgWidth} ${svgHeight}`);
+        
+        lineYPosition = svgHeight / 2;
+        drawAssemblyLine();
+    }
+
+    function drawAssemblyLine() {
+        const existingLine = svg.querySelector('#assembly-path');
+        if (existingLine) existingLine.remove();
+
+        const line = document.createElementNS(svgNS, 'line');
+        line.setAttribute('id', 'assembly-path');
+        line.setAttribute('x1', '0'); // Line spans full width
+        line.setAttribute('y1', lineYPosition.toString());
+        line.setAttribute('x2', svgWidth.toString());
+        line.setAttribute('y2', lineYPosition.toString());
+        line.setAttribute('stroke', 'rgb(71 85 105)'); // slate-500
+        line.setAttribute('stroke-width', LINE_STROKE_WIDTH.toString());
+        line.setAttribute('stroke-dasharray', '8, 8'); // Dashed line for effect
+        svg.appendChild(line);
+    }
+
+    // --- Vehicle Class ---
+    class Vehicle {
+        constructor(id, x, y) {
+            this.id = id;
+            this.x = x;
+            this.y = y - VEHICLE_HEIGHT / 2; 
+            this.status = 'normal'; 
+            this.errors = [];
+            this.element = this._createElement();
+            this.updateAppearance();
+        }
+
+        _createElement() {
+            const group = document.createElementNS(svgNS, 'g');
+            group.setAttribute('transform', `translate(${this.x}, ${this.y})`);
+            group.style.cursor = 'pointer';
+
+            const rect = document.createElementNS(svgNS, 'rect');
+            rect.setAttribute('width', VEHICLE_WIDTH.toString());
+            rect.setAttribute('height', VEHICLE_HEIGHT.toString());
+            rect.setAttribute('rx', VEHICLE_CORNER_RADIUS.toString());
+            rect.setAttribute('ry', VEHICLE_CORNER_RADIUS.toString());
+            rect.setAttribute('stroke-width', '2');
+            
+            const text = document.createElementNS(svgNS, 'text');
+            text.setAttribute('x', (VEHICLE_WIDTH / 2).toString());
+            text.setAttribute('y', TEXT_OFFSET_Y.toString());
+            text.setAttribute('text-anchor', 'middle');
+            text.setAttribute('fill', 'white');
+            text.setAttribute('font-size', '13px');
+            text.setAttribute('font-weight', '600'); // semibold
+            text.textContent = `VEH-${String(this.id).padStart(3, '0')}`;
+
+            const title = document.createElementNS(svgNS, 'title');
+            
+            group.appendChild(rect);
+            group.appendChild(text);
+            group.appendChild(title);
+
+            group.addEventListener('click', () => this.handleClick());
+            
+            svg.appendChild(group);
+            return group;
+        }
+
+        updatePosition() {
+            this.x += settings.vehicleSpeed;
+            this.element.setAttribute('transform', `translate(${this.x}, ${this.y})`);
+        }
+
+        updateAppearance() {
+            const rect = this.element.querySelector('rect');
+            const title = this.element.querySelector('title');
+            if (this.status === 'error') {
+                rect.setAttribute('fill', 'rgb(239 68 68)'); // red-500
+                rect.setAttribute('stroke', 'rgb(185 28 28)'); // red-700
+            } else {
+                rect.setAttribute('fill', 'rgb(16 185 129)'); // emerald-500
+                rect.setAttribute('stroke', 'rgb(5 150 105)'); // emerald-600
+            }
+            title.textContent = `Véhicule ID: VEH-${String(this.id).padStart(3, '0')} - Statut: ${this.status === 'error' ? 'Erreur' : 'Normal'}`;
+        }
+
+        addError(error) {
+            this.errors.push({ ...error, timestamp: new Date().toLocaleString('fr-FR') });
+            if (this.status !== 'error') {
+                 this.status = 'error';
+                 this.updateAppearance();
+            }
+            if (selectedVehicle && selectedVehicle.id === this.id) {
+                displayVehicleErrors(this);
+            }
+        }
+
+        handleClick() {
+            selectedVehicle = this;
+            displayVehicleErrors(this);
+            errorPanel.classList.remove('translate-x-full');
+        }
+
+        destroy() {
+            if (this.element) {
+                this.element.remove();
+                this.element = null; 
+            }
+        }
+    }
+
+    function spawnVehicle() {
+        if (vehicles.length >= settings.maxVehicles || svgWidth === 0) {
+            return;
+        }
+        
+        const lastVehicle = vehicles.length > 0 ? vehicles[vehicles.length - 1] : null;
+        if (lastVehicle && lastVehicle.x < START_X_OFFSET + VEHICLE_WIDTH + MIN_SPAWN_GAP) {
+             return;
+        }
+
+        const newVehicle = new Vehicle(nextVehicleId++, START_X_OFFSET, lineYPosition);
+        
+        if (Math.random() < settings.errorChanceOnSpawn) {
+            const randomError = POSSIBLE_ERRORS[Math.floor(Math.random() * POSSIBLE_ERRORS.length)];
+            newVehicle.addError(randomError);
+        }
+        vehicles.push(newVehicle);
+    }
+
+    // --- Simulation Loop ---
+    function gameLoop() {
+        for (let i = vehicles.length - 1; i >= 0; i--) {
+            const vehicle = vehicles[i];
+            vehicle.updatePosition();
+
+            if (vehicle.status === 'normal' && Math.random() < settings.errorChanceDuringTravel) {
+                const randomError = POSSIBLE_ERRORS[Math.floor(Math.random() * POSSIBLE_ERRORS.length)];
+                vehicle.addError(randomError);
+            }
+
+            if (vehicle.x > svgWidth + VEHICLE_WIDTH) { // Ensure vehicle is fully off-screen
+                vehicle.destroy();
+                vehicles.splice(i, 1);
+                if (selectedVehicle && selectedVehicle.id === vehicle.id) {
+                    clearErrorPanelDisplay(); 
+                }
+            }
+        }
+        animationFrameId = requestAnimationFrame(gameLoop);
+    }
+
+    // --- Error Panel Logic ---
+    function displayVehicleErrors(vehicle) {
+        errorVehicleIdEl.textContent = `VEH-${String(vehicle.id).padStart(3, '0')}`;
+        errorVehicleIdContainer.classList.remove('hidden');
+        errorListEl.innerHTML = ''; 
+
+        if (vehicle.errors.length > 0) {
+            vehicle.errors.forEach(err => {
+                const li = document.createElement('li');
+                li.className = 'p-2 bg-slate-700/70 rounded-md shadow-sm text-sm';
+                li.innerHTML = `
+                    <strong class="text-red-400">${err.code || 'N/A'}</strong>: ${err.description}
+                    <br>
+                    <span class="text-xs text-slate-400">${err.timestamp}</span>`;
+                errorListEl.appendChild(li);
+            });
+            noErrorsMessageEl.classList.add('hidden');
+        } else {
+            errorListEl.innerHTML = ''; // Ensure list is empty
+            noErrorsMessageEl.textContent = 'Aucune erreur détectée pour ce véhicule.';
+            noErrorsMessageEl.classList.remove('hidden');
+        }
+    }
+
+    function clearErrorPanelDisplay() {
+        selectedVehicle = null;
+        errorVehicleIdContainer.classList.add('hidden');
+        errorListEl.innerHTML = '';
+        noErrorsMessageEl.textContent = 'Sélectionnez un véhicule pour voir les détails.';
+        noErrorsMessageEl.classList.remove('hidden');
+        
+        // For mobile, slide out the panel if it was opened by a click
+        // This happens if the close button is visible (i.e., on mobile)
+        if (closeErrorPanelButton.offsetParent !== null) { 
+             errorPanel.classList.add('translate-x-full');
+        }
+    }
+    
+    closeErrorPanelButton.addEventListener('click', () => {
+        errorPanel.classList.add('translate-x-full');
+    });
+
+    // --- Event Listeners for Controls ---
+    function setupControls() {
+        speedControl.addEventListener('input', (e) => {
+            settings.vehicleSpeed = parseFloat(e.target.value);
+            speedValueDisplay.textContent = parseFloat(e.target.value).toFixed(1);
+        });
+
+        spawnIntervalControl.addEventListener('input', (e) => {
+            const newInterval = parseFloat(e.target.value) * 1000;
+            if (newInterval !== settings.spawnInterval) {
+                settings.spawnInterval = newInterval;
+                spawnIntervalValueDisplay.textContent = `${parseFloat(e.target.value).toFixed(1)}s`;
+                if (spawnIntervalTimerId) clearInterval(spawnIntervalTimerId);
+                if (settings.spawnInterval > 0) { // Prevent 0 interval
+                    spawnIntervalTimerId = setInterval(spawnVehicle, settings.spawnInterval);
+                }
+            }
+        });
+
+        errorChanceControl.addEventListener('input', (e) => {
+            settings.errorChanceOnSpawn = parseInt(e.target.value) / 100;
+            errorChanceValueDisplay.textContent = `${e.target.value}%`;
+        });
+        
+        maxVehiclesControl.addEventListener('input', (e) => {
+            settings.maxVehicles = parseInt(e.target.value);
+            maxVehiclesValueDisplay.textContent = e.target.value;
+        });
+    }
+
+    // --- Initialization ---
+    function init() {
+        updateSvgDimensionsAndRedraw(); 
+        
+        const resizeObserver = new ResizeObserver(updateSvgDimensionsAndRedraw);
+        resizeObserver.observe(assemblyLineContainer);
+
+        speedValueDisplay.textContent = parseFloat(speedControl.value).toFixed(1);
+        spawnIntervalValueDisplay.textContent = `${parseFloat(spawnIntervalControl.value).toFixed(1)}s`;
+        errorChanceValueDisplay.textContent = `${errorChanceControl.value}%`;
+        maxVehiclesValueDisplay.textContent = maxVehiclesControl.value;
+        
+        setupControls();
+
+        if (settings.spawnInterval > 0) {
+            spawnIntervalTimerId = setInterval(spawnVehicle, settings.spawnInterval);
+        }
+        
+        clearErrorPanelDisplay();
+        animationFrameId = requestAnimationFrame(gameLoop);
+    }
+    
+    function cleanup() {
+        if (animationFrameId) cancelAnimationFrame(animationFrameId);
+        if (spawnIntervalTimerId) clearInterval(spawnIntervalTimerId);
+        // Could also remove resize observer if the whole app is destroyed
+    }
+
+    document.addEventListener('DOMContentLoaded', init);
+    window.addEventListener('beforeunload', cleanup); // Basic cleanup
+
+</script>
+</body>
+</html>

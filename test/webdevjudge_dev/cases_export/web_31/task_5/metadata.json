@@ -1,0 +1,9 @@
+{
+  "web_id": "web_31",
+  "task_id": 5,
+  "task_type": "dynamic",
+  "instruction": "Task: Hover over a message, click a 'react' icon, and select an emoji from a picker.\nExpected Result: Selected emoji is displayed as a reaction to the message.\n\nNote: The task is only considered successful if the expected result is achieved; otherwise, it is deemed infeasible.",
+  "max_steps": 15,
+  "expected": "Selected emoji is displayed as a reaction to the message.",
+  "label": 0
+}

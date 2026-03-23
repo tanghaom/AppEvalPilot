@@ -1,0 +1,9 @@
+{
+  "web_id": "web_77",
+  "task_id": 1,
+  "task_type": "dynamic",
+  "instruction": "Task: Click a 'Question Bank Library' link/tab in the main navigation menu.\nExpected Result: The Question Bank Management Page/Library view is displayed, showing a list of (locally simulated) question banks.\n\nNote: The task is only considered successful if the expected result is achieved; otherwise, it is deemed infeasible.",
+  "max_steps": 15,
+  "expected": "The Question Bank Management Page/Library view is displayed, showing a list of (locally simulated) question banks.",
+  "label": 1
+}

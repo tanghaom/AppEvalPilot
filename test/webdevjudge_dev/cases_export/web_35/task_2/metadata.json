@@ -1,0 +1,9 @@
+{
+  "web_id": "web_35",
+  "task_id": 2,
+  "task_type": "dynamic",
+  "instruction": "Task: Input and save new daily target values for calories and macronutrients.\nExpected Result: The daily progress displays (calorie ring, macro bars) update their target maximums and reflect current progress against these new targets.\n\nNote: The task is only considered successful if the expected result is achieved; otherwise, it is deemed infeasible.",
+  "max_steps": 15,
+  "expected": "The daily progress displays (calorie ring, macro bars) update their target maximums and reflect current progress against these new targets.",
+  "label": 1
+}

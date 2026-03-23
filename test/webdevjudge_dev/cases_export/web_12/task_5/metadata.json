@@ -1,0 +1,9 @@
+{
+  "web_id": "web_12",
+  "task_id": 5,
+  "task_type": "dynamic",
+  "instruction": "Task: Click a button to launch an automated script on the 'Automate Tasks' page\nExpected Result: A confirmation message is displayed, indicating the script launch was simulated (e.g., 'Script [Script Name] initiated').\n\nNote: The task is only considered successful if the expected result is achieved; otherwise, it is deemed infeasible.",
+  "max_steps": 15,
+  "expected": "A confirmation message is displayed, indicating the script launch was simulated (e.g., 'Script [Script Name] initiated').",
+  "label": 1
+}

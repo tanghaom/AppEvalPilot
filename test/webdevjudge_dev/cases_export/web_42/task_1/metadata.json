@@ -1,0 +1,9 @@
+{
+  "web_id": "web_42",
+  "task_id": 1,
+  "task_type": "dynamic",
+  "instruction": "Task: Scroll through the main content feed to view posts.\nExpected Result: Additional posts (images and captions) become visible as the user scrolls down the feed.\n\nNote: The task is only considered successful if the expected result is achieved; otherwise, it is deemed infeasible.",
+  "max_steps": 15,
+  "expected": "Additional posts (images and captions) become visible as the user scrolls down the feed.",
+  "label": 0
+}

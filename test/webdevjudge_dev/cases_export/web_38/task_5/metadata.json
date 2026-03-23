@@ -1,0 +1,9 @@
+{
+  "web_id": "web_38",
+  "task_id": 5,
+  "task_type": "dynamic",
+  "instruction": "Task: From the open user dropdown menu, click the 'Logout' button.\nExpected Result: The user dropdown menu closes. The header UI reverts to showing 'Login' and 'Sign Up' buttons, and hides the username, balance, and user dropdown menu.\n\nNote: The task is only considered successful if the expected result is achieved; otherwise, it is deemed infeasible.",
+  "max_steps": 15,
+  "expected": "The user dropdown menu closes. The header UI reverts to showing 'Login' and 'Sign Up' buttons, and hides the username, balance, and user dropdown menu.",
+  "label": 1
+}

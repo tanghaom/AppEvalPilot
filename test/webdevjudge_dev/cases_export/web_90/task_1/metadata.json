@@ -1,0 +1,9 @@
+{
+  "web_id": "web_90",
+  "task_id": 1,
+  "task_type": "dynamic",
+  "instruction": "Task: Click on a news item's title in the feed.\nExpected Result: A section or modal on the page displays the full article details (title, date, source, content) of the clicked news item.\n\nNote: The task is only considered successful if the expected result is achieved; otherwise, it is deemed infeasible.",
+  "max_steps": 15,
+  "expected": "A section or modal on the page displays the full article details (title, date, source, content) of the clicked news item.",
+  "label": 1
+}

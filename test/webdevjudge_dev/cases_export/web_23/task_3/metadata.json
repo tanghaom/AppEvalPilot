@@ -1,0 +1,9 @@
+{
+  "web_id": "web_23",
+  "task_id": 3,
+  "task_type": "dynamic",
+  "instruction": "Task: Click a product item in the bento-style product grid.\nExpected Result: The main content area updates to show the selected product's details and its reviews section.\n\nNote: The task is only considered successful if the expected result is achieved; otherwise, it is deemed infeasible.",
+  "max_steps": 15,
+  "expected": "The main content area updates to show the selected product's details and its reviews section.",
+  "label": 0
+}

@@ -1,0 +1,9 @@
+{
+  "web_id": "web_81",
+  "task_id": 3,
+  "task_type": "dynamic",
+  "instruction": "Task: Click on an available spell/ability icon for the current hero.\nExpected Result: The spell/ability is activated. If it's an instant effect (e.g., area-of-effect, self-buff), its effects are applied immediately (e.g., damage to relevant monsters, hero stats change), health bars update, and the spell enters cooldown. If it's a single-target spell, the UI indicates readiness for target selection (e.g., cursor changes, a visual prompt appears).\n\nNote: The task is only considered successful if the expected result is achieved; otherwise, it is deemed infeasible.",
+  "max_steps": 15,
+  "expected": "The spell/ability is activated. If it's an instant effect (e.g., area-of-effect, self-buff), its effects are applied immediately (e.g., damage to relevant monsters, hero stats change), health bars update, and the spell enters cooldown. If it's a single-target spell, the UI indicates readiness for target selection (e.g., cursor changes, a visual prompt appears).",
+  "label": 1
+}

@@ -1,0 +1,9 @@
+{
+  "web_id": "web_83",
+  "task_id": 5,
+  "task_type": "dynamic",
+  "instruction": "Task: Click the 'Analytics' link in the navigation panel.\nExpected Result: The main content area of the application changes to display the 'Analytics' view, showing relevant charts and data visualizations (e.g., tasks per status chart).\n\nNote: The task is only considered successful if the expected result is achieved; otherwise, it is deemed infeasible.",
+  "max_steps": 15,
+  "expected": "The main content area of the application changes to display the 'Analytics' view, showing relevant charts and data visualizations (e.g., tasks per status chart).",
+  "label": 0
+}

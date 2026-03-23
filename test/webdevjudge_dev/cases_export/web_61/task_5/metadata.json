@@ -1,0 +1,9 @@
+{
+  "web_id": "web_61",
+  "task_id": 5,
+  "task_type": "dynamic",
+  "instruction": "Task: Trigger (simulated) Smart Quiz generation for the active note\nExpected Result: (Locally generated placeholder) quiz questions based on the active note's content are displayed.\n\nNote: The task is only considered successful if the expected result is achieved; otherwise, it is deemed infeasible.",
+  "max_steps": 15,
+  "expected": "(Locally generated placeholder) quiz questions based on the active note's content are displayed.",
+  "label": 0
+}

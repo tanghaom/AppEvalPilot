@@ -1,0 +1,9 @@
+{
+  "web_id": "web_71",
+  "task_id": 5,
+  "task_type": "dynamic",
+  "instruction": "Task: Click a 'Remove from Cart' button next to an item within the cart display.\nExpected Result: The specified item is removed from the client-side shopping cart, and the cart display (item list, total price) updates accordingly.\n\nNote: The task is only considered successful if the expected result is achieved; otherwise, it is deemed infeasible.",
+  "max_steps": 15,
+  "expected": "The specified item is removed from the client-side shopping cart, and the cart display (item list, total price) updates accordingly.",
+  "label": 0
+}

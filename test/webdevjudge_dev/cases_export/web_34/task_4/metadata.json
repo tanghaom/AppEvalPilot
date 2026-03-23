@@ -1,0 +1,9 @@
+{
+  "web_id": "web_34",
+  "task_id": 4,
+  "task_type": "dynamic",
+  "instruction": "Task: Click a 'Reload' button while a simulated page's content is displayed.\nExpected Result: The content in the page's main content area for the current simulated page is re-rendered or an indication of reloading is shown.\n\nNote: The task is only considered successful if the expected result is achieved; otherwise, it is deemed infeasible.",
+  "max_steps": 15,
+  "expected": "The content in the page's main content area for the current simulated page is re-rendered or an indication of reloading is shown.",
+  "label": 0
+}

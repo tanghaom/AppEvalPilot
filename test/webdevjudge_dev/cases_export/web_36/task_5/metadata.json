@@ -1,0 +1,9 @@
+{
+  "web_id": "web_36",
+  "task_id": 5,
+  "task_type": "dynamic",
+  "instruction": "Task: Input text into an email field on a signup or login form.\nExpected Result: The entered text is visible and correctly displayed within the email input field.\n\nNote: The task is only considered successful if the expected result is achieved; otherwise, it is deemed infeasible.",
+  "max_steps": 15,
+  "expected": "The entered text is visible and correctly displayed within the email input field.",
+  "label": 0
+}

@@ -1,0 +1,9 @@
+{
+  "web_id": "web_49",
+  "task_id": 1,
+  "task_type": "dynamic",
+  "instruction": "Task: Click a link/button to switch between the Login and Register forms (e.g., 'Go to Register' or 'Go to Login').\nExpected Result: The currently displayed form animates by sliding off-screen, and the other form (Register or Login) animates by sliding in with a smooth, possibly elastic, transition.\n\nNote: The task is only considered successful if the expected result is achieved; otherwise, it is deemed infeasible.",
+  "max_steps": 15,
+  "expected": "The currently displayed form animates by sliding off-screen, and the other form (Register or Login) animates by sliding in with a smooth, possibly elastic, transition.",
+  "label": 1
+}

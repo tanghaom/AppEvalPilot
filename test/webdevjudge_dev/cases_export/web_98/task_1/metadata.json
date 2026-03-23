@@ -1,0 +1,9 @@
+{
+  "web_id": "web_98",
+  "task_id": 1,
+  "task_type": "dynamic",
+  "instruction": "Task: Click the sidebar toggle button (located at the bottom right of the sidebar).\nExpected Result: The sidebar's persistent state switches: if it was set to 'expanded', it transitions to a 'collapsed' state (e.g., narrow, icons only). If it was set to 'collapsed', it transitions to an 'expanded' state (i.e., full width, showing content) and remains expanded irrespective of hover.\n\nNote: The task is only considered successful if the expected result is achieved; otherwise, it is deemed infeasible.",
+  "max_steps": 15,
+  "expected": "The sidebar's persistent state switches: if it was set to 'expanded', it transitions to a 'collapsed' state (e.g., narrow, icons only). If it was set to 'collapsed', it transitions to an 'expanded' state (i.e., full width, showing content) and remains expanded irrespective of hover.",
+  "label": 1
+}

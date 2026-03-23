@@ -1,0 +1,9 @@
+{
+  "web_id": "web_63",
+  "task_id": 1,
+  "task_type": "dynamic",
+  "instruction": "Task: Click the 'Enviar Post' (Submit Post) button after filling the form fields.\nExpected Result: A new post, using data from the form fields, is added to the post list (simulated locally), and the 'Titulo', 'URL', and 'Autor' input fields in the form are cleared.\n\nNote: The task is only considered successful if the expected result is achieved; otherwise, it is deemed infeasible.",
+  "max_steps": 15,
+  "expected": "A new post, using data from the form fields, is added to the post list (simulated locally), and the 'Titulo', 'URL', and 'Autor' input fields in the form are cleared.",
+  "label": 1
+}

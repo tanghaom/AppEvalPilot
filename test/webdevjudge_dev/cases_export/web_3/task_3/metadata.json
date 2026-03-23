@@ -1,0 +1,9 @@
+{
+  "web_id": "web_3",
+  "task_id": 3,
+  "task_type": "dynamic",
+  "instruction": "Task: Input text into the search bar in the header.\nExpected Result: A (simulated) list of search results appears below the search bar, or the main content filters to show matching items.\n\nNote: The task is only considered successful if the expected result is achieved; otherwise, it is deemed infeasible.",
+  "max_steps": 15,
+  "expected": "A (simulated) list of search results appears below the search bar, or the main content filters to show matching items.",
+  "label": 0
+}

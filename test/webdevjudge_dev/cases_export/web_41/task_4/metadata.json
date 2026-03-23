@@ -1,0 +1,9 @@
+{
+  "web_id": "web_41",
+  "task_id": 4,
+  "task_type": "dynamic",
+  "instruction": "Task: From a list of activities on the 'Activities Screen', click on a specific activity's name or image.\nExpected Result: The 'Detail View' for the selected activity is displayed, showing its full description, itinerary, and (simulated) booking options.\n\nNote: The task is only considered successful if the expected result is achieved; otherwise, it is deemed infeasible.",
+  "max_steps": 15,
+  "expected": "The 'Detail View' for the selected activity is displayed, showing its full description, itinerary, and (simulated) booking options.",
+  "label": 0
+}

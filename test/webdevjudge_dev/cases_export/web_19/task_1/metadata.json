@@ -1,0 +1,9 @@
+{
+  "web_id": "web_19",
+  "task_id": 1,
+  "task_type": "dynamic",
+  "instruction": "Task: Type text into the CodeMirror editor area.\nExpected Result: Text appears in the editor, and (simulated) contextual suggestions are displayed in real-time.\n\nNote: The task is only considered successful if the expected result is achieved; otherwise, it is deemed infeasible.",
+  "max_steps": 15,
+  "expected": "Text appears in the editor, and (simulated) contextual suggestions are displayed in real-time.",
+  "label": 0
+}

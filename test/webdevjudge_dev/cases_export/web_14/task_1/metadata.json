@@ -1,0 +1,9 @@
+{
+  "web_id": "web_14",
+  "task_id": 1,
+  "task_type": "dynamic",
+  "instruction": "Task: Type text into the message input field and click the 'Send' button (or press Enter)\nExpected Result: The user's message appears in the chat log, followed by a simulated bot response.\n\nNote: The task is only considered successful if the expected result is achieved; otherwise, it is deemed infeasible.",
+  "max_steps": 15,
+  "expected": "The user's message appears in the chat log, followed by a simulated bot response.",
+  "label": 0
+}

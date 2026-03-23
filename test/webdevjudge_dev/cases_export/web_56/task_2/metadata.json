@@ -1,0 +1,9 @@
+{
+  "web_id": "web_56",
+  "task_id": 2,
+  "task_type": "dynamic",
+  "instruction": "Task: Click an existing circle on the canvas to select it.\nExpected Result: The clicked circle is visually distinguished (e.g., highlighted, outlined), and its properties (e.g., position, color, size, opacity) are loaded into the corresponding UI controls for viewing and editing.\n\nNote: The task is only considered successful if the expected result is achieved; otherwise, it is deemed infeasible.",
+  "max_steps": 15,
+  "expected": "The clicked circle is visually distinguished (e.g., highlighted, outlined), and its properties (e.g., position, color, size, opacity) are loaded into the corresponding UI controls for viewing and editing.",
+  "label": 1
+}

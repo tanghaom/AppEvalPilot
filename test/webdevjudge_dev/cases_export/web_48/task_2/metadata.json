@@ -1,0 +1,9 @@
+{
+  "web_id": "web_48",
+  "task_id": 2,
+  "task_type": "dynamic",
+  "instruction": "Task: Input text into an existing text block, select a portion of the text, and click a 'Bold' button in a formatting toolbar.\nExpected Result: The entered text appears, and the selected portion is rendered in bold.\n\nNote: The task is only considered successful if the expected result is achieved; otherwise, it is deemed infeasible.",
+  "max_steps": 15,
+  "expected": "The entered text appears, and the selected portion is rendered in bold.",
+  "label": 0
+}

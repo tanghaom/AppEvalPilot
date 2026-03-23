@@ -1,0 +1,9 @@
+{
+  "web_id": "web_23",
+  "task_id": 2,
+  "task_type": "dynamic",
+  "instruction": "Task: Hover over a product image in the cycling product gallery.\nExpected Result: The gallery's cycling animation slows, and product information text appears over the hovered image.\n\nNote: The task is only considered successful if the expected result is achieved; otherwise, it is deemed infeasible.",
+  "max_steps": 15,
+  "expected": "The gallery's cycling animation slows, and product information text appears over the hovered image.",
+  "label": 1
+}

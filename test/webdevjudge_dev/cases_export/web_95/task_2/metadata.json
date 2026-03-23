@@ -1,0 +1,9 @@
+{
+  "web_id": "web_95",
+  "task_id": 2,
+  "task_type": "dynamic",
+  "instruction": "Task: Input text into the homepage hero search bar and initiate a search (e.g., by clicking a search icon or pressing Enter)\nExpected Result: A (simulated) list of search results is displayed, or the view updates to show items matching the search term.\n\nNote: The task is only considered successful if the expected result is achieved; otherwise, it is deemed infeasible.",
+  "max_steps": 15,
+  "expected": "A (simulated) list of search results is displayed, or the view updates to show items matching the search term.",
+  "label": 0
+}

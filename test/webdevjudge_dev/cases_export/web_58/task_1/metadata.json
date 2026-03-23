@@ -1,0 +1,9 @@
+{
+  "web_id": "web_58",
+  "task_id": 1,
+  "task_type": "dynamic",
+  "instruction": "Task: Click on an empty Sudoku grid cell, then click a number button (1-9) from a palette to input a number, or click an 'Erase' button to clear the cell's main number.\nExpected Result: The selected number is displayed in the chosen cell, or the cell is cleared. The UI provides immediate visual feedback (e.g., cell highlights red) if the input violates Sudoku rules.\n\nNote: The task is only considered successful if the expected result is achieved; otherwise, it is deemed infeasible.",
+  "max_steps": 15,
+  "expected": "The selected number is displayed in the chosen cell, or the cell is cleared. The UI provides immediate visual feedback (e.g., cell highlights red) if the input violates Sudoku rules.",
+  "label": 0
+}

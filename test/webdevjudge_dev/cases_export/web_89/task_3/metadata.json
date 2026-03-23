@@ -1,0 +1,9 @@
+{
+  "web_id": "web_89",
+  "task_id": 3,
+  "task_type": "dynamic",
+  "instruction": "Task: Click the 'Submit' button on the Problem View screen after providing an answer.\nExpected Result: A mock feedback message (e.g., \"Correct,\" \"Incorrect,\" or \"Answer processed\") appears in the FeedbackArea.\n\nNote: The task is only considered successful if the expected result is achieved; otherwise, it is deemed infeasible.",
+  "max_steps": 15,
+  "expected": "A mock feedback message (e.g., \"Correct,\" \"Incorrect,\" or \"Answer processed\") appears in the FeedbackArea.",
+  "label": 1
+}

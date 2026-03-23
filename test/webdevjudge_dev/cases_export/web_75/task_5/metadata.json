@@ -1,0 +1,9 @@
+{
+  "web_id": "web_75",
+  "task_id": 5,
+  "task_type": "dynamic",
+  "instruction": "Task: Click an existing event on the calendar, and then click a 'Delete' button (potentially after a confirmation prompt).\nExpected Result: The selected event is removed from the calendar display.\n\nNote: The task is only considered successful if the expected result is achieved; otherwise, it is deemed infeasible.",
+  "max_steps": 15,
+  "expected": "The selected event is removed from the calendar display.",
+  "label": 1
+}

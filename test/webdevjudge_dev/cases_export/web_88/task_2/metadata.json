@@ -1,0 +1,9 @@
+{
+  "web_id": "web_88",
+  "task_id": 2,
+  "task_type": "dynamic",
+  "instruction": "Task: Select an answer for a multiple-choice question by clicking on one of the options.\nExpected Result: The chosen answer option is visually highlighted. Instant visual feedback (e.g., a color change like green for correct, red for incorrect) is displayed for that selected option, indicating its correctness.\n\nNote: The task is only considered successful if the expected result is achieved; otherwise, it is deemed infeasible.",
+  "max_steps": 15,
+  "expected": "The chosen answer option is visually highlighted. Instant visual feedback (e.g., a color change like green for correct, red for incorrect) is displayed for that selected option, indicating its correctness.",
+  "label": 0
+}

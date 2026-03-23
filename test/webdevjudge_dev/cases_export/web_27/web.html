@@ -1,0 +1,460 @@
+<!DOCTYPE html>
+<html lang="ru" class="scroll-smooth">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HELLGATE: UPRISING - Game Concept</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif; /* Using a common sans-serif stack if Inter isn't loaded by Tailwind default */
+        }
+        .active-tab {
+            border-color: #ef4444 !important; /* red-500 */
+            color: #ef4444 !important; /* red-500 */
+            background-color: rgba(239, 68, 68, 0.1);
+        }
+        .content-section {
+            display: none;
+        }
+        .content-section.active {
+            display: block;
+        }
+        /* Custom scrollbar for a more thematic feel (optional, browser support varies) */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #1e293b; /* slate-800 */
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #ef4444; /* red-500 */
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #dc2626; /* red-600 */
+        }
+    </style>
+    <link rel="preconnect" href="https://rsms.me/">
+    <link rel="stylesheet" href="https://rsms.me/inter/inter.css">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    },
+                    colors: {
+                        'brand-red': '#ef4444', // red-500
+                        'brand-red-dark': '#dc2626', // red-600
+                        'brand-sky': '#38bdf8', // sky-400
+                        'brand-slate-light': '#f1f5f9', // slate-100
+                        'brand-slate-med': '#94a3b8', // slate-400
+                        'brand-slate-dark': '#1e293b', // slate-800
+                        'brand-slate-darker': '#0f172a', // slate-900
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+<body class="bg-brand-slate-darker text-brand-slate-light antialiased">
+
+    <!-- Header / Navigation -->
+    <header class="bg-brand-slate-dark sticky top-0 z-50 shadow-lg">
+        <nav class="container mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex items-center justify-between h-16">
+                <div class="flex-shrink-0">
+                    <h1 class="text-2xl font-bold text-brand-red">HELLGATE: UPRISING</h1>
+                </div>
+                <div class="hidden md:block">
+                    <div class="ml-10 flex items-baseline space-x-4">
+                        <a href="#gameplay" class="text-brand-slate-med hover:text-brand-red px-3 py-2 rounded-md text-sm font-medium">Геймплей</a>
+                        <a href="#arsenal" class="text-brand-slate-med hover:text-brand-red px-3 py-2 rounded-md text-sm font-medium">Арсенал</a>
+                        <a href="#atmosphere" class="text-brand-slate-med hover:text-brand-red px-3 py-2 rounded-md text-sm font-medium">Атмосфера</a>
+                        <a href="#enemies" class="text-brand-slate-med hover:text-brand-red px-3 py-2 rounded-md text-sm font-medium">Враги</a>
+                        <a href="#story" class="text-brand-slate-med hover:text-brand-red px-3 py-2 rounded-md text-sm font-medium">Сюжет</a>
+                        <a href="#mechanics" class="text-brand-slate-med hover:text-brand-red px-3 py-2 rounded-md text-sm font-medium">Механики</a>
+                    </div>
+                </div>
+                <div class="md:hidden">
+                    <button id="mobile-menu-button" class="text-brand-slate-med hover:text-brand-red p-2 rounded-md">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16m-7 6h7"></path></svg>
+                    </button>
+                </div>
+            </div>
+        </nav>
+        <div id="mobile-menu" class="md:hidden hidden bg-brand-slate-dark">
+            <a href="#gameplay" class="block text-brand-slate-med hover:text-brand-red px-3 py-2 rounded-md text-base font-medium">Геймплей</a>
+            <a href="#arsenal" class="block text-brand-slate-med hover:text-brand-red px-3 py-2 rounded-md text-base font-medium">Арсенал</a>
+            <a href="#atmosphere" class="block text-brand-slate-med hover:text-brand-red px-3 py-2 rounded-md text-base font-medium">Атмосфера</a>
+            <a href="#enemies" class="block text-brand-slate-med hover:text-brand-red px-3 py-2 rounded-md text-base font-medium">Враги</a>
+            <a href="#story" class="block text-brand-slate-med hover:text-brand-red px-3 py-2 rounded-md text-base font-medium">Сюжет</a>
+            <a href="#mechanics" class="block text-brand-slate-med hover:text-brand-red px-3 py-2 rounded-md text-base font-medium">Механики</a>
+        </div>
+    </header>
+
+    <!-- Hero Section -->
+    <section class="bg-brand-slate-darker py-16 sm:py-24">
+        <div class="container mx-auto px-4 sm:px-6 lg:px-8 text-center">
+            <h2 class="text-4xl sm:text-5xl lg:text-6xl font-extrabold text-brand-slate-light">
+                <span class="block">Добро пожаловать в</span>
+                <span class="block text-brand-red">HELLGATE: UPRISING</span>
+            </h2>
+            <p class="mt-6 max-w-2xl mx-auto text-lg sm:text-xl text-brand-slate-med">
+                Прорвитесь сквозь легионы демонов в постапокалиптическом кошмаре, владея нечестивым сплавом высоких технологий и тайной магии, в роли бывшего корпоративного суперсолдата, сражающегося за закрытие адских разломов, открытых его бывшими хозяевами.
+            </p>
+            <div class="mt-10">
+                <div class="bg-gray-700 border-2 border-dashed border-gray-600 rounded-xl w-full max-w-3xl mx-auto h-64 sm:h-96 flex items-center justify-center text-slate-400 text-2xl">
+                    Концепт-арт Адского Пейзажа (Placeholder)
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <main class="container mx-auto px-4 sm:px-6 lg:px-8 py-12">
+        <!-- Gameplay Section -->
+        <section id="gameplay" class="py-12 scroll-mt-16">
+            <h3 class="text-3xl font-bold text-brand-red mb-8">Геймплей: Ярость и Скорость</h3>
+            <div class="space-y-6 text-brand-slate-med">
+                <p><strong class="text-brand-slate-light">Ключевой Цикл:</strong> "Двигайся, Стреляй, Уклоняйся, Казни, Исследуй." Геймплей построен на неумолимом движении вперед.</p>
+                <div>
+                    <h4 class="text-xl font-semibold text-brand-sky mb-2">Высокая скорость и динамичные перестрелки:</h4>
+                    <ul class="list-disc list-inside space-y-1 pl-4">
+                        <li><strong>Гипер-мобильность:</strong> Очень высокая базовая скорость передвижения, двойной прыжок, воздушный рывок (короткие ускорения в любом направлении, в том числе в воздухе) и возможность цепляться за уступы.</li>
+                        <li><strong>Скольжение и Рывок:</strong> Подкаты для уклонения и смены позиции, которые можно комбинировать с прыжками или рывками.</li>
+                        <li><strong>Инерционная физика:</strong> Опытные игроки могут связывать движения в цепи для достижения невероятных скоростей и преодоления сложных участков.</li>
+                    </ul>
+                </div>
+                <div>
+                    <h4 class="text-xl font-semibold text-brand-sky mb-2">"Rapture Kills" (Добивания):</h4>
+                    <ul class="list-disc list-inside space-y-1 pl-4">
+                        <li>Когда враги оглушены (мало здоровья, визуальный сигнал), игрок может совершить жестокое добивание в ближнем бою.</li>
+                        <li><strong>Награда:</strong> Восстанавливают здоровье. Некоторые типы врагов могут ронять больше патронов или осколков брони.</li>
+                        <li><strong>Разнообразие:</strong> Контекстно-зависимые анимации, быстрые и не прерывающие поток боя.</li>
+                    </ul>
+                </div>
+                <div>
+                    <h4 class="text-xl font-semibold text-brand-sky mb-2">Генерация уровней с нелинейной структурой:</h4>
+                    <ul class="list-disc list-inside space-y-1 pl-4">
+                        <li><strong>Модульная генерация:</strong> Уровни собираются из заранее созданных "блоков" (комнаты, коридоры, арены) с помощью процедурного алгоритма.</li>
+                        <li><strong>Секреты:</strong> Спрятанные тайники с оружием, улучшениями, фрагментами лора и комнатами испытаний.</li>
+                        <li><strong>Обходные пути:</strong> Множество маршрутов к целям, поощряющих исследование.</li>
+                        <li><strong>Ловушки и вертикальность:</strong> Динамические ловушки и многоуровневый дизайн локаций.</li>
+                    </ul>
+                </div>
+            </div>
+        </section>
+
+        <!-- Arsenal Section -->
+        <section id="arsenal" class="py-12 scroll-mt-16">
+            <h3 class="text-3xl font-bold text-brand-red mb-8">Арсенал Уничтожения</h3>
+            <div class="grid md:grid-cols-3 gap-6">
+                <div class="md:col-span-1">
+                    <ul id="weapon-list" class="space-y-2">
+                        <!-- Weapon names will be populated by JS -->
+                    </ul>
+                </div>
+                <div id="weapon-details-container" class="md:col-span-2 bg-brand-slate-dark p-6 rounded-lg shadow-xl min-h-[300px]">
+                    <p class="text-brand-slate-med">Выберите оружие из списка слева, чтобы узнать подробности.</p>
+                    <!-- Weapon details will be populated here -->
+                </div>
+            </div>
+        </section>
+
+        <!-- Atmosphere Section -->
+        <section id="atmosphere" class="py-12 scroll-mt-16">
+            <h3 class="text-3xl font-bold text-brand-red mb-8">Атмосфера: Погружение в Кошмар</h3>
+            <div class="space-y-6 text-brand-slate-med">
+                <div>
+                    <h4 class="text-xl font-semibold text-brand-sky mb-2">Визуальный стиль - "Инфернальный Тех-Нуар":</h4>
+                    <ul class="list-disc list-inside space-y-1 pl-4">
+                        <li><strong>Техно-лабиринты:</strong> Холодные корпоративные комплексы, искаженные демоническим влиянием. Мерцающие неоновые вывески, искрящиеся провода, голографические дисплеи.</li>
+                        <li><strong>Адские пейзажи:</strong> Миры огня и тени, парящие острова из обсидиана, реки расплавленного камня. Архитектура брутальная, органическая и чужеродная.</li>
+                        <li><strong>Разрушенные города:</strong> Постапокалиптические городские пейзажи, захваченные гротескной демонической флорой и фауной.</li>
+                        <li><strong>Цветовая палитра:</strong> Глубокие красные, выжженные оранжевые, болезненные зеленые, холодные синие и металлические серые, с яркими энергетическими эффектами.</li>
+                    </ul>
+                </div>
+                <div>
+                    <h4 class="text-xl font-semibold text-brand-sky mb-2">Саундтрек и Звуковой Дизайн:</h4>
+                    <ul class="list-disc list-inside space-y-1 pl-4">
+                        <li><strong>OST "Кибер-Метал Симфония":</strong> Агрессивный саундтрек, смешивающий индастриал-метал, трэш и дарк-электроник-эмбиент. Динамически меняющаяся интенсивность.</li>
+                        <li><strong>Звуки окружения:</strong> Скрежет металла, отдаленный демонический рык, капающий ихор, неисправная техника. Звуковые подсказки важны для идентификации врагов.</li>
+                    </ul>
+                </div>
+                <div>
+                    <h4 class="text-xl font-semibold text-brand-sky mb-2">Интерактивная среда:</h4>
+                    <ul class="list-disc list-inside space-y-1 pl-4">
+                        <li><strong>Разрушаемые объекты:</strong> Некоторые стены, колонны, ящики можно уничтожить, открывая новые пути или изменяя укрытия.</li>
+                        <li><strong>Скрытые комнаты и ловушки:</strong> Тайники, активируемые ловушки, которые можно использовать против врагов.</li>
+                    </ul>
+                </div>
+            </div>
+        </section>
+
+        <!-- Enemies Section -->
+        <section id="enemies" class="py-12 scroll-mt-16">
+            <h3 class="text-3xl font-bold text-brand-red mb-8">Враги: Адское Воинство</h3>
+             <div class="grid md:grid-cols-3 gap-6">
+                <div class="md:col-span-1">
+                    <ul id="monster-list" class="space-y-2">
+                        <!-- Monster names will be populated by JS -->
+                    </ul>
+                </div>
+                <div id="monster-details-container" class="md:col-span-2 bg-brand-slate-dark p-6 rounded-lg shadow-xl min-h-[300px]">
+                     <p class="text-brand-slate-med">Выберите монстра из списка слева, чтобы узнать подробности.</p>
+                    <!-- Monster details will be populated here -->
+                </div>
+            </div>
+            <div class="mt-8 space-y-6 text-brand-slate-med">
+                <div>
+                    <h4 class="text-xl font-semibold text-brand-sky mb-2">Общий ИИ:</h4>
+                    <p>Агрессивные и адаптивные враги активно охотятся на игрока, пытаются обойти с фланга, используют укрытия и реагируют на тактику игрока. Большинство демонов имеют специфические слабые места.</p>
+                </div>
+                <div>
+                    <h4 class="text-xl font-semibold text-brand-sky mb-2">Боссы с фазами:</h4>
+                    <p>Эпические, многоэтапные сражения, требующие мастерства передвижения, смены оружия и понимания паттернов атак. У каждого босса уникальные способности и арены.</p>
+                </div>
+                 <div>
+                    <h4 class="text-xl font-semibold text-brand-sky mb-2">Орды врагов:</h4>
+                    <p>Моменты интенсивных боев на аренах с десятками врагов чередуются с исследованием. Враги могут появляться динамически, поддерживая постоянное напряжение.</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- Story Section -->
+        <section id="story" class="py-12 scroll-mt-16">
+            <h3 class="text-3xl font-bold text-brand-red mb-8">Сюжет: Восстание из Пепла</h3>
+            <div class="space-y-6 text-brand-slate-med">
+                <div>
+                    <h4 class="text-xl font-semibold text-brand-sky mb-2">Подача сюжета:</h4>
+                    <ul class="list-disc list-inside space-y-1 pl-4">
+                        <li><strong>Повествование через окружение:</strong> Дизайн уровней, граффити, трупы и демонические изменения человеческих структур.</li>
+                        <li><strong>Аудиодневники и фрагменты данных:</strong> Найденные записи раскрывают детали экспериментов OmniCorp и личные истории.</li>
+                        <li><strong>Голографические воспроизведения:</strong> Короткие визуальные записи прошлых событий.</li>
+                        <li><strong>Монологи антагонистов:</strong> Главные злодеи общаются с игроком, раскрывая свои мотивы.</li>
+                    </ul>
+                </div>
+                <div>
+                    <h4 class="text-xl font-semibold text-brand-sky mb-2">Главный герой - "Объект Ноль" (Каэлен Вэнс):</h4>
+                    <p>Бывший оперативник спецназа, подвергшийся кибернетическим и генетическим улучшениям OmniCorp. Изначально созданный для защиты от межпространственных угроз, Вэнс восстает против корпорации после того, как ее эксперименты привели к катастрофическому вторжению демонов.</p>
+                </div>
+                <div>
+                    <h4 class="text-xl font-semibold text-brand-sky mb-2">Завязка сюжета:</h4>
+                    <p>Игра начинается во время катастрофического сбоя на объекте OmniCorp. Вэнс сбегает и пробивается сквозь рушащийся комплекс, узнавая, что OmniCorp намеренно открыла порталы в Ад. Его цель — уничтожить главный "Адский Врата" и отомстить виновным.</p>
+                </div>
+                <div>
+                    <h4 class="text-xl font-semibold text-brand-sky mb-2">Несколько концовок:</h4>
+                    <p>Зависят от ключевых решений игрока в критические моменты сюжета (например, пощадить или убить раскаявшегося ученого OmniCorp, уничтожить Адские Врата или попытаться их контролировать).</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- Additional Mechanics Section -->
+        <section id="mechanics" class="py-12 scroll-mt-16">
+            <h3 class="text-3xl font-bold text-brand-red mb-8">Дополнительные Механики</h3>
+            <div class="space-y-6 text-brand-slate-med">
+                <div>
+                    <h4 class="text-xl font-semibold text-brand-sky mb-2">Элементы RPG - "Оружейная и Камера Аугментации":</h4>
+                    <ul class="list-disc list-inside space-y-1 pl-4">
+                        <li><strong>Улучшение оружия:</strong> Модификации для урона, скорострельности, размера магазина, добавления вторичных эффектов.</li>
+                        <li><strong>Улучшение брони:</strong> Увеличение здоровья, брони, сопротивляемости урону, улучшение способностей передвижения.</li>
+                        <li><strong>Система Рун:</strong> Экипируемые руны, дающие пассивные бонусы (например, увеличение скорости после "Rapture Kill", более быстрые добивания).</li>
+                    </ul>
+                </div>
+                <div>
+                    <h4 class="text-xl font-semibold text-brand-sky mb-2">Кооперативный режим (2-4 игрока - "Адский Отряд"):</h4>
+                    <p>Прохождение основной кампании или специальных кооперативных миссий. Масштабирование сложности и врагов. Механики оживления.</p>
+                </div>
+                <div>
+                    <h4 class="text-xl font-semibold text-brand-sky mb-2">Режим выживания ("Горнило"):</h4>
+                    <p>Бесконечные, все более сложные волны демонов на специальных аренах. Таблицы лидеров. Случайные выпадения оружия/усилений между волнами.</p>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <footer class="bg-brand-slate-dark py-8 text-center">
+        <p class="text-brand-slate-med text-sm">&copy; 2024 HELLGATE: UPRISING - Концепт Игры. Все права защищены... концептуально.</p>
+    </footer>
+
+<script>
+    const weaponsData = [
+        {
+            id: 'nova-rifle',
+            name: 'Плазменная Винтовка "Нова"',
+            description: 'Стандартное скорострельное энергетическое оружие. Альт-огонь: Заряженный плазменный шар, наносящий урон по области и временно оглушающий слабых демонов.',
+            imagePlaceholder: 'Плазменная Винтовка "Нова"'
+        },
+        {
+            id: 'obliterato-shotgun',
+            name: 'Квад-Дробовик "Облитератор"',
+            description: 'Разрушителен на ближней дистанции. Альт-огонь: "Адское Дыхание" - поджигает врагов в конусе, нанося урон со временем.',
+            imagePlaceholder: 'Квад-Дробовик "Облитератор"'
+        },
+        {
+            id: 'void-caster-railgun',
+            name: 'Рейлган "Излучатель Пустоты"',
+            description: 'Высокоточное оружие с высоким уроном, пробивает нескольких врагов. Альт-огонь: "Ловушка Сингулярности" - создает небольшой вихрь, затягивающий ближайших слабых демонов перед коллапсом.',
+            imagePlaceholder: 'Рейлган "Излучатель Пустоты"'
+        },
+        {
+            id: 'seraphim-gauntlet',
+            name: 'Артефактная Перчатка "Гнев Серафима"',
+            description: 'Магическое оружие. Основной огонь: Самонаводящиеся снаряды святой энергии. Альт-огонь: "Эгида" - проецирует временный энергетический щит, способный отражать снаряды.',
+            imagePlaceholder: 'Артефактная Перчатка "Гнев Серафима"'
+        },
+        {
+            id: 'hellreaver-axe',
+            name: 'Топор-Бензопила "Адский Потрошитель"',
+            description: 'Ультимативное оружие ближнего боя. Постоянно расходует топливо, но может мгновенно оглушить большинство не-боссовых демонов. "Rapture Kill" с ним гарантирует большой запас патронов для другого оружия.',
+            imagePlaceholder: 'Топор-Бензопила "Адский Потрошитель"'
+        },
+        {
+            id: 'unmaker-core',
+            name: 'Ядро "Несоздателя" (Аналог BFG)',
+            description: 'Редкое супер-оружие, стреляющее медленно движущейся сферой хаотической энергии, которая перескакивает между врагами и зачищает комнаты.',
+            imagePlaceholder: 'Ядро "Несоздателя"'
+        },
+        {
+            id: 'chrono-rifle',
+            name: 'Хроно-Винтовка',
+            description: 'Экспериментальная винтовка. Основной огонь: Снаряды темпоральной энергии, замедляющие врагов. Альт-огонь: "Поле Стазиса" - создает сферу замедленного времени.',
+            imagePlaceholder: 'Хроно-Винтовка'
+        },
+        {
+            id: 'hellfury-gauntlets',
+            name: 'Перчатки "Адской Ярости"',
+            description: 'Тяжелые перчатки. Левая: Поток демонического пламени. Правая: Мощный удар с ударной волной. Альт-огонь (обе): Удар по земле, создающий разрушительную ударную волну.',
+            imagePlaceholder: 'Перчатки "Адской Ярости"'
+        },
+        {
+            id: 'singularity-cannon',
+            name: 'Сингулярная Пушка',
+            description: 'Запускает шар гравитационной силы, который при столкновении яростно взрывается, затягивая и сокрушая всех ближайших врагов.',
+            imagePlaceholder: 'Сингулярная Пушка'
+        }
+    ];
+
+    const monstersData = [
+        {
+            id: 'imp-scuttler',
+            name: 'Бес-Шныряла',
+            description: 'Быстрый пушечный корм. Метает огненные шары, лазает по стенам. Опасен в группах. Добивание: Топот по голове или отрывание конечности.',
+            imagePlaceholder: 'Бес-Шныряла'
+        },
+        {
+            id: 'gorefiend',
+            name: 'Кровавый Дьявол',
+            description: 'Массивный громила с тяжелыми атаками ближнего боя и коротковолновым ударом. Безрассудно атакует. Слабое место: открытое сердце на спине. Добивание: Пробивание груди и вырывание сердца.',
+            imagePlaceholder: 'Кровавый Дьявол'
+        },
+        {
+            id: 'hellknight-templar',
+            name: 'Адский Рыцарь-Тамплиер',
+            description: 'Бронированный демон с энергетическим щитом и плазменным копьем. Может отражать снаряды. Требует обхода с фланга или взрывного урона. Добивание: Пронзание его собственным копьем после разрушения щита.',
+            imagePlaceholder: 'Адский Рыцарь-Тамплиер'
+        },
+        {
+            id: 'soul-weaver',
+            name: 'Ткач Душ',
+            description: 'Парящий заклинатель, призывающий меньших демонов, стреляющий самонаводящимися снарядами душ и способный телепортироваться. Слабое место: сфера, из которой он черпает энергию. Добивание: Разрушение сферы.',
+            imagePlaceholder: 'Ткач Душ'
+        },
+        {
+            id: 'stalker-drone',
+            name: 'Дрон-Сталкер',
+            description: 'Быстрый летающий кибердемон, стреляющий самонаводящимися ракетами и способный временно становиться невидимым. Добивание: Отрывание крыльев и уничтожение ядра.',
+            imagePlaceholder: 'Дрон-Сталкер'
+        },
+        {
+            id: 'tyrant-overlord',
+            name: 'Тиран-Повелитель',
+            description: 'Тип мини-босса. Тяжело бронирован, двойные плазменные пушки, может призывать волны меньших демонов. Медленный, но мощный. Несколько слабых мест. ',
+            imagePlaceholder: 'Тиран-Повелитель'
+        },
+        {
+            id: 'corpus-crawler',
+            name: 'Трупный Ползун',
+            description: 'Гротескное слияние трупов и механизмов в форме сороконожки. Быстро передвигается по стенам и полу. Может отделять сегменты тела. Атакует выпадом или кислотной желчью. Слабость: головной блок или силовые ядра на спине. Добивание: Раздавить голову, вырвать позвоночник.',
+            imagePlaceholder: 'Трупный Ползун'
+        },
+        {
+            id: 'pain-weaver',
+            name: 'Ткач Боли',
+            description: 'Высокий, тощий демон в лохмотьях. Создает зоны "Агонии" (замедление, урон со временем). Стреляет снарядами, отключающими способности. Часто телепортируется. Слабость: пульсирующее сердце, видимое при касте. Добивание: Вонзить его же когти ему в сердце.',
+            imagePlaceholder: 'Ткач Боли'
+        },
+        {
+            id: 'bulwark-demon',
+            name: 'Демон-Бастион',
+            description: 'Массивный четвероногий демон, похожий на носорога. Толстая хитиновая броня. Стремительно атакует, пробивая препятствия. Почти неуязвим спереди. Слабость: вентиляционные отверстия на спине. Добивание: Запрыгнуть на спину, вскрыть броню и заложить взрывчатку.',
+            imagePlaceholder: 'Демон-Бастион'
+        }
+    ];
+
+    function populateList(listId, data, containerId, type) {
+        const listElement = document.getElementById(listId);
+        const detailsContainer = document.getElementById(containerId);
+        let firstItem = true;
+
+        data.forEach(item => {
+            const listItem = document.createElement('li');
+            const button = document.createElement('button');
+            button.className = 'w-full text-left px-4 py-3 border border-brand-slate-dark hover:border-brand-red rounded-lg focus:outline-none focus:border-brand-red transition-colors duration-150 text-brand-slate-light hover:text-brand-red';
+            button.textContent = item.name;
+            button.setAttribute(`data-${type}-id`, item.id);
+            
+            listItem.appendChild(button);
+            listElement.appendChild(listItem);
+
+            if (firstItem) {
+                updateDetails(item, detailsContainer, type);
+                button.classList.add('active-tab');
+                firstItem = false;
+            }
+
+            button.addEventListener('click', () => {
+                // Remove active class from all buttons in this list
+                listElement.querySelectorAll('button').forEach(btn => btn.classList.remove('active-tab'));
+                // Add active class to clicked button
+                button.classList.add('active-tab');
+                updateDetails(item, detailsContainer, type);
+            });
+        });
+    }
+
+    function updateDetails(item, container, type) {
+        container.innerHTML = `
+            <h4 class="text-2xl font-bold text-brand-red mb-4">${item.name}</h4>
+            <div class="bg-gray-700 border-2 border-dashed border-gray-600 rounded-xl w-full h-48 flex items-center justify-center text-slate-400 mb-4">
+                ${item.imagePlaceholder} (Placeholder)
+            </div>
+            <p class="text-brand-slate-med">${item.description}</p>
+        `;
+    }
+    
+    document.addEventListener('DOMContentLoaded', () => {
+        populateList('weapon-list', weaponsData, 'weapon-details-container', 'weapon');
+        populateList('monster-list', monstersData, 'monster-details-container', 'monster');
+
+        // Mobile menu toggle
+        const mobileMenuButton = document.getElementById('mobile-menu-button');
+        const mobileMenu = document.getElementById('mobile-menu');
+        if (mobileMenuButton && mobileMenu) {
+            mobileMenuButton.addEventListener('click', () => {
+                mobileMenu.classList.toggle('hidden');
+            });
+            // Close mobile menu when a link is clicked
+            mobileMenu.querySelectorAll('a').forEach(link => {
+                link.addEventListener('click', () => {
+                    mobileMenu.classList.add('hidden');
+                });
+            });
+        }
+    });
+
+</script>
+
+</body>
+</html>

@@ -1,0 +1,466 @@
+<!DOCTYPE html>
+<html lang="en" class="scroll-smooth">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>The Hidden Emporium - Unlock the Extraordinary</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style type="text/tailwindcss">
+        @layer theme {
+            extend {
+                colors: {
+                    'brand-dark': '#0D0D0D',
+                    'brand-charcoal': '#1A1A1A',
+                    'brand-deep-burgundy': '#600000',
+                    'brand-gold': '#D4AF37', /* Classic Gold */
+                    'brand-silver': '#C0C0C0',
+                    'brand-light-text': '#E0E0E0',
+                    'brand-muted-text': '#A0A0A0',
+                },
+                fontFamily: {
+                    serif: ['Georgia', 'Times New Roman', 'serif'],
+                    sans: ['Inter', 'system-ui', 'sans-serif'],
+                },
+                keyframes: {
+                    fadeIn: {
+                        '0%': { opacity: '0' },
+                        '100%': { opacity: '1' },
+                    },
+                    fadeInUp: {
+                        '0%': { opacity: '0', transform: 'translateY(20px)' },
+                        '100%': { opacity: '1', transform: 'translateY(0)' },
+                    },
+                    materialize: {
+                        '0%': { opacity: '0', transform: 'scale(0.8) translateY(10px)' },
+                        '60%': { opacity: '0.7', transform: 'scale(1.05) translateY(-5px)' },
+                        '100%': { opacity: '1', transform: 'scale(1) translateY(0)' },
+                    },
+                    subtleGlow: {
+                        '0%, 100%': { textShadow: '0 0 8px rgba(212, 175, 55, 0.3)', filter: 'drop-shadow(0 0 3px rgba(212, 175, 55, 0.2))' },
+                        '50%': { textShadow: '0 0 12px rgba(212, 175, 55, 0.5)', filter: 'drop-shadow(0 0 5px rgba(212, 175, 55, 0.3))' },
+                    },
+                    subtlePulse: {
+                        '0%, 100%': { transform: 'scale(1)', opacity: '0.8' },
+                        '50%': { transform: 'scale(1.02)', opacity: '1' },
+                    },
+                    flicker: {
+                        '0%, 100%': { opacity: '1' },
+                        '20%': { opacity: '0.8' },
+                        '40%': { opacity: '1' },
+                        '60%': { opacity: '0.7' },
+                        '80%': { opacity: '0.9' },
+                    },
+                    revealVeil: {
+                        '0%': { filter: 'brightness(0.5) blur(3px)', opacity: '0.7' },
+                        '100%': { filter: 'brightness(1) blur(0)', opacity: '1' },
+                    },
+                    testimonialFade: {
+                        '0%': { opacity: '0', transform: 'translateY(10px)' },
+                        '20%': { opacity: '1', transform: 'translateY(0)' },
+                        '80%': { opacity: '1', transform: 'translateY(0)' },
+                        '100%': { opacity: '0', transform: 'translateY(-10px)' },
+                    },
+                    keyholeOpen: {
+                        '0%': { transform: 'scale(0.5)', opacity: '0'},
+                        '50%': { transform: 'scale(1.1)', opacity: '0.7'},
+                        '100%': { transform: 'scale(1)', opacity: '1'},
+                    },
+                    particleMove: {
+                        '0%': { transform: 'translateY(0) translateX(0)', opacity: '0' },
+                        '20%': { opacity: '0.7' },
+                        '80%': { opacity: '0.7' },
+                        '100%': { transform: 'translateY(-100vh) translateX(var(--particle-x-end, 0px))', opacity: '0' },
+                    }
+                },
+                animation: {
+                    fadeIn: 'fadeIn 1s ease-out forwards',
+                    fadeInUp: 'fadeInUp 0.8s ease-out forwards',
+                    materialize: 'materialize 1.2s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards',
+                    subtleGlow: 'subtleGlow 3s ease-in-out infinite',
+                    subtlePulse: 'subtlePulse 2.5s ease-in-out infinite',
+                    flicker: 'flicker 1.5s infinite alternate',
+                    revealVeil: 'revealVeil 0.5s ease-out forwards',
+                    testimonialFade: 'testimonialFade 7s ease-in-out infinite',
+                    keyholeOpen: 'keyholeOpen 1.5s cubic-bezier(0.165, 0.84, 0.44, 1) 0.5s forwards', // Added delay
+                    particleMove: 'particleMove 20s linear infinite',
+                }
+            }
+        }
+        .scroll-reveal {
+            opacity: 0;
+            transform: translateY(30px);
+            transition: opacity 0.8s cubic-bezier(0.165, 0.84, 0.44, 1), transform 0.8s cubic-bezier(0.165, 0.84, 0.44, 1);
+        }
+        .scroll-reveal.revealed {
+            opacity: 1;
+            transform: translateY(0);
+        }
+        .keyhole-svg path {
+            transition: fill 0.3s ease;
+        }
+        .keyhole-svg:hover path:nth-child(1) { /* Outer shape */
+            fill: theme('colors.brand-gold');
+            opacity: 0.5;
+        }
+        .keyhole-svg:hover path:nth-child(2) { /* Inner hole */
+            fill: theme('colors.brand-light-text');
+        }
+        .particle {
+            position: absolute;
+            background-color: theme('colors.brand-gold');
+            border-radius: 50%;
+            opacity: 0;
+            animation-name: particleMove;
+            animation-timing-function: linear;
+            animation-iteration-count: infinite;
+        }
+    </style>
+</head>
+<body class="bg-brand-dark text-brand-light-text font-sans selection:bg-brand-gold selection:text-brand-dark">
+
+    <!-- Particle Background Container -->
+    <div id="particle-container" class="fixed inset-0 -z-10 overflow-hidden"></div>
+
+    <!-- Header (Minimal) -->
+    <header class="fixed top-0 left-0 right-0 z-50 p-4 md:p-6 transition-all duration-300" id="mainHeader">
+        <div class="container mx-auto flex justify-between items-center">
+            <a href="#" class="font-serif text-2xl text-brand-gold animate-subtleGlow opacity-0" style="animation-delay: 0.2s; animation-name: fadeIn;">TH<span class="text-brand-silver">E</span></a>
+            <!-- Navigation could be here if needed, but keeping it minimal for now -->
+        </div>
+    </header>
+
+    <!-- Hero Section - The Gateway -->
+    <section id="hero" class="min-h-screen flex flex-col items-center justify-center text-center p-6 relative overflow-hidden">
+        <div class="absolute inset-0 bg-gradient-to-b from-brand-dark via-brand-charcoal/80 to-brand-dark opacity-70"></div>
+        
+        <div class="z-10 opacity-0 animate-keyholeOpen relative mb-8">
+            <svg class="keyhole-svg w-20 h-20 md:w-28 md:h-28 text-brand-gold" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+                <path d="M12 2C10.3431 2 9 3.34315 9 5V10.7639C7.77403 11.296 7 12.5373 7 14C7 15.6569 8.34315 17 10 17C10.9032 17 11.7036 16.6146 12.2898 16.005L12.2929 16L15 20H17L13.5 15.1071C14.4137 14.5305 15 13.5615 15 12.5C15 11.0826 14.0832 9.89805 12.8264 9.50493L12.8254 9.50443C12.8845 9.49045 12.9429 9.47752 13 9.46582V5C13 3.34315 11.6569 2 12 2ZM12 4C10.8954 4 10 4.89543 10 6V9.03418C10.3163 9.01167 10.6378 9 11 9C11.3479 9 11.6746 9.01094 12 9.03107V6C12 4.89543 11.1046 4 12 4Z" transform="scale(1.2) translate(-2.4, -2.4)" stroke="rgba(212,175,55,0.3)" stroke-width="0.3"/>
+                <path d="M12 12C10.8954 12 10 12.8954 10 14C10 15.1046 10.8954 16 12 16C13.1046 16 14 15.1046 14 14C14 12.8954 13.1046 12 12 12Z" fill="rgba(212,175,55,0.2)" />
+                <circle cx="12" cy="14" r="1.5" class="animate-pulse fill-brand-gold/50" />
+            </svg>
+            <div class="absolute inset-0 flex items-center justify-center">
+                <div class="w-8 h-8 md:w-12 md:h-12 bg-brand-gold/10 rounded-full animate-ping" style="animation-duration: 2s;"></div>
+            </div>
+        </div>
+
+        <h1 class="font-serif text-4xl md:text-6xl lg:text-7xl text-brand-light-text mb-4 opacity-0" style="animation: materialize 1.5s ease-out 0.8s forwards; text-shadow: 0 0 10px rgba(224, 224, 224, 0.3);">
+            Unlock <span class="text-brand-gold animate-subtleGlow">the Extraordinary</span>
+        </h1>
+        <p class="text-lg md:text-xl text-brand-muted-text mb-10 max-w-2xl opacity-0" style="animation: materialize 1.5s ease-out 1.0s forwards;">
+            Curated Subscriptions for the Select Few. Discover a World Beyond the Ordinary.
+        </p>
+        <button id="requestAccessBtn" class="bg-transparent border-2 border-brand-gold text-brand-gold font-semibold py-3 px-8 rounded-lg shadow-lg hover:bg-brand-gold hover:text-brand-dark transition-all duration-300 ease-in-out transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-brand-gold focus:ring-opacity-50 opacity-0 group relative overflow-hidden" style="animation: materialize 1.8s ease-out 1.3s forwards;">
+            <span class="absolute inset-0 w-0 bg-brand-gold transition-all duration-[350ms] ease-out group-hover:w-full"></span>
+            <span class="relative group-hover:text-brand-dark">Request Access</span>
+            <span class="absolute left-0 top-0 h-full w-1 bg-brand-gold/50 animate-flicker" style="box-shadow: 0 0 10px 2px theme('colors.brand-gold'); animation-duration: 3s; animation-delay: 2s;"></span>
+        </button>
+    </section>
+
+    <!-- Veiled Glimpses Section -->
+    <section id="glimpses" class="py-16 md:py-24 bg-brand-charcoal">
+        <div class="container mx-auto px-6 text-center">
+            <h2 class="font-serif text-3xl md:text-4xl text-brand-light-text mb-4 scroll-reveal">Veiled Glimpses</h2>
+            <p class="text-brand-muted-text mb-12 max-w-xl mx-auto scroll-reveal" style="transition-delay: 0.1s;">Peer into the shadows. What secrets await your discerning eye?</p>
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
+                <!-- Glimpse Item 1 -->
+                <div class="group relative aspect-square bg-brand-dark rounded-xl overflow-hidden shadow-2xl scroll-reveal" style="transition-delay: 0.2s;">
+                    <div class="absolute inset-0 bg-gray-500 opacity-40 group-hover:opacity-20 transition-opacity duration-500" style="background-image: url('https://source.unsplash.com/random/600x600/?abstract,dark,texture'); background-size: cover; filter: grayscale(80%) blur(2px);"></div>
+                    <div class="absolute inset-0 flex items-center justify-center p-6 bg-black bg-opacity-60 group-hover:bg-opacity-40 transition-all duration-500">
+                        <div class="text-center transform group-hover:scale-105 transition-transform duration-500">
+                            <div class="w-16 h-16 mx-auto mb-4 bg-brand-gold/10 border-2 border-dashed border-brand-gold/30 rounded-xl flex items-center justify-center group-hover:border-brand-gold/70 transition-colors">
+                                <!-- Placeholder Icon -->
+                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-8 h-8 text-brand-gold/50 group-hover:text-brand-gold transition-colors">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607zM13.5 10.5h-6" />
+                                </svg>
+                            </div>
+                            <h3 class="font-serif text-2xl text-brand-gold mb-2">The Alchemist's Brew</h3>
+                            <p class="text-brand-muted-text text-sm group-hover:text-brand-light-text transition-colors">Elixirs of rare character.</p>
+                        </div>
+                    </div>
+                    <div class="absolute inset-0 border-2 border-transparent group-hover:border-brand-gold/50 rounded-xl transition-all duration-500 pointer-events-none"></div>
+                </div>
+                <!-- Glimpse Item 2 -->
+                <div class="group relative aspect-square bg-brand-dark rounded-xl overflow-hidden shadow-2xl scroll-reveal" style="transition-delay: 0.3s;">
+                    <div class="absolute inset-0 bg-gray-500 opacity-40 group-hover:opacity-20 transition-opacity duration-500" style="background-image: url('https://source.unsplash.com/random/600x600/?luxury,dark,detail'); background-size: cover; filter: grayscale(80%) blur(2px);"></div>
+                    <div class="absolute inset-0 flex items-center justify-center p-6 bg-black bg-opacity-60 group-hover:bg-opacity-40 transition-all duration-500">
+                         <div class="text-center transform group-hover:scale-105 transition-transform duration-500">
+                            <div class="w-16 h-16 mx-auto mb-4 bg-brand-gold/10 border-2 border-dashed border-brand-gold/30 rounded-xl flex items-center justify-center group-hover:border-brand-gold/70 transition-colors">
+                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-8 h-8 text-brand-gold/50 group-hover:text-brand-gold transition-colors">
+                                  <path stroke-linecap="round" stroke-linejoin="round" d="M16.5 3.75V16.5L12 14.25 7.5 16.5V3.75m9 0H18A2.25 2.25 0 0120.25 6v12A2.25 2.25 0 0118 20.25H6A2.25 2.25 0 013.75 18V6A2.25 2.25 0 016 3.75h1.5m9 0h-9" />
+                                </svg>
+                            </div>
+                            <h3 class="font-serif text-2xl text-brand-gold mb-2">The Art of Indulgence</h3>
+                            <p class="text-brand-muted-text text-sm group-hover:text-brand-light-text transition-colors">Objects of profound desire.</p>
+                        </div>
+                    </div>
+                     <div class="absolute inset-0 border-2 border-transparent group-hover:border-brand-gold/50 rounded-xl transition-all duration-500 pointer-events-none"></div>
+                </div>
+                <!-- Glimpse Item 3 -->
+                <div class="group relative aspect-square bg-brand-dark rounded-xl overflow-hidden shadow-2xl scroll-reveal" style="transition-delay: 0.4s;">
+                     <div class="absolute inset-0 bg-gray-500 opacity-40 group-hover:opacity-20 transition-opacity duration-500" style="background-image: url('https://source.unsplash.com/random/600x600/?silk,dark,fabric'); background-size: cover; filter: grayscale(80%) blur(2px);"></div>
+                    <div class="absolute inset-0 flex items-center justify-center p-6 bg-black bg-opacity-60 group-hover:bg-opacity-40 transition-all duration-500">
+                        <div class="text-center transform group-hover:scale-105 transition-transform duration-500">
+                            <div class="w-16 h-16 mx-auto mb-4 bg-brand-gold/10 border-2 border-dashed border-brand-gold/30 rounded-xl flex items-center justify-center group-hover:border-brand-gold/70 transition-colors">
+                               <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-8 h-8 text-brand-gold/50 group-hover:text-brand-gold transition-colors">
+                                  <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 7.125C2.25 6.504 2.754 6 3.375 6h6c.621 0 1.125.504 1.125 1.125v3.75c0 .621-.504 1.125-1.125 1.125h-6A1.125 1.125 0 012.25 10.875v-3.75zM14.25 8.625c0-.621.504-1.125 1.125-1.125h5.25c.621 0 1.125.504 1.125 1.125v8.25c0 .621-.504 1.125-1.125 1.125h-5.25a1.125 1.125 0 01-1.125-1.125v-8.25zM3.75 16.125c0-.621.504-1.125 1.125-1.125h5.25c.621 0 1.125.504 1.125 1.125v2.25c0 .621-.504 1.125-1.125 1.125h-5.25a1.125 1.125 0 01-1.125-1.125v-2.25z" />
+                                </svg>
+                            </div>
+                            <h3 class="font-serif text-2xl text-brand-gold mb-2">The Connoisseur's Attire</h3>
+                            <p class="text-brand-muted-text text-sm group-hover:text-brand-light-text transition-colors">Woven tales of elegance.</p>
+                        </div>
+                    </div>
+                    <div class="absolute inset-0 border-2 border-transparent group-hover:border-brand-gold/50 rounded-xl transition-all duration-500 pointer-events-none"></div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- "The Circle" Section (How it Works) -->
+    <section id="circle" class="py-16 md:py-24 bg-brand-dark">
+        <div class="container mx-auto px-6 text-center">
+            <h2 class="font-serif text-3xl md:text-4xl text-brand-light-text mb-4 scroll-reveal">The Circle of Secrets</h2>
+            <p class="text-brand-muted-text mb-12 max-w-xl mx-auto scroll-reveal" style="transition-delay: 0.1s;">A passage into a realm of personalized discovery. Three steps unveil your desires.</p>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-10 md:gap-16">
+                <!-- Step 1: The Invitation -->
+                <div class="flex flex-col items-center scroll-reveal" style="transition-delay: 0.2s;">
+                    <div class="p-5 rounded-full bg-brand-charcoal border-2 border-brand-gold/30 mb-6 group hover:border-brand-gold/70 transition-all duration-300 transform hover:scale-105">
+                        <svg class="w-12 h-12 text-brand-gold group-hover:text-brand-gold/80 transition-colors duration-300" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M21.75 9v.906a2.25 2.25 0 01-1.183 1.981l-6.478 3.488M2.25 9v.906c0 .92.59 1.754 1.437 2.049l7.293 3.09M2.25 9V7.572c0-.92.59-1.754 1.437-2.049l7.293-3.09A2.25 2.25 0 0112 2.25c.99 0 1.842.502 2.233 1.254l4.522 6.671c.54.797.845 1.765.845 2.767V9M6 18L2.25 15M18 18l3.75-3M12 12.75h.008v.008H12v-.008z" />
+                        </svg>
+                    </div>
+                    <h3 class="font-serif text-xl text-brand-gold mb-2">The Invitation</h3>
+                    <p class="text-brand-muted-text text-sm">An exclusive call to the discerning. Your journey begins with a whisper.</p>
+                </div>
+                <!-- Step 2: The Selection -->
+                <div class="flex flex-col items-center scroll-reveal" style="transition-delay: 0.3s;">
+                     <div class="p-5 rounded-full bg-brand-charcoal border-2 border-brand-gold/30 mb-6 group hover:border-brand-gold/70 transition-all duration-300 transform hover:scale-105">
+                        <svg class="w-12 h-12 text-brand-gold group-hover:text-brand-gold/80 transition-colors duration-300" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                           <path stroke-linecap="round" stroke-linejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L1.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09zM18.25 12L17 14.188V14.188l-1.25.813L14.188 17l.813-1.25L14.188 14l1.25-.813L17 11.812l.813 1.25L19.062 14l-1.25.813L17 16.188V16.188zM9.813 15.904L9 18.75l-.813-2.846m0 0L5.25 15l2.846.813m0 0L9 12.75l.813 2.846M12 5.25L11.188 8l-2.846.813L11.188 10l.813 2.846L12.812 10l2.846-.813L12.812 8L12 5.25z" />
+                        </svg>
+                    </div>
+                    <h3 class="font-serif text-xl text-brand-gold mb-2">The Selection</h3>
+                    <p class="text-brand-muted-text text-sm">Curated to your essence. We divine the artifacts that resonate with your spirit.</p>
+                </div>
+                <!-- Step 3: The Unveiling -->
+                <div class="flex flex-col items-center scroll-reveal" style="transition-delay: 0.4s;">
+                     <div class="p-5 rounded-full bg-brand-charcoal border-2 border-brand-gold/30 mb-6 group hover:border-brand-gold/70 transition-all duration-300 transform hover:scale-105">
+                        <svg class="w-12 h-12 text-brand-gold group-hover:text-brand-gold/80 transition-colors duration-300" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M20.25 7.5l-.625 10.632a2.25 2.25 0 01-2.247 2.118H6.622a2.25 2.25 0 01-2.247-2.118L3.75 7.5M10 11.25h4M3.375 7.5h17.25c.621 0 1.125-.504 1.125-1.125V6.375c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125v.001c0 .621.504 1.125 1.125 1.125z" />
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M12 3.75v1.5m0 0V2.25m0 1.5c0 .414.168.75.375.75h3.25c.207 0 .375-.336.375-.75V2.25m-4 1.5c0 .414-.168.75-.375.75H8.375c-.207 0-.375-.336-.375-.75V2.25" filter="url(#lightbeam)" />
+                            <defs><filter id="lightbeam"><feGaussianBlur in="SourceGraphic" stdDeviation="0.5" /></filter></defs>
+                        </svg>
+                    </div>
+                    <h3 class="font-serif text-xl text-brand-gold mb-2">The Unveiling</h3>
+                    <p class="text-brand-muted-text text-sm">A ritual of discovery. Your curated treasures emerge from the shadows, delivered with discretion.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Whispers of the Elite Section (Testimonials) -->
+    <section id="whispers" class="py-16 md:py-24 bg-brand-charcoal">
+        <div class="container mx-auto px-6 text-center">
+            <h2 class="font-serif text-3xl md:text-4xl text-brand-light-text mb-4 scroll-reveal">Whispers of the Elite</h2>
+            <p class="text-brand-muted-text mb-12 max-w-xl mx-auto scroll-reveal" style="transition-delay: 0.1s;">Echoes from within the circle. Testaments to unparalleled experiences.</p>
+            <div id="testimonial-container" class="relative h-40 md:h-32 overflow-hidden">
+                <!-- Testimonials will be injected here by JavaScript -->
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="py-12 bg-brand-dark border-t border-brand-gold/10">
+        <div class="container mx-auto px-6 text-center">
+            <div class="mb-6">
+                <a href="#contact" class="text-brand-muted-text hover:text-brand-gold mx-3 transition-colors text-sm">Contact the Custodians</a>
+                <a href="#terms" class="text-brand-muted-text hover:text-brand-gold mx-3 transition-colors text-sm">Terms of Membership</a>
+                <a href="#privacy" class="text-brand-muted-text hover:text-brand-gold mx-3 transition-colors text-sm">Privacy Sanctum</a>
+            </div>
+            <p class="text-brand-muted-text text-xs mb-4">&copy; <span id="currentYear"></span> The Hidden Emporium. All Rites Reserved.</p>
+            <div id="easterEggTrigger" class="mx-auto w-6 h-6 cursor-pointer group" title="A small insignia...">
+                <svg class="w-full h-full text-brand-charcoal group-hover:text-brand-gold/50 transition-colors duration-500" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+                    <path fill-rule="evenodd" clip-rule="evenodd" d="M12 2C6.47715 2 2 6.47715 2 12C2 17.5228 6.47715 22 12 22C17.5228 22 22 17.5228 22 12C22 6.47715 17.5228 2 12 2ZM12 4C16.4183 4 20 7.58172 20 12C20 16.4183 16.4183 20 12 20C7.58172 20 4 16.4183 4 12C4 7.58172 7.58172 4 12 4ZM12 6C10.5858 6 9.29289 6.73352 8.46447 7.81068L16.1893 15.5355C17.2665 14.7071 18 13.4142 18 12C18 8.68629 15.3137 6 12 6ZM7.81068 8.46447C6.73352 9.29289 6 10.5858 6 12C6 15.3137 8.68629 18 12 18C13.4142 18 14.7071 17.2665 15.5355 16.1893L7.81068 8.46447Z"/>
+                </svg>
+            </div>
+            <p id="easterEggMessage" class="text-brand-gold text-xs mt-3 opacity-0 transition-opacity duration-500 h-0">The shadows hold more than they reveal...</p>
+        </div>
+    </footer>
+
+    <!-- "Request Access" Modal -->
+    <div id="requestAccessModal" class="fixed inset-0 z-[100] bg-brand-dark bg-opacity-90 backdrop-blur-sm flex items-center justify-center p-4 transition-opacity duration-300 ease-in-out opacity-0 pointer-events-none">
+        <div class="bg-brand-charcoal p-8 md:p-10 rounded-xl shadow-2xl w-full max-w-lg border border-brand-gold/20 transform scale-95 transition-all duration-300 ease-in-out">
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="font-serif text-2xl md:text-3xl text-brand-gold">Seek Entry</h2>
+                <button id="closeModalBtn" class="text-brand-muted-text hover:text-brand-light-text transition-colors">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-7 h-7">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                </button>
+            </div>
+            <form id="accessForm">
+                <div class="mb-5">
+                    <label for="name" class="block text-sm font-medium text-brand-muted-text mb-1">Your Appellation (Name)</label>
+                    <input type="text" id="name" name="name" required class="w-full bg-brand-dark border border-brand-gold/30 text-brand-light-text placeholder-brand-muted-text/50 rounded-md p-3 focus:ring-2 focus:ring-brand-gold focus:border-brand-gold outline-none transition-all duration-200" placeholder="e.g., The Seeker, A. Connoisseur">
+                </div>
+                <div class="mb-5">
+                    <label for="email" class="block text-sm font-medium text-brand-muted-text mb-1">Your Discreet Correspondence (Email)</label>
+                    <input type="email" id="email" name="email" required class="w-full bg-brand-dark border border-brand-gold/30 text-brand-light-text placeholder-brand-muted-text/50 rounded-md p-3 focus:ring-2 focus:ring-brand-gold focus:border-brand-gold outline-none transition-all duration-200" placeholder="your.secret@domain.com">
+                </div>
+                <div class="mb-8">
+                    <label for="reason" class="block text-sm font-medium text-brand-muted-text mb-1">Why do you seek The Hidden Emporium?</label>
+                    <textarea id="reason" name="reason" rows="3" required class="w-full bg-brand-dark border border-brand-gold/30 text-brand-light-text placeholder-brand-muted-text/50 rounded-md p-3 focus:ring-2 focus:ring-brand-gold focus:border-brand-gold outline-none transition-all duration-200" placeholder="A brief whisper of your passions or pursuits..."></textarea>
+                </div>
+                <button type="submit" class="w-full bg-brand-gold text-brand-dark font-semibold py-3 px-6 rounded-lg hover:bg-opacity-80 transition-all duration-300 transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-brand-gold focus:ring-opacity-50">
+                    Submit Your Request
+                </button>
+            </form>
+            <p id="formSubmissionMessage" class="text-center text-brand-gold mt-4 text-sm opacity-0 transition-opacity"></p>
+        </div>
+    </div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', () => {
+        // Particle Background
+        const particleContainer = document.getElementById('particle-container');
+        const numParticles = 30; // Fewer particles for subtlety
+        for (let i = 0; i < numParticles; i++) {
+            const particle = document.createElement('div');
+            particle.classList.add('particle');
+            particle.style.width = `${Math.random() * 2 + 1}px`;
+            particle.style.height = particle.style.width;
+            particle.style.left = `${Math.random() * 100}%`;
+            particle.style.top = `${Math.random() * 100}%`; // Start at random positions
+            particle.style.setProperty('--particle-x-end', `${(Math.random() - 0.5) * 200}px`); // Random horizontal drift
+            particle.style.animationDelay = `${Math.random() * 20}s`;
+            particle.style.animationDuration = `${Math.random() * 20 + 15}s`; // Varied speeds
+            particleContainer.appendChild(particle);
+        }
+
+        // Header scroll effect
+        const header = document.getElementById('mainHeader');
+        window.addEventListener('scroll', () => {
+            if (window.scrollY > 50) {
+                header.classList.add('bg-brand-dark/80', 'backdrop-blur-sm', 'shadow-lg');
+            } else {
+                header.classList.remove('bg-brand-dark/80', 'backdrop-blur-sm', 'shadow-lg');
+            }
+        });
+
+        // Modal Logic
+        const modal = document.getElementById('requestAccessModal');
+        const modalContent = modal.querySelector('div'); // For scale animation
+        const openBtn = document.getElementById('requestAccessBtn');
+        const closeBtn = document.getElementById('closeModalBtn');
+        const accessForm = document.getElementById('accessForm');
+        const formSubmissionMessage = document.getElementById('formSubmissionMessage');
+
+        if (openBtn) {
+            openBtn.addEventListener('click', () => {
+                modal.classList.remove('opacity-0', 'pointer-events-none');
+                modalContent.classList.remove('scale-95');
+                modal.classList.add('opacity-100');
+                modalContent.classList.add('scale-100');
+            });
+        }
+
+        if (closeBtn) {
+            closeBtn.addEventListener('click', () => {
+                modal.classList.add('opacity-0');
+                modalContent.classList.add('scale-95');
+                setTimeout(() => {
+                     modal.classList.add('pointer-events-none');
+                     modalContent.classList.remove('scale-100'); // Reset for next open
+                }, 300);
+            });
+        }
+        
+        modal.addEventListener('click', (event) => {
+            if (event.target === modal) { // Click outside modal content
+                 closeBtn.click();
+            }
+        });
+
+        accessForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            formSubmissionMessage.textContent = "Your request has been received. We shall deliberate...";
+            formSubmissionMessage.classList.remove('opacity-0');
+            accessForm.reset();
+            setTimeout(() => {
+                closeBtn.click();
+                setTimeout(() => formSubmissionMessage.classList.add('opacity-0'), 500); // Hide message after modal closes
+            }, 3000);
+        });
+
+        // Scroll Reveal Animations
+        const scrollRevealElements = document.querySelectorAll('.scroll-reveal');
+        const revealObserver = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    entry.target.classList.add('revealed');
+                    // revealObserver.unobserve(entry.target); // Optional: stop observing
+                }
+            });
+        }, { threshold: 0.15, rootMargin: "0px 0px -50px 0px" });
+
+        scrollRevealElements.forEach(el => {
+            revealObserver.observe(el);
+        });
+
+        // Testimonials
+        const testimonials = [
+            { author: "A.D. - The Collector", quote: "An unparalleled gateway to the truly unique. My collection has never been more... esoteric." },
+            { author: "Ms. X - The Aficionado", quote: "The Hidden Emporium understands desire before it's even a whisper in one's own mind." },
+            { author: "SILAS - The Purveyor of Secrets", quote: "Each delivery is an event, a ritual. The anticipation itself is a luxury." },
+            { author: "ELARA - The Dream Weaver", quote: "They don't just curate items; they curate experiences. My world is richer for it." }
+        ];
+        let currentTestimonialIndex = 0;
+        const testimonialContainer = document.getElementById('testimonial-container');
+
+        function displayTestimonial() {
+            if (!testimonialContainer) return;
+            testimonialContainer.innerHTML = ''; // Clear previous
+            const testimonial = testimonials[currentTestimonialIndex];
+            
+            const testimonialElement = document.createElement('div');
+            testimonialElement.className = 'absolute inset-0 flex flex-col items-center justify-center p-4 animate-testimonialFade';
+            testimonialElement.innerHTML = `
+                <p class="font-serif text-lg md:text-xl italic text-brand-light-text mb-2">"${testimonial.quote}"</p>
+                <p class="text-sm text-brand-gold">- ${testimonial.author}</p>
+            `;
+            testimonialContainer.appendChild(testimonialElement);
+            
+            currentTestimonialIndex = (currentTestimonialIndex + 1) % testimonials.length;
+        }
+
+        if (testimonialContainer) {
+            displayTestimonial(); // Initial display
+            setInterval(displayTestimonial, 7000); // Change every 7 seconds (matches animation duration)
+        }
+
+        // Footer Year
+        document.getElementById('currentYear').textContent = new Date().getFullYear();
+
+        // Footer Easter Egg
+        const easterEggTrigger = document.getElementById('easterEggTrigger');
+        const easterEggMessage = document.getElementById('easterEggMessage');
+        let easterEggRevealed = false;
+        if (easterEggTrigger && easterEggMessage) {
+            easterEggTrigger.addEventListener('click', () => {
+                if (!easterEggRevealed) {
+                    easterEggMessage.classList.remove('opacity-0', 'h-0');
+                    easterEggMessage.classList.add('opacity-100');
+                    easterEggRevealed = true;
+                    setTimeout(() => {
+                         easterEggMessage.classList.remove('opacity-100');
+                         easterEggMessage.classList.add('opacity-0', 'h-0');
+                         easterEggRevealed = false; // Allow re-trigger
+                    }, 4000);
+                }
+            });
+        }
+    });
+</script>
+
+</body>
+</html>

@@ -1,0 +1,9 @@
+{
+  "web_id": "web_38",
+  "task_id": 2,
+  "task_type": "dynamic",
+  "instruction": "Task: In the displayed login modal, input 'testuser' into the username field and 'password123' into the password field, then click the 'OK' button.\nExpected Result: The login modal closes. The header UI updates to show a 'username' display, user balance, and a user dropdown menu, while 'Login' and 'Sign Up' buttons are hidden.\n\nNote: The task is only considered successful if the expected result is achieved; otherwise, it is deemed infeasible.",
+  "max_steps": 15,
+  "expected": "The login modal closes. The header UI updates to show a 'username' display, user balance, and a user dropdown menu, while 'Login' and 'Sign Up' buttons are hidden.",
+  "label": 1
+}

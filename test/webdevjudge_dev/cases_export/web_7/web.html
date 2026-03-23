@@ -1,0 +1,398 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chatbot App</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Custom scrollbar for webkit browsers */
+        .message-list::-webkit-scrollbar {
+            width: 8px;
+        }
+        .message-list::-webkit-scrollbar-track {
+            background: #1e293b; /* slate-800 */
+        }
+        .message-list::-webkit-scrollbar-thumb {
+            background: #475569; /* slate-600 */
+            border-radius: 4px;
+        }
+        .message-list::-webkit-scrollbar-thumb:hover {
+            background: #64748b; /* slate-500 */
+        }
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+        /* For message highlighting on edit */
+        .editing-highlight {
+            animation: pulse-bg 2s infinite;
+        }
+        @keyframes pulse-bg {
+            0% { background-color: var(--tw-bg-opacity); /* Initial color */ }
+            50% { background-color: rgba(250, 204, 21, 0.2); /* yellow-400 with opacity */ }
+            100% { background-color: var(--tw-bg-opacity); }
+        }
+        .flash-success {
+            animation: flash-success-anim 0.5s ease-out;
+        }
+        @keyframes flash-success-anim {
+            0% { background-color: rgba(74, 222, 128, 0.5); } /* green-400 with opacity */
+            100% { background-color: var(--tw-bg-opacity); }
+        }
+    </style>
+</head>
+<body class="bg-slate-900 text-slate-100 flex flex-col h-screen antialiased">
+
+    <div id="app" class="flex flex-col h-full">
+        <!-- Header (Optional) -->
+        <header class="bg-slate-800 p-4 border-b border-slate-700 shadow-md">
+            <h1 class="text-xl font-semibold text-center text-slate-200">AI Chatbot</h1>
+        </header>
+
+        <!-- Messages Area -->
+        <main id="messageList" class="message-list flex-grow overflow-y-auto p-6 space-y-6">
+            <!-- Messages will be rendered here by JavaScript -->
+        </main>
+
+        <!-- "Copied to clipboard" toast -->
+        <div id="copyToast" class="fixed bottom-24 right-6 bg-green-500 text-white py-2 px-4 rounded-lg shadow-md transition-opacity duration-300 opacity-0">
+            Copied to clipboard!
+        </div>
+        
+        <!-- Input Area -->
+        <footer class="bg-slate-800 p-4 border-t border-slate-700">
+            <!-- Editing Message Notification -->
+            <div id="editingNotification" class="hidden items-center justify-between bg-yellow-500/10 border border-yellow-600/50 text-yellow-300 px-3 py-2 mb-2 rounded-md text-sm">
+                <div class="flex items-center">
+                    <span class="font-semibold mr-2">Editing message:</span>
+                    <span id="editingMessagePreview" class="truncate italic cursor-pointer hover:underline" title="Click to scroll to message"></span>
+                </div>
+                <button id="cancelEditBtn" class="text-yellow-300 hover:text-yellow-100 p-1 rounded-full focus:outline-none focus:ring-2 focus:ring-yellow-400">
+                    <!-- Close Icon SVG will be injected here -->
+                </button>
+            </div>
+
+            <div class="flex items-center space-x-3">
+                <textarea id="messageInput" rows="1"
+                    class="flex-grow bg-slate-700 border border-slate-600 rounded-lg p-3 text-slate-100 placeholder-slate-400 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-none no-scrollbar"
+                    placeholder="Type your message... (Shift+Enter for new line)"></textarea>
+                <button id="sendButton"
+                    class="bg-blue-600 hover:bg-blue-700 text-white font-semibold p-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:ring-offset-slate-800 transition-colors">
+                    <!-- Send Icon SVG will be injected here -->
+                </button>
+            </div>
+        </footer>
+    </div>
+
+    <script>
+        const ICONS = {
+            edit: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-4 h-4"><path d="M2.695 14.763l-1.262 3.154a.5.5 0 00.65.65l3.155-1.262a4 4 0 001.343-.885L17.5 5.5a2.121 2.121 0 00-3-3L3.58 13.42a4 4 0 00-.885 1.343z" /></svg>`,
+            regenerate: `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4"><path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99" /></svg>`,
+            copy: `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4"><path stroke-linecap="round" stroke-linejoin="round" d="M15.666 3.888A2.25 2.25 0 0013.5 2.25h-3c-1.03 0-1.9.693-2.166 1.638m7.332 0c.055.194.084.4.084.612v0a2.25 2.25 0 01-2.25 2.25h-1.5a2.25 2.25 0 01-2.25-2.25V5.132c0-.212.03-.418.084-.612m7.332 0c.646.049 1.288.11 1.927.184 1.1.128 1.907 1.077 1.907 2.185V19.5a2.25 2.25 0 01-2.25 2.25H6.75A2.25 2.25 0 014.5 19.5V6.257c0-1.108.806-2.057 1.907-2.185a48.208 48.208 0 011.927-.184" /></svg>`,
+            arrowLeft: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-5 h-5"><path fill-rule="evenodd" d="M12.79 5.23a.75.75 0 01-.02 1.06L8.832 10l3.938 3.71a.75.75 0 11-1.04 1.08l-4.5-4.25a.75.75 0 010-1.08l4.5-4.25a.75.75 0 011.06.02z" clip-rule="evenodd" /></svg>`,
+            arrowRight: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-5 h-5"><path fill-rule="evenodd" d="M7.21 14.77a.75.75 0 01.02-1.06L11.168 10 7.23 6.29a.75.75 0 111.04-1.08l4.5 4.25a.75.75 0 010 1.08l-4.5 4.25a.75.75 0 01-1.06-.02z" clip-rule="evenodd" /></svg>`,
+            close: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-4 h-4"><path d="M6.28 5.22a.75.75 0 00-1.06 1.06L8.94 10l-3.72 3.72a.75.75 0 101.06 1.06L10 11.06l3.72 3.72a.75.75 0 101.06-1.06L11.06 10l3.72-3.72a.75.75 0 00-1.06-1.06L10 8.94 6.28 5.22z" /></svg>`,
+            send: `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5"><path stroke-linecap="round" stroke-linejoin="round" d="M6 12L3.269 3.126A59.768 59.768 0 0121.485 12 59.77 59.77 0 013.27 20.876L5.999 12zm0 0h7.5" /></svg>`
+        };
+
+        const messageList = document.getElementById('messageList');
+        const messageInput = document.getElementById('messageInput');
+        const sendButton = document.getElementById('sendButton');
+        const editingNotification = document.getElementById('editingNotification');
+        const editingMessagePreview = document.getElementById('editingMessagePreview');
+        const cancelEditBtn = document.getElementById('cancelEditBtn');
+        const copyToast = document.getElementById('copyToast');
+
+        // Populate static SVGs
+        sendButton.innerHTML = ICONS.send;
+        cancelEditBtn.innerHTML = ICONS.close;
+
+        let messages = []; // This array holds the current visible branch
+        let editingState = {
+            isActive: false,
+            messageId: null,
+            stashedInput: ''
+        };
+        let aiResponseCounter = 0; // For varied AI responses
+
+        function generateId() {
+            return Math.random().toString(36).substr(2, 9);
+        }
+
+        function formatTimestamp(date) {
+            return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        }
+
+        function renderMessages() {
+            messageList.innerHTML = '';
+            if (messages.length === 0) {
+                 messageList.innerHTML = `<div class="text-center text-slate-500 text-sm">No messages yet. Start the conversation!</div>`;
+            }
+
+            messages.forEach((msg, index) => {
+                const msgWrapper = document.createElement('div');
+                msgWrapper.id = `message-${msg.id}`;
+                msgWrapper.className = `flex ${msg.sender === 'user' ? 'justify-end' : 'justify-start'}`;
+                
+                const msgBubbleClass = msg.sender === 'user' 
+                    ? 'bg-blue-600 text-white' 
+                    : 'bg-slate-700 text-slate-100';
+                
+                const avatarPlaceholder = `
+                    <div class="avatar-placeholder bg-gray-700 border-2 border-dashed border-gray-500 rounded-xl w-10 h-10 flex items-center justify-center text-gray-300 font-semibold text-lg flex-shrink-0">
+                        ${msg.sender === 'user' ? 'U' : 'AI'}
+                    </div>`;
+
+                // Sanitize text content before inserting (basic example)
+                const currentText = msg.generations[msg.currentGenerationIndex].text
+                                     .replace(/&/g, "&amp;")
+                                     .replace(/</g, "&lt;")
+                                     .replace(/>/g, "&gt;")
+                                     .replace(/\n/g, "<br>");
+
+
+                const messageContent = `
+                    <div class="flex items-end max-w-xl ${msg.sender === 'user' ? 'flex-row-reverse' : 'flex-row'} space-x-2 space-x-reverse">
+                        ${avatarPlaceholder}
+                        <div class="p-1">
+                            <div class="${msgBubbleClass} rounded-lg px-4 py-2 shadow-md ${editingState.isActive && editingState.messageId === msg.id ? 'editing-highlight' : ''}">
+                                <p class="text-sm whitespace-pre-wrap">${currentText}</p>
+                            </div>
+                            <div class="flex items-center mt-1.5 space-x-2 ${msg.sender === 'user' ? 'justify-end' : 'justify-start'}">
+                                <span class="text-xs text-slate-500">${msg.name}</span>
+                                <span class="text-xs text-slate-500">${formatTimestamp(msg.timestamp)}</span>
+                            </div>
+                            <!-- Action Bar -->
+                            <div class="message-actions flex items-center space-x-2 mt-1 text-slate-400 ${msg.sender === 'user' ? 'justify-end' : ''}">
+                                <button title="Edit" class="hover:text-slate-200 p-1 action-btn" data-action="edit" data-id="${msg.id}">${ICONS.edit}</button>
+                                <button title="Copy" class="hover:text-slate-200 p-1 action-btn" data-action="copy" data-id="${msg.id}">${ICONS.copy}</button>
+                                ${msg.sender === 'ai' ? `
+                                    <button title="Regenerate" class="hover:text-slate-200 p-1 action-btn" data-action="regenerate" data-id="${msg.id}">${ICONS.regenerate}</button>
+                                ` : ''}
+                                ${msg.sender === 'ai' && msg.generations.length > 1 ? `
+                                    <div class="flex items-center space-x-1 text-xs">
+                                        <button title="Previous generation" class="hover:text-slate-200 p-1 action-btn ${msg.currentGenerationIndex === 0 ? 'opacity-50 cursor-not-allowed' : ''}" data-action="prev-gen" data-id="${msg.id}" ${msg.currentGenerationIndex === 0 ? 'disabled' : ''}>${ICONS.arrowLeft}</button>
+                                        <span>${msg.currentGenerationIndex + 1}/${msg.generations.length}</span>
+                                        <button title="Next generation" class="hover:text-slate-200 p-1 action-btn ${msg.currentGenerationIndex === msg.generations.length - 1 ? 'opacity-50 cursor-not-allowed' : ''}" data-action="next-gen" data-id="${msg.id}" ${msg.currentGenerationIndex === msg.generations.length - 1 ? 'disabled' : ''}>${ICONS.arrowRight}</button>
+                                    </div>
+                                ` : ''}
+                            </div>
+                        </div>
+                    </div>
+                `;
+                msgWrapper.innerHTML = messageContent;
+                messageList.appendChild(msgWrapper);
+            });
+            scrollToBottom();
+            if (editingState.isActive && editingState.messageId) {
+                 const editingMsgElement = document.getElementById(`message-${editingState.messageId}`);
+                 if (editingMsgElement) {
+                    // Ensure variable is defined for pulse animation
+                    editingMsgElement.querySelector(`.${messages.find(m=>m.id===editingState.messageId).sender === 'user' ? 'bg-blue-600' : 'bg-slate-700'}`).style.setProperty('--tw-bg-opacity', '1');
+                 }
+            }
+        }
+
+        function scrollToBottom() {
+            messageList.scrollTop = messageList.scrollHeight;
+        }
+
+        function addMessage(sender, text, nameOverride = null) {
+            const name = nameOverride ? nameOverride : (sender === 'user' ? 'You' : 'AI Bot');
+            const newMessage = {
+                id: generateId(),
+                sender: sender,
+                name: name,
+                timestamp: new Date(),
+                generations: [{ text: text }],
+                currentGenerationIndex: 0,
+            };
+            messages.push(newMessage);
+            renderMessages();
+            return newMessage;
+        }
+
+        function handleSendMessage() {
+            const text = messageInput.value.trim();
+            if (!text) return;
+
+            if (editingState.isActive) {
+                submitEdit(text);
+            } else {
+                addMessage('user', text, 'You');
+                messageInput.value = '';
+                autoResizeTextarea();
+                
+                // Simulate AI response
+                setTimeout(() => {
+                    aiResponseCounter++;
+                    const aiText = `This is AI response #${aiResponseCounter}. I received: "${text.substring(0, 30)}${text.length > 30 ? '...' : ''}".`;
+                    addMessage('ai', aiText, 'AI Assistant');
+                }, 1000);
+            }
+            messageInput.focus();
+        }
+
+        function handleRegenerate(messageId) {
+            const msgIndex = messages.findIndex(m => m.id === messageId);
+            if (msgIndex === -1) return;
+
+            const msg = messages[msgIndex];
+            if (msg.sender !== 'ai') return;
+
+            aiResponseCounter++; // or some other logic for new content
+            const newText = `This is a regenerated response (v${msg.generations.length + 1}). AI response #${aiResponseCounter}.`;
+            msg.generations.push({ text: newText });
+            msg.currentGenerationIndex = msg.generations.length - 1;
+            
+            // Clear messages below this one (create new branch)
+            messages = messages.slice(0, msgIndex + 1);
+            renderMessages();
+        }
+
+        function handleChangeGeneration(messageId, direction) { // direction is -1 or 1
+            const msgIndex = messages.findIndex(m => m.id === messageId);
+            if (msgIndex === -1) return;
+
+            const msg = messages[msgIndex];
+            const newIndex = msg.currentGenerationIndex + direction;
+
+            if (newIndex >= 0 && newIndex < msg.generations.length) {
+                msg.currentGenerationIndex = newIndex;
+                // Clear messages below this one (create new branch)
+                messages = messages.slice(0, msgIndex + 1);
+                renderMessages();
+            }
+        }
+
+        function handleEdit(messageId) {
+            const msg = messages.find(m => m.id === messageId);
+            if (!msg) return;
+
+            editingState = {
+                isActive: true,
+                messageId: msg.id,
+                stashedInput: messageInput.value
+            };
+
+            messageInput.value = msg.generations[msg.currentGenerationIndex].text;
+            messageInput.focus();
+            autoResizeTextarea();
+
+            editingMessagePreview.textContent = `"${msg.generations[msg.currentGenerationIndex].text.substring(0, 30)}${msg.generations[msg.currentGenerationIndex].text.length > 30 ? '...' : ''}"`;
+            editingNotification.classList.remove('hidden');
+            editingNotification.classList.add('flex');
+            renderMessages(); // Re-render to apply highlight
+        }
+
+        function cancelEdit() {
+            messageInput.value = editingState.stashedInput;
+            editingState = { isActive: false, messageId: null, stashedInput: '' };
+            
+            editingNotification.classList.add('hidden');
+            editingNotification.classList.remove('flex');
+            autoResizeTextarea();
+            messageInput.focus();
+            renderMessages(); // Re-render to remove highlight
+        }
+
+        function submitEdit(newText) {
+            const msg = messages.find(m => m.id === editingState.messageId);
+            if (msg) {
+                msg.generations[msg.currentGenerationIndex].text = newText;
+                msg.timestamp = new Date(); // Optionally update timestamp on edit
+            }
+            
+            const editedMessageElement = document.getElementById(`message-${editingState.messageId}`);
+            if(editedMessageElement) {
+                const bubble = editedMessageElement.querySelector('.rounded-lg.px-4.py-2');
+                if(bubble) {
+                    bubble.classList.add('flash-success');
+                    setTimeout(() => bubble.classList.remove('flash-success'), 500);
+                }
+            }
+
+            messageInput.value = editingState.stashedInput;
+            editingState = { isActive: false, messageId: null, stashedInput: '' };
+            
+            editingNotification.classList.add('hidden');
+            editingNotification.classList.remove('flex');
+            autoResizeTextarea();
+            renderMessages();
+        }
+
+        function handleCopy(messageId) {
+            const msg = messages.find(m => m.id === messageId);
+            if (!msg) return;
+
+            const textToCopy = msg.generations[msg.currentGenerationIndex].text;
+            navigator.clipboard.writeText(textToCopy).then(() => {
+                copyToast.classList.remove('opacity-0');
+                setTimeout(() => {
+                    copyToast.classList.add('opacity-0');
+                }, 2000);
+            }).catch(err => {
+                console.error('Failed to copy: ', err);
+                // Optionally show an error toast
+            });
+        }
+        
+        function autoResizeTextarea() {
+            messageInput.style.height = 'auto'; // Reset height
+            messageInput.style.height = messageInput.scrollHeight + 'px'; // Set to scroll height
+            // Max height to prevent excessive growth
+            if (messageInput.scrollHeight > 200) { 
+                messageInput.style.height = '200px';
+                messageInput.style.overflowY = 'auto';
+            } else {
+                messageInput.style.overflowY = 'hidden';
+            }
+        }
+
+        // Event Listeners
+        sendButton.addEventListener('click', handleSendMessage);
+        messageInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                handleSendMessage();
+            }
+        });
+        messageInput.addEventListener('input', autoResizeTextarea);
+
+
+        messageList.addEventListener('click', (e) => {
+            const targetButton = e.target.closest('.action-btn');
+            if (!targetButton) return;
+
+            const action = targetButton.dataset.action;
+            const messageId = targetButton.dataset.id;
+
+            if (action === 'edit') handleEdit(messageId);
+            else if (action === 'copy') handleCopy(messageId);
+            else if (action === 'regenerate') handleRegenerate(messageId);
+            else if (action === 'prev-gen') handleChangeGeneration(messageId, -1);
+            else if (action === 'next-gen') handleChangeGeneration(messageId, 1);
+        });
+
+        cancelEditBtn.addEventListener('click', cancelEdit);
+        editingMessagePreview.addEventListener('click', () => {
+            if (editingState.isActive && editingState.messageId) {
+                const msgElement = document.getElementById(`message-${editingState.messageId}`);
+                if (msgElement) {
+                    msgElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                }
+            }
+        });
+
+        // Initial state
+        function init() {
+            addMessage('ai', 'Hello! I am your AI assistant. How can I help you today?', 'AI Assistant');
+            autoResizeTextarea(); // Initial resize for placeholder
+            renderMessages(); // Initial render
+        }
+
+        init();
+
+    </script>
+</body>
+</html>

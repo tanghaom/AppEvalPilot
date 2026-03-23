@@ -1,0 +1,475 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>visionOS Web Clone</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";
+            overscroll-behavior: none;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+        }
+        .app-content-scrollable::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        .app-content-scrollable::-webkit-scrollbar-thumb {
+            background-color: rgba(255,255,255,0.3);
+            border-radius: 3px;
+        }
+        .app-content-scrollable::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        .app-window {
+            transition: opacity 0.2s ease-out, transform 0.2s ease-out;
+            /* border: 1px solid rgba(255, 255, 255, 0.1); */ /* Subtle border for glass effect */
+        }
+        .app-window.opening {
+            opacity: 0;
+            transform: scale(0.95) translateY(10px);
+        }
+        .cursor-grab { cursor: grab; }
+        .cursor-grabbing { cursor: grabbing !important; } /* Important to override other cursors */
+
+        .drag-handle-pill-container {
+            height: 2rem; /* h-8 */
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            padding-bottom: 0.5rem; /* pb-2 */
+        }
+        .drag-handle-pill {
+            width: 3.5rem; /* w-14 */
+            height: 0.3125rem; /* h-[5px] */
+            background-color: rgba(180, 180, 180, 0.6); /* Darker, less obtrusive */
+            border-radius: 9999px; /* rounded-full */
+            cursor: grab;
+            transition: background-color 0.2s ease, transform 0.2s ease;
+        }
+        .drag-handle-pill:hover {
+            background-color: rgba(200, 200, 200, 0.8);
+            transform: scale(1.05);
+        }
+        .dock-icon {
+            transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1), background-color 0.2s ease;
+        }
+        .dock-icon:hover {
+            transform: translateY(-6px) scale(1.1);
+        }
+        .close-button-container {
+            position: absolute;
+            top: 0.75rem; /* py-3 on header means roughly 12px from top of content */
+            left: 0.75rem; /* px-3 on header */
+            z-index: 10;
+        }
+        .close-button {
+            width: 1.25rem; /* w-5 */
+            height: 1.25rem; /* h-5 */
+            border-radius: 9999px; /* rounded-full */
+            background-color: rgba(50, 50, 50, 0.6); /* Darker, subtle */
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            opacity: 0.6;
+            transition: opacity 0.2s ease, background-color 0.2s ease, transform 0.2s ease;
+        }
+        .app-window:hover .close-button, .close-button:hover {
+            opacity: 1;
+        }
+        .close-button:hover {
+            background-color: rgba(239, 68, 68, 0.8); /* red-500 with alpha */
+            transform: scale(1.1);
+        }
+        .close-button svg {
+            width: 0.625rem; /* w-2.5 */
+            height: 0.625rem; /* h-2.5 */
+            stroke: rgba(220,220,220,0.8); /* Lighter X */
+            stroke-width: 3;
+        }
+        .close-button:hover svg {
+            stroke: white;
+        }
+    </style>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        'primary-bg-start': '#111827', // gray-900
+                        'primary-bg-mid': '#1e1b4b',   // indigo-950
+                        'primary-bg-end': '#0c0a09',    // stone-950
+                        'glass-edge': 'rgba(255, 255, 255, 0.07)',
+                        'window-bg': 'rgba(31, 41, 55, 0.65)', // gray-800 with alpha
+                        'window-title-bg': 'rgba(55, 65, 81, 0.3)', // gray-700 with alpha (optional title bar)
+                        'dock-bg': 'rgba(55, 65, 81, 0.5)', // gray-700 with alpha (more opaque for dock)
+                        'accent-blue': '#38bdf8', // sky-400
+                        'text-primary': '#f3f4f6', // gray-100
+                        'text-secondary': '#9ca3af', // gray-400
+                        'placeholder-border': '#6b7280', // gray-500
+                        'placeholder-bg': '#4b5563', // gray-600
+                    },
+                    borderRadius: {
+                        'xl': '1rem', 
+                        '2xl': '1.5rem',
+                        '3xl': '1.75rem', // Slightly less than 2rem for windows
+                        '4xl': '2.5rem', // For dock
+                    },
+                    backdropBlur: {
+                        'xs': '2px', 'sm': '4px', 'DEFAULT': '8px', 'md': '12px',
+                        'lg': '16px', 'xl': '20px', '2xl': '28px', '3xl': '36px', // Adjusted blur values
+                    },
+                    boxShadow: {
+                        'glass': '0 10px 25px -5px rgba(0,0,0,0.2), 0 20px 40px -20px rgba(0,0,0,0.4)', // More pronounced shadow
+                        'glass-light': '0 4px 10px 0 rgba(0, 0, 0, 0.2)',
+                        'interactive': '0 0 0 2px rgba(56, 189, 248, 0.5)',
+                        'inset-highlight': 'inset 0 1px 1px 0 rgba(255,255,255,0.1)', // Subtle top highlight
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+<body class="bg-primary-bg-start text-text-primary overflow-hidden h-screen select-none antialiased">
+    <div id="visionos-environment" class="fixed inset-0 bg-gradient-to-br from-primary-bg-start via-primary-bg-mid to-primary-bg-end"></div>
+
+    <div id="app-windows-container" class="absolute inset-0">
+        <!-- App windows will be injected here -->
+    </div>
+
+    <div id="app-dock" class="fixed bottom-8 left-1/2 -translate-x-1/2 z-[10000]"> <!-- High z-index for dock -->
+        <div class="flex items-center space-x-3 p-2.5 bg-dock-bg backdrop-blur-xl shadow-glass rounded-4xl border border-glass-edge">
+            <!-- App icons will be injected here -->
+        </div>
+    </div>
+
+    <script>
+        const VisionOS = {
+            apps: [
+                { 
+                    id: 'photos', name: 'Photos', 
+                    icon: `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-full h-full"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 15.75l5.159-5.159a2.25 2.25 0 013.182 0l5.159 5.159m-1.5-1.5l1.409-1.409a2.25 2.25 0 013.182 0l2.909 2.909m-18 3.75h16.5a1.5 1.5 0 001.5-1.5V6a1.5 1.5 0 00-1.5-1.5H3.75A1.5 1.5 0 002.25 6v12a1.5 1.5 0 001.5 1.5zm10.5-11.25h.008v.008h-.008V8.25zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0z" /></svg>`,
+                    contentGenerator: function() {
+                        const placeholders = Array(6).fill(0).map(() => 
+                            `<div class="bg-placeholder-bg border-2 border-dashed border-placeholder-border rounded-xl w-full aspect-square"></div>`
+                        ).join('');
+                        return `
+                            <h3 class="text-xl font-semibold text-text-primary mb-3 px-2">Photos</h3>
+                            <div class="grid grid-cols-3 gap-3 p-2 app-content-scrollable overflow-y-auto h-[calc(100%-60px)]">
+                                ${placeholders}
+                                <div class="bg-gray-200 border-2 border-dashed rounded-xl w-16 h-16"></div> <!-- Specific user request -->
+                                <div class="bg-gray-200 border-2 border-dashed rounded-xl w-16 h-16"></div>
+                            </div>`;
+                    },
+                    defaultSize: { width: '26rem', height: '22rem' } // w-[416px] h-[352px]
+                },
+                { 
+                    id: 'browser', name: 'Browser', 
+                    icon: `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-full h-full"><path stroke-linecap="round" stroke-linejoin="round" d="M12 21a9.934 9.934 0 005.657-1.706 9.934 9.934 0 00-11.313 0A9.934 9.934 0 0012 21zm0 0a9.967 9.967 0 007.5-3.444 9.967 9.967 0 00-15 0A9.967 9.967 0 0012 21zm0-16.5a5.25 5.25 0 00-3.443 9.197M12 4.5A5.25 5.25 0 0115.443 13.697M12 4.5v9.197m0-3.822L12 12m0 0l2.057 2.057M12 12l-2.057 2.057M12 12L9.943 9.943M12 12l2.057-2.057" /></svg>`, // Custom simplified compass
+                    contentGenerator: function() {
+                        return `
+                            <div class="p-1 h-full flex flex-col">
+                                <div class="bg-gray-700/50 rounded-lg p-2 flex items-center mb-2 mx-2 mt-1">
+                                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-4 h-4 text-text-secondary mr-2 shrink-0"><path fill-rule="evenodd" d="M10 1a4.5 4.5 0 00-4.5 4.5V9H5a2 2 0 00-2 2v6a2 2 0 002 2h10a2 2 0 002-2v-6a2 2 0 00-2-2h-.5V5.5A4.5 4.5 0 0010 1zm3 8V5.5a3 3 0 10-6 0V9h6z" clip-rule="evenodd" /></svg>
+                                    <span class="text-xs text-text-secondary truncate">apple.com</span>
+                                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-4 h-4 text-text-secondary ml-auto shrink-0"><path d="M6.28 5.22a.75.75 0 00-1.06 1.06L8.94 10l-3.72 3.72a.75.75 0 101.06 1.06L10 11.06l3.72 3.72a.75.75 0 101.06-1.06L11.06 10l3.72-3.72a.75.75 0 00-1.06-1.06L10 8.94 6.28 5.22z" /></svg>
+                                </div>
+                                <div class="bg-gray-500/20 flex-grow rounded-lg m-2 mb-1 flex items-center justify-center text-text-secondary text-sm">
+                                    Browser Content Area
+                                </div>
+                            </div>`;
+                    },
+                    defaultSize: { width: '32rem', height: '24rem' } // w-[512px] h-[384px]
+                },
+                { 
+                    id: 'music', name: 'Music', 
+                    icon: `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-full h-full"><path stroke-linecap="round" stroke-linejoin="round" d="M9 9l10.5-3m0 6.553v3.75a2.25 2.25 0 01-1.632 2.163l-1.32.377a1.803 1.803 0 11-.99-3.467l2.31-.66a2.25 2.25 0 001.632-2.163zm0 0V7.5A2.25 2.25 0 0013.5 3H9.75A2.25 2.25 0 007.5 5.25v13.5A2.25 2.25 0 009.75 21H12a2.25 2.25 0 002.25-2.25v-3.75M9 9l4.5-1.5" /></svg>`,
+                    contentGenerator: function() {
+                        return `
+                            <div class="p-4 flex flex-col items-center justify-center h-full">
+                                <div class="w-28 h-28 bg-gradient-to-br from-purple-500 to-pink-500 rounded-xl mb-4 flex items-center justify-center shadow-lg">
+                                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="white" class="w-16 h-16"><path stroke-linecap="round" stroke-linejoin="round" d="M9 9l10.5-3m0 6.553v3.75a2.25 2.25 0 01-1.632 2.163l-1.32.377a1.803 1.803 0 11-.99-3.467l2.31-.66a2.25 2.25 0 001.632-2.163zm0 0V7.5A2.25 2.25 0 0013.5 3H9.75A2.25 2.25 0 007.5 5.25v13.5A2.25 2.25 0 009.75 21H12a2.25 2.25 0 002.25-2.25v-3.75M9 9l4.5-1.5" /></svg>
+                                </div>
+                                <p class="text-lg font-semibold text-text-primary">Spatial Beats</p>
+                                <p class="text-sm text-text-secondary mb-4">Orbital Grooves</p>
+                                <div class="w-full max-w-xs px-4">
+                                    <div class="h-1.5 bg-gray-600 rounded-full mb-1">
+                                        <div class="w-1/3 h-full bg-white rounded-full"></div>
+                                    </div>
+                                    <div class="flex justify-between text-xs text-text-secondary mb-3">
+                                        <span>0:58</span><span>3:10</span>
+                                    </div>
+                                </div>
+                                <div class="flex space-x-6 text-text-primary">
+                                    <svg xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 24 24" class="w-7 h-7 opacity-80 hover:opacity-100 cursor-pointer"><path d="M6 18V6h2v12H6zm3.5-6L18 6v12l-8.5-6z"/></svg>
+                                    <svg xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 24 24" class="w-10 h-10 opacity-80 hover:opacity-100 cursor-pointer"><path d="M8 5.14v13.72L19.25 12 8 5.14z"/></svg>
+                                    <svg xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 24 24" class="w-7 h-7 opacity-80 hover:opacity-100 cursor-pointer"><path d="M16 18V6h2v12h-2zm-3.5-6L4 6v12l8.5-6z"/></svg>
+                                </div>
+                            </div>`;
+                    },
+                    defaultSize: { width: '20rem', height: '26rem' } // w-80 h-[416px]
+                },
+                { 
+                    id: 'dashboard', name: 'Dashboard', 
+                    icon: `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-full h-full"><path stroke-linecap="round" stroke-linejoin="round" d="M3.75 3v11.25A2.25 2.25 0 006 16.5h2.25M3.75 3h-1.5m1.5 0h16.5m0 0h1.5m-1.5 0v11.25A2.25 2.25 0 0118 16.5h-2.25m-7.5 0h7.5m-7.5 0l-1.5-1.5m1.5 1.5V5.25m0 0l3-3m-3 3l-3 3m0 0V3m0 0l3 3m0 0l3-3m-3 3H9m6 9.75H6.75A2.25 2.25 0 014.5 18V3m15 15V7.5A2.25 2.25 0 0017.25 5.25H15" /></svg>`,
+                    contentGenerator: function(appWindow) {
+                        // The canvas needs a unique ID if multiple dashboards can be open
+                        // Or, find the canvas within the specific appWindow element
+                        const canvasId = `chart-${this.id}-${Date.now()}`;
+                        setTimeout(() => { // Ensure canvas is in DOM
+                            const ctx = appWindow.querySelector(`#${canvasId}`).getContext('2d');
+                            new Chart(ctx, {
+                                type: 'line',
+                                data: {
+                                    labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'],
+                                    datasets: [{
+                                        label: 'System Performance',
+                                        data: [12, 19, 3, 5, 6, 3],
+                                        borderColor: 'rgba(56, 189, 248, 0.8)', // accent-blue
+                                        backgroundColor: 'rgba(56, 189, 248, 0.2)',
+                                        tension: 0.3,
+                                        borderWidth: 2,
+                                        pointBackgroundColor: 'rgba(56, 189, 248, 1)',
+                                        pointRadius: 4,
+                                    }]
+                                },
+                                options: {
+                                    responsive: true,
+                                    maintainAspectRatio: false,
+                                    scales: {
+                                        y: { 
+                                            beginAtZero: true, 
+                                            grid: { color: 'rgba(255,255,255,0.1)'},
+                                            ticks: { color: '#9ca3af'} // text-secondary
+                                        },
+                                        x: {
+                                            grid: { display: false },
+                                            ticks: { color: '#9ca3af'} // text-secondary
+                                        }
+                                    },
+                                    plugins: {
+                                        legend: { 
+                                            display: true,
+                                            labels: { color: '#f3f4f6' } // text-primary
+                                        }
+                                    }
+                                }
+                            });
+                        }, 50); // Small delay for rendering
+                        return `
+                            <h3 class="text-xl font-semibold text-text-primary mt-1 mb-3 px-3">Performance Monitor</h3>
+                            <div class="p-3 flex-grow h-[calc(100%-60px)]">
+                                <canvas id="${canvasId}"></canvas>
+                            </div>`;
+                    },
+                    defaultSize: { width: '30rem', height: '20rem' } // w-[480px] h-80
+                }
+            ],
+            openWindows: [],
+            highestZIndex: 100, // Start z-index for windows well above background
+            activeDrag: null,
+
+            init() {
+                this._renderDock();
+                document.addEventListener('mousemove', (e) => this._handleDrag(e));
+                document.addEventListener('mouseup', () => this._stopDrag());
+            },
+
+            _renderDock() {
+                const dockContainer = document.querySelector('#app-dock > div');
+                dockContainer.innerHTML = ''; // Clear existing icons
+                this.apps.forEach(app => {
+                    const iconEl = document.createElement('div');
+                    iconEl.className = 'dock-icon w-14 h-14 p-2 bg-white/10 hover:bg-white/20 backdrop-blur-sm rounded-2xl cursor-pointer shadow-glass-light flex items-center justify-center';
+                    iconEl.innerHTML = `<div class="w-full h-full text-text-primary/80 hover:text-text-primary">${app.icon}</div>`;
+                    iconEl.title = app.name;
+                    iconEl.addEventListener('click', () => this._openApp(app));
+                    dockContainer.appendChild(iconEl);
+                });
+            },
+
+            _openApp(app) {
+                // Check if app window already open, if so, focus it
+                const existingWindow = this.openWindows.find(w => w.appId === app.id);
+                if (existingWindow) {
+                    this._focusWindow(existingWindow);
+                    return;
+                }
+
+                const appWindow = document.createElement('div');
+                appWindow.className = 'app-window absolute bg-window-bg backdrop-blur-xl rounded-3xl shadow-glass border border-glass-edge overflow-hidden group opening flex flex-col';
+                
+                const size = app.defaultSize || { width: '24rem', height: '18rem' }; // default w-96 h-72
+                appWindow.style.width = size.width;
+                appWindow.style.minHeight = size.height; // Using minHeight to allow content to expand if needed
+
+                // Calculate initial position (randomized cascade)
+                const numOpen = this.openWindows.length;
+                const offsetX = (numOpen % 8) * 30 + Math.random() * 40 - 20;
+                const offsetY = Math.floor(numOpen / 8) * 30 + Math.random() * 40 - 20;
+                appWindow.style.left = `calc(50% - ${parseFloat(size.width)/2}rem + ${offsetX}px)`;
+                appWindow.style.top = `calc(50% - ${parseFloat(size.height)/2}rem + ${offsetY}px)`;
+
+                const windowId = `window-${app.id}-${Date.now()}`;
+                appWindow.id = windowId;
+
+                const windowObj = {
+                    id: windowId,
+                    appId: app.id,
+                    el: appWindow,
+                    zIndex: 0 
+                };
+                
+                // Close button
+                const closeButtonContainer = document.createElement('div');
+                closeButtonContainer.className = 'close-button-container';
+                const closeButton = document.createElement('button');
+                closeButton.className = 'close-button';
+                closeButton.innerHTML = `<svg fill="none" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"></path></svg>`;
+                closeButton.onclick = (e) => {
+                    e.stopPropagation();
+                    this._closeWindow(windowObj);
+                };
+                closeButtonContainer.appendChild(closeButton);
+
+                // App Content Area
+                const contentArea = document.createElement('div');
+                contentArea.className = 'app-content-area flex-grow pt-8 pb-8 relative h-full'; // Added pb-8 for pill bar space
+                contentArea.innerHTML = app.contentGenerator.call(app, appWindow); // Pass appWindow for chart
+
+                // Prepend close button to contentArea or appWindow directly
+                // If prepended to appWindow, ensure it's visually within the content flow or correctly positioned
+                appWindow.appendChild(closeButtonContainer);
+                appWindow.appendChild(contentArea);
+
+                // Drag Handle Pill (Bottom Bar)
+                const dragPillContainer = document.createElement('div');
+                dragPillContainer.className = 'drag-handle-pill-container';
+                const dragPill = document.createElement('div');
+                dragPill.className = 'drag-handle-pill';
+                dragPillContainer.appendChild(dragPill);
+                appWindow.appendChild(dragPillContainer);
+
+                // Add to DOM and state
+                document.getElementById('app-windows-container').appendChild(appWindow);
+                this.openWindows.push(windowObj);
+                this._focusWindow(windowObj);
+
+                // Draggability
+                // Make title bar area (if any) or content area draggable
+                // For visionOS, the bottom pill is a key affordance.
+                this._makeDraggable(appWindow, contentArea); // Main content area draggable
+                this._makeDraggable(appWindow, dragPill);   // Bottom pill draggable
+
+                appWindow.addEventListener('mousedown', () => this._focusWindow(windowObj), true); // Capture phase to focus before drag starts
+
+                // Trigger opening animation
+                requestAnimationFrame(() => {
+                    requestAnimationFrame(() => { // Double rAF for better chance of style application before transition
+                         appWindow.classList.remove('opening');
+                    });
+                });
+            },
+
+            _makeDraggable(elementToDrag, handleElement) {
+                handleElement.classList.add('cursor-grab');
+                handleElement.addEventListener('mousedown', (e) => {
+                    // Prevent drag if clicking on interactive elements within handle (e.g. buttons, inputs)
+                    if (e.target.closest('button, input, select, textarea, a, canvas')) {
+                         // Also check if target is the close button itself
+                        if (!e.target.closest('.close-button')) {
+                            return;
+                        }
+                    }
+                    e.preventDefault(); // Prevent text selection, etc.
+                    e.stopPropagation(); // Prevent mousedown on window from firing if handle is separate.
+
+                    this._focusWindow(this.openWindows.find(w => w.el === elementToDrag));
+                    
+                    this.activeDrag = {
+                        element: elementToDrag,
+                        offsetX: e.clientX - elementToDrag.offsetLeft,
+                        offsetY: e.clientY - elementToDrag.offsetTop
+                    };
+                    handleElement.classList.remove('cursor-grab');
+                    handleElement.classList.add('cursor-grabbing');
+                    document.body.classList.add('cursor-grabbing'); // Global cursor style
+                });
+            },
+
+            _handleDrag(e) {
+                if (!this.activeDrag) return;
+                e.preventDefault();
+                
+                let newX = e.clientX - this.activeDrag.offsetX;
+                let newY = e.clientY - this.activeDrag.offsetY;
+
+                // Basic boundary collision
+                const container = document.getElementById('app-windows-container');
+                const elRect = this.activeDrag.element.getBoundingClientRect();
+                
+                newX = Math.max(0, Math.min(newX, container.offsetWidth - elRect.width));
+                newY = Math.max(0, Math.min(newY, container.offsetHeight - elRect.height));
+
+                this.activeDrag.element.style.left = `${newX}px`;
+                this.activeDrag.element.style.top = `${newY}px`;
+            },
+
+            _stopDrag() {
+                if (this.activeDrag) {
+                    const handle = this.activeDrag.element.querySelector('.cursor-grabbing'); // This might be too generic.
+                    // Instead, reset cursor on all potential handles or body.
+                    document.querySelectorAll('.cursor-grabbing').forEach(el => {
+                        el.classList.remove('cursor-grabbing');
+                        el.classList.add('cursor-grab'); // May need to be more specific to only actual handles
+                    });
+                    document.body.classList.remove('cursor-grabbing');
+                }
+                this.activeDrag = null;
+            },
+
+            _focusWindow(windowObj) {
+                if (!windowObj) return;
+                this.highestZIndex++;
+                windowObj.zIndex = this.highestZIndex;
+                windowObj.el.style.zIndex = this.highestZIndex;
+
+                // Optional: visually indicate active window (e.g., slightly brighter shadow or border)
+                this.openWindows.forEach(win => {
+                    win.el.classList.toggle('shadow-glass', win === windowObj); // Keep prominent shadow on active
+                    win.el.classList.toggle('shadow-glass-light', win !== windowObj); // Less prominent for inactive
+                    // Could also change border color or an accent.
+                });
+            },
+
+            _closeWindow(windowObj) {
+                if (!windowObj) return;
+                windowObj.el.style.opacity = '0';
+                windowObj.el.style.transform = 'scale(0.9)';
+                setTimeout(() => {
+                    windowObj.el.remove();
+                    this.openWindows = this.openWindows.filter(w => w.id !== windowObj.id);
+                     // If no windows are open, reset z-index counter to prevent infinite growth
+                    if (this.openWindows.length === 0) {
+                        this.highestZIndex = 100; 
+                    }
+                }, 200); // Match transition duration
+            }
+        };
+
+        document.addEventListener('DOMContentLoaded', () => {
+            VisionOS.init();
+            // Example: Open Photos app by default
+            // VisionOS._openApp(VisionOS.apps.find(app => app.id === 'photos'));
+        });
+
+    </script>
+</body>
+</html>

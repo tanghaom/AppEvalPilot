@@ -1,0 +1,918 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Poker Room Management</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        /* Custom scrollbar for webkit browsers */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #1e293b; /* slate-800 */
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #475569; /* slate-600 */
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #64748b; /* slate-500 */
+        }
+        /* Basic styles for focus states for accessibility */
+        *:focus-visible {
+            outline: 2px solid #2dd4bf; /* teal-400 */
+            outline-offset: 2px;
+        }
+        .sidebar-link {
+            @apply flex items-center space-x-3 px-3 py-2 rounded-md text-slate-300 hover:bg-slate-700 hover:text-white transition-colors;
+        }
+        .sidebar-link.active {
+            @apply bg-teal-600 text-white;
+        }
+        .btn {
+            @apply px-4 py-2 rounded-md font-semibold transition-colors shadow-sm;
+        }
+        .btn-primary {
+            @apply bg-teal-600 text-white hover:bg-teal-700 disabled:opacity-50;
+        }
+        .btn-secondary {
+            @apply bg-slate-600 text-slate-100 hover:bg-slate-500 disabled:opacity-50;
+        }
+        .btn-danger {
+            @apply bg-red-600 text-white hover:bg-red-700 disabled:opacity-50;
+        }
+        .input-field {
+            @apply bg-slate-700 border border-slate-600 text-slate-100 sm:text-sm rounded-lg focus:ring-teal-500 focus:border-teal-500 block w-full p-2.5;
+        }
+        .label-text {
+            @apply block mb-2 text-sm font-medium text-slate-300;
+        }
+        .card {
+            @apply bg-slate-800 p-6 rounded-lg shadow-lg;
+        }
+        .table-header {
+            @apply px-4 py-3 text-left text-xs font-medium text-slate-400 uppercase tracking-wider;
+        }
+        .table-cell {
+            @apply px-4 py-4 whitespace-nowrap text-sm text-slate-200;
+        }
+        .table-row {
+            @apply border-b border-slate-700 hover:bg-slate-700/50;
+        }
+        /* For placeholder image div */
+        .placeholder-avatar {
+            @apply bg-gray-700 border-2 border-dashed border-gray-500 rounded-full w-10 h-10 flex items-center justify-center text-gray-400 text-xs;
+        }
+    </style>
+</head>
+<body class="bg-slate-900 text-slate-100 font-sans antialiased">
+
+    <div class="flex h-screen overflow-hidden">
+        <!-- Sidebar -->
+        <nav id="sidebar" class="w-64 bg-slate-800 p-4 space-y-2 flex-shrink-0 overflow-y-auto">
+            <div class="text-2xl font-bold text-teal-400 mb-6 px-2 app-name-text">Poker Room Manager</div>
+            <!-- Nav Links will be injected here by JS -->
+        </nav>
+
+        <!-- Main Content -->
+        <main class="flex-1 flex flex-col overflow-hidden">
+            <!-- Header -->
+            <header id="main-header" class="bg-slate-800/80 backdrop-blur-md p-4 shadow-md flex justify-between items-center flex-shrink-0">
+                <h1 id="current-view-title" class="text-xl font-semibold text-slate-100"></h1>
+                <div class="flex items-center space-x-4">
+                    <div class="relative">
+                        <select id="language-switcher" class="input-field !py-1.5 !px-3 !w-auto appearance-none">
+                            <option value="en">English</option>
+                            <option value="fr">Français</option>
+                        </select>
+                        <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-slate-400">
+                            <svg class="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z"/></svg>
+                        </div>
+                    </div>
+                    <div class="w-8 h-8 bg-teal-500 rounded-full flex items-center justify-center text-sm font-semibold">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5">
+                          <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z" />
+                        </svg>
+                    </div>
+                </div>
+            </header>
+
+            <!-- Content Area -->
+            <div id="content-area" class="flex-1 p-4 sm:p-6 lg:p-8 overflow-y-auto">
+                <!-- Dynamic content based on currentView -->
+            </div>
+        </main>
+    </div>
+
+    <!-- Modal Container -->
+    <div id="modal-backdrop" class="fixed inset-0 bg-black bg-opacity-75 hidden items-center justify-center z-50 p-4">
+        <div id="modal-content-wrapper" class="bg-slate-800 p-6 rounded-lg shadow-xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
+            <div class="flex justify-between items-center mb-4">
+                <h2 id="modal-title" class="text-xl font-semibold"></h2>
+                <button id="modal-close-button" class="text-slate-400 hover:text-slate-100">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                </button>
+            </div>
+            <div id="modal-body">
+                <!-- Modal content will be injected here -->
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // SVG Icons (Heroicons - outline)
+        const ICONS = {
+            dashboard: `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5"><path stroke-linecap="round" stroke-linejoin="round" d="M3.75 13.5l10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75z" /></svg>`,
+            players: `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5"><path stroke-linecap="round" stroke-linejoin="round" d="M18 18.72a9.094 9.094 0 003.741-.479 3 3 0 00-4.682-2.72m.243-3.72a9.094 9.094 0 013.741-.479 3 3 0 01-4.682-2.72M13.504 1.328A9 9 0 0117.969 5.17m-4.465 4.465A9 9 0 0113.504 1.328m-4.465 4.465A9 9 0 015.17 6.504m-1.328 4.465A9 9 0 011.328 6.504m2.72 4.682A9.094 9.094 0 015.17 17.969m4.465 4.465A9.094 9.094 0 016.504 13.5M17.969 13.5A9.094 9.094 0 0113.5 17.969m4.465-4.465A9 9 0 0117.969 13.5" /></svg>`, // Simplified, could be UsersIcon
+            games: `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5"><path stroke-linecap="round" stroke-linejoin="round" d="M21 7.5l-9-5.25L3 7.5m18 0l-9 5.25m9-5.25v9l-9 5.25M3 7.5l9 5.25M3 7.5v9l9 5.25m0-9v9" /></svg>`, // PuzzlePiece
+            reports: `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5"><path stroke-linecap="round" stroke-linejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 013 19.875v-6.75zM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V8.625zM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V4.125z" /></svg>`, // ChartBar
+            settings: `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5"><path stroke-linecap="round" stroke-linejoin="round" d="M9.594 3.94c.09-.542.56-.94 1.11-.94h2.593c.55 0 1.02.398 1.11.94l.213 1.281c.063.374.313.686.646.87.074.04.147.083.22.127.324.196.72.257 1.075.124l1.217-.456a1.125 1.125 0 011.37.49l1.296 2.247a1.125 1.125 0 01-.26 1.431l-1.003.827c-.293.24-.438.613-.431.992a6.759 6.759 0 010 1.903c-.007.378.138.75.431.99l1.005.828c.424.35.534.954.26 1.43l-1.298 2.247a1.125 1.125 0 01-1.369.491l-1.217-.456c-.355-.133-.75-.072-1.076.124a6.57 6.57 0 01-.22.128c-.333.183-.582.495-.646.869l-.213 1.28c-.09.543-.56.941-1.11.941h-2.594c-.55 0-1.02-.398-1.11-.94l-.213-1.281c-.062-.374-.312-.686-.646-.87a6.52 6.52 0 01-.22-.127c-.325-.196-.72-.257-1.076-.124l-1.217.456a1.125 1.125 0 01-1.369-.49l-1.297-2.247a1.125 1.125 0 01.26-1.431l1.004-.827c.292-.24.437-.613.43-.992a6.759 6.759 0 010-1.903c.007-.378-.137-.75-.43-.99l-1.004-.828a1.125 1.125 0 01-.26-1.43l1.297-2.247a1.125 1.125 0 011.37-.491l1.216.456c.356.133.751.072 1.076-.124.072-.044.146-.087.22-.128.332-.183.582-.495.646-.869l.213-1.28c.09-.543.56-.94 1.11-.94zM12 15.75a3.75 3.75 0 100-7.5 3.75 3.75 0 000 7.5z" /></svg>`, // Cog6Tooth
+            plus: `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" /></svg>`,
+            edit: `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5"><path stroke-linecap="round" stroke-linejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0115.75 21H5.25A2.25 2.25 0 013 18.75V8.25A2.25 2.25 0 015.25 6H10" /></svg>`,
+            delete: `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5"><path stroke-linecap="round" stroke-linejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12.56 0c1.153 0 2.243.096 3.287.277M6.096 5.79L5.776 5.397m10.276 0l.322.393m0 0l-1.096 1.096" /></svg>`,
+            view: `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5"><path stroke-linecap="round" stroke-linejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z" /><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>`,
+            dollar: `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6v12m-3-2.818l.879.659c1.171.879 3.07.879 4.242 0 1.172-.879 1.172-2.303 0-3.182C13.536 12.219 12.768 12 12 12c-.725 0-1.45-.22-2.003-.659-1.106-.879-1.106-2.303 0-3.182s2.9-.879 4.006 0l.415.33M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>`,
+            search: `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" /></svg>`,
+        };
+
+        const i18n = {
+            en: {
+                appName: "Poker Room Manager", close: "Close", save: "Save", cancel: "Cancel", add: "Add", edit: "Edit", delete: "Delete", view: "View",
+                dashboard: "Dashboard", players: "Players", games: "Games", reports: "Reports", settings: "Settings",
+                totalPlayers: "Total Players", activeGames: "Active Games", totalBuyInsToday: "Total Buy-ins Today",
+                activeGamesList: "Active Games", upcomingTournaments: "Upcoming Tournaments", revenueTrend: "Revenue Trend",
+                playerManagement: "Player Management", addPlayer: "Add Player", searchPlayers: "Search Players...",
+                playerName: "Name", playerEmail: "Email", playerPhone: "Phone", playerBalance: "Balance", playerActions: "Actions",
+                playerDetails: "Player Details", joinDate: "Join Date", credits: "Credits", gamesPlayed: "Games Played", totalWinnings: "Total Winnings",
+                financialSummary: "Financial Summary", gameHistory: "Game History", addPaymentCredit: "Add Payment/Credit",
+                createPlayerTitle: "Create New Player", editPlayerTitle: "Edit Player",
+                gameOrganization: "Game Organization", createGame: "Create Game", searchGames: "Search Games...",
+                gameName: "Game Name", gameType: "Type", gameDate: "Date", gameTime: "Time", gameBuyIn: "Buy-in", gameStatus: "Status", gamePlayers: "Players",
+                cashGames: "Cash Games", tournaments: "Tournaments",
+                tournament: "Tournament", cashGame: "Cash Game", blinds: "Blinds", roundDuration: "Round Duration (min)", maxPlayers: "Max Players", minBuyIn: "Min Buy-in",
+                createGameTitle: "Create New Game", editGameTitle: "Edit Game",
+                statisticsReports: "Statistics & Reports", generateReport: "Generate Report", reportType: "Report Type", dateRange: "Date Range",
+                playerPerformance: "Player Performance", gameProfitability: "Game Profitability", overallRevenue: "Overall Revenue",
+                applicationSettings: "Application Settings", language: "Language", notifications: "Notifications", enableNotifications: "Enable Push Notifications",
+                dataSecurity: "Data Security & Compliance", dataEncrypted: "Player data is encrypted at rest and in transit.", responsibleGaming: "Responsible Gaming Policy",
+                supportMaintenance: "Support & Maintenance", reportBug: "Report a Bug", requestHelp: "Request Help", checkForUpdates: "Check for Updates",
+                noDataAvailable: "No data available.",
+                confirmDeletePlayerTitle: "Confirm Delete Player", confirmDeletePlayerMsg: "Are you sure you want to delete this player? This action cannot be undone.",
+                confirmDeleteGameTitle: "Confirm Delete Game", confirmDeleteGameMsg: "Are you sure you want to delete this game? This action cannot be undone.",
+            },
+            fr: {
+                appName: "Gestionnaire Salle de Poker", close: "Fermer", save: "Sauvegarder", cancel: "Annuler", add: "Ajouter", edit: "Modifier", delete: "Supprimer", view: "Voir",
+                dashboard: "Tableau de Bord", players: "Joueurs", games: "Parties", reports: "Rapports", settings: "Paramètres",
+                totalPlayers: "Joueurs Totals", activeGames: "Parties Actives", totalBuyInsToday: "Buy-ins (Aujourd'hui)",
+                activeGamesList: "Parties Actives", upcomingTournaments: "Tournois à Venir", revenueTrend: "Tendance des Revenus",
+                playerManagement: "Gestion des Joueurs", addPlayer: "Ajouter Joueur", searchPlayers: "Rechercher Joueurs...",
+                playerName: "Nom", playerEmail: "Email", playerPhone: "Téléphone", playerBalance: "Solde", playerActions: "Actions",
+                playerDetails: "Détails du Joueur", joinDate: "Date d'Inscription", credits: "Crédits", gamesPlayed: "Parties Jouées", totalWinnings: "Gains Totals",
+                financialSummary: "Résumé Financier", gameHistory: "Historique des Parties", addPaymentCredit: "Ajouter Paiement/Crédit",
+                createPlayerTitle: "Créer Nouveau Joueur", editPlayerTitle: "Modifier Joueur",
+                gameOrganization: "Organisation des Parties", createGame: "Créer Partie", searchGames: "Rechercher Parties...",
+                gameName: "Nom de la Partie", gameType: "Type", gameDate: "Date", gameTime: "Heure", gameBuyIn: "Buy-in", gameStatus: "Statut", gamePlayers: "Joueurs",
+                cashGames: "Cash Games", tournaments: "Tournois",
+                tournament: "Tournoi", cashGame: "Cash Game", blinds: "Blindes", roundDuration: "Durée Round (min)", maxPlayers: "Joueurs Max", minBuyIn: "Buy-in Min",
+                createGameTitle: "Créer Nouvelle Partie", editGameTitle: "Modifier Partie",
+                statisticsReports: "Statistiques & Rapports", generateReport: "Générer Rapport", reportType: "Type de Rapport", dateRange: "Plage de Dates",
+                playerPerformance: "Performance Joueur", gameProfitability: "Rentabilité Partie", overallRevenue: "Revenus Globaux",
+                applicationSettings: "Paramètres de l'Application", language: "Langue", notifications: "Notifications", enableNotifications: "Activer les Notifications Push",
+                dataSecurity: "Sécurité & Conformité", dataEncrypted: "Les données des joueurs sont chiffrées au repos et en transit.", responsibleGaming: "Politique de Jeu Responsable",
+                supportMaintenance: "Support & Maintenance", reportBug: "Signaler un Bug", requestHelp: "Demander de l'Aide", checkForUpdates: "Vérifier les Mises à Jour",
+                noDataAvailable: "Aucune donnée disponible.",
+                confirmDeletePlayerTitle: "Confirmer Suppression Joueur", confirmDeletePlayerMsg: "Êtes-vous sûr de vouloir supprimer ce joueur ? Cette action est irréversible.",
+                confirmDeleteGameTitle: "Confirmer Suppression Partie", confirmDeleteGameMsg: "Êtes-vous sûr de vouloir supprimer cette partie ? Cette action est irréversible.",
+            }
+        };
+
+        const appState = {
+            currentView: 'dashboard',
+            language: 'en',
+            players: [
+                { id: Date.now() + 1, name: "Alice Wonderland", email: "alice@example.com", phone: "123-456-7890", joinDate: "2023-01-15", balance: 1500, credits: 50, gamesPlayed: 10, totalWinnings: 2500, avatar: null },
+                { id: Date.now() + 2, name: "Bob The Builder", email: "bob@example.com", phone: "234-567-8901", joinDate: "2023-02-20", balance: 800, credits: 0, gamesPlayed: 5, totalWinnings: -200, avatar: null },
+                { id: Date.now() + 7, name: "Charlie Brown", email: "charlie@example.com", phone: "345-678-9012", joinDate: "2023-03-10", balance: 2200, credits: 100, gamesPlayed: 25, totalWinnings: 5000, avatar: null },
+            ],
+            games: [
+                { id: Date.now() + 3, type: "Tournament", name: "Friday Night Freezeout", date: "2024-07-26", time: "19:00", buyIn: 100, blinds: "25/50", roundDuration: 20, status: "Upcoming", registeredPlayers: 5, maxPlayers: 50, tables: [] },
+                { id: Date.now() + 4, type: "Cash Game", name: "NLH 1/2", date: "Ongoing", time: "", buyIn: "Min 50", blinds: "1/2", status: "Active", currentPlayers: 8, tables: [{ id: 't1', tableNumber: 1, players: [], maxSeats: 9, currentSeats: 8 }] },
+                { id: Date.now() + 5, type: "Tournament", name: "Sunday Millions Warm-up", date: "2024-07-28", time: "14:00", buyIn: 215, blinds: "50/100", roundDuration: 15, status: "Upcoming", registeredPlayers: 120, maxPlayers: 1000, tables: [] },
+                { id: Date.now() + 6, type: "Cash Game", name: "PLO 5/10", date: "Ongoing", time: "", buyIn: "Min 500", blinds: "5/10", status: "Active", currentPlayers: 5, tables: [{ id: 't2', tableNumber: 2, players: [], maxSeats: 6, currentSeats: 5 }] },
+            ],
+            modal: { isOpen: false, titleKey: '', contentKey: '', data: null },
+            searchTermPlayers: '',
+            searchTermGames: '',
+        };
+
+        const _ = (key) => i18n[appState.language][key] || key;
+
+        // --- RENDER FUNCTIONS ---
+        function renderApp() {
+            renderSidebar();
+            renderHeader();
+            renderContent();
+            renderModal(); // Ensure modal is rendered correctly if open
+            document.documentElement.lang = appState.language; // Set lang attribute on HTML element
+            document.querySelector('.app-name-text').textContent = _('appName');
+        }
+        
+        function renderSidebar() {
+            const sidebarEl = document.getElementById('sidebar');
+            const navItems = [
+                { id: 'dashboard', icon: ICONS.dashboard, labelKey: 'dashboard' },
+                { id: 'players', icon: ICONS.players, labelKey: 'players' },
+                { id: 'games', icon: ICONS.games, labelKey: 'games' },
+                { id: 'reports', icon: ICONS.reports, labelKey: 'reports' },
+                { id: 'settings', icon: ICONS.settings, labelKey: 'settings' },
+            ];
+            sidebarEl.innerHTML = `
+                <div class="text-2xl font-bold text-teal-400 mb-6 px-2 app-name-text">${_('appName')}</div>
+                ${navItems.map(item => `
+                    <a href="#" data-view="${item.id}" class="sidebar-link ${appState.currentView === item.id ? 'active' : ''}">
+                        ${item.icon}
+                        <span>${_(item.labelKey)}</span>
+                    </a>
+                `).join('')}
+            `;
+        }
+
+        function renderHeader() {
+            document.getElementById('current-view-title').textContent = _(appState.currentView);
+            document.getElementById('language-switcher').value = appState.language;
+        }
+
+        function renderContent() {
+            const contentArea = document.getElementById('content-area');
+            contentArea.scrollTop = 0; // Reset scroll on view change
+            if (appState.currentView === 'dashboard') renderDashboard(contentArea);
+            else if (appState.currentView === 'players') renderPlayersView(contentArea);
+            else if (appState.currentView === 'games') renderGamesView(contentArea);
+            else if (appState.currentView === 'reports') renderReportsView(contentArea);
+            else if (appState.currentView === 'settings') renderSettingsView(contentArea);
+            else contentArea.innerHTML = `<p>${_('noDataAvailable')}</p>`;
+        }
+
+        // --- DASHBOARD ---
+        let dashboardChart = null;
+        function renderDashboard(container) {
+            const totalPlayers = appState.players.length;
+            const activeGames = appState.games.filter(g => g.status === 'Active').length;
+            // Mock total buy-ins
+            const totalBuyInsToday = appState.games.reduce((sum, game) => sum + (parseInt(String(game.buyIn).replace(/[^0-9]/g, '')) || 0) * (game.registeredPlayers || game.currentPlayers || 0) * 0.1, 0).toFixed(0) ;
+
+
+            container.innerHTML = `
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-6">
+                    <div class="card">
+                        <h3 class="text-slate-400 text-sm font-medium">${_('totalPlayers')}</h3>
+                        <p class="text-3xl font-semibold text-slate-100">${totalPlayers}</p>
+                    </div>
+                    <div class="card">
+                        <h3 class="text-slate-400 text-sm font-medium">${_('activeGames')}</h3>
+                        <p class="text-3xl font-semibold text-slate-100">${activeGames}</p>
+                    </div>
+                    <div class="card">
+                        <h3 class="text-slate-400 text-sm font-medium">${_('totalBuyInsToday')}</h3>
+                        <p class="text-3xl font-semibold text-slate-100">$${totalBuyInsToday}</p>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <div class="card">
+                        <h3 class="text-lg font-semibold mb-4">${_('activeGamesList')}</h3>
+                        <div class="space-y-3 max-h-60 overflow-y-auto">
+                            ${appState.games.filter(g => g.status === 'Active').map(game => `
+                                <div class="p-3 bg-slate-700 rounded-md">
+                                    <div class="flex justify-between items-center">
+                                        <span class="font-medium">${game.name} (${_(game.type.toLowerCase().replace(' ',''))})</span>
+                                        <span class="text-xs text-slate-400">${game.currentPlayers} ${_('players')}</span>
+                                    </div>
+                                </div>
+                            `).join('') || `<p class="text-slate-400">${_('noDataAvailable')}</p>`}
+                        </div>
+                    </div>
+                    <div class="card">
+                        <h3 class="text-lg font-semibold mb-4">${_('upcomingTournaments')}</h3>
+                        <div class="space-y-3 max-h-60 overflow-y-auto">
+                            ${appState.games.filter(g => g.type === 'Tournament' && g.status === 'Upcoming').map(game => `
+                                <div class="p-3 bg-slate-700 rounded-md">
+                                    <div class="flex justify-between items-center">
+                                        <span class="font-medium">${game.name}</span>
+                                        <span class="text-xs text-slate-400">${game.date} ${game.time}</span>
+                                    </div>
+                                    <div class="text-sm text-slate-300">Buy-in: $${game.buyIn} | ${_('players')}: ${game.registeredPlayers}/${game.maxPlayers}</div>
+                                </div>
+                            `).join('') || `<p class="text-slate-400">${_('noDataAvailable')}</p>`}
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="card mt-6">
+                    <h3 class="text-lg font-semibold mb-4">${_('revenueTrend')}</h3>
+                    <canvas id="revenueChart"></canvas>
+                </div>
+            `;
+            setupDashboardChart();
+        }
+
+        function setupDashboardChart() {
+            const ctx = document.getElementById('revenueChart')?.getContext('2d');
+            if (!ctx) return;
+            if (dashboardChart) {
+                dashboardChart.destroy();
+            }
+            dashboardChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul'], // Mock labels
+                    datasets: [{
+                        label: _('revenueTrend'),
+                        data: [1200, 1900, 3000, 5000, 2300, 3200, 4500], // Mock data
+                        borderColor: '#14b8a6', // teal-500
+                        backgroundColor: 'rgba(20, 184, 166, 0.1)',
+                        tension: 0.3,
+                        fill: true,
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: { beginAtZero: true, ticks: { color: '#94a3b8'}, grid: { color: '#334155'} },
+                        x: { ticks: { color: '#94a3b8'}, grid: { color: '#334155'} }
+                    },
+                    plugins: { legend: { labels: { color: '#cbd5e1' } } }
+                }
+            });
+        }
+        
+        // --- PLAYERS VIEW ---
+        function renderPlayersView(container) {
+            const filteredPlayers = appState.players.filter(p => 
+                p.name.toLowerCase().includes(appState.searchTermPlayers.toLowerCase()) ||
+                p.email.toLowerCase().includes(appState.searchTermPlayers.toLowerCase())
+            );
+
+            container.innerHTML = `
+                <div class="flex justify-between items-center mb-6">
+                    <h2 class="text-2xl font-semibold">${_('playerManagement')}</h2>
+                    <button id="add-player-btn" class="btn btn-primary flex items-center space-x-2">
+                        ${ICONS.plus} <span>${_('addPlayer')}</span>
+                    </button>
+                </div>
+                <div class="mb-4 relative">
+                    <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                        ${ICONS.search}
+                    </div>
+                    <input type="text" id="player-search-input" value="${appState.searchTermPlayers}" class="input-field pl-10" placeholder="${_('searchPlayers')}">
+                </div>
+                <div class="card overflow-x-auto">
+                    <table class="min-w-full divide-y divide-slate-700">
+                        <thead class="bg-slate-800">
+                            <tr>
+                                <th class="table-header">${_('playerName')}</th>
+                                <th class="table-header">${_('playerEmail')}</th>
+                                <th class="table-header">${_('playerPhone')}</th>
+                                <th class="table-header">${_('playerBalance')}</th>
+                                <th class="table-header">${_('playerActions')}</th>
+                            </tr>
+                        </thead>
+                        <tbody class="bg-slate-800 divide-y divide-slate-700">
+                            ${filteredPlayers.length > 0 ? filteredPlayers.map(player => `
+                                <tr class="table-row">
+                                    <td class="table-cell">
+                                        <div class="flex items-center">
+                                            <div class="placeholder-avatar mr-3">${player.name.substring(0,1)}</div>
+                                            ${player.name}
+                                        </div>
+                                    </td>
+                                    <td class="table-cell">${player.email}</td>
+                                    <td class="table-cell">${player.phone}</td>
+                                    <td class="table-cell">$${player.balance.toFixed(2)}</td>
+                                    <td class="table-cell space-x-2">
+                                        <button class="text-teal-400 hover:text-teal-300 view-player-btn" data-id="${player.id}" title="${_('view')}">${ICONS.view}</button>
+                                        <button class="text-sky-400 hover:text-sky-300 edit-player-btn" data-id="${player.id}" title="${_('edit')}">${ICONS.edit}</button>
+                                        <button class="text-red-400 hover:text-red-300 delete-player-btn" data-id="${player.id}" title="${_('delete')}">${ICONS.delete}</button>
+                                    </td>
+                                </tr>
+                            `).join('') : `<tr><td colspan="5" class="table-cell text-center">${_('noDataAvailable')}</td></tr>`}
+                        </tbody>
+                    </table>
+                </div>
+            `;
+            document.getElementById('add-player-btn').addEventListener('click', () => openModal('createPlayerTitle', 'playerForm'));
+            document.querySelectorAll('.edit-player-btn').forEach(btn => btn.addEventListener('click', (e) => {
+                const playerId = parseInt(e.currentTarget.dataset.id);
+                const player = appState.players.find(p => p.id === playerId);
+                openModal('editPlayerTitle', 'playerForm', player);
+            }));
+            document.querySelectorAll('.delete-player-btn').forEach(btn => btn.addEventListener('click', (e) => {
+                const playerId = parseInt(e.currentTarget.dataset.id);
+                openModal('confirmDeletePlayerTitle', 'confirmDeletePlayer', { id: playerId });
+            }));
+             document.querySelectorAll('.view-player-btn').forEach(btn => btn.addEventListener('click', (e) => {
+                const playerId = parseInt(e.currentTarget.dataset.id);
+                const player = appState.players.find(p => p.id === playerId);
+                openModal('playerDetails', 'playerDetailsView', player);
+            }));
+            document.getElementById('player-search-input').addEventListener('input', (e) => {
+                appState.searchTermPlayers = e.target.value;
+                renderPlayersView(container); // Re-render this section
+            });
+        }
+        
+        // --- GAMES VIEW ---
+        function renderGamesView(container) {
+            const filteredGames = appState.games.filter(g => 
+                g.name.toLowerCase().includes(appState.searchTermGames.toLowerCase()) ||
+                g.type.toLowerCase().includes(appState.searchTermGames.toLowerCase())
+            );
+            container.innerHTML = `
+                <div class="flex justify-between items-center mb-6">
+                    <h2 class="text-2xl font-semibold">${_('gameOrganization')}</h2>
+                    <button id="add-game-btn" class="btn btn-primary flex items-center space-x-2">
+                        ${ICONS.plus} <span>${_('createGame')}</span>
+                    </button>
+                </div>
+                <div class="mb-4 relative">
+                     <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                        ${ICONS.search}
+                    </div>
+                    <input type="text" id="game-search-input" value="${appState.searchTermGames}" class="input-field pl-10" placeholder="${_('searchGames')}">
+                </div>
+                <div class="card overflow-x-auto">
+                    <table class="min-w-full divide-y divide-slate-700">
+                        <thead class="bg-slate-800">
+                            <tr>
+                                <th class="table-header">${_('gameName')}</th>
+                                <th class="table-header">${_('gameType')}</th>
+                                <th class="table-header">${_('gameDate')} / ${_('gameTime')}</th>
+                                <th class="table-header">${_('gameBuyIn')}</th>
+                                <th class="table-header">${_('gameStatus')}</th>
+                                <th class="table-header">${_('gamePlayers')}</th>
+                                <th class="table-header">${_('playerActions')}</th>
+                            </tr>
+                        </thead>
+                        <tbody class="bg-slate-800 divide-y divide-slate-700">
+                            ${filteredGames.length > 0 ? filteredGames.map(game => `
+                                <tr class="table-row">
+                                    <td class="table-cell">${game.name}</td>
+                                    <td class="table-cell">${_(game.type.toLowerCase().replace(' ',''))}</td>
+                                    <td class="table-cell">${game.date} ${game.time || ''}</td>
+                                    <td class="table-cell">${typeof game.buyIn === 'number' ? '$'+game.buyIn : game.buyIn}</td>
+                                    <td class="table-cell">
+                                        <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${game.status === 'Active' ? 'bg-green-600 text-green-100' : game.status === 'Upcoming' ? 'bg-yellow-500 text-yellow-100' : 'bg-slate-600 text-slate-100'}">
+                                            ${game.status}
+                                        </span>
+                                    </td>
+                                    <td class="table-cell">${game.type === 'Tournament' ? `${game.registeredPlayers}/${game.maxPlayers}` : game.currentPlayers}</td>
+                                    <td class="table-cell space-x-2">
+                                        <button class="text-teal-400 hover:text-teal-300 view-game-btn" data-id="${game.id}" title="${_('view')}">${ICONS.view}</button>
+                                        <button class="text-sky-400 hover:text-sky-300 edit-game-btn" data-id="${game.id}" title="${_('edit')}">${ICONS.edit}</button>
+                                        <button class="text-red-400 hover:text-red-300 delete-game-btn" data-id="${game.id}" title="${_('delete')}">${ICONS.delete}</button>
+                                    </td>
+                                </tr>
+                            `).join('') : `<tr><td colspan="7" class="table-cell text-center">${_('noDataAvailable')}</td></tr>`}
+                        </tbody>
+                    </table>
+                </div>
+            `;
+            document.getElementById('add-game-btn').addEventListener('click', () => openModal('createGameTitle', 'gameForm'));
+            document.querySelectorAll('.edit-game-btn').forEach(btn => btn.addEventListener('click', (e) => {
+                const gameId = parseInt(e.currentTarget.dataset.id);
+                const game = appState.games.find(g => g.id === gameId);
+                openModal('editGameTitle', 'gameForm', game);
+            }));
+            document.querySelectorAll('.delete-game-btn').forEach(btn => btn.addEventListener('click', (e) => {
+                const gameId = parseInt(e.currentTarget.dataset.id);
+                openModal('confirmDeleteGameTitle', 'confirmDeleteGame', { id: gameId });
+            }));
+             document.querySelectorAll('.view-game-btn').forEach(btn => btn.addEventListener('click', (e) => {
+                const gameId = parseInt(e.currentTarget.dataset.id);
+                const game = appState.games.find(g => g.id === gameId);
+                // For now, a simple alert. A detailed game view modal would be built here.
+                alert(`Viewing game: ${game.name}\nStatus: ${game.status}\nDetails would appear in a dedicated view or modal.`);
+            }));
+            document.getElementById('game-search-input').addEventListener('input', (e) => {
+                appState.searchTermGames = e.target.value;
+                renderGamesView(container); // Re-render this section
+            });
+        }
+
+        // --- REPORTS VIEW ---
+        function renderReportsView(container) {
+            container.innerHTML = `
+                <h2 class="text-2xl font-semibold mb-6">${_('statisticsReports')}</h2>
+                <div class="card">
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                        <div>
+                            <label for="report-type" class="label-text">${_('reportType')}</label>
+                            <select id="report-type" class="input-field">
+                                <option value="playerPerformance">${_('playerPerformance')}</option>
+                                <option value="gameProfitability">${_('gameProfitability')}</option>
+                                <option value="overallRevenue">${_('overallRevenue')}</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label for="date-range" class="label-text">${_('dateRange')}</label>
+                            <input type="date" id="date-range-start" class="input-field">
+                        </div>
+                        <div>
+                            <label for="date-range-end" class="label-text">&nbsp;</label>
+                             <input type="date" id="date-range-end" class="input-field">
+                        </div>
+                    </div>
+                    <button class="btn btn-primary">${_('generateReport')}</button>
+                    <div class="mt-6 border-t border-slate-700 pt-6">
+                        <h3 class="text-lg font-semibold mb-2">Report Results</h3>
+                        <div class="bg-slate-700 p-4 rounded-md min-h-[200px] flex items-center justify-center">
+                            <p class="text-slate-400">${_('noDataAvailable')} (Report generation not implemented)</p>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        // --- SETTINGS VIEW ---
+        function renderSettingsView(container) {
+            container.innerHTML = `
+                <h2 class="text-2xl font-semibold mb-6">${_('applicationSettings')}</h2>
+                <div class="space-y-8">
+                    <div class="card">
+                        <h3 class="text-lg font-semibold mb-4">${_('language')}</h3>
+                        <p class="text-sm text-slate-400 mb-2">Change application language.</p>
+                        <select id="settings-language-switcher" class="input-field max-w-xs">
+                            <option value="en" ${appState.language === 'en' ? 'selected' : ''}>English</option>
+                            <option value="fr" ${appState.language === 'fr' ? 'selected' : ''}>Français</option>
+                        </select>
+                    </div>
+
+                    <div class="card">
+                        <h3 class="text-lg font-semibold mb-4">${_('notifications')}</h3>
+                        <label class="flex items-center space-x-3">
+                            <input type="checkbox" id="notifications-toggle" class="form-checkbox h-5 w-5 text-teal-500 bg-slate-700 border-slate-600 rounded focus:ring-teal-500" ${appState.notifications ? 'checked' : ''}>
+                            <span class="text-slate-300">${_('enableNotifications')}</span>
+                        </label>
+                        <p class="text-xs text-slate-500 mt-1">Push notifications are conceptual in this demo.</p>
+                    </div>
+
+                    <div class="card">
+                        <h3 class="text-lg font-semibold mb-4">${_('dataSecurity')}</h3>
+                        <p class="text-sm text-slate-300 mb-2">${_('dataEncrypted')}</p>
+                        <a href="#" class="text-teal-400 hover:text-teal-300 text-sm">${_('responsibleGaming')} (Link)</a>
+                    </div>
+                    
+                    <div class="card">
+                        <h3 class="text-lg font-semibold mb-4">${_('supportMaintenance')}</h3>
+                        <div class="space-y-2">
+                            <button class="btn btn-secondary w-full text-left">${_('reportBug')}</button>
+                            <button class="btn btn-secondary w-full text-left">${_('requestHelp')}</button>
+                            <button class="btn btn-secondary w-full text-left">${_('checkForUpdates')}</button>
+                        </div>
+                         <p class="text-xs text-slate-500 mt-2">These features are conceptual.</p>
+                    </div>
+                </div>
+            `;
+            document.getElementById('settings-language-switcher').addEventListener('change', (e) => {
+                appState.language = e.target.value;
+                renderApp();
+            });
+            document.getElementById('notifications-toggle').addEventListener('change', (e) => {
+                appState.notifications = e.target.checked;
+                // In a real app, this would register/unregister for push notifications
+                console.log("Notification status:", appState.notifications);
+            });
+        }
+
+        // --- MODAL HANDLING ---
+        function openModal(titleKey, contentKey, data = null) {
+            appState.modal = { isOpen: true, titleKey, contentKey, data };
+            renderModal();
+        }
+
+        function closeModal() {
+            appState.modal = { isOpen: false, titleKey: '', contentKey: '', data: null };
+            renderModal();
+        }
+        
+        function renderModal() {
+            const modalBackdrop = document.getElementById('modal-backdrop');
+            const modalTitleEl = document.getElementById('modal-title');
+            const modalBodyEl = document.getElementById('modal-body');
+
+            if (appState.modal.isOpen) {
+                modalTitleEl.textContent = _(appState.modal.titleKey);
+                modalBodyEl.innerHTML = getModalContent(appState.modal.contentKey, appState.modal.data);
+                modalBackdrop.classList.remove('hidden');
+                modalBackdrop.classList.add('flex');
+                attachModalEventListeners(); // Attach listeners specific to current modal content
+            } else {
+                modalBackdrop.classList.add('hidden');
+                modalBackdrop.classList.remove('flex');
+                modalBodyEl.innerHTML = ''; // Clear content
+            }
+        }
+
+        function getModalContent(contentKey, data) {
+            if (contentKey === 'playerForm') return getPlayerFormHTML(data);
+            if (contentKey === 'gameForm') return getGameFormHTML(data);
+            if (contentKey === 'playerDetailsView') return getPlayerDetailsHTML(data);
+            if (contentKey === 'confirmDeletePlayer') return getConfirmDeleteHTML('player', data.id);
+            if (contentKey === 'confirmDeleteGame') return getConfirmDeleteHTML('game', data.id);
+            return `<p>${_('noDataAvailable')}</p>`;
+        }
+        
+        function getConfirmDeleteHTML(type, id) {
+            const titleKey = type === 'player' ? 'confirmDeletePlayerTitle' : 'confirmDeleteGameTitle';
+            const messageKey = type === 'player' ? 'confirmDeletePlayerMsg' : 'confirmDeleteGameMsg';
+            return `
+                <p class="text-slate-300 mb-6">${_(messageKey)}</p>
+                <div class="flex justify-end space-x-3">
+                    <button id="modal-cancel-btn" class="btn btn-secondary">${_('cancel')}</button>
+                    <button id="modal-confirm-delete-btn" data-type="${type}" data-id="${id}" class="btn btn-danger">${_('delete')}</button>
+                </div>
+            `;
+        }
+
+        function getPlayerFormHTML(player = null) {
+            const isEdit = player !== null;
+            return `
+                <form id="player-form" class="space-y-4">
+                    <input type="hidden" id="playerId" value="${isEdit ? player.id : ''}">
+                    <div>
+                        <label for="playerName" class="label-text">${_('playerName')}</label>
+                        <input type="text" id="playerName" class="input-field" value="${isEdit ? player.name : ''}" required>
+                    </div>
+                    <div>
+                        <label for="playerEmail" class="label-text">${_('playerEmail')}</label>
+                        <input type="email" id="playerEmail" class="input-field" value="${isEdit ? player.email : ''}" required>
+                    </div>
+                    <div>
+                        <label for="playerPhone" class="label-text">${_('playerPhone')}</label>
+                        <input type="tel" id="playerPhone" class="input-field" value="${isEdit ? player.phone : ''}">
+                    </div>
+                    <div>
+                        <label for="playerBalance" class="label-text">${_('playerBalance')}</label>
+                        <input type="number" id="playerBalance" class="input-field" value="${isEdit ? player.balance : '0'}" step="0.01" required>
+                    </div>
+                     <div>
+                        <label for="playerCredits" class="label-text">${_('credits')}</label>
+                        <input type="number" id="playerCredits" class="input-field" value="${isEdit ? player.credits : '0'}" step="1" required>
+                    </div>
+                    <div class="flex justify-end space-x-3 pt-2">
+                        <button type="button" id="modal-cancel-btn" class="btn btn-secondary">${_('cancel')}</button>
+                        <button type="submit" class="btn btn-primary">${_('save')}</button>
+                    </div>
+                </form>
+            `;
+        }
+        
+        function getPlayerDetailsHTML(player) {
+            if (!player) return `<p>${_('noDataAvailable')}</p>`;
+            return `
+                <div class="space-y-4 text-slate-300">
+                    <p><strong>${_('playerName')}:</strong> ${player.name}</p>
+                    <p><strong>${_('playerEmail')}:</strong> ${player.email}</p>
+                    <p><strong>${_('playerPhone')}:</strong> ${player.phone}</p>
+                    <p><strong>${_('joinDate')}:</strong> ${player.joinDate}</p>
+                    <div class="my-4 border-t border-slate-700"></div>
+                    <h4 class="text-md font-semibold text-slate-100">${_('financialSummary')}</h4>
+                    <p><strong>${_('playerBalance')}:</strong> $${player.balance.toFixed(2)}</p>
+                    <p><strong>${_('credits')}:</strong> ${player.credits}</p>
+                    <p><strong>${_('gamesPlayed')}:</strong> ${player.gamesPlayed}</p>
+                    <p><strong>${_('totalWinnings')}:</strong> $${player.totalWinnings.toFixed(2)}</p>
+                    <div class="my-4 border-t border-slate-700"></div>
+                    <h4 class="text-md font-semibold text-slate-100">${_('gameHistory')}</h4>
+                    <p class="text-sm text-slate-400">(Game history display not implemented in this demo)</p>
+                    <div class="flex justify-end space-x-3 pt-2">
+                         <button id="modal-close-detail-btn" class="btn btn-secondary">${_('close')}</button>
+                    </div>
+                </div>
+            `;
+        }
+
+        function getGameFormHTML(game = null) {
+            const isEdit = game !== null;
+            return `
+                <form id="game-form" class="space-y-4">
+                    <input type="hidden" id="gameId" value="${isEdit ? game.id : ''}">
+                    <div>
+                        <label for="gameName" class="label-text">${_('gameName')}</label>
+                        <input type="text" id="gameName" class="input-field" value="${isEdit ? game.name : ''}" required>
+                    </div>
+                    <div>
+                        <label for="gameType" class="label-text">${_('gameType')}</label>
+                        <select id="gameType" class="input-field" required>
+                            <option value="Tournament" ${isEdit && game.type === 'Tournament' ? 'selected' : ''}>${_('tournament')}</option>
+                            <option value="Cash Game" ${isEdit && game.type === 'Cash Game' ? 'selected' : ''}>${_('cashGame')}</option>
+                        </select>
+                    </div>
+                    <div id="tournament-fields" class="${(isEdit && game.type === 'Tournament') || !isEdit ? '' : 'hidden'} space-y-4">
+                        <div>
+                            <label for="gameDate" class="label-text">${_('gameDate')}</label>
+                            <input type="date" id="gameDate" class="input-field" value="${isEdit ? game.date : ''}">
+                        </div>
+                        <div>
+                            <label for="gameTime" class="label-text">${_('gameTime')}</label>
+                            <input type="time" id="gameTime" class="input-field" value="${isEdit ? game.time : ''}">
+                        </div>
+                         <div>
+                            <label for="gameBuyInTournament" class="label-text">${_('gameBuyIn')}</label>
+                            <input type="number" id="gameBuyInTournament" class="input-field" value="${isEdit && game.type === 'Tournament' ? game.buyIn : ''}" placeholder="e.g. 100">
+                        </div>
+                        <div>
+                            <label for="gameBlindsTournament" class="label-text">${_('blinds')}</label>
+                            <input type="text" id="gameBlindsTournament" class="input-field" value="${isEdit && game.type === 'Tournament' ? game.blinds : ''}" placeholder="e.g. 25/50">
+                        </div>
+                        <div>
+                            <label for="roundDuration" class="label-text">${_('roundDuration')}</label>
+                            <input type="number" id="roundDuration" class="input-field" value="${isEdit && game.type === 'Tournament' ? game.roundDuration : ''}" placeholder="e.g. 20">
+                        </div>
+                        <div>
+                            <label for="maxPlayers" class="label-text">${_('maxPlayers')}</label>
+                            <input type="number" id="maxPlayers" class="input-field" value="${isEdit && game.type === 'Tournament' ? game.maxPlayers : ''}" placeholder="e.g. 50">
+                        </div>
+                    </div>
+                    <div id="cash-game-fields" class="${isEdit && game.type === 'Cash Game' ? '' : 'hidden'} space-y-4">
+                         <div>
+                            <label for="gameBuyInCash" class="label-text">${_('minBuyIn')}</label>
+                            <input type="text" id="gameBuyInCash" class="input-field" value="${isEdit && game.type === 'Cash Game' ? game.buyIn : ''}" placeholder="e.g. Min 50 or 50-500">
+                        </div>
+                        <div>
+                            <label for="gameBlindsCash" class="label-text">${_('blinds')}</label>
+                            <input type="text" id="gameBlindsCash" class="input-field" value="${isEdit && game.type === 'Cash Game' ? game.blinds : ''}" placeholder="e.g. 1/2">
+                        </div>
+                    </div>
+                    <div class="flex justify-end space-x-3 pt-2">
+                        <button type="button" id="modal-cancel-btn" class="btn btn-secondary">${_('cancel')}</button>
+                        <button type="submit" class="btn btn-primary">${_('save')}</button>
+                    </div>
+                </form>
+            `;
+        }
+
+        function attachModalEventListeners() {
+            const cancelButton = document.getElementById('modal-cancel-btn');
+            if (cancelButton) cancelButton.addEventListener('click', closeModal);
+            
+            const closeDetailButton = document.getElementById('modal-close-detail-btn');
+            if (closeDetailButton) closeDetailButton.addEventListener('click', closeModal);
+
+            const playerForm = document.getElementById('player-form');
+            if (playerForm) playerForm.addEventListener('submit', handlePlayerFormSubmit);
+            
+            const gameForm = document.getElementById('game-form');
+            if (gameForm) {
+                gameForm.addEventListener('submit', handleGameFormSubmit);
+                const gameTypeSelect = gameForm.querySelector('#gameType');
+                if(gameTypeSelect) gameTypeSelect.addEventListener('change', toggleGameFormFields);
+                toggleGameFormFields(); // Initial call to set correct fields visibility
+            }
+            
+            const confirmDeleteBtn = document.getElementById('modal-confirm-delete-btn');
+            if (confirmDeleteBtn) confirmDeleteBtn.addEventListener('click', handleConfirmDelete);
+        }
+        
+        function toggleGameFormFields() {
+            const gameType = document.getElementById('gameType')?.value;
+            const tournamentFields = document.getElementById('tournament-fields');
+            const cashGameFields = document.getElementById('cash-game-fields');
+            if (tournamentFields && cashGameFields) {
+                if (gameType === 'Tournament') {
+                    tournamentFields.classList.remove('hidden');
+                    cashGameFields.classList.add('hidden');
+                } else if (gameType === 'Cash Game') {
+                    tournamentFields.classList.add('hidden');
+                    cashGameFields.classList.remove('hidden');
+                }
+            }
+        }
+
+
+        // --- FORM SUBMISSION HANDLERS ---
+        function handlePlayerFormSubmit(event) {
+            event.preventDefault();
+            const form = event.target;
+            const playerId = form.playerId.value ? parseInt(form.playerId.value) : null;
+            const playerData = {
+                id: playerId || Date.now(),
+                name: form.playerName.value,
+                email: form.playerEmail.value,
+                phone: form.playerPhone.value,
+                balance: parseFloat(form.playerBalance.value),
+                credits: parseInt(form.playerCredits.value),
+                joinDate: playerId ? appState.players.find(p=>p.id === playerId).joinDate : new Date().toISOString().split('T')[0],
+                gamesPlayed: playerId ? appState.players.find(p=>p.id === playerId).gamesPlayed : 0,
+                totalWinnings: playerId ? appState.players.find(p=>p.id === playerId).totalWinnings : 0,
+            };
+
+            if (playerId) { // Edit
+                appState.players = appState.players.map(p => p.id === playerId ? playerData : p);
+            } else { // Create
+                appState.players.push(playerData);
+            }
+            closeModal();
+            renderApp();
+        }
+
+        function handleGameFormSubmit(event) {
+            event.preventDefault();
+            const form = event.target;
+            const gameId = form.gameId.value ? parseInt(form.gameId.value) : null;
+            const gameType = form.gameType.value;
+            
+            let gameData = {
+                id: gameId || Date.now(),
+                name: form.gameName.value,
+                type: gameType,
+                status: gameId ? appState.games.find(g=>g.id === gameId).status : (gameType === 'Tournament' ? 'Upcoming' : 'Active'), // Default status
+            };
+
+            if (gameType === 'Tournament') {
+                gameData = {
+                    ...gameData,
+                    date: form.gameDate.value,
+                    time: form.gameTime.value,
+                    buyIn: parseFloat(form.gameBuyInTournament.value),
+                    blinds: form.gameBlindsTournament.value,
+                    roundDuration: parseInt(form.roundDuration.value),
+                    maxPlayers: parseInt(form.maxPlayers.value),
+                    registeredPlayers: gameId ? appState.games.find(g=>g.id === gameId).registeredPlayers : 0,
+                };
+            } else { // Cash Game
+                gameData = {
+                    ...gameData,
+                    date: 'Ongoing', // Cash games are typically ongoing
+                    time: '',
+                    buyIn: form.gameBuyInCash.value,
+                    blinds: form.gameBlindsCash.value,
+                    currentPlayers: gameId ? appState.games.find(g=>g.id === gameId).currentPlayers : 0,
+                };
+            }
+
+            if (gameId) { // Edit
+                appState.games = appState.games.map(g => g.id === gameId ? {...appState.games.find(x => x.id === gameId), ...gameData} : g);
+            } else { // Create
+                appState.games.push(gameData);
+            }
+            closeModal();
+            renderApp();
+        }
+        
+        function handleConfirmDelete(event) {
+            const type = event.currentTarget.dataset.type;
+            const id = parseInt(event.currentTarget.dataset.id);
+            if (type === 'player') {
+                appState.players = appState.players.filter(p => p.id !== id);
+            } else if (type === 'game') {
+                appState.games = appState.games.filter(g => g.id !== id);
+            }
+            closeModal();
+            renderApp();
+        }
+
+        // --- EVENT LISTENERS ---
+        document.getElementById('sidebar').addEventListener('click', (e) => {
+            const link = e.target.closest('[data-view]');
+            if (link) {
+                e.preventDefault();
+                appState.currentView = link.dataset.view;
+                renderApp();
+            }
+        });
+        
+        document.getElementById('language-switcher').addEventListener('change', (e) => {
+            appState.language = e.target.value;
+            renderApp();
+        });
+
+        document.getElementById('modal-close-button').addEventListener('click', closeModal);
+        // Close modal on backdrop click
+        document.getElementById('modal-backdrop').addEventListener('click', (e) => {
+            if (e.target.id === 'modal-backdrop') {
+                closeModal();
+            }
+        });
+        // Close modal on Escape key
+        document.addEventListener('keydown', (e) => {
+            if (e.key === "Escape" && appState.modal.isOpen) {
+                closeModal();
+            }
+        });
+
+        // --- INITIALIZATION ---
+        function init() {
+            renderApp();
+        }
+
+        document.addEventListener('DOMContentLoaded', init);
+    </script>
+</body>
+</html>

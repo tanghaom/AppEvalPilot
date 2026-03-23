@@ -1,0 +1,9 @@
+{
+  "web_id": "web_10",
+  "task_id": 4,
+  "task_type": "dynamic",
+  "instruction": "Task: Click on an inactive editor tab among multiple open tabs.\nExpected Result: The clicked tab becomes active, and its content is shown in the editor area.\n\nNote: The task is only considered successful if the expected result is achieved; otherwise, it is deemed infeasible.",
+  "max_steps": 15,
+  "expected": "The clicked tab becomes active, and its content is shown in the editor area.",
+  "label": 0
+}

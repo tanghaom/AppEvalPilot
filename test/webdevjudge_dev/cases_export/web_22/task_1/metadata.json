@@ -1,0 +1,9 @@
+{
+  "web_id": "web_22",
+  "task_id": 1,
+  "task_type": "dynamic",
+  "instruction": "Task: Navigate to the 'Add Product Feature' section, input details for a new feature (e.g., name, description, select domain, select status, pick dates), add at least one release candidate (description, ID, date, status), and submit the form.\nExpected Result: The newly created feature and its release candidate(s) are stored locally and appear listed on the Dashboard view.\n\nNote: The task is only considered successful if the expected result is achieved; otherwise, it is deemed infeasible.",
+  "max_steps": 15,
+  "expected": "The newly created feature and its release candidate(s) are stored locally and appear listed on the Dashboard view.",
+  "label": 1
+}

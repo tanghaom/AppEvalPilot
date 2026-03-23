@@ -1,0 +1,9 @@
+{
+  "web_id": "web_41",
+  "task_id": 2,
+  "task_type": "dynamic",
+  "instruction": "Task: Input 'temple tour' into the search bar on the Home Screen and click the search icon.\nExpected Result: A list of search results, relevant to 'temple tour' (locally simulated from a predefined dataset), is displayed on the page.\n\nNote: The task is only considered successful if the expected result is achieved; otherwise, it is deemed infeasible.",
+  "max_steps": 15,
+  "expected": "A list of search results, relevant to 'temple tour' (locally simulated from a predefined dataset), is displayed on the page.",
+  "label": 0
+}

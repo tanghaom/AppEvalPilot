@@ -1,0 +1,9 @@
+{
+  "web_id": "web_58",
+  "task_id": 4,
+  "task_type": "dynamic",
+  "instruction": "Task: Select a game mode (e.g., 'Timed', 'Classic', 'Relaxed') using radio buttons, a dropdown, or dedicated buttons.\nExpected Result: The game interface adjusts to the selected mode. For example, a timer becomes visible and starts for 'Timed' mode, or hint availability might change for 'Relaxed' mode.\n\nNote: The task is only considered successful if the expected result is achieved; otherwise, it is deemed infeasible.",
+  "max_steps": 15,
+  "expected": "The game interface adjusts to the selected mode. For example, a timer becomes visible and starts for 'Timed' mode, or hint availability might change for 'Relaxed' mode.",
+  "label": 1
+}

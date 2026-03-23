@@ -1,0 +1,9 @@
+{
+  "web_id": "web_51",
+  "task_id": 5,
+  "task_type": "dynamic",
+  "instruction": "Task: Navigate between different customization sections (e.g., 'Appearance', 'Behavior', 'Data') by clicking their respective tabs in the customization panel.\nExpected Result: The set of available customization controls within the panel updates to display options relevant to the newly selected section.\n\nNote: The task is only considered successful if the expected result is achieved; otherwise, it is deemed infeasible.",
+  "max_steps": 15,
+  "expected": "The set of available customization controls within the panel updates to display options relevant to the newly selected section.",
+  "label": 0
+}

@@ -1,0 +1,9 @@
+{
+  "web_id": "web_1",
+  "task_id": 4,
+  "task_type": "dynamic",
+  "instruction": "Task: Click an 'Add to Wishlist' or 'Add to Cart' button for a game\nExpected Result: The button's state changes visually (e.g., icon toggles, text updates to 'On Wishlist'/'In Cart') to indicate the action was performed.\n\nNote: The task is only considered successful if the expected result is achieved; otherwise, it is deemed infeasible.",
+  "max_steps": 15,
+  "expected": "The button's state changes visually (e.g., icon toggles, text updates to 'On Wishlist'/'In Cart') to indicate the action was performed.",
+  "label": 0
+}

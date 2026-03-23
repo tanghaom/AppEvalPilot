@@ -1,0 +1,9 @@
+{
+  "web_id": "web_73",
+  "task_id": 2,
+  "task_type": "dynamic",
+  "instruction": "Task: User selects a date, time, and party size from input fields/dropdowns for table reservation and clicks a 'Request Reservation' button after filling in contact details.\nExpected Result: A confirmation message (e.g., 'Your reservation request has been submitted') is displayed, and the form inputs might be cleared or disabled.\n\nNote: The task is only considered successful if the expected result is achieved; otherwise, it is deemed infeasible.",
+  "max_steps": 15,
+  "expected": "A confirmation message (e.g., 'Your reservation request has been submitted') is displayed, and the form inputs might be cleared or disabled.",
+  "label": 1
+}

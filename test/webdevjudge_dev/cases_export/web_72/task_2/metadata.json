@@ -1,0 +1,9 @@
+{
+  "web_id": "web_72",
+  "task_id": 2,
+  "task_type": "dynamic",
+  "instruction": "Task: Input content for a new update (e.g., project name/title, update description, selecting an update type like 'feature addition' or 'bug fix') into a form and click a 'Post' or 'Submit' button.\nExpected Result: A new project update card appears in the feed displaying the entered information.\n\nNote: The task is only considered successful if the expected result is achieved; otherwise, it is deemed infeasible.",
+  "max_steps": 15,
+  "expected": "A new project update card appears in the feed displaying the entered information.",
+  "label": 1
+}

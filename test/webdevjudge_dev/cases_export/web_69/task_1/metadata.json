@@ -1,0 +1,9 @@
+{
+  "web_id": "web_69",
+  "task_id": 1,
+  "task_type": "dynamic",
+  "instruction": "Task: Click the toggle switch when it is in 'Day Mode'.\nExpected Result: The toggle smoothly animates to 'Night Mode': the background transitions to a dark blue/black gradient with twinkling stars, the sun element slides out as the moon element (circular with craters, with a subtle glow/shadow) slides in to the right side of the toggle, and the label below updates to display 'Night Mode'.\n\nNote: The task is only considered successful if the expected result is achieved; otherwise, it is deemed infeasible.",
+  "max_steps": 15,
+  "expected": "The toggle smoothly animates to 'Night Mode': the background transitions to a dark blue/black gradient with twinkling stars, the sun element slides out as the moon element (circular with craters, with a subtle glow/shadow) slides in to the right side of the toggle, and the label below updates to display 'Night Mode'.",
+  "label": 1
+}

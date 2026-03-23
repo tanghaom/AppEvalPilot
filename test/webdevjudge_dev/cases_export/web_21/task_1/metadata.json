@@ -1,0 +1,9 @@
+{
+  "web_id": "web_21",
+  "task_id": 1,
+  "task_type": "dynamic",
+  "instruction": "Task: Click a file name in the File Explorer sidebar.\nExpected Result: The corresponding file's mock content is shown in an editor tab.\n\nNote: The task is only considered successful if the expected result is achieved; otherwise, it is deemed infeasible.",
+  "max_steps": 15,
+  "expected": "The corresponding file's mock content is shown in an editor tab.",
+  "label": 0
+}

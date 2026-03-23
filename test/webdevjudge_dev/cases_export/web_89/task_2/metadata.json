@@ -1,0 +1,9 @@
+{
+  "web_id": "web_89",
+  "task_id": 2,
+  "task_type": "dynamic",
+  "instruction": "Task: Enter an answer into the designated input field (e.g., text, numeric, or math) on the Problem View screen.\nExpected Result: The entered text or mathematical expression is displayed in the input field. If it's a math input, a MathJax preview may update.\n\nNote: The task is only considered successful if the expected result is achieved; otherwise, it is deemed infeasible.",
+  "max_steps": 15,
+  "expected": "The entered text or mathematical expression is displayed in the input field. If it's a math input, a MathJax preview may update.",
+  "label": 1
+}

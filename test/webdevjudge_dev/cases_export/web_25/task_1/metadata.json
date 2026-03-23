@@ -1,0 +1,9 @@
+{
+  "web_id": "web_25",
+  "task_id": 1,
+  "task_type": "dynamic",
+  "instruction": "Task: Click a shape within the game grid\nExpected Result: The clicked shape triggers its defined reaction, potentially affecting other shapes, and the grid updates visually to show the outcome.\n\nNote: The task is only considered successful if the expected result is achieved; otherwise, it is deemed infeasible.",
+  "max_steps": 15,
+  "expected": "The clicked shape triggers its defined reaction, potentially affecting other shapes, and the grid updates visually to show the outcome.",
+  "label": 1
+}

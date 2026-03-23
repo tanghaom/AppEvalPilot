@@ -1,0 +1,609 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>2048 Game</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Custom Animations */
+        @keyframes tile-spawn {
+            0% { transform: scale(0.5) translate(var(--tw-translate-x), var(--tw-translate-y)); opacity: 0; }
+            100% { transform: scale(1) translate(var(--tw-translate-x), var(--tw-translate-y)); opacity: 1; }
+        }
+        .animate-tile-spawn {
+            animation: tile-spawn 0.2s ease-out;
+        }
+
+        @keyframes tile-merge-pulse {
+            0% { transform: scale(1) translate(var(--tw-translate-x), var(--tw-translate-y)); }
+            50% { transform: scale(1.2) translate(var(--tw-translate-x), var(--tw-translate-y)); }
+            100% { transform: scale(1) translate(var(--tw-translate-x), var(--tw-translate-y)); }
+        }
+        .animate-tile-merge-pulse {
+            animation: tile-merge-pulse 0.2s ease-in-out;
+        }
+
+        /* Prevent text selection during swipe */
+        body {
+            user-select: none;
+            -webkit-user-select: none;
+            -moz-user-select: none;
+            -ms-user-select: none;
+            overscroll-behavior-y: contain; /* Prevent pull-to-refresh on mobile */
+        }
+        .tile {
+            transition-property: transform, opacity, background-color;
+            transition-duration: 0.15s; /* For movement */
+            transition-timing-function: ease-in-out;
+        }
+        .tile-value-text-sm { font-size: 1.5rem; line-height: 2rem; } /* For 1024, 2048 */
+        .tile-value-text-md { font-size: 1.875rem; line-height: 2.25rem; } /* For 128, 256, 512 */
+        .tile-value-text-lg { font-size: 2.25rem; line-height: 2.5rem; } /* For 2, 4, 8, 16, 32, 64 */
+
+        /* Ensure consistent aspect ratio for game board cells for responsiveness */
+        .cell-aspect-square {
+            aspect-ratio: 1 / 1;
+        }
+        
+        /* Tailwind custom config (not possible in a single HTML file without extra JS for V3) */
+        /* So, hardcoding specific values or using JS to set styles for dynamic parts. */
+        /* For this example, we use percentages for positioning and Tailwind for base styles. */
+    </style>
+</head>
+<body class="bg-slate-900 text-slate-100 flex flex-col items-center justify-center min-h-screen p-4 font-sans">
+
+    <div class="w-full max-w-md mx-auto">
+        <header class="flex items-center justify-between mb-4">
+            <h1 class="text-4xl font-bold text-sky-400">2048</h1>
+            <div class="flex items-center space-x-4">
+                <div class="text-center p-2 bg-slate-800 rounded-lg shadow">
+                    <div class="text-xs text-slate-400 uppercase">Score</div>
+                    <div id="score" class="text-2xl font-bold" aria-live="polite">0</div>
+                </div>
+                <button id="new-game-button" class="px-4 py-2 bg-sky-500 hover:bg-sky-600 text-white font-semibold rounded-lg shadow transition-colors">
+                    New Game
+                </button>
+            </div>
+        </header>
+
+        <main id="game-container" class="mb-4">
+            <div id="game-board-sizer" class="w-full aspect-square max-w-md mx-auto relative">
+                <div id="grid-background" class="absolute inset-0 grid grid-cols-4 grid-rows-4 gap-2 sm:gap-3 lg:gap-4 p-2 sm:p-3 lg:p-4 bg-slate-800 rounded-lg shadow-xl">
+                    <!-- Background cells - 16 static cells -->
+                    <script>
+                        // Generate background cells
+                        const gridBackground = document.getElementById('grid-background');
+                        for (let i = 0; i < 16; i++) {
+                            const cell = document.createElement('div');
+                            cell.className = 'bg-slate-700 rounded-md cell-aspect-square';
+                            gridBackground.appendChild(cell);
+                        }
+                    </script>
+                </div>
+                <div id="tile-container" class="absolute inset-0 p-2 sm:p-3 lg:p-4">
+                    <!-- Tiles will be dynamically added here -->
+                </div>
+            </div>
+        </main>
+        
+        <div id="instructions" class="text-center text-slate-400 text-sm">
+            <p><strong class="text-slate-300">How to Play:</strong> Use <strong class="text-sky-400">arrow keys</strong> or <strong class="text-sky-400">swipe</strong> on your screen to move the tiles.</p>
+            <p>Tiles with the same number merge into one when they touch. Try to reach the <strong class="text-purple-400">2048</strong> tile!</p>
+        </div>
+
+        <div id="game-over-overlay" class="hidden fixed inset-0 bg-slate-900 bg-opacity-80 flex flex-col items-center justify-center z-50 p-4" aria-live="assertive">
+            <div class="bg-slate-800 p-8 rounded-xl shadow-2xl text-center">
+                <h2 id="game-over-title" class="text-3xl font-bold mb-4 text-red-500">Game Over!</h2>
+                <p id="game-over-message" class="text-lg mb-6">You couldn't make any more moves.</p>
+                <p class="text-md mb-2">Final Score: <span id="final-score" class="font-bold text-xl">0</span></p>
+                <button id="restart-game-button" class="px-6 py-3 bg-sky-500 hover:bg-sky-600 text-white font-semibold rounded-lg shadow transition-colors text-lg">
+                    Try Again
+                </button>
+            </div>
+        </div>
+        
+        <div id="win-overlay" class="hidden fixed inset-0 bg-slate-900 bg-opacity-80 flex flex-col items-center justify-center z-50 p-4" aria-live="assertive">
+            <div class="bg-slate-800 p-8 rounded-xl shadow-2xl text-center">
+                <h2 class="text-3xl font-bold mb-4 text-emerald-500">You Win!</h2>
+                <p class="text-lg mb-6">Congratulations! You've reached the 2048 tile!</p>
+                 <p class="text-md mb-2">Current Score: <span id="win-score" class="font-bold text-xl">0</span></p>
+                <div class="flex space-x-4 justify-center">
+                    <button id="continue-game-button" class="px-6 py-3 bg-amber-500 hover:bg-amber-600 text-white font-semibold rounded-lg shadow transition-colors text-lg">
+                        Keep Playing
+                    </button>
+                    <button id="win-new-game-button" class="px-6 py-3 bg-sky-500 hover:bg-sky-600 text-white font-semibold rounded-lg shadow transition-colors text-lg">
+                        New Game
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 
+    Game Mechanics, Design, and Features Explanation:
+
+    **1. Game Objective:**
+    The primary goal is to slide numbered tiles on a 4x4 grid to combine them and create a tile with the number 2048. Players also aim to achieve the highest possible score.
+
+    **2. How to Play:**
+    - The game starts with two tiles, randomly placed, valued either 2 or 4.
+    - Players can use **arrow keys (Up, Down, Left, Right)** on a keyboard or **swipe gestures** on touch-enabled devices to move all tiles on the grid in the chosen direction.
+    - Tiles slide as far as possible in the chosen direction until they hit another tile or the edge of the grid.
+    - If two tiles with the same number collide during a move, they merge into a single tile with their sum as the value (e.g., two '2' tiles become a '4' tile).
+    - A merged tile cannot merge again in the same move. For example, if a row is [2, 2, 4, 0] and you swipe left, it becomes [4, 4, 0, 0], not [8, 0, 0, 0].
+    - After each successful move (i.e., at least one tile moved or merged), a new tile (either 2 or 4) randomly appears in an empty cell.
+
+    **3. Scoring:**
+    - The score starts at 0.
+    - When two tiles merge, the value of the new (merged) tile is added to the score. For example, merging two '4' tiles to make an '8' adds 8 points to the score.
+
+    **4. Game End Conditions:**
+    - **Game Over:** The game ends when the grid is full and there are no possible moves left (i.e., no empty cells and no adjacent tiles with the same value that can be merged).
+    - **Win:** The player "wins" when they create a 2048 tile. The game allows the player to continue playing beyond this point to achieve higher scores and larger tiles.
+
+    **5. Design Choices:**
+    - **Grid & Tiles:** A 4x4 grid with clearly distinguishable tiles. Each tile value has a unique background color and text color for easy identification. Colors become progressively "warmer" or more distinct for higher value tiles. Tiles have rounded corners for a modern, soft aesthetic.
+    - **Color Palette:** A consistent, modern dark-themed color palette (Slate, Sky Blue, various vibrant colors for tiles) is used for a pleasant visual experience and good contrast.
+        - Background: `slate-900`
+        - Grid Background: `slate-800`
+        - Empty Cell: `slate-700`
+        - Tile Colors: A sequence from `sky-200` for '2' up to `purple-600` for '2048', with contrasting text colors.
+    - **Animations:**
+        - **Tile Spawning:** New tiles appear with a subtle "pop-in" (scale and fade-in) animation.
+        - **Tile Movement:** Tiles slide smoothly to their new positions.
+        - **Tile Merging:** Merged tiles have a "pulse" (scale up then down) animation to highlight the merge.
+    - **Typography:** Clear, bold font for tile numbers. Font size adjusts for larger numbers (3 or 4 digits) to fit within the tile.
+    - **Layout:** Responsive design ensures the game is playable on various screen sizes. The game board maintains a square aspect ratio.
+
+    **6. Key Features:**
+    - **Interactive 4x4 Grid:** The core gameplay area.
+    - **Power-of-2 Tiles:** Tiles display values 2, 4, 8, 16, ..., up to 2048 and beyond.
+    - **Smooth Animations:** CSS transitions and keyframe animations provide visual feedback for tile movements, appearances, and merges.
+    - **Scoring System:** Tracks player's score.
+    - **Game Over Detection:** Automatically detects and signals when no more moves are possible. A "Game Over" overlay appears with the final score.
+    - **Win Condition & Continue Play:** A "You Win!" message appears upon reaching the 2048 tile, with an option to continue playing.
+    - **New Game Functionality:** Buttons to start a new game at any time, or after a game over/win.
+    - **Controls:**
+        - **Keyboard Controls:** Uses Arrow Up, Down, Left, Right keys.
+        - **Touch Controls:** Supports swipe gestures (up, down, left, right) on touch-enabled devices.
+    - **Accessibility Features:**
+        - **Screen Reader Compatibility (Basic):**
+            - Score updates are announced via `aria-live="polite"`.
+            - Game over/win messages are announced via `aria-live="assertive"`.
+            - Interactive elements like buttons have accessible names.
+            - Tiles have `aria-label` describing their value (e.g., "Tile 2").
+        - **Keyboard Navigability:** Game is controllable via keyboard.
+        - **Visual Clarity:** Sufficient color contrast for tiles and text (striving for WCAG AA).
+    -->
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const GRID_SIZE = 4;
+            let grid = []; // Stores tile values (0 for empty)
+            let score = 0;
+            let isGameOver = false;
+            let gameWon = false;
+            let tileElements = {}; // Stores DOM elements for tiles, keyed by a unique ID
+            let nextTileId = 0;
+
+            const gameBoardSizer = document.getElementById('game-board-sizer');
+            const tileContainer = document.getElementById('tile-container');
+            const scoreDisplay = document.getElementById('score');
+            const newGameButton = document.getElementById('new-game-button');
+            const gameOverOverlay = document.getElementById('game-over-overlay');
+            const finalScoreDisplay = document.getElementById('final-score');
+            const restartGameButton = document.getElementById('restart-game-button');
+            const winOverlay = document.getElementById('win-overlay');
+            const winScoreDisplay = document.getElementById('win-score');
+            const continueGameButton = document.getElementById('continue-game-button');
+            const winNewGameButton = document.getElementById('win-new-game-button');
+            const gameOverTitle = document.getElementById('game-over-title');
+            const gameOverMessage = document.getElementById('game-over-message');
+
+
+            const TILE_COLORS = {
+                2:    { bg: 'bg-sky-200', text: 'text-sky-800' },
+                4:    { bg: 'bg-teal-200', text: 'text-teal-800' },
+                8:    { bg: 'bg-emerald-300', text: 'text-emerald-800' },
+                16:   { bg: 'bg-lime-300', text: 'text-lime-800' },
+                32:   { bg: 'bg-yellow-300', text: 'text-yellow-800' },
+                64:   { bg: 'bg-amber-400', text: 'text-amber-900' },
+                128:  { bg: 'bg-orange-500', text: 'text-orange-100' },
+                256:  { bg: 'bg-red-500', text: 'text-red-100' },
+                512:  { bg: 'bg-rose-500', text: 'text-rose-100' },
+                1024: { bg: 'bg-fuchsia-500', text: 'text-fuchsia-100' },
+                2048: { bg: 'bg-purple-600', text: 'text-purple-100' },
+                DEFAULT: { bg: 'bg-indigo-600', text: 'text-indigo-100' } // for > 2048
+            };
+
+            function getTileAppearance(value) {
+                const colors = TILE_COLORS[value] || TILE_COLORS.DEFAULT;
+                let textSizeClass = 'tile-value-text-lg'; // Default large
+                if (value >= 1024) {
+                    textSizeClass = 'tile-value-text-sm'; // Smallest for 4 digits
+                } else if (value >= 128) {
+                    textSizeClass = 'tile-value-text-md'; // Medium for 3 digits
+                }
+                return { ...colors, textSizeClass };
+            }
+
+            function getTilePositionStyles(row, col, boardWidth) {
+                // boardWidth includes padding, gap is within content area
+                // gap is 2 (0.5rem), 3 (0.75rem) or 4 (1rem) depending on screen size for grid-background
+                // Let's assume tile-container's padding matches grid-background's padding & gap config
+                // A simpler model: tiles are positioned by % within the tile-container
+                const gapRem = parseFloat(getComputedStyle(gridBackground).gap) / parseFloat(getComputedStyle(document.documentElement).fontSize); // gap in rem
+                const containerPaddingRem = parseFloat(getComputedStyle(tileContainer).paddingLeft) / parseFloat(getComputedStyle(document.documentElement).fontSize);
+
+                const totalGapSize = (GRID_SIZE - 1) * gapRem;
+                const tileSizePercent = (100 - totalGapSize / (boardWidth / parseFloat(getComputedStyle(document.documentElement).fontSize) - 2*containerPaddingRem) * 100) / GRID_SIZE;
+
+                const leftPercent = col * (tileSizePercent + gapRem / (boardWidth / parseFloat(getComputedStyle(document.documentElement).fontSize) - 2*containerPaddingRem) * 100);
+                const topPercent = row * (tileSizePercent + gapRem / (boardWidth / parseFloat(getComputedStyle(document.documentElement).fontSize) - 2*containerPaddingRem) * 100);
+                
+                // Simpler percentage based which works if tile-container has no padding, and grid-background provides padding
+                // For this setup, tile-container is an overlay matching grid-background's padded area.
+                // So, relative positioning within tile-container.
+                const cellSize = (100 / GRID_SIZE); // Percentage of one cell slot width/height
+                
+                return {
+                    width: `${cellSize}%`,
+                    height: `${cellSize}%`,
+                    transform: `translate(${col * 100}%, ${row * 100}%)` // Percentage of TILE's own size for translate
+                };
+            }
+
+            function initializeGrid() {
+                grid = Array(GRID_SIZE).fill(null).map(() => Array(GRID_SIZE).fill(0));
+                // tileData stores {id, value, row, col, mergedFrom: null or [id1, id2]}
+                // We will simplify and just store value in grid. Tile elements will be managed separately.
+                score = 0;
+                isGameOver = false;
+                gameWon = false; 
+                nextTileId = 0;
+                
+                // Clear existing tile elements from DOM and map
+                Object.values(tileElements).forEach(el => el.remove());
+                tileElements = {};
+                
+                addRandomTile();
+                addRandomTile();
+                updateScoreDisplay();
+                renderBoard();
+                gameOverOverlay.classList.add('hidden');
+                winOverlay.classList.add('hidden');
+            }
+
+            function addRandomTile() {
+                const emptyCells = [];
+                for (let r = 0; r < GRID_SIZE; r++) {
+                    for (let c = 0; c < GRID_SIZE; c++) {
+                        if (grid[r][c] === 0) {
+                            emptyCells.push({ r, c });
+                        }
+                    }
+                }
+
+                if (emptyCells.length > 0) {
+                    const { r, c } = emptyCells[Math.floor(Math.random() * emptyCells.length)];
+                    grid[r][c] = Math.random() < 0.9 ? 2 : 4; // 90% chance of 2, 10% chance of 4
+                    
+                    // Create a new DOM element for this tile
+                    const tileId = `tile-${nextTileId++}`;
+                    const value = grid[r][c];
+                    const { bg, text, textSizeClass } = getTileAppearance(value);
+                    const boardWidth = tileContainer.offsetWidth; // Use for calculating px positions if needed
+                    const posStyles = getTilePositionStyles(r, c, boardWidth);
+
+                    const tileEl = document.createElement('div');
+                    tileEl.id = tileId;
+                    tileEl.className = `tile absolute flex items-center justify-center font-bold rounded-md shadow-md animate-tile-spawn ${bg} ${text} ${textSizeClass}`;
+                    tileEl.style.width = posStyles.width;
+                    tileEl.style.height = posStyles.height;
+                    tileEl.style.transform = posStyles.transform;
+                    tileEl.textContent = value;
+                    tileEl.setAttribute('aria-label', `Tile ${value}`);
+                    
+                    tileContainer.appendChild(tileEl);
+                    tileElements[tileId] = tileEl; // Store reference by a generated ID (not by r,c)
+                    // To associate with grid, we will map grid cell [r][c] to this tileId
+                    grid[r][c] = { id: tileId, value: value, r:r, c:c, justSpawned: true }; // Store object in grid
+                }
+            }
+            
+            function renderBoard() {
+                const boardWidth = tileContainer.offsetWidth;
+                const activeTileIds = new Set();
+
+                for (let r = 0; r < GRID_SIZE; r++) {
+                    for (let c = 0; c < GRID_SIZE; c++) {
+                        if (grid[r][c] !== 0) { // Cell contains a tile object
+                            const tileData = grid[r][c];
+                            activeTileIds.add(tileData.id);
+                            let tileEl = document.getElementById(tileData.id);
+
+                            if (!tileEl) { // Should not happen if addRandomTile created it. This path is for re-rendering after move.
+                                // This indicates a tile that was created by a merge, or a bug.
+                                // For merges, the merged-into tile's element is re-used/updated.
+                                // For new tiles, addRandomTile creates them.
+                                // This part of renderBoard is primarily for updating existing tiles.
+                                console.warn("Tile element not found, but data exists:", tileData);
+                                continue; // Skip if element doesn't exist
+                            }
+                            
+                            const { bg, text, textSizeClass } = getTileAppearance(tileData.value);
+                            const posStyles = getTilePositionStyles(r, c, boardWidth);
+
+                            // Update classes and styles
+                            tileEl.className = `tile absolute flex items-center justify-center font-bold rounded-md shadow-md ${bg} ${text} ${textSizeClass}`;
+                            tileEl.style.width = posStyles.width;
+                            tileEl.style.height = posStyles.height;
+                            tileEl.style.transform = posStyles.transform;
+                            tileEl.textContent = tileData.value;
+                            tileEl.setAttribute('aria-label', `Tile ${tileData.value}`);
+                            
+                            if (tileData.justSpawned) {
+                                tileEl.classList.add('animate-tile-spawn');
+                                tileData.justSpawned = false; // Reset flag
+                            } else if (tileData.justMerged) {
+                                tileEl.classList.add('animate-tile-merge-pulse');
+                                tileData.justMerged = false; // Reset flag
+                                // Remove animation class after it finishes
+                                setTimeout(() => tileEl.classList.remove('animate-tile-merge-pulse'), 200);
+                            } else {
+                                // Ensure spawn animation is removed if it was there
+                                tileEl.classList.remove('animate-tile-spawn');
+                            }
+                        }
+                    }
+                }
+                 // Remove DOM elements for tiles that are no longer in the grid (merged away)
+                for (const tileId in tileElements) {
+                    if (!activeTileIds.has(tileId)) {
+                        tileElements[tileId].remove();
+                        delete tileElements[tileId];
+                    }
+                }
+            }
+
+            function updateScoreDisplay() {
+                scoreDisplay.textContent = score;
+            }
+
+            function move(direction) {
+                if (isGameOver) return;
+
+                let moved = false;
+                let currentScore = 0;
+
+                // Reset temporary flags
+                for (let r = 0; r < GRID_SIZE; r++) {
+                    for (let c = 0; c < GRID_SIZE; c++) {
+                        if (grid[r][c] !== 0) {
+                            grid[r][c].justSpawned = false;
+                            grid[r][c].justMerged = false;
+                        }
+                    }
+                }
+                
+                // Create a temporary grid that only holds tile IDs for easier manipulation during move logic
+                // The actual tile objects (with value, id, etc.) are updated directly in the main `grid`
+                
+                const initialGridState = JSON.stringify(grid); // For checking if anything changed
+
+                if (direction === 'up' || direction === 'down') {
+                    for (let c = 0; c < GRID_SIZE; c++) {
+                        let column = [];
+                        for (let r = 0; r < GRID_SIZE; r++) column.push(grid[r][c]);
+                        
+                        const {newLine, lineMoved, lineScore} = processLine(column, direction === 'down');
+                        currentScore += lineScore;
+
+                        for (let r = 0; r < GRID_SIZE; r++) {
+                            if (grid[r][c] !== newLine[r]) moved = true; // Check if assignment changes anything
+                            grid[r][c] = newLine[r]; // newLine contains tile objects or 0
+                            if(grid[r][c] !== 0) grid[r][c].r = r; // Update row position in tile object
+                        }
+                    }
+                } else if (direction === 'left' || direction === 'right') {
+                    for (let r = 0; r < GRID_SIZE; r++) {
+                        let row = grid[r];
+                        const {newLine, lineMoved, lineScore} = processLine(row, direction === 'right');
+                        currentScore += lineScore;
+                        
+                        if (grid[r] !== newLine) moved = true; // Check if assignment changes anything
+                        grid[r] = newLine; // newLine contains tile objects or 0
+                        for(let c=0; c < GRID_SIZE; c++){ // Update col position in tile object
+                            if(grid[r][c] !== 0) grid[r][c].c = c;
+                        }
+                    }
+                }
+                
+                // A more robust check if moved occurred
+                if (JSON.stringify(grid) !== initialGridState) {
+                    moved = true;
+                }
+
+                if (moved) {
+                    score += currentScore;
+                    updateScoreDisplay();
+                    addRandomTile(); // This will create its DOM element and set justSpawned flag
+                    renderBoard(); // Re-render to apply moves, merges, and new tile animations
+                    checkWinOrGameOver();
+                }
+            }
+
+            function processLine(line, reverse) {
+                // 1. Filter out zeros (empty cells)
+                let filteredLine = line.filter(tile => tile !== 0);
+                if (reverse) filteredLine.reverse();
+
+                let lineScore = 0;
+                let lineMoved = false; // Tracks if this specific line caused a move/merge
+                
+                // 2. Merge tiles
+                let mergedLine = [];
+                for (let i = 0; i < filteredLine.length; i++) {
+                    if (i + 1 < filteredLine.length && filteredLine[i].value === filteredLine[i+1].value) {
+                        const mergedValue = filteredLine[i].value * 2;
+                        lineScore += mergedValue;
+                        
+                        // Keep the first tile, update its value, mark for merge animation
+                        const keptTile = filteredLine[i];
+                        keptTile.value = mergedValue;
+                        keptTile.justMerged = true;
+                        mergedLine.push(keptTile);
+
+                        // The other tile (filteredLine[i+1]) is removed. Its element will be cleaned up by renderBoard.
+                        // We need to ensure its ID is no longer referenced in the grid.
+                        // This is handled as its spot will be overwritten by 0 or another tile.
+
+                        if (!gameWon && mergedValue === 2048) {
+                            gameWon = true; // Set flag, actual modal shown in checkWinOrGameOver
+                        }
+                        i++; // Skip next tile as it's merged
+                        lineMoved = true;
+                    } else {
+                        mergedLine.push(filteredLine[i]);
+                    }
+                }
+
+                // 3. Pad with zeros
+                let newLine = Array(GRID_SIZE).fill(0);
+                for (let i = 0; i < mergedLine.length; i++) {
+                    newLine[i] = mergedLine[i];
+                }
+
+                if (reverse) newLine.reverse();
+
+                // Check if line actually changed compared to original line (considering tile IDs and positions)
+                // Simple check: stringify. A more complex check would compare tile IDs at each position.
+                if (JSON.stringify(newLine) !== JSON.stringify(line.map(t => t === 0 ? 0 : {id: t.id, value: t.value, r:t.r, c:t.c, justSpawned:t.justSpawned, justMerged:t.justMerged}))) {
+                    lineMoved = true;
+                }
+
+                return { newLine, lineMoved, lineScore };
+            }
+
+
+            function canMove() {
+                // Check for empty cells
+                for (let r = 0; r < GRID_SIZE; r++) {
+                    for (let c = 0; c < GRID_SIZE; c++) {
+                        if (grid[r][c] === 0) return true;
+                    }
+                }
+                // Check for possible merges
+                for (let r = 0; r < GRID_SIZE; r++) {
+                    for (let c = 0; c < GRID_SIZE; c++) {
+                        const currentTileValue = grid[r][c].value;
+                        if (r + 1 < GRID_SIZE && grid[r+1][c].value === currentTileValue) return true; // Check down
+                        if (c + 1 < GRID_SIZE && grid[r][c+1].value === currentTileValue) return true; // Check right
+                    }
+                }
+                return false;
+            }
+
+            function checkWinOrGameOver() {
+                if (gameWon && !winOverlay.classList.contains('flex')) { // Show win screen only once
+                    winScoreDisplay.textContent = score;
+                    winOverlay.classList.remove('hidden');
+                    winOverlay.classList.add('flex');
+                } else if (!canMove()) {
+                    isGameOver = true;
+                    finalScoreDisplay.textContent = score;
+                    gameOverTitle.textContent = gameWon ? "You Reached 2048+!" : "Game Over!";
+                    gameOverMessage.textContent = gameWon ? "You can keep playing or start a new game." : "No more moves available.";
+                    gameOverOverlay.classList.remove('hidden');
+                    gameOverOverlay.classList.add('flex');
+                }
+            }
+            
+            // Event Listeners
+            newGameButton.addEventListener('click', initializeGrid);
+            restartGameButton.addEventListener('click', () => {
+                gameOverOverlay.classList.add('hidden');
+                initializeGrid();
+            });
+            winNewGameButton.addEventListener('click', () => {
+                winOverlay.classList.add('hidden');
+                initializeGrid();
+            });
+            continueGameButton.addEventListener('click', () => {
+                winOverlay.classList.add('hidden');
+                // Game continues, win flag is already set
+            });
+
+            document.addEventListener('keydown', (event) => {
+                if (winOverlay.classList.contains('flex') || gameOverOverlay.classList.contains('flex')) {
+                     // If Enter is pressed on modal, click primary button
+                    if (event.key === 'Enter') {
+                        if (winOverlay.classList.contains('flex')) continueGameButton.click();
+                        else if (gameOverOverlay.classList.contains('flex')) restartGameButton.click();
+                    }
+                    return; // Don't process game moves if modal is open
+                }
+
+                switch (event.key) {
+                    case 'ArrowUp': move('up'); event.preventDefault(); break;
+                    case 'ArrowDown': move('down'); event.preventDefault(); break;
+                    case 'ArrowLeft': move('left'); event.preventDefault(); break;
+                    case 'ArrowRight': move('right'); event.preventDefault(); break;
+                }
+            });
+
+            let touchstartX = 0;
+            let touchstartY = 0;
+            let touchendX = 0;
+            let touchendY = 0;
+            const swipeThreshold = 30; // Min distance for swipe
+
+            const gameArea = document.getElementById('game-board-sizer'); // Listen on game board area
+
+            gameArea.addEventListener('touchstart', (event) => {
+                touchstartX = event.changedTouches[0].screenX;
+                touchstartY = event.changedTouches[0].screenY;
+                event.preventDefault(); // Prevent scrolling while swiping on game
+            }, { passive: false });
+            
+            gameArea.addEventListener('touchmove', (event) => {
+                event.preventDefault(); // Prevent scrolling while swiping on game
+            }, { passive: false });
+
+            gameArea.addEventListener('touchend', (event) => {
+                if (winOverlay.classList.contains('flex') || gameOverOverlay.classList.contains('flex')) {
+                    return; // Don't process game moves if modal is open
+                }
+                touchendX = event.changedTouches[0].screenX;
+                touchendY = event.changedTouches[0].screenY;
+                handleSwipeGesture();
+                event.preventDefault();
+            }, { passive: false });
+
+            function handleSwipeGesture() {
+                const deltaX = touchendX - touchstartX;
+                const deltaY = touchendY - touchstartY;
+
+                if (Math.abs(deltaX) > Math.abs(deltaY)) { // Horizontal swipe
+                    if (Math.abs(deltaX) > swipeThreshold) {
+                        move(deltaX > 0 ? 'right' : 'left');
+                    }
+                } else { // Vertical swipe
+                    if (Math.abs(deltaY) > swipeThreshold) {
+                        move(deltaY > 0 ? 'down' : 'up');
+                    }
+                }
+            }
+            
+            // Initial setup
+            initializeGrid();
+            
+            // Adjust board size and elements on resize for pixel-perfect calculations if needed
+            // For now, percentage-based styling should handle responsiveness adequately.
+            // window.addEventListener('resize', renderBoard); // Could be intensive
+        });
+    </script>
+
+</body>
+</html>

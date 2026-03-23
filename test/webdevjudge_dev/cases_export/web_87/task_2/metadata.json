@@ -1,0 +1,9 @@
+{
+  "web_id": "web_87",
+  "task_id": 2,
+  "task_type": "dynamic",
+  "instruction": "Task: Click a button labeled 'Simulate Remote Edit'.\nExpected Result: Predefined text (simulating another user's contribution) is inserted into the editor, and may be visually distinguished (e.g., a different cursor or selection indicating the remote source).\n\nNote: The task is only considered successful if the expected result is achieved; otherwise, it is deemed infeasible.",
+  "max_steps": 15,
+  "expected": "Predefined text (simulating another user's contribution) is inserted into the editor, and may be visually distinguished (e.g., a different cursor or selection indicating the remote source).",
+  "label": 1
+}

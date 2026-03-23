@@ -1,0 +1,9 @@
+{
+  "web_id": "web_11",
+  "task_id": 1,
+  "task_type": "dynamic",
+  "instruction": "Task: Click 'Next Month' or 'Previous Month' button in the calendar view.\nExpected Result: The calendar displays the corresponding month's dates and available time slots.\n\nNote: The task is only considered successful if the expected result is achieved; otherwise, it is deemed infeasible.",
+  "max_steps": 15,
+  "expected": "The calendar displays the corresponding month's dates and available time slots.",
+  "label": 0
+}

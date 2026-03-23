@@ -1,0 +1,9 @@
+{
+  "web_id": "web_79",
+  "task_id": 3,
+  "task_type": "dynamic",
+  "instruction": "Task: Drag the price slider for an existing item.\nExpected Result: The item's displayed current price, price difference percentage, and color-coded price change indicator update in real-time as the slider moves.\n\nNote: The task is only considered successful if the expected result is achieved; otherwise, it is deemed infeasible.",
+  "max_steps": 15,
+  "expected": "The item's displayed current price, price difference percentage, and color-coded price change indicator update in real-time as the slider moves.",
+  "label": 1
+}

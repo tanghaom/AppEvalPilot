@@ -1,0 +1,617 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Botaniq SuperApp - Enhanced Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <!-- <link rel="manifest" href="../manifest.json"> --> {/* Manifest link might require specific path setup */}
+
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700;800&display=swap');
+        body {
+            font-family: 'Montserrat', sans-serif;
+            overscroll-behavior-y: contain; /* Prevents pull-to-refresh on main body scroll */
+        }
+        /* Custom scrollbar for webkit browsers */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #f1f1f1;
+            border-radius: 10px;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #cbd5e1; /* slate-300 */
+            border-radius: 10px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8; /* slate-400 */
+        }
+        /* For the water wave */
+        #water-wave-path {
+            animation: wave 3s linear infinite;
+        }
+        @keyframes wave {
+            0% { transform: translateX(-100px); }
+            50% { transform: translateX(-150px); }
+            100% { transform: translateX(-100px); }
+        }
+    </style>
+    <script>
+      tailwind.config = {
+        theme: {
+          extend: {
+            colors: {
+              primary: { DEFAULT: '#10B981', hover: '#059669' }, // emerald-500, emerald-600
+              secondary: '#84CC16', // lime-500
+              accent: '#38BDF8', // sky-400
+              dark: '#1F2937', // gray-800
+              light: '#F9FAFB', // gray-50
+              pagebg: '#F3F4F6', // gray-100
+            },
+            fontFamily: {
+              sans: ['Montserrat', 'sans-serif'],
+            },
+            transitionTimingFunction: {
+                'in-out-sidebar': 'cubic-bezier(0.4, 0, 0.2, 1)',
+            }
+          }
+        }
+      }
+    </script>
+</head>
+<body class="bg-pagebg text-dark antialiased">
+    <div id="root"></div>
+
+    <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+
+    <script type="text/babel">
+        const { useState, useEffect, useRef, Fragment } = React;
+
+        // --- Icon Components ---
+        const LeafIcon = ({ className = "w-8 h-8" }) => (
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className={className}>
+                <path d="M11.25 6a1.75 1.75 0 0 1 3.5 0v1.75c0 .54.161 1.052.44 1.489.28.437.664.807 1.11 1.093.447.285.955.448 1.479.496C18.716 10.9 19.5 11.728 19.5 12.75c0 1.291-.99 2.437-2.34 2.627-.537.082-1.039.306-1.447.632-.408.327-.718.768-.887 1.256-.17.489-.226 1.016-.226 1.499V21a.75.75 0 0 1-1.5 0v-2.236a3.493 3.493 0 0 1 .176-1.11c.13-.37.34-.708.613-.99.272-.283.592-.506.936-.658.343-.152.703-.237 1.066-.25A1.234 1.234 0 0 0 16.5 14.25c0-.497-.327-.938-.798-1.159-.292-.137-.601-.22-.91-.253-.31-.033-.617-.122-.907-.264-.29-.143-.55-.34-.768-.582a3.994 3.994 0 0 1-.686-3.02V6Z" />
+                <path d="M5.25 6A1.75 1.75 0 0 1 7 6v1.75c0 .54.161 1.052.44 1.489.28.437.664.807 1.11 1.093.447.285.955.448 1.479.496.937.111 1.716.839 1.716 1.792 0 1.291-.99 2.437-2.34 2.627-.537.082-1.039.306-1.447.632-.408.327-.718.768-.887 1.256-.17.489-.226 1.016-.226 1.499V21a.75.75 0 0 1-1.5 0v-2.236A3.493 3.493 0 0 1 4.08 17.654c.13-.37.34-.708.613-.99.272-.283.592-.506.936-.658.343-.152.703-.237 1.066-.25A1.234 1.234 0 0 0 8.004 14.25c0-.497-.327-.938-.798-1.159-.292-.137-.601-.22-.91-.253-.31-.033-.617-.122-.907-.264-.29-.143-.55-.34-.768-.582a3.994 3.994 0 0 1-.686-3.02V6Z" />
+            </svg>
+        );
+
+        const UserIcon = () => <i className="fa-solid fa-user-circle text-3xl text-slate-500"></i>;
+        const MenuIcon = () => <i className="fa-solid fa-bars text-2xl text-slate-700"></i>;
+        const CloseIcon = () => <i className="fa-solid fa-times text-2xl text-slate-100"></i>;
+
+        // --- App Structure Components ---
+        function App() {
+            const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+            const [warning, setWarning] = useState({ show: false, message: "Pot is Offline. Check Device Connection." });
+            const [lastUpdate, setLastUpdate] = useState("Connecting to IoT...");
+
+            const toggleSidebar = () => setIsSidebarOpen(!isSidebarOpen);
+
+            // Mock IoT update
+            useEffect(() => {
+                const intervalId = setInterval(() => {
+                    setLastUpdate(new Date().toLocaleTimeString());
+                }, 5000);
+                return () => clearInterval(intervalId);
+            }, []);
+
+            // Mock warning toggle (can be triggered by some other logic)
+            useEffect(() => {
+                // setTimeout(() => setWarning(prev => ({ ...prev, show: true })), 3000); // Example: show warning after 3s
+            }, []);
+            
+            // Close sidebar on click outside
+            const sidebarRef = useRef(null);
+            const headerToggleRef = useRef(null);
+
+            useEffect(() => {
+                function handleClickOutside(event) {
+                    if (isSidebarOpen && sidebarRef.current && !sidebarRef.current.contains(event.target) && headerToggleRef.current && !headerToggleRef.current.contains(event.target)) {
+                        setIsSidebarOpen(false);
+                    }
+                }
+                document.addEventListener("mousedown", handleClickOutside);
+                return () => document.removeEventListener("mousedown", handleClickOutside);
+            }, [isSidebarOpen]);
+
+
+            return (
+                <div className="flex flex-col min-h-screen">
+                    <Header onToggleSidebar={toggleSidebar} headerToggleRef={headerToggleRef} />
+                    <Sidebar isOpen={isSidebarOpen} onClose={toggleSidebar} sidebarRef={sidebarRef} />
+                    
+                    <MainContent showWarning={warning.show} warningMessage={warning.message} />
+                    
+                    <Footer lastUpdate={lastUpdate} />
+                    <BottomNav />
+                </div>
+            );
+        }
+
+        function Header({ onToggleSidebar, headerToggleRef }) {
+            return (
+                <header className="bg-white shadow-md sticky top-0 z-40">
+                    <div className="container mx-auto px-4 h-16 flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                            <LeafIcon className="w-7 h-7 text-primary" />
+                            <h1 className="text-xl font-bold text-slate-800">
+                                <span className="text-primary">Botaniq</span> Home
+                            </h1>
+                        </div>
+                        <button ref={headerToggleRef} onClick={onToggleSidebar} className="p-2 rounded-md hover:bg-slate-100 focus:outline-none focus:ring-2 focus:ring-primary">
+                            <MenuIcon />
+                        </button>
+                    </div>
+                </header>
+            );
+        }
+
+        function Sidebar({ isOpen, onClose, sidebarRef }) {
+            const sidebarItems = [
+                { icon: "fa-cog", text: "Settings" },
+                { icon: "fa-sliders-h", text: "Device Config" },
+                { icon: "fa-robot", text: "AI Panel" },
+                { icon: "fa-box-open", text: "Features" },
+            ];
+            const botaniqCentreItems = [
+                { icon: "fa-question-circle", text: "FAQ" },
+                { icon: "fa-info-circle", text: "About Botaniq" },
+                { icon: "fa-file-alt", text: "Proposals" },
+            ];
+
+            return (
+                <>
+                    {/* Overlay */}
+                    {isOpen && <div className="fixed inset-0 bg-black/50 z-40 transition-opacity duration-300" onClick={onClose}></div>}
+                    
+                    <aside 
+                        ref={sidebarRef}
+                        className={`fixed top-0 left-0 w-72 h-full bg-dark text-white shadow-xl z-50 transform transition-transform duration-300 ease-in-out-sidebar ${isOpen ? "translate-x-0" : "-translate-x-full"}`}
+                    >
+                        <div className="flex flex-col h-full">
+                            <div className="flex items-center justify-between p-4 border-b border-slate-700">
+                                <div className="flex items-center gap-2">
+                                    <LeafIcon className="w-7 h-7 text-primary" />
+                                    <span className="font-bold text-lg">Botaniq SuperApp</span>
+                                </div>
+                                <button onClick={onClose} className="p-2 rounded-md hover:bg-slate-700">
+                                   <CloseIcon />
+                                </button>
+                            </div>
+
+                            <nav className="flex-grow p-4 space-y-2 overflow-y-auto">
+                                {sidebarItems.map(item => (
+                                    <SidebarButton key={item.text} icon={item.icon} text={item.text} />
+                                ))}
+                                <div className="pt-4 mt-4 border-t border-slate-700">
+                                    <p className="px-3 py-2 text-xs font-semibold text-slate-400 uppercase">Botaniq Centre</p>
+                                    {botaniqCentreItems.map(item => (
+                                        <SidebarButton key={item.text} icon={item.icon} text={item.text} />
+                                    ))}
+                                </div>
+                            </nav>
+
+                            <div className="p-4 border-t border-slate-700">
+                                <a href="#" className="flex items-center gap-3 p-3 rounded-lg hover:bg-slate-700 transition-colors">
+                                    <img src="https://via.placeholder.com/150/E0E7FF/818CF8?Text=User" alt="User Profile" className="rounded-full w-10 h-10 border-2 border-primary" />
+                                    <div>
+                                        <div className="font-semibold text-sm">Cattleya</div>
+                                        <div className="text-xs text-slate-400">Prototyper</div>
+                                    </div>
+                                    <i className="fas fa-sign-out-alt ml-auto text-slate-400 hover:text-white"></i>
+                                </a>
+                            </div>
+                        </div>
+                    </aside>
+                </>
+            );
+        }
+
+        const SidebarButton = ({ icon, text }) => (
+            <button className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-slate-200 hover:bg-primary hover:text-white transition-colors duration-200">
+                <i className={`fas ${icon} w-5 text-center`}></i>
+                <span className="font-medium text-sm">{text}</span>
+            </button>
+        );
+
+        function MainContent({ showWarning, warningMessage }) {
+            const initialSensorData = [
+                { id: 'temp', label: "Temperature", value: 24, unit: "°C", icon: "fa-thermometer-half", color: "text-accent", statusIcon: "fa-check-circle", statusColor: "text-green-500", statusText: "Optimal" },
+                { id: 'humidity', label: "Humidity", value: 60, unit: "%", icon: "fa-tint", color: "text-blue-500", statusIcon: "fa-check-circle", statusColor: "text-green-500", statusText: "Good" },
+                { id: 'soil', label: "Soil Moisture", value: 75, unit: "%", icon: "fa-seedling", color: "text-yellow-600", statusIcon: "fa-check-circle", statusColor: "text-green-500", statusText: "Moist" },
+            ];
+            const [sensorData, setSensorData] = useState(initialSensorData);
+
+            // Mock sensor data updates
+            useEffect(() => {
+                const interval = setInterval(() => {
+                    setSensorData(prevData => prevData.map(sensor => ({
+                        ...sensor,
+                        value: sensor.id === 'temp' ? Math.floor(Math.random() * 5 + 20) : Math.floor(Math.random() * 20 + 55),
+                    })));
+                }, 3000);
+                return () => clearInterval(interval);
+            }, []);
+
+            return (
+                <main className="flex-grow container mx-auto p-4 lg:p-6 space-y-6 mb-24"> {/* mb-24 for bottom nav space */}
+                    {showWarning && <WarningSign message={warningMessage} />}
+                    
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                        {sensorData.map(data => (
+                            <SensorCard key={data.id} {...data} />
+                        ))}
+                    </div>
+
+                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                        <div className="lg:col-span-2">
+                             <WeatherWidget />
+                        </div>
+                        <WaterTankWidget />
+                    </div>
+                    
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                       <PlantSpotlightWidget />
+                       <QuickControlsWidget />
+                       <PlantCareRemindersWidget />
+                    </div>
+                     
+                    <div className="grid grid-cols-1 md:grid-cols-1 lg:grid-cols-2 gap-6">
+                        <GrowthJournalWidget />
+                        <ArticleSnippetWidget />
+                    </div>
+
+                </main>
+            );
+        }
+
+        function WarningSign({ message }) {
+            return (
+                <div className="p-4 bg-yellow-400 border border-yellow-500 rounded-xl shadow-lg text-center flex items-center justify-center gap-3 text-yellow-800">
+                    <i className="fas fa-exclamation-triangle text-xl"></i>
+                    <span className="font-semibold">{message}</span>
+                </div>
+            );
+        }
+        
+        function Footer({ lastUpdate }) {
+            return (
+                <div className="bg-white text-slate-600 rounded-lg p-3 mx-4 mb-20 shadow-md text-xs fixed bottom-0 left-0 right-0 md:relative md:mb-0 z-10">
+                    <span>Last update: </span>
+                    <span id="last-waktu" className="font-semibold">{lastUpdate}</span>
+                </div>
+            );
+        }
+
+        function BottomNav() {
+            const navItems = [
+                { href: "#charts", icon: "fa-chart-line", label: "Charts", color: "text-blue-500" },
+                { href: "#ai", icon: "fa-robot", label: "AI", color: "text-green-500" },
+                { href: "#home", icon: "fa-home", label: "Home", color: "text-yellow-500", isCentral: true },
+                { href: "#articles", icon: "fa-book-open", label: "Articles", color: "text-red-500" },
+                { href: "#profile", icon: "fa-user", label: "Profile", color: "text-purple-500" },
+            ];
+
+            return (
+                <nav className="fixed bottom-0 left-0 right-0 bg-white shadow-[-2px_0px_10px_rgba(0,0,0,0.1)] p-2 z-30 border-t border-slate-200">
+                    <div className="container mx-auto grid grid-cols-5 gap-1">
+                        {navItems.map(item => (
+                            <a key={item.label} href={item.href} className="flex flex-col items-center justify-center p-2 rounded-lg hover:bg-slate-100 transition-colors group">
+                                <i className={`fas ${item.icon} ${item.isCentral ? 'text-3xl mb-0.5' : 'text-xl'} ${item.color} group-hover:scale-110 transition-transform`}></i>
+                                {!item.isCentral && <span className="text-xs mt-1 text-slate-600 font-medium group-hover:text-primary">{item.label}</span>}
+                                {item.isCentral && <span className="text-xs mt-1 text-slate-600 font-bold group-hover:text-primary">Home</span>}
+                            </a>
+                        ))}
+                    </div>
+                </nav>
+            );
+        }
+
+        // --- Widget Components ---
+        const DashboardCard = ({ title, children, icon, className = "" }) => (
+            <div className={`bg-white rounded-xl shadow-lg p-5 flex flex-col ${className}`}>
+                {title && (
+                    <div className="flex items-center text-slate-700 mb-3 pb-3 border-b border-slate-200">
+                        {icon && <i className={`fas ${icon} mr-2 text-primary`}></i>}
+                        <h3 className="font-semibold text-md">{title}</h3>
+                    </div>
+                )}
+                <div className="flex-grow">
+                    {children}
+                </div>
+            </div>
+        );
+        
+        function SensorCard({ label, value, unit, icon, color, statusIcon, statusColor, statusText }) {
+            return (
+                <DashboardCard className="text-center items-center">
+                    <div className={`text-5xl font-bold ${color} mb-2 flex items-baseline justify-center`}>
+                        {value}
+                        <span className="text-2xl ml-1">{unit}</span>
+                    </div>
+                    <div className="flex items-center text-sm text-slate-600 mb-2">
+                        <i className={`fas ${icon} ${color} mr-2 text-lg`}></i>
+                        <span>{label}</span>
+                    </div>
+                    <div className={`flex items-center text-xs font-medium ${statusColor}`}>
+                        <i className={`fas ${statusIcon} mr-1`}></i>
+                        <span>{statusText}</span>
+                    </div>
+                </DashboardCard>
+            );
+        }
+
+        function WeatherWidget() {
+            const [weather, setWeather] = useState({
+                current: { temp: 22, condition: "Partly Cloudy", icon: "fa-cloud-sun", city: "Botaniq City" },
+                forecast: [
+                    { day: "Mon", temp: 24, icon: "fa-sun" },
+                    { day: "Tue", temp: 23, icon: "fa-cloud-showers-heavy" },
+                    { day: "Wed", temp: 25, icon: "fa-sun" },
+                ]
+            });
+
+            // Mock weather data update
+            useEffect(() => {
+              const conditions = ["Sunny", "Partly Cloudy", "Cloudy", "Rainy"];
+              const icons = ["fa-sun", "fa-cloud-sun", "fa-cloud", "fa-cloud-showers-heavy"];
+              const interval = setInterval(() => {
+                const newCondIndex = Math.floor(Math.random() * conditions.length);
+                setWeather(prev => ({
+                  ...prev,
+                  current: {
+                    ...prev.current,
+                    temp: Math.floor(Math.random() * 10 + 18), // Temp between 18-27
+                    condition: conditions[newCondIndex],
+                    icon: icons[newCondIndex],
+                  },
+                  forecast: prev.forecast.map(f => ({
+                    ...f,
+                    temp: Math.floor(Math.random() * 8 + 20) // Forecast temp 20-27
+                  }))
+                }));
+              }, 10000); // Update every 10 seconds
+              return () => clearInterval(interval);
+            }, []);
+
+            return (
+                <DashboardCard title="Weather Overview" icon="fa-cloud-sun-rain">
+                    <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+                        <div className="text-center sm:text-left">
+                            <p className="text-slate-500 text-sm">{weather.current.city}</p>
+                            <div className="flex items-center justify-center sm:justify-start gap-2 my-1">
+                                <i className={`fas ${weather.current.icon} text-4xl text-accent`}></i>
+                                <span className="text-5xl font-bold text-slate-700">{weather.current.temp}°C</span>
+                            </div>
+                            <p className="text-slate-600">{weather.current.condition}</p>
+                        </div>
+                        <div className="flex gap-3 sm:gap-4 pt-4 sm:pt-0 border-t sm:border-t-0 sm:border-l border-slate-200 sm:pl-4 w-full sm:w-auto justify-around">
+                            {weather.forecast.map(f => (
+                                <div key={f.day} className="text-center">
+                                    <p className="font-semibold text-sm text-slate-700">{f.day}</p>
+                                    <i className={`fas ${f.icon} text-2xl my-1.5 text-slate-500`}></i>
+                                    <p className="text-sm text-slate-600">{f.temp}°</p>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                </DashboardCard>
+            );
+        }
+        
+        function WaterTankWidget() {
+            const [waterLevel, setWaterLevel] = useState(65); // Percentage
+
+            // Mock water level change
+            useEffect(() => {
+                const interval = setInterval(() => {
+                    setWaterLevel(prev => (prev > 10 ? prev - Math.floor(Math.random()*3+1) : 80 + Math.floor(Math.random()*10) )); // Decrease or refill
+                }, 4000);
+                return () => clearInterval(interval);
+            }, []);
+            
+            const waveHeight = (100 - waterLevel); // percentage from top
+
+            return (
+                <DashboardCard title="Water Tank Level" icon="fa-water" className="h-full">
+                    <div className="relative w-full h-40 bg-slate-200 rounded-lg overflow-hidden">
+                        <svg viewBox="0 0 300 150" preserveAspectRatio="none" className="absolute bottom-0 left-0 w-full h-full">
+                            <defs>
+                                <pattern id="wavePattern" x="0" y="0" width="200" height="150" patternUnits="userSpaceOnUse">
+                                    <path id="water-wave-path" d="M 0 80 Q 50 40, 100 80 T 200 80 V 150 H 0 Z" fill="rgba(56, 189, 248, 0.7)" />
+                                    <path d="M 0 80 Q 50 40, 100 80 T 200 80 V 150 H 0 Z" fill="rgba(56, 189, 248, 0.4)" style={{transform: 'translate(50px, 5px)'}} />
+                                </pattern>
+                            </defs>
+                            <rect x="0" y={150 * (waveHeight/100)} width="300" height={150 * (waterLevel/100)} fill="url(#wavePattern)" />
+                        </svg>
+                         <div className="absolute inset-0 flex flex-col items-center justify-center text-slate-700">
+                            <i className="fas fa-tint text-3xl text-sky-600 mb-1"></i>
+                            <span className="text-3xl font-bold">{waterLevel}%</span>
+                            <span className="text-xs font-medium">Full</span>
+                        </div>
+                    </div>
+                </DashboardCard>
+            );
+        }
+
+        function ArticleSnippetWidget() {
+            return (
+                <DashboardCard title="Latest Insights" icon="fa-newspaper">
+                    <div className="space-y-3">
+                        <h4 className="font-semibold text-md text-primary">Love Blossoms Like Flowers</h4>
+                        <p className="text-sm text-slate-600 leading-relaxed line-clamp-3">
+                            Our love feels like a garden in bloom, and every plant I see reminds me of you. Just like flowers, you bring color and beauty into my life, making everything around us a little more magical. I love how, with...
+                        </p>
+                        <a href="#" className="text-sm text-primary hover:underline font-medium">Read More <i className="fas fa-arrow-right text-xs ml-1"></i></a>
+                    </div>
+                </DashboardCard>
+            );
+        }
+
+        // --- New Feature Widgets ---
+        function PlantSpotlightWidget() {
+            const [spotlight, setSpotlight] = useState({
+                name: "Monstera Deliciosa",
+                fact: "Also known as the Swiss Cheese Plant.",
+                imagePlaceholder: true // Using a placeholder div
+            });
+            return (
+                <DashboardCard title="Plant Spotlight" icon="fa-star">
+                    <div className="flex flex-col items-center text-center">
+                        {spotlight.imagePlaceholder ? (
+                             <div className="bg-gradient-to-br from-green-300 to-emerald-400 border-2 border-dashed border-emerald-500 rounded-xl w-full h-32 flex items-center justify-center mb-3">
+                                <LeafIcon className="w-16 h-16 text-white opacity-70" />
+                             </div>
+                        ) : (
+                            <img src={spotlight.imageUrl} alt={spotlight.name} className="w-full h-32 object-cover rounded-lg mb-3" />
+                        )}
+                        <h4 className="font-semibold text-md text-slate-700">{spotlight.name}</h4>
+                        <p className="text-xs text-slate-500 mt-1">{spotlight.fact}</p>
+                        <button className="mt-3 text-xs bg-primary text-white px-3 py-1.5 rounded-md hover:bg-primary-hover transition-colors">
+                            Learn More
+                        </button>
+                    </div>
+                </DashboardCard>
+            );
+        }
+
+        function QuickControlsWidget() {
+            const [controls, setControls] = useState([
+                { id: 1, name: "Grow Lights", status: true, icon: "fa-lightbulb" },
+                { id: 2, name: "Irrigation", status: false, icon: "fa-faucet-drip" },
+                { id: 3, name: "Ventilation Fan", status: true, icon: "fa-fan" },
+            ]);
+
+            const toggleControl = (id) => {
+                setControls(prevControls => 
+                    prevControls.map(c => c.id === id ? { ...c, status: !c.status } : c)
+                );
+            };
+
+            return (
+                <DashboardCard title="Quick Controls" icon="fa-toggle-on">
+                    <div className="space-y-3">
+                        {controls.map(control => (
+                            <div key={control.id} className="flex items-center justify-between p-2 bg-slate-50 rounded-lg hover:bg-slate-100">
+                                <div className="flex items-center">
+                                    <i className={`fas ${control.icon} mr-3 w-5 text-center ${control.status ? 'text-primary' : 'text-slate-400'}`}></i>
+                                    <span className="text-sm text-slate-700 font-medium">{control.name}</span>
+                                </div>
+                                <button 
+                                    onClick={() => toggleControl(control.id)}
+                                    className={`relative inline-flex items-center h-6 rounded-full w-11 transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary ${control.status ? 'bg-primary' : 'bg-slate-300'}`}
+                                >
+                                    <span className={`inline-block w-4 h-4 transform bg-white rounded-full transition-transform duration-200 ease-in-out ${control.status ? 'translate-x-6' : 'translate-x-1'}`} />
+                                </button>
+                            </div>
+                        ))}
+                    </div>
+                </DashboardCard>
+            );
+        }
+
+        function PlantCareRemindersWidget() {
+            const [reminders, setReminders] = useState([
+                { id: 1, plantName: "Monstera", task: "Water", dueDate: "Tomorrow", icon: "fa-tint" },
+                { id: 2, plantName: "Orchid", task: "Fertilize", dueDate: "In 3 days", icon: "fa-flask-vial" },
+                { id: 3, plantName: "Snake Plant", task: "Check Soil", dueDate: "Today", icon: "fa-magnifying-glass" },
+            ]);
+             return (
+                <DashboardCard title="Care Reminders" icon="fa-calendar-check">
+                    <ul className="space-y-2.5">
+                        {reminders.map(reminder => (
+                            <li key={reminder.id} className="flex items-center p-2.5 bg-slate-50 rounded-lg hover:bg-slate-100 transition-colors">
+                                <i className={`fas ${reminder.icon} text-primary w-5 text-center mr-3`}></i>
+                                <div className="flex-grow">
+                                    <p className="text-sm font-medium text-slate-700">{reminder.task} <span className="text-slate-500 font-normal">- {reminder.plantName}</span></p>
+                                    <p className="text-xs text-slate-500">{reminder.dueDate}</p>
+                                </div>
+                                <button className="text-xs text-slate-400 hover:text-primary">
+                                    <i className="fas fa-check-circle"></i> Done
+                                </button>
+                            </li>
+                        ))}
+                    </ul>
+                     <button className="mt-4 w-full text-sm bg-primary/10 text-primary px-4 py-2 rounded-md hover:bg-primary/20 transition-colors font-medium">
+                        <i className="fas fa-plus mr-1"></i> Add Reminder
+                    </button>
+                </DashboardCard>
+            );
+        }
+        
+        function GrowthJournalWidget() {
+            const [entries, setEntries] = useState([
+                { id: 1, plantName: "Fiddle Leaf Fig", date: "2024-07-20", note: "New leaf unfurling! Looking healthy.", imagePlaceholder: false },
+                { id: 2, plantName: "Pothos", date: "2024-07-18", note: "Repotted into a larger container. Added fresh soil.", imagePlaceholder: true },
+            ]);
+             const [selectedPlant, setSelectedPlant] = useState("Fiddle Leaf Fig"); // Mock selection
+
+            return (
+                <DashboardCard title="Growth Journal" icon="fa-book-medical">
+                    <div className="mb-3">
+                        <label htmlFor="plant-select" className="block text-xs font-medium text-slate-500 mb-1">Select Plant:</label>
+                        <select 
+                            id="plant-select" 
+                            value={selectedPlant} 
+                            onChange={(e) => setSelectedPlant(e.target.value)}
+                            className="w-full p-2 border border-slate-300 rounded-md text-sm focus:ring-primary focus:border-primary"
+                        >
+                            <option>Fiddle Leaf Fig</option>
+                            <option>Pothos</option>
+                            <option>ZZ Plant</option>
+                        </select>
+                    </div>
+                    <div className="space-y-3 max-h-60 overflow-y-auto pr-1">
+                        {entries.filter(e => e.plantName === selectedPlant).map(entry => (
+                            <div key={entry.id} className="p-3 bg-slate-50 rounded-lg">
+                                <div className="flex justify-between items-start">
+                                    <div>
+                                        <p className="text-xs text-slate-500">{entry.date}</p>
+                                        <p className="text-sm text-slate-700 mt-0.5">{entry.note}</p>
+                                    </div>
+                                    {entry.imagePlaceholder ? (
+                                        <div className="bg-slate-200 border-2 border-dashed border-slate-300 rounded-md w-12 h-12 flex items-center justify-center ml-2 flex-shrink-0">
+                                            <i className="fas fa-image text-slate-400"></i>
+                                        </div>
+                                    ) : <img src="https://via.placeholder.com/48/A7F3D0/14532D?Text=Plant" alt="growth" className="w-12 h-12 rounded-md object-cover ml-2 flex-shrink-0"/>}
+                                </div>
+                            </div>
+                        ))}
+                        {entries.filter(e => e.plantName === selectedPlant).length === 0 && (
+                            <p className="text-sm text-slate-500 text-center py-4">No journal entries for {selectedPlant} yet.</p>
+                        )}
+                    </div>
+                    <button className="mt-4 w-full text-sm bg-primary/10 text-primary px-4 py-2 rounded-md hover:bg-primary/20 transition-colors font-medium">
+                        <i className="fas fa-plus mr-1"></i> Add New Entry
+                    </button>
+                </DashboardCard>
+            );
+        }
+        
+        // --- Initialize React App ---
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+
+        /*
+        // Service Worker registration (commented out for single-file simplicity, requires external file)
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('../PWA/service-worker.js') // This path needs to be correct relative to the HTML file if used
+            .then(registration => {
+                console.log('Service Worker registered with scope:', registration.scope);
+            })
+            .catch(error => {
+                console.error('Service Worker registration failed:', error);
+            });
+        }
+        */
+    </script>
+</body>
+</html>

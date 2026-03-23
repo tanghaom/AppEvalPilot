@@ -1,0 +1,9 @@
+{
+  "web_id": "web_94",
+  "task_id": 5,
+  "task_type": "dynamic",
+  "instruction": "Task: Click a font size adjustment button (e.g., 'Increase Font' or 'Decrease Font').\nExpected Result: The font size of the main readable content (e.g., law text, foreword) changes accordingly.\n\nNote: The task is only considered successful if the expected result is achieved; otherwise, it is deemed infeasible.",
+  "max_steps": 15,
+  "expected": "The font size of the main readable content (e.g., law text, foreword) changes accordingly.",
+  "label": 0
+}

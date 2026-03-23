@@ -1,0 +1,9 @@
+{
+  "web_id": "web_92",
+  "task_id": 1,
+  "task_type": "dynamic",
+  "instruction": "Task: Initiate a new invoice creation process (e.g., by clicking 'Create New Invoice' button) and select an existing client from a dropdown list on the invoice form.\nExpected Result: A new invoice form is displayed, populated with the selected client's information.\n\nNote: The task is only considered successful if the expected result is achieved; otherwise, it is deemed infeasible.",
+  "max_steps": 15,
+  "expected": "A new invoice form is displayed, populated with the selected client's information.",
+  "label": 1
+}

@@ -1,0 +1,542 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Steam Store UI Clone</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        /* Custom scrollbar for a more Steam-like feel */
+        ::-webkit-scrollbar {
+            width: 12px;
+            height: 12px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #171a21; /* steam-darker-blue */
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #2a475e; /* steam-element-blue */
+            border-radius: 6px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #3a5f7e; /* Lighter version of thumb */
+        }
+        body {
+            font-family: 'Arial', 'Helvetica', sans-serif; /* Steam uses Motiva Sans, Arial is a fallback */
+        }
+        /* Custom text shadow utilities as Tailwind doesn't have them by default */
+        .text-shadow-sm { text-shadow: 1px 1px 2px rgba(0,0,0,0.5); }
+        .text-shadow-md { text-shadow: 2px 2px 4px rgba(0,0,0,0.7); }
+
+        /* Fix for FontAwesome icons sometimes being too large or misaligned */
+        .fa, .fas, .far, .fal, .fab {
+            line-height: inherit;
+        }
+    </style>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        'steam-dark-blue': '#1b2838',      // Main background
+                        'steam-darker-blue': '#171a21',   // Header, footer, darker elements
+                        'steam-light-blue': '#66c0f4',    // Accent, links, highlights
+                        'steam-text-gray': '#c7d5e0',     // Main text
+                        'steam-text-light-gray': '#acb2b8',// Softer text, subtitles
+                        'steam-element-blue': '#2a475e',  // UI elements, card backgrounds
+                        'steam-hover-blue': '#3a5f7e',    // Hover state for elements
+                        'steam-green': '#78b920',         // Sales, positive actions
+                        'steam-dark-green': '#5c7e10',    // Background for sale tags
+                        'steam-button-blue': '#203141',
+                        'steam-button-hover-blue': '#294158',
+                        'steam-input-bg': '#101d2b',      // Input field background
+                    },
+                    spacing: {
+                        '128': '32rem', // 512px
+                        '144': '36rem', // 576px
+                    },
+                    maxHeight: {
+                        '128': '32rem',
+                        '144': '36rem',
+                    },
+                    borderRadius: {
+                        'sm': '0.125rem', // 2px
+                        'md': '0.25rem',  // 4px
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+<body class="bg-steam-dark-blue text-steam-text-gray">
+
+    <!-- Header -->
+    <header class="bg-steam-darker-blue sticky top-0 z-50 shadow-lg">
+        <div class="max-w-screen-xl mx-auto px-4 py-3 flex items-center justify-between">
+            <!-- Left Side: Logo and Main Nav -->
+            <div class="flex items-center space-x-6 md:space-x-8">
+                <a href="#" class="text-2xl font-bold text-white flex items-center">
+                    <svg width="36" height="36" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg" class="inline-block mr-2 h-7 w-7 md:h-9 md:w-9">
+                        <circle cx="50" cy="50" r="45" fill="#2a475e"/>
+                        <circle cx="50" cy="50" r="35" fill="#1b2838"/>
+                        <path d="M62 35C56.4772 35 52 39.4772 52 45V55C52 60.5228 56.4772 65 62 65C67.5228 65 72 60.5228 72 55V45C72 39.4772 67.5228 35 62 35ZM62 58C60.3431 58 59 56.6569 59 55V45C59 43.3431 60.3431 42 62 42C63.6569 42 65 43.3431 65 45V55C65 56.6569 63.6569 58 62 58Z" fill="#66c0f4"/>
+                        <path d="M38 60C32.4772 60 28 55.5228 28 50C28 44.4772 32.4772 40 38 40H48C53.5228 40 58 44.4772 58 50C58 55.5228 53.5228 60 48 60H38ZM38 43C34.134 43 31 46.134 31 50C31 53.866 34.134 57 38 57H48C51.866 57 55 53.866 55 50C55 46.134 51.866 43 48 43H38Z" fill="#c7d5e0"/>
+                    </svg>
+                    <span class="hidden md:inline text-xl md:text-2xl">STEAM</span>
+                </a>
+
+                <nav class="hidden lg:flex space-x-5 uppercase text-sm tracking-wider">
+                    <div class="relative" id="storeDropdownContainer">
+                        <button type="button" class="text-steam-text-gray hover:text-white transition-colors duration-200 focus:outline-none" onclick="toggleDropdown('storeDropdown')">STORE</button>
+                        <div id="storeDropdown" class="hidden absolute top-full left-0 mt-2 bg-steam-darker-blue shadow-xl rounded-sm py-2 w-56 z-20 border border-steam-element-blue">
+                            <a href="#" class="block px-4 py-2 text-sm text-steam-text-light-gray hover:bg-steam-element-blue hover:text-white">Featured</a>
+                            <a href="#" class="block px-4 py-2 text-sm text-steam-text-light-gray hover:bg-steam-element-blue hover:text-white">Discovery Queue</a>
+                            <a href="#" class="block px-4 py-2 text-sm text-steam-text-light-gray hover:bg-steam-element-blue hover:text-white">Wishlist</a>
+                            <a href="#" class="block px-4 py-2 text-sm text-steam-text-light-gray hover:bg-steam-element-blue hover:text-white">Points Shop</a>
+                            <a href="#" class="block px-4 py-2 text-sm text-steam-text-light-gray hover:bg-steam-element-blue hover:text-white">News</a>
+                            <a href="#" class="block px-4 py-2 text-sm text-steam-text-light-gray hover:bg-steam-element-blue hover:text-white">Stats</a>
+                        </div>
+                    </div>
+                    <a href="#" class="text-steam-text-gray hover:text-white transition-colors duration-200">LIBRARY</a>
+                    <a href="#" class="text-steam-text-gray hover:text-white transition-colors duration-200">COMMUNITY</a>
+                    <div class="relative" id="userDropdownContainer">
+                        <button type="button" class="text-steam-text-gray hover:text-white transition-colors duration-200 focus:outline-none" onclick="toggleDropdown('userDropdown')">USERNAME</button>
+                         <div id="userDropdown" class="hidden absolute top-full left-0 mt-2 bg-steam-darker-blue shadow-xl rounded-sm py-2 w-56 z-20 border border-steam-element-blue">
+                            <a href="#" class="block px-4 py-2 text-sm text-steam-text-light-gray hover:bg-steam-element-blue hover:text-white">Activity</a>
+                            <a href="#" class="block px-4 py-2 text-sm text-steam-text-light-gray hover:bg-steam-element-blue hover:text-white">Profile</a>
+                            <a href="#" class="block px-4 py-2 text-sm text-steam-text-light-gray hover:bg-steam-element-blue hover:text-white">Friends</a>
+                            <hr class="border-steam-element-blue my-1">
+                            <a href="#" class="block px-4 py-2 text-sm text-steam-text-light-gray hover:bg-steam-element-blue hover:text-white">Logout</a>
+                        </div>
+                    </div>
+                </nav>
+            </div>
+
+            <!-- Right Side: Install, Language, Login -->
+            <div class="flex items-center space-x-3 md:space-x-4">
+                <a href="#" class="bg-steam-green hover:bg-opacity-80 text-white text-xs px-2 py-1 md:px-3 md:py-1 rounded-sm flex items-center space-x-1 transition-colors">
+                    <i class="fas fa-download text-xs"></i>
+                    <span class="hidden sm:inline">Install Steam</span>
+                </a>
+                <a href="#" class="text-xs text-steam-text-light-gray hover:text-white">login</a>
+                <span class="text-xs text-steam-text-light-gray">|</span>
+                <div class="relative" id="languageDropdownContainer">
+                    <button type="button" class="text-xs text-steam-text-light-gray hover:text-white flex items-center focus:outline-none" onclick="toggleDropdown('languageDropdown')">
+                        language <i class="fas fa-caret-down text-xs ml-1"></i>
+                    </button>
+                    <div id="languageDropdown" class="hidden absolute top-full right-0 mt-2 bg-steam-darker-blue shadow-xl rounded-sm py-2 w-40 z-20 border border-steam-element-blue">
+                        <a href="#" class="block px-4 py-2 text-sm text-steam-text-light-gray hover:bg-steam-element-blue hover:text-white">English</a>
+                        <a href="#" class="block px-4 py-2 text-sm text-steam-text-light-gray hover:bg-steam-element-blue hover:text-white">Español</a>
+                        <a href="#" class="block px-4 py-2 text-sm text-steam-text-light-gray hover:bg-steam-element-blue hover:text-white">Français</a>
+                    </div>
+                </div>
+                <button class="lg:hidden text-steam-text-gray hover:text-white focus:outline-none" id="mobileMenuButton" onclick="toggleMobileMenu()">
+                    <i class="fas fa-bars text-xl"></i>
+                </button>
+            </div>
+        </div>
+        <!-- Mobile Menu -->
+        <div id="mobileMenu" class="hidden lg:hidden bg-steam-darker-blue/95 border-t border-steam-element-blue">
+            <a href="#" class="block px-4 py-3 text-steam-text-gray hover:bg-steam-element-blue hover:text-white transition-colors">STORE</a>
+            <div class="pl-4 border-l-2 border-steam-element-blue ml-4">
+                 <a href="#" class="block px-4 py-2 text-sm text-steam-text-light-gray hover:bg-steam-element-blue hover:text-white">Featured</a>
+                 <a href="#" class="block px-4 py-2 text-sm text-steam-text-light-gray hover:bg-steam-element-blue hover:text-white">Discovery Queue</a>
+                 <a href="#" class="block px-4 py-2 text-sm text-steam-text-light-gray hover:bg-steam-element-blue hover:text-white">Wishlist</a>
+            </div>
+            <a href="#" class="block px-4 py-3 text-steam-text-gray hover:bg-steam-element-blue hover:text-white transition-colors">LIBRARY</a>
+            <a href="#" class="block px-4 py-3 text-steam-text-gray hover:bg-steam-element-blue hover:text-white transition-colors">COMMUNITY</a>
+            <a href="#" class="block px-4 py-3 text-steam-text-gray hover:bg-steam-element-blue hover:text-white transition-colors">USERNAME</a>
+        </div>
+    </header>
+
+    <!-- Main Page Content -->
+    <div class="w-full max-w-screen-xl mx-auto bg-gradient-to-b from-steam-element-blue/30 via-steam-dark-blue to-steam-dark-blue">
+        <!-- Store Navigation Bar -->
+        <nav class="bg-steam-darker-blue/50 backdrop-blur-sm py-2 px-2 md:px-4 shadow-sm">
+            <div class="max-w-screen-lg mx-auto flex flex-wrap items-center justify-between text-sm">
+                <div class="flex space-x-1 sm:space-x-2 md:space-x-3 overflow-x-auto pb-1 md:pb-0 scrollbar-hide">
+                    <a href="#" class="text-steam-text-light-gray hover:text-white px-2 py-1.5 rounded-sm whitespace-nowrap">Your Store</a>
+                    <a href="#" class="text-steam-text-light-gray hover:text-white px-2 py-1.5 rounded-sm whitespace-nowrap bg-steam-element-blue/50">New & Noteworthy</a>
+                    <a href="#" class="text-steam-text-light-gray hover:text-white px-2 py-1.5 rounded-sm whitespace-nowrap">Categories</a>
+                    <a href="#" class="text-steam-text-light-gray hover:text-white px-2 py-1.5 rounded-sm whitespace-nowrap">Points Shop</a>
+                    <a href="#" class="text-steam-text-light-gray hover:text-white px-2 py-1.5 rounded-sm whitespace-nowrap">News</a>
+                    <a href="#" class="text-steam-text-light-gray hover:text-white px-2 py-1.5 rounded-sm whitespace-nowrap">Labs</a>
+                </div>
+                <div class="hidden md:block ml-auto">
+                    <div class="relative">
+                        <input type="text" placeholder="search" class="bg-steam-input-bg text-steam-text-light-gray placeholder-steam-text-light-gray/50 text-xs px-3 py-1.5 rounded-sm w-40 lg:w-48 focus:ring-1 focus:ring-steam-light-blue outline-none transition-all duration-200 focus:w-56">
+                        <i class="fas fa-search absolute right-2.5 top-1/2 -translate-y-1/2 text-steam-text-light-gray/50 text-xs"></i>
+                    </div>
+                </div>
+            </div>
+        </nav>
+
+        <main class="px-2 sm:px-3 md:px-4 py-4 md:py-6">
+            <!-- Featured Carousel Section -->
+            <section id="featuredCarouselContainer" class="mb-6 md:mb-10 relative">
+                <div id="featuredCarousel" class="relative h-96 md:h-128 lg:h-144">
+                    <!-- Slides will be injected by JavaScript -->
+                </div>
+                <button onclick="prevSlide()" aria-label="Previous Slide" class="absolute left-1 md:left-3 top-1/2 -translate-y-1/2 bg-steam-element-blue/60 hover:bg-steam-element-blue text-white p-2 md:p-3 rounded-full shadow-lg transition-colors z-10 focus:outline-none focus:ring-2 focus:ring-steam-light-blue">
+                    <i class="fas fa-chevron-left fa-lg"></i>
+                </button>
+                <button onclick="nextSlide()" aria-label="Next Slide" class="absolute right-1 md:right-3 top-1/2 -translate-y-1/2 bg-steam-element-blue/60 hover:bg-steam-element-blue text-white p-2 md:p-3 rounded-full shadow-lg transition-colors z-10 focus:outline-none focus:ring-2 focus:ring-steam-light-blue">
+                    <i class="fas fa-chevron-right fa-lg"></i>
+                </button>
+                <div id="carouselDots" class="absolute bottom-3 md:bottom-4 left-1/2 -translate-x-1/2 flex space-x-2 md:space-x-3 z-10">
+                    <!-- Dots will be injected by JavaScript -->
+                </div>
+            </section>
+
+            <!-- Special Offers -->
+            <section class="mb-6 md:mb-10">
+                <h2 class="text-xl md:text-2xl font-semibold text-white mb-3 md:mb-4">SPECIAL OFFERS</h2>
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 md:gap-5">
+                    <!-- Offer Card (Repeated 4 times) -->
+                    ${[1,2,3,4].map(i => `
+                    <div class="bg-steam-element-blue/40 rounded-md shadow-lg overflow-hidden group transition-all hover:scale-[1.02] hover:shadow-steam-light-blue/20">
+                        <div class="w-full h-32">
+                            <div class="bg-gray-400 border-2 border-dashed border-gray-500 rounded-t-md w-full h-full flex items-center justify-center text-gray-600 text-sm">Special Offer ${i}</div>
+                        </div>
+                        <div class="p-3">
+                            <h3 class="text-sm font-semibold text-white truncate group-hover:text-steam-light-blue">Game Title Special ${i}</h3>
+                            <div class="mt-2 flex items-center justify-start space-x-2">
+                                <span class="bg-steam-dark-green text-steam-green font-bold px-2 py-0.5 text-lg rounded-sm">-75%</span>
+                                <div>
+                                    <span class="text-steam-text-light-gray/70 line-through text-xs">$39.99</span>
+                                    <span class="text-steam-green text-sm font-semibold">$9.99</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    `).join('')}
+                </div>
+            </section>
+
+            <!-- Tabs Section -->
+            <section class="mb-6 md:mb-10">
+                <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-3 md:mb-4">
+                    <div class="flex space-x-1 bg-steam-darker-blue/60 p-1 rounded-md mb-2 sm:mb-0 overflow-x-auto scrollbar-hide">
+                        <button data-tab="new" class="tab-button text-xs sm:text-sm px-3 py-1.5 rounded-md transition-colors whitespace-nowrap">New & Trending</button>
+                        <button data-tab="top" class="tab-button text-xs sm:text-sm px-3 py-1.5 rounded-md transition-colors whitespace-nowrap">Top Sellers</button>
+                        <button data-tab="upcoming" class="tab-button text-xs sm:text-sm px-3 py-1.5 rounded-md transition-colors whitespace-nowrap">Popular Upcoming</button>
+                        <button data-tab="specials" class="tab-button text-xs sm:text-sm px-3 py-1.5 rounded-md transition-colors whitespace-nowrap">Specials</button>
+                    </div>
+                    <a href="#" class="text-xs sm:text-sm text-steam-light-blue hover:text-white hover:underline whitespace-nowrap">View More <i class="fas fa-chevron-right text-xs"></i></a>
+                </div>
+                <div id="gameGrid" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 md:gap-5">
+                    <!-- Game cards will be injected by JavaScript -->
+                </div>
+            </section>
+
+            <!-- Browse By Category -->
+            <section class="mb-6 md:mb-10">
+                <h2 class="text-lg md:text-xl font-semibold text-white mb-2 md:mb-3">BROWSE BY CATEGORY</h2>
+                <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2 md:gap-3">
+                    ${[
+                        "Free to Play", "Early Access", "Action", "Adventure", "Casual",
+                        "Indie", "Massively Multiplayer", "Racing", "RPG", "Simulation",
+                        "Sports", "Strategy", "VR Titles", "Anime", "Horror"
+                    ].map(category => `
+                    <a href="#" class="block bg-steam-element-blue/50 hover:bg-steam-element-blue text-steam-text-light-gray hover:text-white text-center text-xs sm:text-sm py-2.5 px-1.5 rounded-sm transition-colors duration-200 shadow hover:shadow-md">
+                        ${category}
+                    </a>
+                    `).join('')}
+                </div>
+            </section>
+
+        </main>
+    </div>
+
+    <!-- Footer -->
+    <footer class="bg-steam-darker-blue/90 border-t border-steam-element-blue/50 mt-8 md:mt-12 py-6 md:py-8">
+        <div class="max-w-screen-xl mx-auto px-4 md:px-8 text-xs text-steam-text-light-gray/70">
+            <div class="flex flex-col md:flex-row justify-between items-center mb-4 md:mb-6">
+                <div class="mb-4 md:mb-0">
+                    <a href="#" class="hover:text-steam-light-blue">About Valve</a> | 
+                    <a href="#" class="hover:text-steam-light-blue">Steamworks</a> | 
+                    <a href="#" class="hover:text-steam-light-blue">Jobs</a> | 
+                    <a href="#" class="hover:text-steam-light-blue">Steam Distribution</a> | 
+                    <a href="#" class="hover:text-steam-light-blue">Support</a>
+                </div>
+                 <div class="flex items-center space-x-3">
+                    <span class="text-steam-text-light-gray">Follow us:</span>
+                    <a href="#" aria-label="Facebook" class="text-steam-text-light-gray hover:text-steam-light-blue"><i class="fab fa-facebook-f fa-lg"></i></a>
+                    <a href="#" aria-label="Twitter" class="text-steam-text-light-gray hover:text-steam-light-blue"><i class="fab fa-twitter fa-lg"></i></a>
+                    <a href="#" aria-label="YouTube" class="text-steam-text-light-gray hover:text-steam-light-blue"><i class="fab fa-youtube fa-lg"></i></a>
+                </div>
+            </div>
+            <hr class="border-steam-element-blue/30 my-4 md:my-6">
+            <div class="flex flex-col md:flex-row justify-between items-center">
+                <div class="flex items-center space-x-3 mb-3 md:mb-0">
+                    <svg width="20" height="20" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg" class="opacity-70">
+                        <circle cx="50" cy="50" r="48" stroke="#555" stroke-width="4" fill="#333"/>
+                        <text x="50" y="65" font-size="50" text-anchor="middle" fill="#888" font-family="Arial, sans-serif" font-weight="bold">V</text>
+                    </svg>
+                    <span class="text-xs">&copy; ${new Date().getFullYear()} Valve Corporation. All rights reserved. All trademarks are property of their respective owners in the US and other countries.</span>
+                </div>
+                <div class="flex flex-wrap justify-center space-x-3 text-xs">
+                    <a href="#" class="hover:text-steam-light-blue">Privacy Policy</a>
+                    <a href="#" class="hover:text-steam-light-blue">Legal</a>
+                    <a href="#" class="hover:text-steam-light-blue">Steam Subscriber Agreement</a>
+                    <a href="#" class="hover:text-steam-light-blue">Refunds</a>
+                    <a href="#" class="hover:text-steam-light-blue">Cookies</a>
+                </div>
+            </div>
+            <div class="mt-6 text-center md:text-right">
+                <svg width="90" height="25" viewBox="0 0 176 44" fill="none" xmlns="http://www.w3.org/2000/svg" class="inline-block opacity-60">
+                    <path d="M11.9336 10.7923H0V33.2077H11.9336V44H27.216V33.2077H39.0645V22.0385H27.216V10.7923H39.0645V0H27.216V10.7923H11.9336Z" fill="#c7d5e0"/><path d="M60.5556 10.7923H48.622V33.2077H60.5556V44H75.838V33.2077H87.6865V22.0385H75.838V10.7923H87.6865V0H75.838V10.7923H60.5556Z" fill="#c7d5e0"/><path d="M119.336 0V44H102.955L99.5233 34.3731H91.5009V44H76.2183V0H91.5009V18.3808H98.512L107.153 0H119.336ZM91.5009 27.8462H97.9863L102.016 18.3808V27.8462H91.5009Z" fill="#c7d5e0"/><path d="M147.025 0V44H131.742V0H147.025Z" fill="#c7d5e0"/><path d="M176 0V11.1692H163.978V44H148.696V11.1692H136.762V0H176Z" fill="#c7d5e0"/>
+                </svg>
+            </div>
+        </div>
+    </footer>
+
+    <script>
+        // Dropdown Menu Logic
+        let openDropdownId = null;
+        function toggleDropdown(dropdownId) {
+            const dropdown = document.getElementById(dropdownId);
+            if (openDropdownId && openDropdownId !== dropdownId) {
+                const currentlyOpenDropdown = document.getElementById(openDropdownId);
+                if (currentlyOpenDropdown) currentlyOpenDropdown.classList.add('hidden');
+            }
+            if (dropdown) {
+                dropdown.classList.toggle('hidden');
+                openDropdownId = dropdown.classList.contains('hidden') ? null : dropdownId;
+            }
+        }
+
+        // Mobile Menu Logic
+        function toggleMobileMenu() {
+            const mobileMenu = document.getElementById('mobileMenu');
+            if (mobileMenu) mobileMenu.classList.toggle('hidden');
+        }
+
+        // Close dropdowns if clicked outside
+        window.addEventListener('click', function(event) {
+            const isDropdownButton = event.target.closest('[onclick^="toggleDropdown"]');
+            if (!isDropdownButton) { // Check if the click was not on a dropdown toggle button
+                if (openDropdownId) {
+                    const dropdown = document.getElementById(openDropdownId);
+                    if (dropdown && !dropdown.contains(event.target)) { // Check if click is outside the open dropdown
+                        dropdown.classList.add('hidden');
+                        openDropdownId = null;
+                    }
+                }
+            }
+            // Close mobile menu if click is outside
+            const mobileMenu = document.getElementById('mobileMenu');
+            const mobileMenuButton = document.getElementById('mobileMenuButton');
+            if (mobileMenu && !mobileMenu.classList.contains('hidden') && 
+                !mobileMenu.contains(event.target) && !mobileMenuButton.contains(event.target)) {
+                mobileMenu.classList.add('hidden');
+            }
+        });
+        
+        // Featured Carousel Logic
+        const placeholderFeaturedGames = [
+            { title: "Epic Adventure Game", imagePlaceholder: true, tags: ["Adventure", "RPG", "Fantasy"], description: "Embark on a thrilling journey through mystical lands.", price: "$49.99", discount: null, mainColor: "bg-sky-700/60" },
+            { title: "Sci-Fi Strategy Pro", imagePlaceholder: true, tags: ["Strategy", "Sci-Fi", "4X"], description: "Command vast armies and conquer the galaxy.", price: "$39.99", discount: { oldPrice: "$39.99", newPrice: "$19.99", percentage: "-50%" }, mainColor: "bg-indigo-700/60" },
+            { title: "Cozy Farming Sim", imagePlaceholder: true, tags: ["Simulation", "Farming", "Relaxing"], description: "Build your dream farm and live a peaceful life.", price: "$24.99", discount: null, mainColor: "bg-emerald-600/60" },
+            { title: "Indie Platformer Gem", imagePlaceholder: true, tags: ["Platformer", "Indie", "Pixel Art"], description: "Jump and dash through challenging levels.", price: "$9.99", discount: null, mainColor: "bg-rose-600/60" }
+        ];
+        let currentSlide = 0;
+        const slidesData = placeholderFeaturedGames;
+        let autoSlideInterval;
+
+        function setupCarousel() {
+            const carouselContainer = document.getElementById('featuredCarousel');
+            const dotsContainer = document.getElementById('carouselDots');
+            if (!carouselContainer || !dotsContainer) return;
+
+            carouselContainer.innerHTML = ''; // Clear existing
+            dotsContainer.innerHTML = ''; // Clear existing
+
+            slidesData.forEach((slide, index) => {
+                const slideElement = document.createElement('div');
+                slideElement.className = 'carousel-slide absolute inset-0 transition-opacity duration-700 ease-in-out';
+                if (index !== 0) slideElement.classList.add('opacity-0', 'pointer-events-none');
+                
+                slideElement.innerHTML = `
+                    <div class="relative w-full h-full rounded-md overflow-hidden shadow-2xl">
+                        ${slide.imagePlaceholder ? 
+                            `<div class="absolute inset-0 ${slide.mainColor} flex items-center justify-center"><span class="text-white text-2xl md:text-3xl p-4 text-center">Banner: ${slide.title}</span></div>` :
+                            `<img src="${slide.image}" alt="${slide.title}" class="w-full h-full object-cover">`
+                        }
+                        <div class="absolute inset-0 bg-gradient-to-r from-black/80 via-black/60 to-transparent p-4 md:p-8 flex flex-col justify-end">
+                            <h2 class="text-2xl md:text-3xl lg:text-4xl font-bold text-white mb-1 md:mb-2 text-shadow-md">${slide.title}</h2>
+                            <div class="flex flex-wrap gap-1.5 mb-2 md:mb-3">
+                                ${slide.tags.map(tag => `<span class="bg-steam-element-blue/80 text-steam-text-light-gray text-xs px-2 py-0.5 rounded-sm">${tag}</span>`).join('')}
+                            </div>
+                            <p class="text-steam-text-gray text-xs md:text-sm mb-3 md:mb-4 max-w-md md:max-w-lg text-shadow-sm">${slide.description}</p>
+                            <div class="flex items-center space-x-3 md:space-x-4">
+                                ${slide.discount ? `
+                                    <div class="flex items-center space-x-2">
+                                        <span class="bg-steam-dark-green text-steam-green font-bold px-2.5 py-1 text-lg md:text-xl rounded-sm">${slide.discount.percentage}</span>
+                                        <div>
+                                            <span class="text-steam-text-light-gray/70 line-through text-xs md:text-sm">${slide.discount.oldPrice}</span><br>
+                                            <span class="text-steam-green text-base md:text-lg font-semibold">${slide.discount.newPrice}</span>
+                                        </div>
+                                    </div>
+                                ` : `<span class="text-white text-lg md:text-xl font-semibold">${slide.price}</span>`}
+                                <button class="bg-steam-light-blue/90 hover:bg-steam-light-blue text-white font-semibold px-4 py-1.5 md:px-6 md:py-2 text-sm md:text-base rounded-sm transition-colors">View Details</button>
+                            </div>
+                        </div>
+                        ${slide.imagePlaceholder && slide.mainColor && !slide.image ? '' : `<div class="absolute inset-0 ${slide.mainColor || ''} mix-blend-color-dodge opacity-50"></div>`}
+                    </div>
+                `;
+                carouselContainer.appendChild(slideElement);
+
+                const dot = document.createElement('button');
+                dot.setAttribute('aria-label', `Go to slide ${index + 1}`);
+                dot.className = 'carousel-dot w-2.5 h-2.5 md:w-3 md:h-3 rounded-full bg-steam-element-blue/60 hover:bg-steam-element-blue transition-colors focus:outline-none focus:ring-1 focus:ring-steam-light-blue';
+                if (index === 0) dot.classList.add('!bg-steam-light-blue');
+                dot.onclick = () => { showSlide(index); stopAutoSlide(); startAutoSlide(); }; // Restart timer on manual navigation
+                dotsContainer.appendChild(dot);
+            });
+        }
+
+        function showSlide(index) {
+            const slides = document.querySelectorAll('#featuredCarousel .carousel-slide');
+            const dots = document.querySelectorAll('#carouselDots .carousel-dot');
+            if (!slides.length || !dots.length) return;
+
+            slides[currentSlide].classList.add('opacity-0', 'pointer-events-none');
+            dots[currentSlide].classList.remove('!bg-steam-light-blue');
+            dots[currentSlide].classList.add('bg-steam-element-blue/60');
+
+            currentSlide = (index + slides.length) % slides.length;
+
+            slides[currentSlide].classList.remove('opacity-0', 'pointer-events-none');
+            dots[currentSlide].classList.add('!bg-steam-light-blue');
+            dots[currentSlide].classList.remove('bg-steam-element-blue/60');
+        }
+
+        function nextSlide() { showSlide(currentSlide + 1); }
+        function prevSlide() { showSlide(currentSlide - 1); }
+
+        function startAutoSlide(interval = 7000) {
+            stopAutoSlide();
+            autoSlideInterval = setInterval(nextSlide, interval);
+        }
+        function stopAutoSlide() { clearInterval(autoSlideInterval); }
+
+        // Game Card & Tabs Logic
+        const gameCardData = [
+            { id: 1, title: "Stellaris: The Machine Age", imagePlaceholder: true, price: "$24.99", discount: null, tags: ["Grand Strategy", "Sci-Fi"], category: "new"},
+            { id: 2, title: "Manor Lords", imagePlaceholder: true, price: "$39.99", discount: null, tags: ["Strategy", "City Builder"], category: "new"},
+            { id: 3, title: "Content Warning", imagePlaceholder: true, price: "$7.99", discount: null, tags: ["Horror", "Co-op"], category: "new"},
+            { id: 4, title: "No Rest for the Wicked", imagePlaceholder: true, price: "$39.99", discount: null, tags: ["Action RPG", "Early Access"], category: "new"},
+            { id: 5, title: "Counter-Strike 2", imagePlaceholder: true, price: "Free to Play", discount: null, tags: ["FPS", "Multiplayer"], category: "top"},
+            { id: 6, title: "PUBG: BATTLEGROUNDS", imagePlaceholder: true, price: "Free to Play", discount: null, tags: ["Battle Royale", "FPS"], category: "top"},
+            { id: 7, title: "Baldur's Gate 3", imagePlaceholder: true, price: "$59.99", discount: null, tags: ["RPG", "CRPG"], category: "top"},
+            { id: 8, title: "Helldivers 2", imagePlaceholder: true, price: "$39.99", discount: null, tags: ["Co-op", "Shooter"], category: "top"},
+            { id: 9, title: "Hades II", imagePlaceholder: true, price: "Coming Soon", discount: null, tags: ["Action Roguelike", "Indie"], category: "upcoming"},
+            { id: 10, title: "Frostpunk 2", imagePlaceholder: true, price: "Wishlist Now", discount: null, tags: ["Strategy", "Survival"], category: "upcoming"},
+            { id: 11, title: "The Witcher 3: Wild Hunt", imagePlaceholder: true, price: "$39.99", discount: { oldPrice: "$39.99", newPrice: "$9.99", percentage: "-75%" }, tags: ["RPG", "Open World"], category: "specials"},
+            { id: 12, title: "Cyberpunk 2077", imagePlaceholder: true, price: "$59.99", discount: { oldPrice: "$59.99", newPrice: "$29.99", percentage: "-50%" }, tags: ["RPG", "Open World"], category: "specials"},
+        ];
+
+        function createGameCard(game) {
+            const card = document.createElement('div');
+            card.className = 'bg-steam-element-blue/20 rounded-sm shadow-md hover:shadow-xl transition-all duration-200 group overflow-hidden relative cursor-pointer hover:ring-1 hover:ring-steam-light-blue/50';
+            let priceHtml = `<span class="text-steam-text-light-gray text-sm font-semibold">${game.price}</span>`;
+            if (game.discount) {
+                priceHtml = `
+                    <div class="flex items-center space-x-1 justify-end">
+                        <span class="bg-steam-dark-green text-steam-green font-bold px-1.5 py-0.5 text-xs rounded-sm">${game.discount.percentage}</span>
+                        <div class="text-right">
+                            <span class="text-steam-text-light-gray/50 line-through text-xs">${game.discount.oldPrice}</span><br>
+                            <span class="text-steam-green text-sm font-semibold">${game.discount.newPrice}</span>
+                        </div>
+                    </div>
+                `;
+            }
+
+            card.innerHTML = `
+                <div class="w-full h-32 md:h-36 bg-gray-600 group-hover:scale-105 transition-transform duration-300 ease-in-out">
+                    ${game.imagePlaceholder ? 
+                        `<div class="bg-gray-400 border-2 border-dashed border-gray-500 rounded-t-sm w-full h-full flex items-center justify-center text-gray-600 text-xs p-2 text-center">Artwork: ${game.title}</div>` :
+                        `<img src="${game.image}" alt="${game.title}" class="w-full h-full object-cover rounded-t-sm">`
+                    }
+                </div>
+                <div class="p-2 md:p-3">
+                    <h4 class="text-sm md:text-base font-semibold text-white truncate group-hover:text-steam-light-blue transition-colors">${game.title}</h4>
+                    <div class="mt-1 mb-1.5 flex flex-wrap gap-1">
+                        ${game.tags.slice(0,2).map(tag => `<span class="bg-steam-darker-blue text-steam-text-light-gray/80 text-[10px] md:text-xs px-1.5 py-0.5 rounded-sm">${tag}</span>`).join('')}
+                    </div>
+                    <div class="flex justify-end items-center min-h-[2.5rem]">
+                        ${priceHtml}
+                    </div>
+                </div>
+                <!-- Hidden on hover details -->
+                <div class="absolute inset-0 bg-steam-dark-blue/95 p-2 md:p-3 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex flex-col justify-between pointer-events-none">
+                    <div>
+                        <h4 class="text-base md:text-lg font-semibold text-steam-light-blue mb-1 md:mb-2">${game.title}</h4>
+                        <div class="text-xs text-steam-text-gray mb-1">Release: ${game.category === 'upcoming' ? 'TBA' : 'Available Now'}</div>
+                        <div class="text-xs text-steam-text-gray mb-1">Reviews: Positive (example)</div>
+                        <div class="flex flex-wrap gap-1 mb-2">
+                            ${game.tags.map(tag => `<span class="bg-steam-element-blue text-steam-text-light-gray text-xs px-1.5 py-0.5 rounded-sm">${tag}</span>`).join('')}
+                        </div>
+                    </div>
+                    <div class="flex justify-between items-center">
+                        ${priceHtml}
+                        <button class="bg-steam-green/80 hover:bg-steam-green text-white text-xs px-3 py-1 rounded-sm pointer-events-auto">Add to Cart</button>
+                    </div>
+                </div>
+            `;
+            return card;
+        }
+
+        function setupTabs() {
+            const tabButtons = document.querySelectorAll('.tab-button');
+            const gameGridContainer = document.getElementById('gameGrid');
+            if (!tabButtons.length || !gameGridContainer) return;
+
+            let activeTab = 'new'; // Default active tab
+
+            function activateTab(tabName) {
+                activeTab = tabName;
+                tabButtons.forEach(button => {
+                    if (button.dataset.tab === tabName) {
+                        button.classList.add('bg-steam-element-blue', 'text-white');
+                        button.classList.remove('text-steam-text-light-gray', 'hover:bg-steam-darker-blue/80');
+                    } else {
+                        button.classList.remove('bg-steam-element-blue', 'text-white');
+                        button.classList.add('text-steam-text-light-gray', 'hover:bg-steam-darker-blue/80');
+                    }
+                });
+
+                gameGridContainer.innerHTML = ''; 
+                const filteredGames = gameCardData.filter(game => game.category === tabName);
+                const gamesToShow = filteredGames.slice(0, 8);
+
+                gamesToShow.forEach(game => {
+                    gameGridContainer.appendChild(createGameCard(game));
+                });
+            }
+
+            tabButtons.forEach(button => {
+                button.addEventListener('click', () => {
+                    activateTab(button.dataset.tab);
+                });
+            });
+
+            activateTab(activeTab); // Initialize with the default tab
+        }
+        
+        document.addEventListener('DOMContentLoaded', () => {
+            setupCarousel();
+            startAutoSlide();
+            setupTabs();
+
+            const carouselElement = document.getElementById('featuredCarouselContainer');
+            if (carouselElement) {
+                carouselElement.addEventListener('mouseenter', stopAutoSlide);
+                carouselElement.addEventListener('mouseleave', startAutoSlide);
+            }
+        });
+    </script>
+</body>
+</html>

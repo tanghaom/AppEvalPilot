@@ -1,0 +1,932 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Astra Elixirs - Celestial Perfumes</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        /* Custom scrollbar for a more polished look */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #1e293b; /* slate-800 */
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #4f46e5; /* indigo-600 */
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #6366f1; /* indigo-500 */
+        }
+
+        /* Simple fade-in animation */
+        .fade-in {
+            animation: fadeInAnimation 0.5s ease-in forwards;
+            opacity: 0;
+        }
+        @keyframes fadeInAnimation {
+            0% { opacity: 0; transform: translateY(10px); }
+            100% { opacity: 1; transform: translateY(0); }
+        }
+
+        /* Subtle background gradient animation for hero */
+        .hero-gradient-bg {
+            background: linear-gradient(270deg, #1e293b, #334155, #475569, #0f172a); /* slate-800, slate-700, slate-600, slate-900 */
+            background-size: 800% 800%;
+            animation: gradientAnimation 20s ease infinite;
+        }
+        @keyframes gradientAnimation {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+        
+        /* Selected state for nav items */
+        .nav-item.active {
+            color: #c4b5fd; /* violet-300 */
+            border-bottom-color: #c4b5fd; /* violet-300 */
+        }
+
+        /* Placeholder product image styling */
+        .product-placeholder-img {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.8rem;
+            color: #94a3b8; /* slate-400 */
+        }
+    </style>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        'brand-deep-space': '#0f172a', // slate-900
+                        'brand-space-blue': '#1e293b', // slate-800
+                        'brand-nebula-gray': '#334155', // slate-700
+                        'brand-stardust': '#e2e8f0',    // slate-200
+                        'brand-moonlight': '#c7d2fe', // indigo-200
+                        'brand-moon-accent': '#818cf8', // indigo-400
+                        'brand-sunlight': '#fde68a',  // amber-200
+                        'brand-sun-accent': '#f59e0b', // amber-500
+                        'brand-earthlight': '#a7f3d0',// emerald-200
+                        'brand-earth-accent': '#10b981',// emerald-500
+                        'brand-primary-cta': '#a855f7', // purple-500
+                        'brand-primary-cta-hover': '#9333ea', // purple-600
+                    },
+                    fontFamily: {
+                        serif: ['Georgia', 'Times New Roman', 'serif'],
+                        sans: ['Inter', 'Arial', 'sans-serif'],
+                    },
+                    animation: {
+                        'subtle-glow': 'subtleGlow 2s ease-in-out infinite alternate',
+                        'slow-spin': 'slowSpin 20s linear infinite',
+                    },
+                    keyframes: {
+                        subtleGlow: {
+                            '0%, 100%': { boxShadow: '0 0 5px rgba(199, 210, 254, 0.3)', opacity: '0.8' },
+                            '50%': { boxShadow: '0 0 20px rgba(199, 210, 254, 0.7)', opacity: '1' },
+                        },
+                        slowSpin: {
+                            'from': { transform: 'rotate(0deg)' },
+                            'to': { transform: 'rotate(360deg)' },
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+<body class="bg-brand-deep-space text-brand-stardust font-sans antialiased">
+
+    <!-- App Container -->
+    <div id="app" class="min-h-screen flex flex-col">
+
+        <!-- Header -->
+        <header class="bg-brand-space-blue/80 backdrop-blur-md shadow-lg sticky top-0 z-50">
+            <div class="container mx-auto px-4 sm:px-6 lg:px-8">
+                <div class="flex items-center justify-between h-20">
+                    <div class="flex items-center">
+                        <a href="#" onclick="showPage('home')" class="text-3xl font-serif font-bold text-brand-moonlight hover:text-brand-sunlight transition-colors">
+                            Astra Elixirs
+                        </a>
+                    </div>
+                    <nav class="hidden md:flex space-x-6 items-center">
+                        <a href="#" onclick="setActiveNav(this); showPage('home')" class="nav-item text-brand-stardust hover:text-brand-moonlight transition-colors border-b-2 border-transparent pb-1">Home</a>
+                        <a href="#" onclick="setActiveNav(this); showPage('shop')" class="nav-item text-brand-stardust hover:text-brand-moonlight transition-colors border-b-2 border-transparent pb-1">Shop</a>
+                        <a href="#" onclick="setActiveNav(this); showPage('astralScentFinder')" class="nav-item text-brand-stardust hover:text-brand-moonlight transition-colors border-b-2 border-transparent pb-1">Find Your Astral Scent</a>
+                        <a href="#" onclick="setActiveNav(this); showPage('ourStory')" class="nav-item text-brand-stardust hover:text-brand-moonlight transition-colors border-b-2 border-transparent pb-1">Our Story</a>
+                        <a href="#" onclick="setActiveNav(this); showPage('blog')" class="nav-item text-brand-stardust hover:text-brand-moonlight transition-colors border-b-2 border-transparent pb-1">Blog</a>
+                        <a href="#" onclick="setActiveNav(this); showPage('faq')" class="nav-item text-brand-stardust hover:text-brand-moonlight transition-colors border-b-2 border-transparent pb-1">FAQ</a>
+                        <a href="#" onclick="setActiveNav(this); showPage('contact')" class="nav-item text-brand-stardust hover:text-brand-moonlight transition-colors border-b-2 border-transparent pb-1">Contact</a>
+                    </nav>
+                    <div class="flex items-center">
+                         <button onclick="showPage('cart')" class="relative text-brand-stardust hover:text-brand-moonlight transition-colors mr-4">
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 3h1.386c.51 0 .955.343 1.087.835l.383 1.437M7.5 14.25a3 3 0 0 0-3 3h15.75m-12.75-3h11.218c1.121-2.3 2.1-4.684 2.924-7.138a60.114 60.114 0 0 0-16.536-1.84M7.5 14.25 5.106 5.272M6 20.25a.75.75 0 1 1-1.5 0 .75.75 0 0 1 1.5 0Zm12.75 0a.75.75 0 1 1-1.5 0 .75.75 0 0 1 1.5 0Z" />
+                            </svg>
+                            <span id="cart-count" class="absolute -top-2 -right-2 bg-brand-primary-cta text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">0</span>
+                        </button>
+                        <button id="mobile-menu-button" class="md:hidden text-brand-stardust hover:text-brand-moonlight">
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-3.75 5.25h16.5" />
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+            </div>
+            <!-- Mobile Menu -->
+            <div id="mobile-menu" class="hidden md:hidden bg-brand-space-blue/95">
+                <nav class="px-2 pt-2 pb-4 space-y-1 sm:px-3">
+                    <a href="#" onclick="setActiveNav(this, true); showPage('home')" class="nav-item block px-3 py-2 rounded-md text-base font-medium text-brand-stardust hover:bg-brand-nebula-gray hover:text-brand-moonlight">Home</a>
+                    <a href="#" onclick="setActiveNav(this, true); showPage('shop')" class="nav-item block px-3 py-2 rounded-md text-base font-medium text-brand-stardust hover:bg-brand-nebula-gray hover:text-brand-moonlight">Shop</a>
+                    <a href="#" onclick="setActiveNav(this, true); showPage('astralScentFinder')" class="nav-item block px-3 py-2 rounded-md text-base font-medium text-brand-stardust hover:bg-brand-nebula-gray hover:text-brand-moonlight">Find Your Astral Scent</a>
+                    <a href="#" onclick="setActiveNav(this, true); showPage('ourStory')" class="nav-item block px-3 py-2 rounded-md text-base font-medium text-brand-stardust hover:bg-brand-nebula-gray hover:text-brand-moonlight">Our Story</a>
+                    <a href="#" onclick="setActiveNav(this, true); showPage('blog')" class="nav-item block px-3 py-2 rounded-md text-base font-medium text-brand-stardust hover:bg-brand-nebula-gray hover:text-brand-moonlight">Blog</a>
+                    <a href="#" onclick="setActiveNav(this, true); showPage('faq')" class="nav-item block px-3 py-2 rounded-md text-base font-medium text-brand-stardust hover:bg-brand-nebula-gray hover:text-brand-moonlight">FAQ</a>
+                    <a href="#" onclick="setActiveNav(this, true); showPage('contact')" class="nav-item block px-3 py-2 rounded-md text-base font-medium text-brand-stardust hover:bg-brand-nebula-gray hover:text-brand-moonlight">Contact</a>
+                </nav>
+            </div>
+        </header>
+
+        <!-- Main Content Area -->
+        <main class="flex-grow">
+            <!-- Page Sections will be dynamically shown/hidden here -->
+            <section id="home" class="page-content"></section>
+            <section id="shop" class="page-content hidden"></section>
+            <section id="productDetail" class="page-content hidden"></section>
+            <section id="astralScentFinder" class="page-content hidden"></section>
+            <section id="ourStory" class="page-content hidden"></section>
+            <section id="blog" class="page-content hidden"></section>
+            <section id="faq" class="page-content hidden"></section>
+            <section id="contact" class="page-content hidden"></section>
+            <section id="cart" class="page-content hidden"></section>
+        </main>
+
+        <!-- Footer -->
+        <footer class="bg-brand-space-blue border-t border-brand-nebula-gray">
+            <div class="container mx-auto px-4 sm:px-6 lg:px-8 py-8 text-center">
+                <div class="mb-4">
+                    <a href="#" class="text-brand-moonlight hover:text-brand-sunlight mx-2">Facebook</a>
+                    <a href="#" class="text-brand-moonlight hover:text-brand-sunlight mx-2">Instagram</a>
+                    <a href="#" class="text-brand-moonlight hover:text-brand-sunlight mx-2">Twitter</a>
+                </div>
+                <p class="text-brand-stardust text-sm">&copy; <span id="currentYear"></span> Astra Elixirs. All rights reserved. Crafted with cosmic love.</p>
+            </div>
+        </footer>
+    </div>
+
+    <script>
+        // --- GLOBAL STATE & DATA ---
+        let currentPage = 'home';
+        let products = [];
+        let cart = [];
+        let astralChart = null;
+
+        const sunSigns = ["Aries", "Taurus", "Gemini", "Cancer", "Leo", "Virgo", "Libra", "Scorpio", "Sagittarius", "Capricorn", "Aquarius", "Pisces"];
+        const elements = ["Fire", "Earth", "Air", "Water"];
+        const desiredOutcomes = ["Clarity & Focus", "Calm & Serenity", "Energy & Vitality", "Love & Connection", "Protection & Grounding", "Inspiration & Creativity"];
+
+        // --- PRODUCT DATA ---
+        function initializeProducts() {
+            products = [
+                {
+                    id: 1,
+                    name: "Lunar Veil",
+                    price: "75.00",
+                    imageText: "LV",
+                    description: "A calming blend of night-blooming jasmine, moonflower, and silver musk, infused under the light of the full moon.",
+                    notes: { top: "Bergamot, Lavender", heart: "Jasmine, Moonflower", base: "Sandalwood, Silver Musk, Amber" },
+                    celestialEnergy: "Moon",
+                    chargedBy: "Full Moon Radiance & Lunar Cycles",
+                    astrologicalSigns: ["Cancer", "Pisces", "Taurus"],
+                    astrologicalInsights: "Enhances intuition and emotional balance. Ideal for sensitive water signs and grounding earth signs seeking tranquility and deeper connection to their inner tides.",
+                    tags: ["calm", "moon", "water", "earth", "intuition", "serenity"],
+                    ingredients: "Natural grain alcohol, proprietary blend of essential oils and absolutes (Jasmine, Sandalwood, Bergamot, etc.), Moonflower extract, charged amethyst water.",
+                    ethicalSourcing: "Sustainably sourced botanicals, cruelty-free, vegan. Charged in small batches aligning with lunar phases."
+                },
+                {
+                    id: 2,
+                    name: "Solar Flare",
+                    price: "80.00",
+                    imageText: "SF",
+                    description: "An energizing burst of citrus, ginger, and sun-warmed amber, charged with the vibrant energy of the midday sun.",
+                    notes: { top: "Blood Orange, Lemon, Ginger", heart: "Neroli, Cardamom", base: "Amber, Cedarwood, Golden Musk" },
+                    celestialEnergy: "Sun",
+                    chargedBy: "Solar Noon Intensity & Sunstone Grid",
+                    astrologicalSigns: ["Aries", "Leo", "Sagittarius"],
+                    astrologicalInsights: "Boosts confidence, creativity, and vitality. Perfect for fiery signs ready to shine and express their true selves.",
+                    tags: ["energy", "sun", "fire", "vitality", "confidence", "creativity"],
+                    ingredients: "Natural grain alcohol, proprietary blend of essential oils and absolutes (Blood Orange, Ginger, Neroli, etc.), Calendula extract, charged citrine water.",
+                    ethicalSourcing: "Organic citrus oils, ethically harvested spices, cruelty-free, vegan. Solarized infusion process."
+                },
+                {
+                    id: 3,
+                    name: "Terra Firma",
+                    price: "70.00",
+                    imageText: "TF",
+                    description: "A grounding essence of vetiver, oakmoss, and sacred woods, imbued with the stabilizing energy of the Earth.",
+                    notes: { top: "Cypress, Bergamot", heart: "Clary Sage, Patchouli", base: "Vetiver, Oakmoss, Sandalwood" },
+                    celestialEnergy: "Earth",
+                    chargedBy: "Geomantic Ley Lines & Buried Crystal Charging",
+                    astrologicalSigns: ["Taurus", "Virgo", "Capricorn"],
+                    astrologicalInsights: "Promotes stability, grounding, and a deep connection to nature. Supports earth signs in their pursuit of security and tangible results.",
+                    tags: ["grounding", "earth", "stability", "focus", "protection"],
+                    ingredients: "Natural grain alcohol, proprietary blend of essential oils and absolutes (Vetiver, Oakmoss, Cypress etc.), Moss agate tincture, charged spring water.",
+                    ethicalSourcing: "Wild-harvested resins, sustainably managed woods, cruelty-free, vegan. Earth-element attunement process."
+                },
+                {
+                    id: 4,
+                    name: "Cosmic Whisper",
+                    price: "95.00",
+                    imageText: "CW",
+                    description: "A harmonious blend of all celestial energies, featuring rare florals, exotic spices, and ethereal musks. For universal alignment.",
+                    notes: { top: "Star Anise, Pink Peppercorn", heart: "Orchid, Frankincense, Myrrh", base: "Oud, Celestial Musk, Ambergris (synthetic)" },
+                    celestialEnergy: "Cosmic Blend (Sun, Moon, Earth)",
+                    chargedBy: "Equinox & Solstice Alignments, Meteorite Infusion",
+                    astrologicalSigns: ["Gemini", "Libra", "Aquarius", "Universal"],
+                    astrologicalInsights: "Aids in balancing energies, enhancing adaptability, and connecting to higher wisdom. Excellent for air signs and those seeking universal harmony.",
+                    tags: ["balance", "universal", "air", "wisdom", "inspiration", "connection"],
+                    ingredients: "Natural grain alcohol, rare botanical extracts (Orchid, Frankincense, Oud, etc.), meteorite essence (vibrational), charged rainbow moonstone water.",
+                    ethicalSourcing: "Ethically sourced rare ingredients, fair-trade spices, cruelty-free, vegan. Multi-phasic celestial charging."
+                }
+            ];
+        }
+
+        // --- NAVIGATION ---
+        function showPage(pageId, data = null) {
+            document.querySelectorAll('.page-content').forEach(section => {
+                section.classList.add('hidden');
+                section.innerHTML = ''; // Clear previous content
+            });
+            const targetPage = document.getElementById(pageId);
+            if (targetPage) {
+                targetPage.classList.remove('hidden');
+                targetPage.classList.add('fade-in'); 
+                renderPageContent(pageId, data);
+            }
+            currentPage = pageId;
+            // Close mobile menu if open
+            document.getElementById('mobile-menu').classList.add('hidden');
+        }
+        
+        function setActiveNav(element, isMobile = false) {
+            const navItems = isMobile 
+                ? document.getElementById('mobile-menu').querySelectorAll('.nav-item')
+                : document.querySelector('header nav').querySelectorAll('.nav-item');
+            
+            navItems.forEach(item => {
+                item.classList.remove('active', 'text-brand-moonlight', 'border-brand-moonlight');
+                item.classList.add('text-brand-stardust', 'border-transparent');
+            });
+            
+            if (element) {
+                element.classList.add('active', 'text-brand-moonlight', 'border-brand-moonlight');
+                element.classList.remove('text-brand-stardust', 'border-transparent');
+            }
+        }
+
+
+        // --- PAGE RENDERING ---
+        function renderPageContent(pageId, data) {
+            const container = document.getElementById(pageId);
+            if (!container) return;
+
+            switch (pageId) {
+                case 'home':
+                    renderHomePage(container);
+                    break;
+                case 'shop':
+                    renderShopPage(container);
+                    break;
+                case 'productDetail':
+                    renderProductDetailPage(container, data);
+                    break;
+                case 'astralScentFinder':
+                    renderAstralScentFinderPage(container);
+                    break;
+                case 'ourStory':
+                    renderOurStoryPage(container);
+                    break;
+                case 'blog':
+                    renderBlogPage(container);
+                    break;
+                case 'faq':
+                    renderFAQPage(container);
+                    break;
+                case 'contact':
+                    renderContactPage(container);
+                    break;
+                case 'cart':
+                    renderCartPage(container);
+                    break;
+            }
+        }
+
+        // --- HOME PAGE ---
+        function renderHomePage(container) {
+            container.innerHTML = `
+                <!-- Hero Section -->
+                <section class="hero-gradient-bg text-white py-20 md:py-32 min-h-[70vh] flex items-center">
+                    <div class="container mx-auto px-4 sm:px-6 lg:px-8 text-center">
+                        <h1 class="text-4xl sm:text-5xl md:text-6xl font-serif font-bold mb-6 animate-subtle-glow text-brand-sunlight">Astra Elixirs</h1>
+                        <p class="text-lg sm:text-xl md:text-2xl text-brand-stardust mb-8 max-w-3xl mx-auto">Perfumes charged by the Moon, Sun, and Earth. Personalized by the Stars.</p>
+                        <button onclick="showPage('astralScentFinder')" class="bg-brand-primary-cta hover:bg-brand-primary-cta-hover text-white font-semibold py-3 px-8 rounded-lg text-lg shadow-lg transition-transform transform hover:scale-105">
+                            Find Your Astral Scent
+                        </button>
+                    </div>
+                </section>
+
+                <!-- Brand Introduction -->
+                <section class="py-16 md:py-24 bg-brand-space-blue">
+                    <div class="container mx-auto px-4 sm:px-6 lg:px-8 text-center">
+                        <h2 class="text-3xl sm:text-4xl font-serif text-brand-moonlight mb-6">Where Celestial Energy Meets Olfactory Art</h2>
+                        <p class="text-lg text-brand-stardust max-w-2xl mx-auto mb-10">
+                            Astra Elixirs are more than just perfumes; they are energetic talismans. Each elixir is meticulously crafted and uniquely charged with the potent energies of the Moon, Sun, or Earth, designed to resonate with your personal astrological blueprint.
+                        </p>
+                         <button onclick="showPage('ourStory')" class="text-brand-sun-accent hover:text-brand-sunlight font-semibold py-2 px-6 border border-brand-sun-accent hover:border-brand-sunlight rounded-lg transition-colors">
+                            Discover Our Philosophy
+                        </button>
+                    </div>
+                </section>
+
+                <!-- Featured Products -->
+                <section class="py-16 md:py-24 bg-brand-deep-space">
+                    <div class="container mx-auto px-4 sm:px-6 lg:px-8">
+                        <h2 class="text-3xl sm:text-4xl font-serif text-center text-brand-moonlight mb-12">Featured Elixirs</h2>
+                        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                            ${products.slice(0, 3).map(product => `
+                                <div class="bg-brand-space-blue rounded-xl shadow-2xl overflow-hidden flex flex-col p-6 transform hover:scale-105 transition-transform duration-300">
+                                    <div class="bg-brand-nebula-gray border-2 border-dashed border-brand-moon-accent rounded-xl w-full h-56 mb-6 flex items-center justify-center product-placeholder-img text-4xl font-serif">${product.imageText}</div>
+                                    <h3 class="text-2xl font-serif text-brand-sunlight mb-2">${product.name}</h3>
+                                    <p class="text-brand-stardust text-sm mb-1">Charged by: <span class="font-semibold text-${product.celestialEnergy === 'Moon' ? 'brand-moon-accent' : product.celestialEnergy === 'Sun' ? 'brand-sun-accent' : 'brand-earth-accent'}">${product.celestialEnergy}</span></p>
+                                    <p class="text-brand-stardust text-sm mb-4 truncate">${product.description}</p>
+                                    <p class="text-xl font-semibold text-brand-moonlight mb-4">$${product.price}</p>
+                                    <button onclick="showPage('productDetail', ${product.id})" class="mt-auto w-full bg-brand-primary-cta hover:bg-brand-primary-cta-hover text-white font-semibold py-2 px-4 rounded-lg transition-colors">
+                                        View Details
+                                    </button>
+                                </div>
+                            `).join('')}
+                        </div>
+                        <div class="text-center mt-12">
+                            <button onclick="showPage('shop')" class="text-brand-sun-accent hover:text-brand-sunlight font-semibold py-3 px-8 border border-brand-sun-accent hover:border-brand-sunlight rounded-lg transition-colors text-lg">
+                                Explore All Elixirs
+                            </button>
+                        </div>
+                    </div>
+                </section>
+                
+                <!-- Highlight the Charging Process -->
+                <section class="py-16 md:py-24 bg-brand-space-blue">
+                    <div class="container mx-auto px-4 sm:px-6 lg:px-8">
+                        <h2 class="text-3xl sm:text-4xl font-serif text-center text-brand-moonlight mb-12">The Heart of Our Craft: Celestial Charging</h2>
+                        <div class="grid md:grid-cols-3 gap-8 text-center">
+                            <div class="p-6 bg-brand-nebula-gray rounded-lg shadow-xl">
+                                <div class="text-5xl mb-4 text-brand-moon-accent">🌙</div>
+                                <h3 class="text-2xl font-serif text-brand-moonlight mb-2">Lunar Infusion</h3>
+                                <p class="text-brand-stardust text-sm">Perfumes bathed in specific moon phases to capture intuitive, receptive, and calming energies. Ideal for introspection and emotional harmony.</p>
+                            </div>
+                            <div class="p-6 bg-brand-nebula-gray rounded-lg shadow-xl">
+                                <div class="text-5xl mb-4 text-brand-sun-accent">☀️</div>
+                                <h3 class="text-2xl font-serif text-brand-sunlight mb-2">Solar Radiance</h3>
+                                <p class="text-brand-stardust text-sm">Charged under the potent rays of the sun to imbue elixirs with vitality, confidence, and expressive power. For courage and outward projection.</p>
+                            </div>
+                            <div class="p-6 bg-brand-nebula-gray rounded-lg shadow-xl">
+                                <div class="text-5xl mb-4 text-brand-earth-accent">🌍</div>
+                                <h3 class="text-2xl font-serif text-brand-earthlight mb-2">Terrestrial Grounding</h3>
+                                <p class="text-brand-stardust text-sm">Connected with Earth's stable, nurturing frequencies using crystals and geomantic alignments. For grounding, stability, and resilience.</p>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Benefits of Astrological Perfumes -->
+                <section class="py-16 md:py-24 bg-brand-deep-space">
+                    <div class="container mx-auto px-4 sm:px-6 lg:px-8 text-center">
+                        <h2 class="text-3xl sm:text-4xl font-serif text-brand-moonlight mb-6">Align with Your Cosmic Signature</h2>
+                        <p class="text-lg text-brand-stardust max-w-3xl mx-auto mb-10">
+                            Choosing a perfume based on your astrological profile can enhance your natural strengths, balance your energies, and attract experiences that resonate with your soul's purpose. It's a journey of self-discovery through scent.
+                        </p>
+                        <button onclick="showPage('astralScentFinder')" class="bg-brand-primary-cta hover:bg-brand-primary-cta-hover text-white font-semibold py-3 px-8 rounded-lg text-lg shadow-lg transition-transform transform hover:scale-105">
+                            Discover Your Personal Elixir
+                        </button>
+                    </div>
+                </section>
+            `;
+        }
+
+        // --- SHOP PAGE ---
+        function renderShopPage(container) {
+            container.innerHTML = `
+                <div class="py-12 md:py-16 bg-brand-deep-space">
+                    <div class="container mx-auto px-4 sm:px-6 lg:px-8">
+                        <h1 class="text-4xl font-serif text-center text-brand-moonlight mb-12">Our Celestial Collection</h1>
+                        <!-- Filters (Simplified) -->
+                        <div class="mb-8 flex flex-wrap justify-center gap-4">
+                            <button class="filter-btn bg-brand-nebula-gray hover:bg-brand-space-blue text-brand-stardust py-2 px-4 rounded-lg" onclick="filterProducts(null)">All</button>
+                            <button class="filter-btn bg-brand-nebula-gray hover:bg-brand-space-blue text-brand-stardust py-2 px-4 rounded-lg" onclick="filterProducts('Moon')">Moon Charged</button>
+                            <button class="filter-btn bg-brand-nebula-gray hover:bg-brand-space-blue text-brand-stardust py-2 px-4 rounded-lg" onclick="filterProducts('Sun')">Sun Charged</button>
+                            <button class="filter-btn bg-brand-nebula-gray hover:bg-brand-space-blue text-brand-stardust py-2 px-4 rounded-lg" onclick="filterProducts('Earth')">Earth Charged</button>
+                        </div>
+                        <div id="product-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
+                            ${renderProductCards(products)}
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        function renderProductCards(productsToRender) {
+            return productsToRender.map(product => `
+                <div class="bg-brand-space-blue rounded-xl shadow-2xl overflow-hidden flex flex-col p-6 transform hover:scale-105 transition-transform duration-300">
+                    <div class="bg-brand-nebula-gray border-2 border-dashed border-brand-moon-accent rounded-xl w-full h-56 mb-6 flex items-center justify-center product-placeholder-img text-4xl font-serif">${product.imageText}</div>
+                    <h3 class="text-2xl font-serif text-brand-sunlight mb-2">${product.name}</h3>
+                    <p class="text-brand-stardust text-sm mb-1">Charged by: <span class="font-semibold text-${product.celestialEnergy === 'Moon' ? 'brand-moon-accent' : product.celestialEnergy === 'Sun' ? 'brand-sun-accent' : product.celestialEnergy === 'Cosmic Blend' ? 'purple-400' : 'brand-earth-accent'}">${product.celestialEnergy}</span></p>
+                    <p class="text-brand-stardust text-sm mb-4 h-12 overflow-hidden text-ellipsis">${product.description}</p>
+                    <p class="text-xl font-semibold text-brand-moonlight mb-4">$${product.price}</p>
+                    <button onclick="showPage('productDetail', ${product.id})" class="mt-auto w-full bg-brand-primary-cta hover:bg-brand-primary-cta-hover text-white font-semibold py-2 px-4 rounded-lg transition-colors">
+                        View Elixir
+                    </button>
+                </div>
+            `).join('');
+        }
+        
+        function filterProducts(energyType) {
+            const productGrid = document.getElementById('product-grid');
+            let filtered = products;
+            if (energyType) {
+                filtered = products.filter(p => p.celestialEnergy === energyType);
+            }
+            productGrid.innerHTML = renderProductCards(filtered);
+        }
+
+        // --- PRODUCT DETAIL PAGE ---
+        function renderProductDetailPage(container, productId) {
+            const product = products.find(p => p.id === productId);
+            if (!product) {
+                container.innerHTML = `<p class="text-center py-10 text-xl text-brand-stardust">Product not found.</p>`;
+                return;
+            }
+
+            container.innerHTML = `
+                <div class="py-12 md:py-16 bg-brand-deep-space">
+                    <div class="container mx-auto px-4 sm:px-6 lg:px-8">
+                        <button onclick="showPage('shop')" class="mb-8 text-brand-moonlight hover:text-brand-sunlight">&larr; Back to Shop</button>
+                        <div class="grid md:grid-cols-2 gap-8 lg:gap-12 items-start">
+                            <div>
+                                <div class="bg-brand-nebula-gray border-2 border-dashed border-brand-moon-accent rounded-xl w-full h-96 mb-6 flex items-center justify-center product-placeholder-img text-7xl font-serif">${product.imageText}</div>
+                                <!-- Placeholder for multiple images if needed -->
+                            </div>
+                            <div class="text-brand-stardust">
+                                <h1 class="text-4xl font-serif text-brand-sunlight mb-4">${product.name}</h1>
+                                <p class="text-2xl font-semibold text-brand-moonlight mb-6">$${product.price}</p>
+                                <p class="text-lg mb-6">${product.description}</p>
+                                
+                                <div class="mb-6">
+                                    <h3 class="text-xl font-semibold text-brand-moonlight mb-2">Scent Profile:</h3>
+                                    <p><strong class="text-brand-stardust">Top Notes:</strong> ${product.notes.top}</p>
+                                    <p><strong class="text-brand-stardust">Heart Notes:</strong> ${product.notes.heart}</p>
+                                    <p><strong class="text-brand-stardust">Base Notes:</strong> ${product.notes.base}</p>
+                                </div>
+
+                                <div class="mb-6">
+                                    <h3 class="text-xl font-semibold text-brand-moonlight mb-2">Celestial Infusion:</h3>
+                                    <p><strong class="text-brand-stardust">Energy:</strong> <span class="font-bold text-${product.celestialEnergy === 'Moon' ? 'brand-moon-accent' : product.celestialEnergy === 'Sun' ? 'brand-sun-accent' : product.celestialEnergy === 'Cosmic Blend' ? 'purple-400' : 'brand-earth-accent'}">${product.celestialEnergy}</span></p>
+                                    <p><strong class="text-brand-stardust">Charged By:</strong> ${product.chargedBy}</p>
+                                </div>
+
+                                <div class="mb-6">
+                                    <h3 class="text-xl font-semibold text-brand-moonlight mb-2">Astrological Affinity:</h3>
+                                    <p><strong class="text-brand-stardust">Best Suited For:</strong> ${product.astrologicalSigns.join(', ')}</p>
+                                    <p class="mt-1">${product.astrologicalInsights}</p>
+                                </div>
+                                
+                                <button onclick="addToCart(${product.id})" class="w-full bg-brand-primary-cta hover:bg-brand-primary-cta-hover text-white font-bold py-3 px-6 rounded-lg text-lg transition-colors">
+                                    Add to Celestial Cart
+                                </button>
+
+                                <div class="mt-8 border-t border-brand-nebula-gray pt-6">
+                                    <h3 class="text-xl font-semibold text-brand-moonlight mb-2">Ingredients & Ethics:</h3>
+                                    <p class="text-sm mb-2">${product.ingredients}</p>
+                                    <p class="text-sm italic">${product.ethicalSourcing}</p>
+                                </div>
+                                
+                                <!-- Customer Reviews Placeholder -->
+                                <div class="mt-8 border-t border-brand-nebula-gray pt-6">
+                                    <h3 class="text-xl font-semibold text-brand-moonlight mb-4">Whispers from Our Community</h3>
+                                    <p class="text-sm italic">Customer reviews coming soon. Share your experience!</p>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- You Might Also Like -->
+                        ${renderYouMightAlsoLike(product)}
+                    </div>
+                </div>
+            `;
+        }
+        
+        function renderYouMightAlsoLike(currentProduct) {
+            const relatedProducts = products.filter(p => p.id !== currentProduct.id && (p.celestialEnergy === currentProduct.celestialEnergy || p.astrologicalSigns.some(sign => currentProduct.astrologicalSigns.includes(sign)))).slice(0,3);
+            if (relatedProducts.length === 0) return '';
+
+            return `
+                <div class="mt-16 border-t border-brand-nebula-gray pt-10">
+                    <h2 class="text-2xl font-serif text-center text-brand-moonlight mb-8">You Might Also Align With</h2>
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+                        ${renderProductCards(relatedProducts)}
+                    </div>
+                </div>
+            `;
+        }
+
+        // --- ASTRAL SCENT FINDER PAGE ---
+        function renderAstralScentFinderPage(container) {
+            container.innerHTML = `
+                <div class="py-12 md:py-16 bg-brand-deep-space">
+                    <div class="container mx-auto px-4 sm:px-6 lg:px-8">
+                        <h1 class="text-4xl font-serif text-center text-brand-moonlight mb-4">Discover Your Astral Scent</h1>
+                        <p class="text-lg text-center text-brand-stardust max-w-2xl mx-auto mb-10">Answer a few questions to unveil the elixirs that resonate most deeply with your cosmic energies.</p>
+                        
+                        <div class="max-w-2xl mx-auto bg-brand-space-blue p-8 rounded-xl shadow-2xl">
+                            <div class="space-y-6 mb-8">
+                                <div>
+                                    <label for="sunSign" class="block text-sm font-medium text-brand-moonlight mb-1">What is your Sun Sign?</label>
+                                    <select id="sunSign" name="sunSign" class="w-full bg-brand-nebula-gray border border-brand-moon-accent text-brand-stardust rounded-md p-2 focus:ring-brand-primary-cta focus:border-brand-primary-cta">
+                                        ${sunSigns.map(sign => `<option value="${sign.toLowerCase()}">${sign}</option>`).join('')}
+                                    </select>
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-brand-moonlight mb-1">Which element do you feel most drawn to currently?</label>
+                                    <div class="grid grid-cols-2 gap-4">
+                                        ${elements.map(el => `
+                                            <label class="flex items-center space-x-2 bg-brand-nebula-gray p-3 rounded-md hover:bg-brand-deep-space cursor-pointer">
+                                                <input type="radio" name="astralElement" value="${el.toLowerCase()}" class="form-radio text-brand-primary-cta focus:ring-brand-primary-cta bg-brand-stardust border-brand-moon-accent">
+                                                <span class="text-brand-stardust">${el}</span>
+                                            </label>
+                                        `).join('')}
+                                    </div>
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-brand-moonlight mb-1">What outcome are you seeking from your elixir?</label>
+                                     <select id="desiredOutcome" name="desiredOutcome" class="w-full bg-brand-nebula-gray border border-brand-moon-accent text-brand-stardust rounded-md p-2 focus:ring-brand-primary-cta focus:border-brand-primary-cta">
+                                        ${desiredOutcomes.map(outcome => `<option value="${outcome.toLowerCase().replace(/ & /g, '_').replace(/ /g, '_')}">${outcome}</option>`).join('')}
+                                    </select>
+                                </div>
+                            </div>
+                            <button onclick="getAstralRecommendations()" class="w-full bg-brand-primary-cta hover:bg-brand-primary-cta-hover text-white font-semibold py-3 px-6 rounded-lg text-lg transition-colors">
+                                Reveal My Cosmic Matches
+                            </button>
+                        </div>
+
+                        <div id="astralResults" class="mt-12">
+                            <!-- Results will be rendered here -->
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        function getAstralRecommendations() {
+            const sunSign = document.getElementById('sunSign').value;
+            const chosenElement = document.querySelector('input[name="astralElement"]:checked')?.value;
+            const desiredOutcome = document.getElementById('desiredOutcome').value;
+            const resultsContainer = document.getElementById('astralResults');
+            resultsContainer.innerHTML = ''; // Clear previous results
+            
+            if (!chosenElement) {
+                resultsContainer.innerHTML = `<p class="text-center text-brand-sun-accent">Please select an element to receive recommendations.</p>`;
+                return;
+            }
+
+            // Mock astrological profile generation
+            const mockProfile = {
+                sun: sunSign.charAt(0).toUpperCase() + sunSign.slice(1),
+                dominantElement: chosenElement.charAt(0).toUpperCase() + chosenElement.slice(1),
+                seeking: desiredOutcome.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()),
+                energies: { // Mock data for chart
+                    Fire: Math.floor(Math.random() * 80) + 20,
+                    Earth: Math.floor(Math.random() * 80) + 20,
+                    Air: Math.floor(Math.random() * 80) + 20,
+                    Water: Math.floor(Math.random() * 80) + 20,
+                }
+            };
+            mockProfile.energies[mockProfile.dominantElement] = Math.floor(Math.random() * 20) + 80; // Boost dominant element
+
+            // Simple recommendation logic (can be greatly expanded)
+            let recommendedProducts = products.filter(p => {
+                let score = 0;
+                if (p.astrologicalSigns.map(s => s.toLowerCase()).includes(sunSign)) score += 3;
+                if (p.tags.includes(chosenElement)) score += 2;
+                if (p.tags.some(tag => desiredOutcome.includes(tag))) score += 2;
+                if (p.celestialEnergy.toLowerCase() === chosenElement && (chosenElement === 'moon' || chosenElement === 'sun' || chosenElement === 'earth')) score += 1;
+                return score > 2; // Arbitrary threshold
+            }).slice(0, 3); // Max 3 recommendations
+
+            if (recommendedProducts.length === 0) { // Fallback: recommend by element if no strong match
+                recommendedProducts = products.filter(p => p.tags.includes(chosenElement)).slice(0,2);
+            }
+            if (recommendedProducts.length === 0) { // Fallback: recommend something popular
+                recommendedProducts = products.slice(0,1);
+            }
+
+
+            resultsContainer.innerHTML = `
+                <div class="bg-brand-space-blue p-8 rounded-xl shadow-2xl">
+                    <h2 class="text-3xl font-serif text-center text-brand-moonlight mb-6">Your Astral Profile & Elixir Matches</h2>
+                    <div class="grid md:grid-cols-2 gap-8 mb-8">
+                        <div>
+                            <h3 class="text-xl font-semibold text-brand-sunlight mb-2">Key Cosmic Influences:</h3>
+                            <p class="text-brand-stardust"><strong class="text-brand-moonlight">Sun Sign:</strong> ${mockProfile.sun}</p>
+                            <p class="text-brand-stardust"><strong class="text-brand-moonlight">Dominant Element:</strong> ${mockProfile.dominantElement}</p>
+                            <p class="text-brand-stardust"><strong class="text-brand-moonlight">Seeking:</strong> ${mockProfile.seeking}</p>
+                            <p class="mt-4 text-sm italic text-brand-stardust">This is a simplified reading. For a full astrological consultation, please seek a professional astrologer.</p>
+                        </div>
+                        <div>
+                            <h3 class="text-xl font-semibold text-brand-sunlight mb-2">Your Energetic Signature:</h3>
+                            <canvas id="astralEnergyChart" class="max-h-64"></canvas>
+                        </div>
+                    </div>
+
+                    <h3 class="text-2xl font-serif text-center text-brand-sunlight mb-6">Recommended Elixirs:</h3>
+                    ${recommendedProducts.length > 0 ? `
+                        <div class="grid grid-cols-1 md:grid-cols-${recommendedProducts.length === 1 ? 1 : (recommendedProducts.length === 2 ? 2 : 3)} gap-6">
+                            ${renderProductCards(recommendedProducts)}
+                        </div>
+                    ` : `
+                        <p class="text-center text-brand-stardust">While we refine our cosmic calculations for your unique signature, feel free to <a href="#" onclick="showPage('shop')" class="text-brand-sun-accent hover:underline">explore our full collection</a>.</p>
+                    `}
+                </div>
+            `;
+            
+            // Render Chart.js Radar Chart
+            const ctx = document.getElementById('astralEnergyChart').getContext('2d');
+            if(astralChart) astralChart.destroy(); // Destroy previous chart instance
+            astralChart = new Chart(ctx, {
+                type: 'radar',
+                data: {
+                    labels: ['Fire', 'Earth', 'Air', 'Water'],
+                    datasets: [{
+                        label: 'Your Cosmic Energies',
+                        data: [mockProfile.energies.Fire, mockProfile.energies.Earth, mockProfile.energies.Air, mockProfile.energies.Water],
+                        fill: true,
+                        backgroundColor: 'rgba(168, 85, 247, 0.2)', // purple-500 with alpha
+                        borderColor: 'rgb(168, 85, 247)', // purple-500
+                        pointBackgroundColor: 'rgb(168, 85, 247)',
+                        pointBorderColor: '#fff',
+                        pointHoverBackgroundColor: '#fff',
+                        pointHoverBorderColor: 'rgb(168, 85, 247)'
+                    }]
+                },
+                options: {
+                    scales: {
+                        r: {
+                            angleLines: { color: 'rgba(226, 232, 240, 0.3)' }, // slate-200 with alpha
+                            grid: { color: 'rgba(226, 232, 240, 0.3)' },
+                            pointLabels: { color: '#e2e8f0', font: {size: 14} }, // slate-200
+                            ticks: { backdropColor: '#0f172a', color: '#e2e8f0', stepSize: 20 }, // slate-900, slate-200
+                            suggestedMin: 0,
+                            suggestedMax: 100
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            labels: { color: '#e2e8f0' } // slate-200
+                        }
+                    }
+                }
+            });
+        }
+
+        // --- OUR STORY PAGE ---
+        function renderOurStoryPage(container) {
+            container.innerHTML = `
+                <div class="py-12 md:py-16 bg-brand-deep-space">
+                    <div class="container mx-auto px-4 sm:px-6 lg:px-8 max-w-3xl">
+                        <h1 class="text-4xl font-serif text-center text-brand-moonlight mb-10">Our Cosmic Journey</h1>
+                        <div class="space-y-8 text-lg text-brand-stardust leading-relaxed">
+                            <p>At Astra Elixirs, we believe that fragrance is more than just a scent – it's an energetic signature, a vibrational tool that can align you with your deepest self and the rhythms of the cosmos.</p>
+                            <p>Our founder, a lifelong student of both ancient perfumery and celestial wisdom, envisioned a unique fusion: perfumes that are not only artfully composed but also imbued with the living energies of the Sun, Moon, and Earth. This vision was born from a desire to bring a touch of magic and profound personal connection into the everyday ritual of applying scent.</p>
+                            
+                            <div class="my-10 p-6 bg-brand-space-blue rounded-xl shadow-lg">
+                                <h2 class="text-2xl font-serif text-brand-sunlight mb-4">The Science & Spirituality</h2>
+                                <p>Each Astra Elixir is a testament to meticulous craftsmanship. We blend traditional perfumery techniques with our unique celestial charging process. This involves:</p>
+                                <ul class="list-disc list-inside mt-2 space-y-1 text-brand-stardust">
+                                    <li>Sourcing the finest natural and ethically-harvested botanicals, resins, and essences.</li>
+                                    <li>Artfully composing each scent profile to evoke specific moods and energetic states.</li>
+                                    <li>Patiently charging the elixirs under precise celestial conditions – aligning with lunar phases, solar zeniths, or potent geomantic locations.</li>
+                                    <li>Integrating astrological knowledge to guide you towards elixirs that resonate with your innate cosmic blueprint.</li>
+                                </ul>
+                            </div>
+
+                            <p>We are committed to sustainability and ethical practices. Our ingredients are sourced with respect for the Earth, and our packaging is designed to be both beautiful and mindful of its environmental impact. Our elixirs are cruelty-free and predominantly vegan.</p>
+                            <p>Astra Elixirs is more than a perfume brand; it's an invitation to explore your connection to the universe, to adorn yourself with scents that tell your unique story, and to walk through life feeling a little more magical, aligned, and empowered.</p>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        // --- BLOG PAGE ---
+        function renderBlogPage(container) {
+             container.innerHTML = `
+                <div class="py-12 md:py-16 bg-brand-deep-space">
+                    <div class="container mx-auto px-4 sm:px-6 lg:px-8">
+                        <h1 class="text-4xl font-serif text-center text-brand-moonlight mb-12">Celestial Musings: The Astra Blog</h1>
+                        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                            ${[
+                                { title: "The Power of Lunar Charging: A Deep Dive", excerpt: "Explore how different moon phases influence the energy of our elixirs and how you can harness this power.", date: "October 26, 2023" },
+                                { title: "Astrology & Scent: Finding Your Signature Elixir", excerpt: "Learn how your sun, moon, and rising signs can guide you to the perfect Astra Elixir for your unique energy.", date: "October 15, 2023" },
+                                { title: "The Sacred Geometry of Perfume: Earth's Grounding Energies", excerpt: "Discover the ancient practice of geomancy and how we infuse our Earth-charged elixirs.", date: "September 28, 2023" }
+                            ].map(post => `
+                                <div class="bg-brand-space-blue p-6 rounded-xl shadow-lg hover:shadow-2xl transition-shadow">
+                                    <h2 class="text-2xl font-serif text-brand-sunlight mb-3">${post.title}</h2>
+                                    <p class="text-brand-stardust text-sm mb-4">${post.excerpt}</p>
+                                    <div class="flex justify-between items-center">
+                                        <span class="text-xs text-brand-moonlight">${post.date}</span>
+                                        <a href="#" class="text-brand-sun-accent hover:text-brand-sunlight text-sm font-semibold">Read More &rarr;</a>
+                                    </div>
+                                </div>
+                            `).join('')}
+                        </div>
+                         <p class="text-center mt-12 text-brand-stardust italic">More cosmic insights coming soon!</p>
+                    </div>
+                </div>
+            `;
+        }
+        
+        // --- FAQ PAGE ---
+        function renderFAQPage(container) {
+            const faqs = [
+                { q: "What makes Astra Elixirs different from other perfumes?", a: "Our elixirs are uniquely charged with celestial energies (Moon, Sun, Earth) and offer personalized recommendations based on astrological insights. This creates a deeper, more meaningful connection with your chosen scent." },
+                { q: "How does the 'Find Your Astral Scent' feature work?", a: "You answer a few simple questions about your astrological profile (or preferences), and our system, based on astrological principles and scent energetics, recommends elixirs that are likely to resonate with you." },
+                { q: "Are your ingredients natural and ethically sourced?", a: "Yes, we prioritize natural, high-quality ingredients and are committed to ethical and sustainable sourcing practices. Many of our ingredients are organic and wild-harvested. All our products are cruelty-free." },
+                { q: "How long does the scent last?", a: "Our elixirs are typically Eau de Parfum concentration, offering good longevity, generally 4-8 hours depending on the specific scent and individual skin chemistry." },
+                { q: "What is your shipping and return policy?", a: "We ship worldwide. Please see our dedicated Shipping & Returns page (link to be added) for detailed information. Due to the nature of perfumes, returns are typically accepted for unopened products or if there's a defect." }
+            ];
+
+            container.innerHTML = `
+                <div class="py-12 md:py-16 bg-brand-deep-space">
+                    <div class="container mx-auto px-4 sm:px-6 lg:px-8 max-w-3xl">
+                        <h1 class="text-4xl font-serif text-center text-brand-moonlight mb-12">Frequently Asked Questions</h1>
+                        <div class="space-y-6">
+                            ${faqs.map((faq, index) => `
+                                <details class="bg-brand-space-blue p-6 rounded-lg shadow-lg group">
+                                    <summary class="flex justify-between items-center font-semibold text-brand-sunlight cursor-pointer text-lg group-open:text-brand-moonlight transition-colors">
+                                        ${faq.q}
+                                        <span class="transform transition-transform duration-300 group-open:rotate-180">&darr;</span>
+                                    </summary>
+                                    <p class="text-brand-stardust mt-4 leading-relaxed">${faq.a}</p>
+                                </details>
+                            `).join('')}
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        // --- CONTACT PAGE ---
+        function renderContactPage(container) {
+            container.innerHTML = `
+                <div class="py-12 md:py-16 bg-brand-deep-space">
+                    <div class="container mx-auto px-4 sm:px-6 lg:px-8 max-w-xl">
+                        <h1 class="text-4xl font-serif text-center text-brand-moonlight mb-10">Connect With Us</h1>
+                        <form class="bg-brand-space-blue p-8 rounded-xl shadow-2xl space-y-6">
+                            <div>
+                                <label for="name" class="block text-sm font-medium text-brand-moonlight mb-1">Full Name</label>
+                                <input type="text" name="name" id="name" class="w-full bg-brand-nebula-gray border border-brand-moon-accent text-brand-stardust rounded-md p-2.5 focus:ring-brand-primary-cta focus:border-brand-primary-cta" placeholder="Your Name">
+                            </div>
+                            <div>
+                                <label for="email" class="block text-sm font-medium text-brand-moonlight mb-1">Email Address</label>
+                                <input type="email" name="email" id="email" class="w-full bg-brand-nebula-gray border border-brand-moon-accent text-brand-stardust rounded-md p-2.5 focus:ring-brand-primary-cta focus:border-brand-primary-cta" placeholder="you@example.com">
+                            </div>
+                            <div>
+                                <label for="message" class="block text-sm font-medium text-brand-moonlight mb-1">Message</label>
+                                <textarea name="message" id="message" rows="4" class="w-full bg-brand-nebula-gray border border-brand-moon-accent text-brand-stardust rounded-md p-2.5 focus:ring-brand-primary-cta focus:border-brand-primary-cta" placeholder="Your cosmic inquiries..."></textarea>
+                            </div>
+                            <div>
+                                <button type="submit" class="w-full bg-brand-primary-cta hover:bg-brand-primary-cta-hover text-white font-semibold py-3 px-6 rounded-lg text-lg transition-colors">
+                                    Send Message
+                                </button>
+                            </div>
+                        </form>
+                        <div class="mt-10 text-center text-brand-stardust">
+                            <p>You can also reach us at: <a href="mailto:hello@astraelixirs.com" class="text-brand-sun-accent hover:underline">hello@astraelixirs.com</a></p>
+                            <p>Follow our celestial journey on social media!</p>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        // --- CART FUNCTIONALITY ---
+        function addToCart(productId) {
+            const product = products.find(p => p.id === productId);
+            if (product) {
+                const existingItem = cart.find(item => item.id === productId);
+                if (existingItem) {
+                    existingItem.quantity++;
+                } else {
+                    cart.push({ ...product, quantity: 1 });
+                }
+                updateCartCount();
+                // Optionally, show a confirmation message
+                alert(`${product.name} added to cart!`);
+            }
+        }
+
+        function updateCartCount() {
+            const cartCountElement = document.getElementById('cart-count');
+            const totalItems = cart.reduce((sum, item) => sum + item.quantity, 0);
+            cartCountElement.textContent = totalItems;
+        }
+
+        function renderCartPage(container) {
+            if (cart.length === 0) {
+                container.innerHTML = `
+                    <div class="py-12 md:py-16 bg-brand-deep-space">
+                        <div class="container mx-auto px-4 sm:px-6 lg:px-8 text-center">
+                            <h1 class="text-4xl font-serif text-brand-moonlight mb-6">Your Celestial Cart</h1>
+                            <p class="text-xl text-brand-stardust mb-8">Your cart is currently empty. Time to find your cosmic match!</p>
+                            <button onclick="showPage('shop')" class="bg-brand-primary-cta hover:bg-brand-primary-cta-hover text-white font-semibold py-3 px-8 rounded-lg text-lg transition-colors">
+                                Explore Elixirs
+                            </button>
+                        </div>
+                    </div>
+                `;
+                return;
+            }
+
+            const cartItemsHtml = cart.map(item => `
+                <div class="flex justify-between items-center p-4 bg-brand-nebula-gray rounded-lg mb-4">
+                    <div class="flex items-center">
+                        <div class="bg-brand-deep-space border-2 border-dashed border-brand-moon-accent rounded-md w-16 h-16 mr-4 flex items-center justify-center product-placeholder-img text-xl font-serif">${item.imageText}</div>
+                        <div>
+                            <h3 class="text-lg font-semibold text-brand-sunlight">${item.name}</h3>
+                            <p class="text-sm text-brand-stardust">$${item.price}</p>
+                        </div>
+                    </div>
+                    <div class="text-right">
+                        <p class="text-brand-stardust">Qty: ${item.quantity}</p>
+                        <p class="text-lg font-semibold text-brand-moonlight">$${(parseFloat(item.price) * item.quantity).toFixed(2)}</p>
+                        <button onclick="removeFromCart(${item.id})" class="text-sm text-red-400 hover:text-red-300 mt-1">Remove</button>
+                    </div>
+                </div>
+            `).join('');
+
+            const subtotal = cart.reduce((sum, item) => sum + (parseFloat(item.price) * item.quantity), 0);
+
+            container.innerHTML = `
+                <div class="py-12 md:py-16 bg-brand-deep-space">
+                    <div class="container mx-auto px-4 sm:px-6 lg:px-8 max-w-2xl">
+                        <h1 class="text-4xl font-serif text-center text-brand-moonlight mb-10">Your Celestial Cart</h1>
+                        <div class="bg-brand-space-blue p-6 rounded-xl shadow-2xl">
+                            ${cartItemsHtml}
+                            <div class="border-t border-brand-nebula-gray mt-6 pt-6 text-right">
+                                <p class="text-xl text-brand-stardust mb-2">Subtotal: <span class="font-bold text-brand-moonlight">$${subtotal.toFixed(2)}</span></p>
+                                <p class="text-sm text-brand-stardust mb-6">(Shipping & taxes calculated at checkout)</p>
+                                <button class="w-full bg-brand-primary-cta hover:bg-brand-primary-cta-hover text-white font-bold py-3 px-6 rounded-lg text-lg transition-colors">
+                                    Proceed to Cosmic Checkout
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+        
+        function removeFromCart(productId) {
+            cart = cart.filter(item => item.id !== productId);
+            updateCartCount();
+            renderCartPage(document.getElementById('cart')); // Re-render cart page
+        }
+
+
+        // --- INITIALIZATION ---
+        document.addEventListener('DOMContentLoaded', () => {
+            initializeProducts();
+            showPage('home'); // Show home page by default
+            setActiveNav(document.querySelector('header nav .nav-item')); // Set Home as active
+            document.getElementById('currentYear').textContent = new Date().getFullYear();
+
+            // Mobile menu toggle
+            const mobileMenuButton = document.getElementById('mobile-menu-button');
+            const mobileMenu = document.getElementById('mobile-menu');
+            mobileMenuButton.addEventListener('click', () => {
+                mobileMenu.classList.toggle('hidden');
+            });
+            
+            // Close mobile menu when a link is clicked
+            mobileMenu.querySelectorAll('a').forEach(link => {
+                link.addEventListener('click', () => {
+                    mobileMenu.classList.add('hidden');
+                });
+            });
+        });
+
+    </script>
+</body>
+</html>

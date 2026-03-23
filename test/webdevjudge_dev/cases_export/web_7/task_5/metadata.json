@@ -1,0 +1,9 @@
+{
+  "web_id": "web_7",
+  "task_id": 5,
+  "task_type": "dynamic",
+  "instruction": "Task: While in edit mode (after clicking 'Edit' on a message), modify the text in the input bar and submit it (e.g., by pressing Enter or clicking a 'Save Edit' button).\nExpected Result: The original message in the chat log updates in place with the new text content. The 'editing message' notification disappears. The previously stashed draft (if any) is restored to the input bar.\n\nNote: The task is only considered successful if the expected result is achieved; otherwise, it is deemed infeasible.",
+  "max_steps": 15,
+  "expected": "The original message in the chat log updates in place with the new text content. The 'editing message' notification disappears. The previously stashed draft (if any) is restored to the input bar.",
+  "label": 1
+}

@@ -1,0 +1,9 @@
+{
+  "web_id": "web_88",
+  "task_id": 4,
+  "task_type": "dynamic",
+  "instruction": "Task: Click the 'Finish' button (typically after the last question or when all questions are answered).\nExpected Result: The quiz ends, and a results screen is displayed, showing the user's score (e.g., number of correct answers, total questions, percentage). Options to return to the home/start screen might be visible.\n\nNote: The task is only considered successful if the expected result is achieved; otherwise, it is deemed infeasible.",
+  "max_steps": 15,
+  "expected": "The quiz ends, and a results screen is displayed, showing the user's score (e.g., number of correct answers, total questions, percentage). Options to return to the home/start screen might be visible.",
+  "label": 0
+}

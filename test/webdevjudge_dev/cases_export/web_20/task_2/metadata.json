@@ -1,0 +1,9 @@
+{
+  "web_id": "web_20",
+  "task_id": 2,
+  "task_type": "dynamic",
+  "instruction": "Task: Select a role (e.g., 'Captain', 'Oiler') from the 'Role' dropdown list for the crew member.\nExpected Result: The selected role is displayed as the current choice for that crew member's role.\n\nNote: The task is only considered successful if the expected result is achieved; otherwise, it is deemed infeasible.",
+  "max_steps": 15,
+  "expected": "The selected role is displayed as the current choice for that crew member's role.",
+  "label": 1
+}

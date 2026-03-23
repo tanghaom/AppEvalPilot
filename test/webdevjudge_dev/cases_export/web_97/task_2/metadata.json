@@ -1,0 +1,9 @@
+{
+  "web_id": "web_97",
+  "task_id": 2,
+  "task_type": "dynamic",
+  "instruction": "Task: Click a 'Start Cutscene' button to begin the experience\nExpected Result: The cutscene initializes: Gorilla and God emojis hop into scene, a smooth pan to the Gorilla occurs, cinematic black bars appear at the top and bottom, background music ('50 Cent - In Da Club') starts playing quietly, and the system is prepared for the first 'Next Dialogue' interaction to display the initial dialogue.\n\nNote: The task is only considered successful if the expected result is achieved; otherwise, it is deemed infeasible.",
+  "max_steps": 15,
+  "expected": "The cutscene initializes: Gorilla and God emojis hop into scene, a smooth pan to the Gorilla occurs, cinematic black bars appear at the top and bottom, background music ('50 Cent - In Da Club') starts playing quietly, and the system is prepared for the first 'Next Dialogue' interaction to display the initial dialogue.",
+  "label": 1
+}

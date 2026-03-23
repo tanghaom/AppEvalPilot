@@ -1,0 +1,9 @@
+{
+  "web_id": "web_102",
+  "task_id": 2,
+  "task_type": "dynamic",
+  "instruction": "Task: Control player character's aiming direction and camera orientation within the 3D 'live report' scene using mouse input.\nExpected Result: The player's first-person view rotates (looks up/down, turns left/right), allowing free look and aiming.\n\nNote: The task is only considered successful if the expected result is achieved; otherwise, it is deemed infeasible.",
+  "max_steps": 15,
+  "expected": "The player's first-person view rotates (looks up/down, turns left/right), allowing free look and aiming.",
+  "label": 1
+}

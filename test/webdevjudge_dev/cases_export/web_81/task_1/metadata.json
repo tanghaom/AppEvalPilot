@@ -1,0 +1,9 @@
+{
+  "web_id": "web_81",
+  "task_id": 1,
+  "task_type": "dynamic",
+  "instruction": "Task: Click a button/image to select a hero class (e.g., Warrior, Hunter, Mage).\nExpected Result: The game initializes with the chosen hero, displaying their unique abilities, health, and initial set of monsters on the screen.\n\nNote: The task is only considered successful if the expected result is achieved; otherwise, it is deemed infeasible.",
+  "max_steps": 15,
+  "expected": "The game initializes with the chosen hero, displaying their unique abilities, health, and initial set of monsters on the screen.",
+  "label": 1
+}

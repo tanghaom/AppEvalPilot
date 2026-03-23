@@ -1,0 +1,9 @@
+{
+  "web_id": "web_83",
+  "task_id": 1,
+  "task_type": "dynamic",
+  "instruction": "Task: Click an 'Add Task' button, input all required task details (name, deadline, priority, assigned user) into the displayed form/modal, and submit.\nExpected Result: A new task card appears in the 'To Do' column with the entered details, and a notification confirms the addition.\n\nNote: The task is only considered successful if the expected result is achieved; otherwise, it is deemed infeasible.",
+  "max_steps": 15,
+  "expected": "A new task card appears in the 'To Do' column with the entered details, and a notification confirms the addition.",
+  "label": 0
+}

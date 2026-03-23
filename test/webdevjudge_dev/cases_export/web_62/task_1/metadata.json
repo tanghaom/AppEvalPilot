@@ -1,0 +1,9 @@
+{
+  "web_id": "web_62",
+  "task_id": 1,
+  "task_type": "dynamic",
+  "instruction": "Task: Input new customer details (e.g., name, ID) and initial account information (e.g., account number, type, initial deposit), then click a 'Create Customer & Open Account' button.\nExpected Result: New customer and account entries appear in on-page lists/tables, and balances reflect any initial deposit.\n\nNote: The task is only considered successful if the expected result is achieved; otherwise, it is deemed infeasible.",
+  "max_steps": 15,
+  "expected": "New customer and account entries appear in on-page lists/tables, and balances reflect any initial deposit.",
+  "label": 1
+}

@@ -1,0 +1,9 @@
+{
+  "web_id": "web_28",
+  "task_id": 3,
+  "task_type": "dynamic",
+  "instruction": "Task: Close the 'Additional functions menu window' (e.g., by clicking a dedicated close button on the menu or pressing an 'Escape' key)\nExpected Result: The 'Additional functions menu window' is hidden from the screen.\n\nNote: The task is only considered successful if the expected result is achieved; otherwise, it is deemed infeasible.",
+  "max_steps": 15,
+  "expected": "The 'Additional functions menu window' is hidden from the screen.",
+  "label": 1
+}

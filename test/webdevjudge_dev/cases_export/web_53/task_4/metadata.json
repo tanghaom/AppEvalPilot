@@ -1,0 +1,9 @@
+{
+  "web_id": "web_53",
+  "task_id": 4,
+  "task_type": "dynamic",
+  "instruction": "Task: Select two performers from a leaderboard and click a 'Compare Portfolios' button.\nExpected Result: A side-by-side comparison view of the selected performers' portfolios is displayed, highlighting their specific investments.\n\nNote: The task is only considered successful if the expected result is achieved; otherwise, it is deemed infeasible.",
+  "max_steps": 15,
+  "expected": "A side-by-side comparison view of the selected performers' portfolios is displayed, highlighting their specific investments.",
+  "label": 0
+}

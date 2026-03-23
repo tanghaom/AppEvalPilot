@@ -1,0 +1,729 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Collaborative Code Editor</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/ace/1.33.0/ace.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jsdiff/5.1.0/diff.min.js"></script>
+    <style>
+        /* Custom scrollbar for webkit browsers */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #1e293b; /* slate-800 */
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #334155; /* slate-700 */
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #475569; /* slate-600 */
+        }
+
+        /* ACE Editor styling */
+        .ace_editor {
+            font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, Courier, monospace;
+            font-size: 14px !important;
+            line-height: 1.6 !important;
+            border-radius: 0.5rem; /* rounded-lg */
+            border: 1px solid #334155; /* border-slate-700 */
+        }
+        .ace_gutter {
+            background: #1e293b !important; /* slate-800 */
+            color: #64748b !important; /* slate-500 */
+        }
+        .ace_print-margin {
+            display: none;
+        }
+        .ace_cursor {
+            color: #e2e8f0 !important; /* slate-200 */
+        }
+        .user-cursor-tooltip {
+            position: absolute;
+            background-color: #0f172a; /* slate-900 */
+            color: #e2e8f0; /* slate-200 */
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 10px;
+            z-index: 1000;
+            border: 1px solid #334155; /* slate-700 */
+        }
+        /* Styles for diff view */
+        .diff-container pre {
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            padding: 0.5em;
+            border-radius: 0.25rem;
+        }
+        .diff-container ins {
+            background-color: rgba(16, 185, 129, 0.2); /* emerald-500 with alpha */
+            text-decoration: none;
+            color: #a7f3d0; /* emerald-200 */
+        }
+        .diff-container del {
+            background-color: rgba(239, 68, 68, 0.2); /* red-500 with alpha */
+            text-decoration: none;
+            color: #fca5a5; /* red-300 */
+        }
+        .diff-modal-content {
+            max-height: 70vh;
+            overflow-y: auto;
+        }
+        .tab-button[aria-selected="true"] {
+            background-color: #0284c7; /* sky-600 */
+            color: #e0f2fe; /* sky-100 */
+        }
+        .tab-button {
+            background-color: #334155; /* slate-700 */
+            color: #cbd5e1; /* slate-300 */
+        }
+    </style>
+</head>
+<body class="bg-slate-900 text-slate-200 flex flex-col h-screen antialiased">
+
+    <!-- Header -->
+    <header class="bg-slate-800 border-b border-slate-700 p-3 flex items-center justify-between shadow-md">
+        <div class="flex items-center">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-7 h-7 text-sky-400 mr-2">
+                <path fill-rule="evenodd" d="M14.25 2.25c-.265 0-.52-.034-.771-.102A9.75 9.75 0 004.5 9.75c0 4.426 2.865 8.18 6.837 9.458a.75.75 0 00.926-.65V19.5a.75.75 0 00-.75-.75h-1.5a.75.75 0 00-.75.75v.702A8.25 8.25 0 016 9.75a8.25 8.25 0 018.25-8.25A8.25 8.25 0 0121 8.25c0 2.852-1.443 5.373-3.663 6.912a.75.75 0 00-.574.699V18a.75.75 0 00.75.75h1.5a.75.75 0 00.75-.75v-1.285A9.751 9.751 0 0015 2.25c-.25 0-.491.032-.729.091a.75.75 0 00-.021-.002zM12 13.5a.75.75 0 00-.75.75V15H12a.75.75 0 00.75-.75v-1.5a.75.75 0 00-.75-.75zm3 0a.75.75 0 00-.75.75v1.5c0 .414.336.75.75.75h.75a.75.75 0 00.75-.75v-1.5a.75.75 0 00-.75-.75h-.75zM9 12a.75.75 0 01.75-.75h1.5a.75.75 0 01.75.75v3a.75.75 0 01-.75.75h-1.5a.75.75 0 01-.75-.75v-3z" clip-rule="evenodd" />
+            </svg>
+            <h1 class="text-xl font-semibold text-slate-100">Collaborative Code Editor</h1>
+            <span class="ml-3 text-xs bg-sky-600 text-sky-100 px-2 py-0.5 rounded-full">Demo</span>
+        </div>
+        <div class="flex items-center space-x-3">
+            <div class="relative">
+                <select id="languageSelector" class="bg-slate-700 border border-slate-600 text-slate-200 text-sm rounded-md focus:ring-sky-500 focus:border-sky-500 block w-full p-2 appearance-none">
+                    <option value="javascript">JavaScript</option>
+                    <option value="python">Python</option>
+                    <option value="html">HTML</option>
+                    <option value="css">CSS</option>
+                </select>
+                <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-slate-400">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+                </div>
+            </div>
+            <button id="saveVersionBtn" class="bg-emerald-600 hover:bg-emerald-700 text-emerald-100 text-sm font-medium py-2 px-4 rounded-md flex items-center">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-4 h-4 mr-1.5">
+                    <path d="M2.695 14.763l-1.262 3.154a.5.5 0 00.65.65l3.155-1.262a4 4 0 001.343-.885L17.5 5.5a2.121 2.121 0 00-3-3L3.58 13.42a4 4 0 00-.885 1.343z" />
+                </svg>
+                Save Version
+            </button>
+            <div class="w-8 h-8 bg-slate-700 rounded-full flex items-center justify-center text-slate-400" title="Current User: You">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-5 h-5">
+                    <path fill-rule="evenodd" d="M18.685 19.097A9.723 9.723 0 0021.75 12c0-5.385-4.365-9.75-9.75-9.75S2.25 6.615 2.25 12a9.723 9.723 0 003.065 7.097A9.716 9.716 0 0012 21.75a9.716 9.716 0 006.685-2.653zm-12.54-1.285A7.486 7.486 0 0112 15a7.486 7.486 0 015.855 2.812A8.224 8.224 0 0112 20.25a8.224 8.224 0 01-5.855-2.438zM15.75 9a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0z" clip-rule="evenodd" />
+                </svg>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <div class="flex-grow flex p-4 space-x-4 overflow-hidden">
+        <!-- Editor Area -->
+        <main class="flex-grow flex flex-col bg-slate-800 rounded-lg shadow-lg overflow-hidden">
+            <div id="editor" class="flex-grow w-full h-full"></div>
+            <div class="p-2 bg-slate-700 border-t border-slate-600 text-xs text-slate-400 flex justify-between items-center">
+                <div id="cursorPosition">Ln 1, Col 1</div>
+                <div id="fileStatus">Saved</div>
+            </div>
+        </main>
+
+        <!-- Sidebar -->
+        <aside class="w-80 xl:w-96 flex-shrink-0 flex flex-col bg-slate-800 rounded-lg shadow-lg overflow-hidden">
+            <div class="flex border-b border-slate-700">
+                <button data-tab="collaborators" class="sidebar-tab tab-button flex-1 p-3 text-sm font-medium focus:outline-none hover:bg-sky-700 transition-colors" aria-selected="true">Collaborators</button>
+                <button data-tab="versions" class="sidebar-tab tab-button flex-1 p-3 text-sm font-medium focus:outline-none hover:bg-sky-700 transition-colors">Versions</button>
+                <button data-tab="chat" class="sidebar-tab tab-button flex-1 p-3 text-sm font-medium focus:outline-none hover:bg-sky-700 transition-colors">Chat</button>
+            </div>
+
+            <div class="flex-grow overflow-y-auto p-1">
+                <!-- Collaborators Tab -->
+                <div id="collaboratorsTab" class="tab-content p-3 space-y-3">
+                    <h3 class="text-lg font-semibold text-slate-100 mb-2">Active Users</h3>
+                    <ul id="userList" class="space-y-2">
+                        <!-- User items will be dynamically inserted here -->
+                    </ul>
+                    <button id="simulateRemoteEditBtn" class="mt-4 w-full bg-sky-600 hover:bg-sky-700 text-sky-100 text-sm py-2 px-3 rounded-md">Simulate Remote Edit</button>
+                    <div class="mt-4 p-3 bg-slate-700 rounded-md">
+                        <h4 class="text-sm font-semibold text-slate-100 mb-1">Simulated Metrics</h4>
+                        <p class="text-xs text-slate-400">Avg. Latency: <span id="latencyMetric">--</span> ms</p>
+                        <p class="text-xs text-slate-400">CPU Usage: <span id="cpuMetric">--</span> %</p>
+                        <p class="text-xs text-slate-400">Concurrent Users: <span id="concurrencyMetric">--</span></p>
+                    </div>
+                     <div class="mt-4 p-3 bg-slate-700 rounded-md text-xs text-slate-400">
+                        <h4 class="text-sm font-semibold text-slate-100 mb-1">Note on Advanced Features</h4>
+                        <p>Features like true real-time conflict resolution (OT/CRDTs), user authentication, persistent storage, advanced scalability, CI/CD, and full testing suites require a backend and infrastructure, which are beyond the scope of this frontend demo.</p>
+                    </div>
+                </div>
+
+                <!-- Versions Tab -->
+                <div id="versionsTab" class="tab-content hidden p-3">
+                    <h3 class="text-lg font-semibold text-slate-100 mb-2">Version History</h3>
+                    <ul id="versionList" class="space-y-2 max-h-96 overflow-y-auto">
+                        <!-- Version items will be dynamically inserted here -->
+                    </ul>
+                    <p id="noVersionsMessage" class="text-slate-400 text-sm">No versions saved yet.</p>
+                </div>
+
+                <!-- Chat Tab -->
+                <div id="chatTab" class="tab-content hidden flex flex-col h-full p-1">
+                    <h3 class="text-lg font-semibold text-slate-100 p-2">Discussion</h3>
+                    <div id="chatMessages" class="flex-grow space-y-3 overflow-y-auto p-2 bg-slate-700/50 rounded-md mb-2 min-h-[200px]">
+                        <!-- Chat messages will be dynamically inserted here -->
+                    </div>
+                    <div class="p-2 flex space-x-2">
+                        <input type="text" id="chatInput" class="flex-grow bg-slate-700 border border-slate-600 text-slate-200 text-sm rounded-md p-2 focus:ring-sky-500 focus:border-sky-500" placeholder="Type a message...">
+                        <button id="sendChatBtn" class="bg-sky-600 hover:bg-sky-700 text-sky-100 font-medium py-2 px-4 rounded-md">Send</button>
+                    </div>
+                </div>
+            </div>
+        </aside>
+    </div>
+
+    <!-- Diff Modal -->
+    <div id="diffModal" class="fixed inset-0 bg-slate-900/80 backdrop-blur-sm flex items-center justify-center p-4 hidden z-50">
+        <div class="bg-slate-800 rounded-lg shadow-2xl w-full max-w-4xl border border-slate-700">
+            <div class="flex justify-between items-center p-4 border-b border-slate-700">
+                <h3 class="text-xl font-semibold text-slate-100">Version Comparison</h3>
+                <button id="closeDiffModalBtn" class="text-slate-400 hover:text-slate-200">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-6 h-6">
+                        <path fill-rule="evenodd" d="M5.47 5.47a.75.75 0 011.06 0L12 10.94l5.47-5.47a.75.75 0 111.06 1.06L13.06 12l5.47 5.47a.75.75 0 11-1.06 1.06L12 13.06l-5.47 5.47a.75.75 0 01-1.06-1.06L10.94 12 5.47 6.53a.75.75 0 010-1.06z" clip-rule="evenodd" />
+                    </svg>
+                </button>
+            </div>
+            <div id="diffContent" class="p-4 diff-modal-content diff-container">
+                <!-- Diff content will be inserted here -->
+            </div>
+             <div class="p-4 border-t border-slate-700 text-right">
+                <button id="closeDiffModalBtnSecondary" class="bg-slate-600 hover:bg-slate-700 text-slate-100 text-sm font-medium py-2 px-4 rounded-md">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // --- APPLICATION STATE ---
+        const appState = {
+            currentLanguage: 'javascript',
+            editor: null,
+            versions: [],
+            users: [
+                { id: 'user1', name: 'You', color: '#38bdf8', avatarColor: 'bg-sky-500', isCurrentUser: true, cursorMarkerId: null, selectionMarkerId: null },
+                { id: 'user2', name: 'Alice', color: '#34d399', avatarColor: 'bg-emerald-500', isCurrentUser: false, cursorMarkerId: null, selectionMarkerId: null },
+                { id: 'user3', name: 'Bob', color: '#f472b6', avatarColor: 'bg-pink-500', isCurrentUser: false, cursorMarkerId: null, selectionMarkerId: null },
+            ],
+            chatMessages: [],
+            lastSavedVersionId: null,
+            activeTab: 'collaborators',
+            remoteUserCursors: {} // To store ACE marker IDs for remote users
+        };
+
+        // --- DOM ELEMENTS ---
+        const dom = {
+            editorDiv: document.getElementById('editor'),
+            languageSelector: document.getElementById('languageSelector'),
+            saveVersionBtn: document.getElementById('saveVersionBtn'),
+            userList: document.getElementById('userList'),
+            versionList: document.getElementById('versionList'),
+            noVersionsMessage: document.getElementById('noVersionsMessage'),
+            chatMessages: document.getElementById('chatMessages'),
+            chatInput: document.getElementById('chatInput'),
+            sendChatBtn: document.getElementById('sendChatBtn'),
+            simulateRemoteEditBtn: document.getElementById('simulateRemoteEditBtn'),
+            cursorPosition: document.getElementById('cursorPosition'),
+            fileStatus: document.getElementById('fileStatus'),
+            diffModal: document.getElementById('diffModal'),
+            diffContent: document.getElementById('diffContent'),
+            closeDiffModalBtn: document.getElementById('closeDiffModalBtn'),
+            closeDiffModalBtnSecondary: document.getElementById('closeDiffModalBtnSecondary'),
+            sidebarTabs: document.querySelectorAll('.sidebar-tab'),
+            tabContents: document.querySelectorAll('.tab-content'),
+            latencyMetric: document.getElementById('latencyMetric'),
+            cpuMetric: document.getElementById('cpuMetric'),
+            concurrencyMetric: document.getElementById('concurrencyMetric'),
+        };
+
+        // --- EDITOR SETUP (ACE) ---
+        function initializeEditor() {
+            appState.editor = ace.edit(dom.editorDiv);
+            appState.editor.setTheme("ace/theme/tomorrow_night");
+            setEditorLanguage(appState.currentLanguage);
+            appState.editor.session.setMode(`ace/mode/${appState.currentLanguage}`);
+            appState.editor.setShowPrintMargin(false);
+            appState.editor.setFontSize(14);
+            appState.editor.session.setUseWrapMode(true); // Word wrap
+            
+            // Initial content
+            const initialContent = {
+                javascript: `// Welcome to the Collaborative Code Editor!
+function greet(name) {
+    console.log(\`Hello, \${name}!\`);
+}
+
+greet('Developer');`,
+                python: `# Welcome to the Collaborative Code Editor!
+def greet(name):
+    print(f"Hello, {name}!")
+
+greet('Developer')`,
+                html: `<!-- Welcome to the Collaborative Code Editor! -->
+<!DOCTYPE html>
+<html>
+<head>
+    <title>My Page</title>
+</head>
+<body>
+    <h1>Hello, World!</h1>
+</body>
+</html>`,
+                css: `/* Welcome to the Collaborative Code Editor! */
+body {
+    font-family: Arial, sans-serif;
+    background-color: #f0f0f0;
+    color: #333;
+}`
+            };
+            appState.editor.setValue(initialContent[appState.currentLanguage] || '', -1);
+
+            appState.editor.session.on('change', () => {
+                dom.fileStatus.textContent = 'Unsaved changes';
+                dom.fileStatus.classList.add('text-amber-400');
+            });
+
+            appState.editor.selection.on('changeCursor', () => {
+                const pos = appState.editor.getCursorPosition();
+                dom.cursorPosition.textContent = `Ln ${pos.row + 1}, Col ${pos.column + 1}`;
+                // Simulate sending local cursor position (for other users)
+                const currentUser = appState.users.find(u => u.isCurrentUser);
+                if (currentUser) {
+                    simulateReceiveCursorUpdate(currentUser.id, pos);
+                }
+            });
+
+             // Basic linting (shows errors in gutter)
+            appState.editor.session.on("changeAnnotation", function() {
+                var annotations = appState.editor.session.getAnnotations();
+                // You can process annotations here if needed
+            });
+        }
+        
+        function setEditorLanguage(lang) {
+            appState.currentLanguage = lang;
+            appState.editor.session.setMode(`ace/mode/${lang}`);
+            // Potentially load different initial content or clear editor
+        }
+
+        // --- UI RENDERING ---
+        function renderUserList() {
+            dom.userList.innerHTML = '';
+            appState.users.forEach(user => {
+                const li = document.createElement('li');
+                li.className = 'flex items-center justify-between p-2 bg-slate-700 rounded-md';
+                const avatarColor = user.isCurrentUser ? 'bg-sky-500' : user.avatarColor || 'bg-gray-500';
+                li.innerHTML = `
+                    <div class="flex items-center">
+                        <div class="${avatarColor} w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold text-white mr-3">
+                            ${user.name.substring(0,1).toUpperCase()}
+                        </div>
+                        <span class="text-slate-200 text-sm">${user.name} ${user.isCurrentUser ? '(You)' : ''}</span>
+                    </div>
+                    <div class="w-3 h-3 rounded-full ${user.id === 'user1' || Math.random() > 0.3 ? 'bg-green-500' : 'bg-slate-500'}" title="${user.id === 'user1' || Math.random() > 0.3 ? 'Online' : 'Idle'}"></div>
+                `;
+                dom.userList.appendChild(li);
+            });
+        }
+
+        function renderVersionList() {
+            dom.versionList.innerHTML = '';
+            if (appState.versions.length === 0) {
+                dom.noVersionsMessage.classList.remove('hidden');
+                return;
+            }
+            dom.noVersionsMessage.classList.add('hidden');
+
+            appState.versions.slice().reverse().forEach(version => { // Show newest first
+                const li = document.createElement('li');
+                li.className = 'p-2.5 bg-slate-700 rounded-md hover:bg-slate-600/70 transition-colors';
+                const date = new Date(version.timestamp);
+                const isCurrentCodeSameAsVersion = appState.editor.getValue() === version.code;
+                
+                let statusBadge = '';
+                if (appState.lastSavedVersionId === version.id && isCurrentCodeSameAsVersion) {
+                     statusBadge = `<span class="ml-2 text-xs bg-green-600 text-green-100 px-1.5 py-0.5 rounded-full">Current</span>`;
+                }
+
+
+                li.innerHTML = `
+                    <div class="flex justify-between items-center">
+                        <div>
+                            <p class="text-sm font-medium text-slate-100">Version ${version.id} ${statusBadge}</p>
+                            <p class="text-xs text-slate-400">${date.toLocaleString()}</p>
+                        </div>
+                        <div class="space-x-2">
+                            <button data-version-id="${version.id}" class="view-diff-btn text-xs text-sky-400 hover:text-sky-300">Diff</button>
+                            <button data-version-id="${version.id}" class="rollback-btn text-xs text-amber-400 hover:text-amber-300">Rollback</button>
+                        </div>
+                    </div>
+                `;
+                dom.versionList.appendChild(li);
+            });
+
+            document.querySelectorAll('.view-diff-btn').forEach(btn => {
+                btn.addEventListener('click', (e) => handleViewDiff(e.currentTarget.dataset.versionId));
+            });
+            document.querySelectorAll('.rollback-btn').forEach(btn => {
+                btn.addEventListener('click', (e) => handleRollback(e.currentTarget.dataset.versionId));
+            });
+        }
+        
+        function renderChatMessages() {
+            dom.chatMessages.innerHTML = '';
+            appState.chatMessages.forEach(msg => {
+                const user = appState.users.find(u => u.id === msg.userId);
+                const div = document.createElement('div');
+                const senderName = user ? user.name : 'Unknown';
+                const avatarColor = user ? user.avatarColor : 'bg-gray-500';
+                const isCurrentUserMsg = user && user.isCurrentUser;
+
+                div.className = `flex items-start mb-3 ${isCurrentUserMsg ? 'justify-end' : ''}`;
+                
+                const messageBubbleClass = isCurrentUserMsg 
+                    ? 'bg-sky-600 text-sky-100' 
+                    : 'bg-slate-600 text-slate-100';
+
+                div.innerHTML = `
+                    ${!isCurrentUserMsg ? `<div class="${avatarColor} w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold text-white mr-2 flex-shrink-0">${senderName.substring(0,1).toUpperCase()}</div>` : ''}
+                    <div class="max-w-[70%]">
+                        ${!isCurrentUserMsg ? `<p class="text-xs text-slate-400 mb-0.5">${senderName}</p>` : ''}
+                        <div class="${messageBubbleClass} p-2.5 rounded-lg shadow">
+                            <p class="text-sm">${msg.text}</p>
+                        </div>
+                         <p class="text-xs text-slate-500 mt-0.5 ${isCurrentUserMsg ? 'text-right' : 'text-left'}">${new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</p>
+                    </div>
+                    ${isCurrentUserMsg ? `<div class="${avatarColor} w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold text-white ml-2 flex-shrink-0">${senderName.substring(0,1).toUpperCase()}</div>` : ''}
+                `;
+                dom.chatMessages.appendChild(div);
+            });
+            dom.chatMessages.scrollTop = dom.chatMessages.scrollHeight; // Scroll to bottom
+        }
+
+        // --- EVENT HANDLERS & LOGIC ---
+        function handleLanguageChange(e) {
+            const newLang = e.target.value;
+            setEditorLanguage(newLang);
+            // Potentially clear editor or ask user if they want to clear
+            // For this demo, just switch mode. Current content will be re-interpreted.
+            const initialContent = {
+                javascript: `// Switched to JavaScript
+function setup() {
+    console.log('JS mode activated');
+}`,
+                python: `# Switched to Python
+def setup():
+    print('Python mode activated')`,
+                html: `<!-- Switched to HTML -->
+<h1>HTML Mode</h1>`,
+                css: `/* Switched to CSS */
+body {
+    background-color: #333; /* Dark background for CSS mode */
+}`
+            };
+            appState.editor.setValue(initialContent[newLang] || `// Switched to ${newLang}`, -1);
+            dom.fileStatus.textContent = 'Language Changed';
+            dom.fileStatus.classList.remove('text-amber-400');
+        }
+
+        function handleSaveVersion() {
+            const currentCode = appState.editor.getValue();
+            const newVersion = {
+                id: appState.versions.length + 1,
+                code: currentCode,
+                timestamp: Date.now(),
+                language: appState.currentLanguage
+            };
+            appState.versions.push(newVersion);
+            appState.lastSavedVersionId = newVersion.id;
+            renderVersionList();
+            dom.fileStatus.textContent = 'Version Saved';
+            dom.fileStatus.classList.remove('text-amber-400');
+            
+            // Simulate notifying other users
+            const currentUser = appState.users.find(u => u.isCurrentUser);
+            addChatMessage(currentUser.id, `${currentUser.name} saved a new version (v${newVersion.id}).`);
+        }
+
+        function handleViewDiff(versionId) {
+            const version = appState.versions.find(v => v.id == versionId);
+            if (!version) return;
+
+            const currentCode = appState.editor.getValue();
+            const diff = Diff.createPatch('code', version.code, currentCode);
+            
+            // For a more visual diff, we can use Diff.diffLines and generate HTML
+            const differences = Diff.diffLines(version.code, currentCode);
+            let diffHtml = '<pre class="whitespace-pre-wrap">';
+            differences.forEach(part => {
+                const color = part.added ? 'text-emerald-400' : part.removed ? 'text-red-400' : 'text-slate-400';
+                const prefix = part.added ? '+ ' : part.removed ? '- ' : '  ';
+                // Escape HTML characters in the code part
+                const escapedValue = part.value.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+                diffHtml += `<span class="${color}">${prefix}${escapedValue.split('\n').join('\n'+prefix)}</span>`;
+            });
+            diffHtml += '</pre>';
+            
+            // A simpler side-by-side or character diff for better readability
+            let htmlDiffOutput = '';
+            const charDiff = Diff.diffChars(version.code, currentCode);
+            charDiff.forEach(function(part){
+              const tag = part.added ? 'ins' : part.removed ? 'del' : 'span';
+              const escapedValue = part.value.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+              htmlDiffOutput += `<${tag}>${escapedValue}</${tag}>`;
+            });
+
+
+            dom.diffContent.innerHTML = `
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <h4 class="text-lg font-semibold text-slate-100 mb-2">Version ${version.id} (${new Date(version.timestamp).toLocaleTimeString()})</h4>
+                        <pre class="bg-slate-700 p-3 rounded-md text-xs max-h-60 overflow-auto text-slate-300">${version.code.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")}</pre>
+                    </div>
+                    <div>
+                        <h4 class="text-lg font-semibold text-slate-100 mb-2">Current Code</h4>
+                        <pre class="bg-slate-700 p-3 rounded-md text-xs max-h-60 overflow-auto text-slate-300">${currentCode.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")}</pre>
+                    </div>
+                </div>
+                <div class="mt-4">
+                    <h4 class="text-lg font-semibold text-slate-100 mb-2">Changes (Current vs Version ${version.id})</h4>
+                    <div class="bg-slate-700 p-3 rounded-md text-xs max-h-60 overflow-auto diff-container">
+                        <pre>${htmlDiffOutput}</pre>
+                    </div>
+                </div>
+            `;
+            dom.diffModal.classList.remove('hidden');
+        }
+
+        function handleRollback(versionId) {
+            const version = appState.versions.find(v => v.id == versionId);
+            if (!version) return;
+
+            if (confirm(`Are you sure you want to roll back to Version ${version.id}? Current unsaved changes will be lost.`)) {
+                appState.editor.setValue(version.code, -1); // -1 moves cursor to beginning
+                setEditorLanguage(version.language || 'javascript'); // Rollback language too
+                dom.languageSelector.value = version.language || 'javascript';
+                dom.fileStatus.textContent = `Rolled back to V${version.id}`;
+                dom.fileStatus.classList.remove('text-amber-400');
+                
+                // Simulate notifying other users
+                const currentUser = appState.users.find(u => u.isCurrentUser);
+                addChatMessage(currentUser.id, `${currentUser.name} rolled back to version ${version.id}.`);
+            }
+        }
+
+        function handleSendChat() {
+            const text = dom.chatInput.value.trim();
+            if (text === '') return;
+
+            const currentUser = appState.users.find(u => u.isCurrentUser);
+            addChatMessage(currentUser.id, text);
+            
+            dom.chatInput.value = '';
+            // Simulate other users receiving message
+            setTimeout(() => {
+                 const otherUser = appState.users.find(u => !u.isCurrentUser && Math.random() < 0.5); // Random other user replies
+                 if(otherUser && Math.random() < 0.3) { // 30% chance of reply
+                    addChatMessage(otherUser.id, `Okay, ${currentUser.name}! I see your point.`);
+                 }
+            }, 1000 + Math.random() * 1000);
+        }
+
+        function addChatMessage(userId, text) {
+            appState.chatMessages.push({
+                userId: userId,
+                text: text,
+                timestamp: Date.now()
+            });
+            renderChatMessages();
+        }
+
+        function handleSimulateRemoteEdit() {
+            const otherUser = appState.users.find(u => !u.isCurrentUser && u.id === 'user2'); // Alice
+            if (!otherUser) return;
+
+            // Simulate a change
+            const currentCode = appState.editor.getValue();
+            let newCode = currentCode;
+            const randomChoice = Math.random();
+
+            if (randomChoice < 0.3) { // Add a comment
+                const commentLine = appState.currentLanguage === 'python' ? `# Remote edit by ${otherUser.name} at ${new Date().toLocaleTimeString()}` : `// Remote edit by ${otherUser.name} at ${new Date().toLocaleTimeString()}`;
+                newCode = `${commentLine}\n${currentCode}`;
+            } else if (randomChoice < 0.6) { // Modify a line (simple example)
+                const lines = currentCode.split('\n');
+                if (lines.length > 0) {
+                    const lineToChange = Math.floor(Math.random() * lines.length);
+                    lines[lineToChange] = lines[lineToChange] + (appState.currentLanguage === 'python' ? ' # modified' : ' // modified');
+                    newCode = lines.join('\n');
+                }
+            } else { // Add new line
+                 newCode = currentCode + `\nconsole.log("Change from ${otherUser.name}"); // Added line`;
+            }
+            
+            // Simulate receiving this update
+            // In a real system, this would come via WebSocket and apply OT/CRDT
+            // For demo: simple overwrite with a notification
+            const oldCursorPos = appState.editor.getCursorPosition();
+            appState.editor.setValue(newCode, 1); // 1 moves cursor to end
+            appState.editor.moveCursorToPosition(oldCursorPos); // Try to restore cursor
+            
+            dom.fileStatus.textContent = `Conflict: Content updated by ${otherUser.name}`;
+            dom.fileStatus.classList.add('text-red-400');
+            setTimeout(() => { // Reset status after a while
+                dom.fileStatus.textContent = 'Unsaved changes';
+                dom.fileStatus.classList.remove('text-red-400');
+                dom.fileStatus.classList.add('text-amber-400');
+            }, 3000);
+
+            addChatMessage(otherUser.id, `I've made some changes to the code.`);
+            
+            // Simulate Alice's cursor moving
+            const randomRow = Math.floor(Math.random() * appState.editor.session.getLength());
+            const randomCol = Math.floor(Math.random() * 20);
+            simulateReceiveCursorUpdate(otherUser.id, {row: randomRow, column: randomCol});
+        }
+        
+        const Range = ace.require("ace/range").Range;
+
+        function simulateReceiveCursorUpdate(userId, position) {
+            const user = appState.users.find(u => u.id === userId);
+            if (!user) return;
+
+            // Clear existing markers for this user
+            if (user.cursorMarkerId) {
+                appState.editor.session.removeMarker(user.cursorMarkerId);
+                user.cursorMarkerId = null;
+            }
+            if (user.selectionMarkerId) {
+                 appState.editor.session.removeMarker(user.selectionMarkerId);
+                user.selectionMarkerId = null;
+            }
+            
+            // Remove old tooltip if exists
+            const oldTooltip = document.getElementById(`tooltip-${user.id}`);
+            if(oldTooltip) oldTooltip.remove();
+
+            if (user.isCurrentUser) return; // Don't show own cursor marker this way
+
+            // Add new cursor marker (a small selection to show position)
+            const endPos = { row: position.row, column: position.column + 1 };
+            const range = new Range(position.row, position.column, endPos.row, endPos.column);
+            
+            // Custom class for cursor, can be styled with user's color
+            const cursorClass = `ace_remote_cursor_${user.id}`;
+            const styleEl = document.createElement('style');
+            styleEl.innerHTML = `
+                .${cursorClass} {
+                    position: absolute;
+                    background-color: ${user.color}55; /* Add alpha for selection-like appearance */
+                    border-left: 2px solid ${user.color};
+                }
+            `;
+            document.head.appendChild(styleEl);
+
+            user.cursorMarkerId = appState.editor.session.addMarker(range, cursorClass, "text");
+
+            // Add tooltip for username
+            const cursorCoords = appState.editor.renderer.textToScreenCoordinates(position.row, position.column);
+            const tooltip = document.createElement('div');
+            tooltip.id = `tooltip-${user.id}`;
+            tooltip.className = 'user-cursor-tooltip';
+            tooltip.textContent = user.name;
+            tooltip.style.left = `${cursorCoords.pageX}px`;
+            tooltip.style.top = `${cursorCoords.pageY - 20}px`; // Position above cursor
+            document.body.appendChild(tooltip);
+
+            // Remove tooltip if cursor moves significantly or after timeout
+            setTimeout(() => {
+                if (document.getElementById(`tooltip-${user.id}`)) {
+                    document.getElementById(`tooltip-${user.id}`).remove();
+                }
+            }, 5000);
+        }
+
+        function handleTabSwitch(e) {
+            const targetTab = e.currentTarget.dataset.tab;
+            appState.activeTab = targetTab;
+
+            dom.sidebarTabs.forEach(tab => {
+                tab.setAttribute('aria-selected', tab.dataset.tab === targetTab);
+            });
+            dom.tabContents.forEach(content => {
+                if (content.id === `${targetTab}Tab`) {
+                    content.classList.remove('hidden');
+                    if (targetTab === 'chat' && content.classList.contains('flex')) { // Ensure chat tab has flex layout
+                        content.classList.add('flex', 'flex-col');
+                    }
+                } else {
+                    content.classList.add('hidden');
+                }
+            });
+        }
+
+        function closeModal(modalElement) {
+            modalElement.classList.add('hidden');
+        }
+        
+        function updateSimulatedMetrics() {
+            dom.latencyMetric.textContent = (Math.random() * 150 + 50).toFixed(0); // 50-200ms
+            dom.cpuMetric.textContent = (Math.random() * 40 + 10).toFixed(0); // 10-50%
+            dom.concurrencyMetric.textContent = appState.users.length + Math.floor(Math.random()*3); // Active users + some variation
+        }
+
+
+        // --- INITIALIZATION ---
+        function initApp() {
+            initializeEditor();
+            renderUserList();
+            renderVersionList();
+            renderChatMessages(); // Initial render for chat
+            updateSimulatedMetrics(); // Initial metrics
+            setInterval(updateSimulatedMetrics, 5000); // Update metrics periodically
+
+            // Add initial chat message
+            addChatMessage('system', 'Welcome to the collaborative editor! Start discussing your code here.');
+
+            // Event Listeners
+            dom.languageSelector.addEventListener('change', handleLanguageChange);
+            dom.saveVersionBtn.addEventListener('click', handleSaveVersion);
+            dom.sendChatBtn.addEventListener('click', handleSendChat);
+            dom.chatInput.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') handleSendChat();
+            });
+            dom.simulateRemoteEditBtn.addEventListener('click', handleSimulateRemoteEdit);
+            
+            dom.sidebarTabs.forEach(tab => tab.addEventListener('click', handleTabSwitch));
+            
+            dom.closeDiffModalBtn.addEventListener('click', () => closeModal(dom.diffModal));
+            dom.closeDiffModalBtnSecondary.addEventListener('click', () => closeModal(dom.diffModal));
+            dom.diffModal.addEventListener('click', (e) => { // Close on backdrop click
+                if (e.target === dom.diffModal) closeModal(dom.diffModal);
+            });
+
+            // Select initial tab
+            document.querySelector(`.sidebar-tab[data-tab="${appState.activeTab}"]`).click();
+
+            // Accessibility: ensure modal can be closed with Escape key
+            document.addEventListener('keydown', (e) => {
+                if (e.key === 'Escape' && !dom.diffModal.classList.contains('hidden')) {
+                    closeModal(dom.diffModal);
+                }
+            });
+        }
+
+        // Start the application
+        document.addEventListener('DOMContentLoaded', initApp);
+
+    </script>
+</body>
+</html>

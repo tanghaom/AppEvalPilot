@@ -1,0 +1,9 @@
+{
+  "web_id": "web_51",
+  "task_id": 3,
+  "task_type": "dynamic",
+  "instruction": "Task: Select a target web framework (e.g., 'React', 'Vue', 'Angular') from a dropdown list or radio group in the settings area.\nExpected Result: The selected framework is visually indicated as active. The (simulated) code view or preview may change to reflect characteristics of the chosen framework (e.g., a framework-specific placeholder or styling).\n\nNote: The task is only considered successful if the expected result is achieved; otherwise, it is deemed infeasible.",
+  "max_steps": 15,
+  "expected": "The selected framework is visually indicated as active. The (simulated) code view or preview may change to reflect characteristics of the chosen framework (e.g., a framework-specific placeholder or styling).",
+  "label": 0
+}

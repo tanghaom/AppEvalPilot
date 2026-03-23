@@ -1,0 +1,9 @@
+{
+  "web_id": "web_21",
+  "task_id": 4,
+  "task_type": "dynamic",
+  "instruction": "Task: Click an icon in the Activity Bar (e.g., Explorer, Search icon).\nExpected Result: The corresponding sidebar panel (e.g., File Explorer, Search view) becomes active/visible.\n\nNote: The task is only considered successful if the expected result is achieved; otherwise, it is deemed infeasible.",
+  "max_steps": 15,
+  "expected": "The corresponding sidebar panel (e.g., File Explorer, Search view) becomes active/visible.",
+  "label": 0
+}

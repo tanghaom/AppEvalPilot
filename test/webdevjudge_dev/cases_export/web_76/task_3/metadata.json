@@ -1,0 +1,9 @@
+{
+  "web_id": "web_76",
+  "task_id": 3,
+  "task_type": "dynamic",
+  "instruction": "Task: User modifies the quantity of an item in the cart using provided controls (e.g., +/- buttons or a number input field).\nExpected Result: The displayed quantity for that item in the cart updates, and the cart's overall total price is recalculated and redisplayed.\n\nNote: The task is only considered successful if the expected result is achieved; otherwise, it is deemed infeasible.",
+  "max_steps": 15,
+  "expected": "The displayed quantity for that item in the cart updates, and the cart's overall total price is recalculated and redisplayed.",
+  "label": 0
+}

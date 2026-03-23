@@ -1,0 +1,655 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NeuroCore Interface</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        /* Custom scrollbar for a more futuristic look */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #1e293b; /* slate-800 */
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #ef4444; /* red-500 */
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #dc2626; /* red-600 */
+        }
+
+        /* For the SVG brain regions */
+        .brain-region {
+            transition: fill 0.3s ease, stroke 0.3s ease, filter 0.3s ease;
+            cursor: pointer;
+        }
+        .brain-region.selected {
+            /* Applied via JS */
+        }
+        
+        /* Neural pathway canvas animation placeholder */
+        #neural-pathway-canvas {
+            width: 100%;
+            height: 100%;
+        }
+
+        /* Custom glow effect using Tailwind's arbitrary properties with theme colors */
+        .bioluminescent-glow-red {
+            filter: drop-shadow(0 0 8px theme(colors.red.500)) drop-shadow(0 0 12px theme(colors.red.600/.8));
+        }
+        .bioluminescent-glow-red-soft {
+            filter: drop-shadow(0 0 6px theme(colors.red.500/.7));
+        }
+         .bioluminescent-text-red {
+            text-shadow: 0 0 5px theme(colors.red.500), 0 0 10px theme(colors.red.600/.8);
+        }
+
+        /* For 3D effect on brain container */
+        #brain-svg-container {
+            perspective: 1000px;
+        }
+        #brain-svg-wrapper {
+            transform-style: preserve-3d;
+            transition: transform 0.5s cubic-bezier(0.25, 0.46, 0.45, 0.94); /* Smooth rotation */
+        }
+        
+        .panel-item-hover:hover {
+            background-color: theme(colors.slate.800);
+            border-left-color: theme(colors.red.500);
+        }
+
+    </style>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        'brand-red': '#ef4444', // red-500
+                        'brand-red-dark': '#dc2626', // red-600
+                        'brand-red-light': '#f87171', // red-400
+                        'brand-slate-deep': '#0f172a', // slate-900
+                        'brand-slate-dark': '#1e293b', // slate-800
+                        'brand-slate-medium': '#334155', // slate-700
+                        'brand-slate-light': '#94a3b8', // slate-400
+                        'brand-slate-extralight': '#cbd5e1', // slate-300
+                    },
+                    boxShadow: {
+                        'glow-red-sm': '0 0 8px 0px rgba(239, 68, 68, 0.5)',
+                        'glow-red-md': '0 0 15px 3px rgba(239, 68, 68, 0.6)',
+                        'glow-red-lg': '0 0 25px 5px rgba(239, 68, 68, 0.7)',
+                    },
+                    keyframes: {
+                        pulseOnce: {
+                          '0%, 100%': { opacity: 1, transform: 'scale(1)' },
+                          '50%': { opacity: 0.8, transform: 'scale(1.05)' },
+                        }
+                    },
+                    animation: {
+                        pulseOnce: 'pulseOnce 1s ease-in-out',
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+<body class="bg-slate-950 text-slate-300 font-sans overflow-hidden h-screen flex flex-col">
+
+    <!-- Preloader -->
+    <div id="preloader" class="fixed inset-0 bg-slate-950 flex flex-col items-center justify-center z-[200] transition-opacity duration-500 ease-out">
+        <div class="text-red-500 text-5xl font-bold bioluminescent-text-red">NEURA<span class="text-slate-400 opacity-80">CORE</span></div>
+        <div class="w-1/2 md:w-1/3 lg:w-1/4 mt-6 h-2 bg-slate-800 rounded-full overflow-hidden">
+            <div id="preloader-bar" class="h-2 bg-red-500 rounded-full transition-all duration-500 ease-linear" style="width: 0%;"></div>
+        </div>
+        <p id="preloader-text" class="mt-3 text-slate-500 text-sm tracking-wider">INITIALIZING NEURAL INTERFACE...</p>
+    </div>
+
+    <!-- Header -->
+    <header class="fixed top-0 left-0 right-0 px-6 py-3 bg-slate-950/70 backdrop-blur-lg z-50 flex justify-between items-center border-b border-slate-800 shadow-md">
+        <h1 class="text-3xl font-bold text-red-500 tracking-wider bioluminescent-text-red">NEURA<span class="text-slate-400 opacity-80">CORE</span></h1>
+        <nav class="space-x-4">
+            <button id="reset-view-btn" class="px-3 py-1 text-sm text-slate-300 hover:text-red-400 border border-slate-700 hover:border-red-500 rounded-md transition-colors duration-200">Reset View</button>
+            <button id="pathway-toggle-btn" class="px-3 py-1 text-sm text-slate-300 hover:text-red-400 border border-slate-700 hover:border-red-500 rounded-md transition-colors duration-200">Neural Pathways</button>
+        </nav>
+    </header>
+
+    <!-- Main Content -->
+    <main class="mt-[68px] flex-1 p-4 lg:p-6 flex flex-col lg:flex-row gap-4 lg:gap-6 overflow-hidden">
+        
+        <!-- Left Sidebar: Controls & Organ Systems -->
+        <aside class="w-full lg:w-72 xl:w-80 p-4 space-y-6 overflow-y-auto bg-slate-900/60 backdrop-blur-sm rounded-lg shadow-xl border border-slate-800 flex-shrink-0">
+            <div>
+                <h2 class="text-lg font-semibold text-red-400 border-b border-slate-700 pb-2 mb-3">Model Controls</h2>
+                <div class="space-y-3">
+                    <div>
+                        <label for="zoom-slider" class="block text-sm text-slate-400 mb-1">Zoom</label>
+                        <input id="zoom-slider" type="range" min="50" max="200" value="100" class="w-full h-2 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-red-500">
+                    </div>
+                    <div>
+                        <label for="rotate-x-slider" class="block text-sm text-slate-400 mb-1">Rotate X</label>
+                        <input id="rotate-x-slider" type="range" min="-90" max="90" value="0" class="w-full h-2 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-red-500">
+                    </div>
+                    <div>
+                        <label for="rotate-y-slider" class="block text-sm text-slate-400 mb-1">Rotate Y</label>
+                        <input id="rotate-y-slider" type="range" min="-180" max="180" value="0" class="w-full h-2 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-red-500">
+                    </div>
+                </div>
+            </div>
+
+            <div>
+                <h2 class="text-lg font-semibold text-red-400 border-b border-slate-700 pb-2 mb-3">Body Systems</h2>
+                <div class="space-y-2">
+                    <button data-system="visual" class="w-full text-left px-3 py-2 rounded-md text-slate-300 hover:bg-slate-800 hover:text-red-400 transition-colors duration-200 border-l-2 border-transparent panel-item-hover">Visual System (Occipital)</button>
+                    <button data-system="auditory" class="w-full text-left px-3 py-2 rounded-md text-slate-300 hover:bg-slate-800 hover:text-red-400 transition-colors duration-200 border-l-2 border-transparent panel-item-hover">Auditory System (Temporal)</button>
+                    <button data-system="motor" class="w-full text-left px-3 py-2 rounded-md text-slate-300 hover:bg-slate-800 hover:text-red-400 transition-colors duration-200 border-l-2 border-transparent panel-item-hover">Motor Control (Frontal/Cerebellum)</button>
+                    <button data-system="sensory" class="w-full text-left px-3 py-2 rounded-md text-slate-300 hover:bg-slate-800 hover:text-red-400 transition-colors duration-200 border-l-2 border-transparent panel-item-hover">Somatosensory (Parietal)</button>
+                </div>
+            </div>
+             <div>
+                <h2 class="text-lg font-semibold text-red-400 border-b border-slate-700 pb-2 mb-3">Active Experiments</h2>
+                 <div class="space-y-2">
+                    <div class="p-3 bg-slate-800/50 rounded-md border border-slate-700">
+                        <h4 class="font-medium text-red-400">EXP-07B: Neural Oscillation Study</h4>
+                        <p class="text-xs text-slate-400 mt-1">Focus: Gamma wave patterns in PFC during complex problem-solving.</p>
+                        <div class="mt-2 h-1 w-full bg-slate-700 rounded-full"><div class="h-1 bg-red-500 w-3/4 rounded-full"></div></div>
+                        <p class="text-xs text-slate-500 mt-1 text-right">75% Complete</p>
+                    </div>
+                 </div>
+            </div>
+        </aside>
+
+        <!-- Central Brain Display -->
+        <section id="brain-interactive-area" class="flex-1 flex items-center justify-center bg-slate-900/30 backdrop-blur-sm rounded-lg shadow-2xl border border-slate-800 relative overflow-hidden p-2 sm:p-4">
+            <div id="brain-svg-container" class="w-full h-full flex items-center justify-center">
+                <div id="brain-svg-wrapper" class="relative">
+                    <svg id="brain-svg" viewBox="0 0 500 450" class="w-full h-full max-w-xl max-h-xl">
+                        <!-- Simplified Brain SVG - regions defined in JS for clarity -->
+                        <!-- Paths will be dynamically added by JS -->
+                    </svg>
+                    <div id="brain-tooltip" class="absolute bg-slate-950/80 text-white text-xs px-2 py-1 rounded-md shadow-lg pointer-events-none opacity-0 transition-opacity duration-200"></div>
+                </div>
+            </div>
+            
+            <!-- Neural Pathway Navigation Overlay (initially hidden) -->
+            <div id="neural-pathway-overlay" class="absolute inset-0 bg-slate-950/95 backdrop-blur-md hidden items-center justify-center z-10 flex-col p-4">
+                <canvas id="neural-pathway-canvas"></canvas>
+                <p class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-2xl text-red-400 animate-pulse bioluminescent-text-red">Simulating Neural Pathway Traversal...</p>
+                <button id="exit-pathway-btn" class="absolute bottom-8 px-4 py-2 text-sm bg-red-600 hover:bg-red-500 text-white rounded-md transition-colors">Exit Pathway View</button>
+            </div>
+        </section>
+
+        <!-- Right Sidebar: Data Display / Research -->
+        <aside id="data-panel" class="w-full lg:w-96 xl:w-[420px] p-4 space-y-1 bg-slate-900/60 backdrop-blur-sm rounded-lg shadow-xl border border-slate-800 overflow-y-auto flex-shrink-0 flex flex-col">
+            <h2 id="data-panel-title" class="text-xl font-semibold text-red-500 border-b border-slate-700 pb-2 mb-3 flex-shrink-0 bioluminescent-text-red">Brain Region Analysis</h2>
+            <div id="data-panel-content" class="flex-1 space-y-4 overflow-y-auto pr-1 text-sm">
+                <p class="text-slate-400">Hover over or click a brain region to display detailed information and associated research data.</p>
+            </div>
+        </aside>
+    </main>
+
+    <!-- Footer/Status Bar (Optional for this design, but kept for completeness) -->
+    <footer class="fixed bottom-0 left-0 right-0 p-2 bg-slate-950/70 backdrop-blur-lg z-50 text-xs text-center text-slate-600 border-t border-slate-800">
+        NeuroCore Interface v2.1 | Axiom Dynamics Advanced Neuro پژوهشکده (Pazhoheshkade: Research Institute)
+    </footer>
+
+    <script>
+        const brainRegionsData = {
+            'frontal-lobe': {
+                name: 'Frontal Lobe',
+                path_d: "M100,50 C40,50 30,120 50,180 S80,250 150,230 C200,220 220,170 200,130 C180,90 160,50 100,50 Z",
+                color: { r: 239, g: 68, b: 68 }, // red-500
+                description: 'The Frontal Lobe is pivotal for executive functions: reasoning, planning, complex problem-solving, memory, language, and emotional regulation. It houses the primary motor cortex, crucial for voluntary movement.',
+                research: [
+                    { id: 'FL-R001', title: 'Neuroplasticity in Prefrontal Cortex', summary: 'Investigating adaptive changes in PFC microcircuits following cognitive training protocols.', status: 'Active Phase II' },
+                    { id: 'FL-R002', title: 'Dopaminergic Modulation of Working Memory', summary: 'Exploring how dopamine signaling influences working memory capacity and fidelity in the frontal lobe.', status: 'Published - Journal of Neuroscience' },
+                ],
+                experiments: [
+                    { id: 'FL-E001', name: 'Decision Conflict Paradigm', details: 'High-density EEG recordings during tasks involving conflicting choices to map decision pathways.', imagePlaceholder: true },
+                ],
+                dataVisualizations: {
+                    type: 'bar',
+                    labels: ['Baseline', 'Cognitive Load', 'Post-Training'],
+                    values: [65, 85, 75],
+                    title: 'Prefrontal Cortex Activation (AU)'
+                }
+            },
+            'parietal-lobe': {
+                name: 'Parietal Lobe',
+                path_d: "M200,130 C220,170 240,220 210,280 S150,320 120,270 C100,240 150,230 150,230 C200,220 220,170 200,130 Z",
+                color: { r: 249, g: 115, b: 22 }, // orange-500
+                description: 'The Parietal Lobe processes sensory information such as touch, temperature, pain, and pressure. It is also involved in spatial navigation, attention, and language processing.',
+                research: [{ id: 'PL-R001', title: 'Spatial Awareness Network Mapping', summary: 'fMRI studies on cortical networks activated during complex navigation tasks.', status: 'Ongoing' }],
+                experiments: [{ id: 'PL-E001', name: 'Tactile Discrimination Test', details: 'Assessing sensitivity thresholds and cortical responses to varied tactile stimuli.', imagePlaceholder: false }],
+                dataVisualizations: { type: 'line', labels: ['Q1', 'Q2', 'Q3', 'Q4'], values: [30, 45, 50, 65], title: 'Sensory Integration Index' }
+            },
+            'temporal-lobe': {
+                name: 'Temporal Lobe',
+                path_d: "M50,180 C30,120 30,280 80,350 S120,340 120,270 C100,240 80,250 50,180 Z",
+                color: { r: 234, g: 179, b: 8 }, // yellow-500
+                description: 'The Temporal Lobe is crucial for processing auditory information, memory formation (especially long-term memory via the hippocampus), language comprehension, and visual recognition.',
+                research: [{ id: 'TL-R001', title: 'Hippocampal Encoding Mechanisms', summary: 'Investigating synaptic plasticity in the hippocampus during memory formation.', status: 'Data Analysis' }],
+                experiments: [{ id: 'TL-E001', name: 'Auditory Processing Task', details: 'MEG recordings to study responses to complex sound patterns.', imagePlaceholder: true }],
+                dataVisualizations: { type: 'doughnut', labels: ['Verbal', 'Visual', 'Auditory'], values: [40, 35, 25], title: 'Memory Recall Modality' }
+            },
+            'occipital-lobe': {
+                name: 'Occipital Lobe',
+                path_d: "M210,280 C240,220 300,250 320,300 S280,380 230,360 C180,340 150,320 210,280 Z",
+                color: { r: 16, g: 185, b: 129 }, // emerald-500
+                description: 'The Occipital Lobe is the primary visual processing center of the brain, responsible for interpreting information from the eyes, including color, form, and motion.',
+                research: [{ id: 'OL-R001', title: 'Visual Cortex Reorganization', summary: 'Study on how the visual cortex adapts to sensory deprivation or enhancement.', status: 'Recruiting Participants' }],
+                experiments: [{ id: 'OL-E001', name: 'Pattern Recognition Speed Test', details: 'Tracking eye movements and brain activity during rapid visual identification tasks.', imagePlaceholder: false }],
+                dataVisualizations: { type: 'radar', labels: ['Color', 'Form', 'Motion', 'Depth', 'Contrast'], values: [80, 70, 90, 60, 75], title: 'Visual Perception Metrics' }
+            },
+            'cerebellum': {
+                name: 'Cerebellum',
+                path_d: "M80,350 C30,280 100,420 150,420 S250,400 230,360 C180,340 120,340 80,350 Z",
+                color: { r: 59, g: 130, b: 246 }, // blue-500
+                description: 'The Cerebellum, or "little brain," is essential for coordinating voluntary movements, posture, balance, motor learning, and some cognitive functions like attention and language.',
+                research: [{ id: 'CB-R001', title: 'Motor Learning Pathways', summary: 'Tracing cerebellar circuits involved in acquiring and refining motor skills.', status: 'Published - Cell Reports' }],
+                experiments: [{ id: 'CB-E001', name: 'Balance & Coordination Assessment', details: 'Motion capture and EMG analysis during complex balance tasks.', imagePlaceholder: true }],
+                dataVisualizations: { type: 'polarArea', labels: ['Coordination', 'Balance', 'Timing', 'Learning'], values: [8, 9, 7, 6], title: 'Motor Skill Proficiency (Scale 1-10)' }
+            },
+             'brainstem': {
+                name: 'Brainstem',
+                path_d: "M150,420 C100,420 160,350 170,320 C180,350 250,400 150,420 Z", // Simplified path, less visible area
+                color: { r: 139, g: 92, b: 246 }, // violet-500
+                description: 'The Brainstem connects the cerebrum and cerebellum to the spinal cord. It controls vital autonomic functions like breathing, heart rate, sleep, and consciousness.',
+                research: [{ id: 'BS-R001', title: 'Autonomic Regulation Circuits', summary: 'Mapping brainstem nuclei responsible for cardiovascular control.', status: 'Active' }],
+                experiments: [{ id: 'BS-E001', name: 'Sleep Cycle Monitoring', details: 'Polysomnography and neurochemical analysis during sleep stages.', imagePlaceholder: false }],
+                dataVisualizations: { type: 'bar', labels: ['HRV', 'Resp Rate', 'BP Stability'], values: [70, 85, 75], title: 'Autonomic Function Markers' }
+            }
+        };
+
+        let currentChart = null;
+        let selectedRegionId = null;
+        let currentRotation = { x: 0, y: 0 };
+        let currentZoom = 100;
+
+        document.addEventListener('DOMContentLoaded', () => {
+            const preloader = document.getElementById('preloader');
+            const preloaderBar = document.getElementById('preloader-bar');
+            const preloaderText = document.getElementById('preloader-text');
+            
+            let loadProgress = 0;
+            const loadStates = [
+                { p: 20, t: "CONNECTING TO NEURAL DATABANKS..." },
+                { p: 40, t: "CALIBRATING SENSORY INPUTS..." },
+                { p: 60, t: "LOADING 3D HOLOGRAPHIC MODEL..." },
+                { p: 80, t: "DECRYPTING RESEARCH PROTOCOLS..." },
+                { p: 100, t: "SYSTEM ONLINE. WELCOME, DESIGNER." }
+            ];
+
+            function updatePreloader() {
+                const currentState = loadStates.find(s => loadProgress <= s.p);
+                if (currentState) {
+                     preloaderText.textContent = currentState.t;
+                }
+                preloaderBar.style.width = `${loadProgress}%`;
+
+                if (loadProgress < 100) {
+                    loadProgress += 5; // Simulate progress
+                    setTimeout(updatePreloader, 50);
+                } else {
+                    preloaderText.textContent = "SYSTEM ONLINE. WELCOME, DESIGNER.";
+                    setTimeout(() => {
+                        preloader.classList.add('opacity-0');
+                        setTimeout(() => preloader.style.display = 'none', 500);
+                    }, 1000);
+                }
+            }
+            updatePreloader();
+
+            const brainSvg = document.getElementById('brain-svg');
+            const dataPanelContent = document.getElementById('data-panel-content');
+            const dataPanelTitle = document.getElementById('data-panel-title');
+            const brainTooltip = document.getElementById('brain-tooltip');
+            const brainSvgWrapper = document.getElementById('brain-svg-wrapper');
+
+            // Populate SVG with regions
+            Object.keys(brainRegionsData).forEach(id => {
+                const region = brainRegionsData[id];
+                const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+                path.setAttribute('id', id);
+                path.setAttribute('d', region.path_d);
+                path.setAttribute('data-name', region.name);
+                const {r, g, b} = region.color;
+                path.style.fill = `rgba(${r}, ${g}, ${b}, 0.4)`;
+                path.style.stroke = `rgba(${r}, ${g}, ${b}, 0.8)`;
+                path.style.strokeWidth = '2';
+                path.classList.add('brain-region');
+                
+                path.addEventListener('mouseenter', (e) => handleRegionMouseEnter(e, id));
+                path.addEventListener('mouseleave', (e) => handleRegionMouseLeave(e, id));
+                path.addEventListener('click', (e) => handleRegionClick(e, id));
+                path.addEventListener('mousemove', (e) => updateTooltipPosition(e));
+
+                brainSvg.appendChild(path);
+            });
+
+            // Model Controls
+            const zoomSlider = document.getElementById('zoom-slider');
+            const rotateXSlider = document.getElementById('rotate-x-slider');
+            const rotateYSlider = document.getElementById('rotate-y-slider');
+            const resetViewBtn = document.getElementById('reset-view-btn');
+
+            zoomSlider.addEventListener('input', (e) => {
+                currentZoom = e.target.value;
+                applyTransformations();
+            });
+            rotateXSlider.addEventListener('input', (e) => {
+                currentRotation.x = e.target.value;
+                applyTransformations();
+            });
+            rotateYSlider.addEventListener('input', (e) => {
+                currentRotation.y = e.target.value;
+                applyTransformations();
+            });
+            resetViewBtn.addEventListener('click', () => {
+                currentZoom = 100;
+                currentRotation = { x: 0, y: 0 };
+                zoomSlider.value = 100;
+                rotateXSlider.value = 0;
+                rotateYSlider.value = 0;
+                applyTransformations();
+                deselectAllRegions();
+                dataPanelTitle.textContent = 'Brain Region Analysis';
+                dataPanelContent.innerHTML = `<p class="text-slate-400">Hover over or click a brain region to display detailed information and associated research data.</p>`;
+                if (currentChart) {
+                    currentChart.destroy();
+                    currentChart = null;
+                }
+            });
+            
+            function applyTransformations() {
+                brainSvgWrapper.style.transform = `rotateX(${currentRotation.x}deg) rotateY(${currentRotation.y}deg) scale(${currentZoom / 100})`;
+            }
+
+            function handleRegionMouseEnter(event, id) {
+                const region = brainRegionsData[id];
+                const path = event.target;
+                if (id !== selectedRegionId) {
+                    const {r, g, b} = region.color;
+                    path.style.fill = `rgba(${r}, ${g}, ${b}, 0.7)`; // Brighter on hover
+                    path.style.filter = `drop-shadow(0 0 8px rgba(${r},${g},${b},0.9))`;
+                }
+                brainTooltip.textContent = region.name;
+                brainTooltip.classList.remove('opacity-0');
+                brainTooltip.classList.add('opacity-100');
+            }
+            
+            function updateTooltipPosition(event) {
+                const mainBounds = document.getElementById('brain-interactive-area').getBoundingClientRect();
+                // Calculate position relative to the brain-interactive-area
+                let x = event.clientX - mainBounds.left + 15;
+                let y = event.clientY - mainBounds.top + 15;
+
+                // Boundary checks for tooltip within #brain-interactive-area
+                const tooltipRect = brainTooltip.getBoundingClientRect();
+                if (x + tooltipRect.width > mainBounds.width) {
+                    x = event.clientX - mainBounds.left - tooltipRect.width - 15;
+                }
+                if (y + tooltipRect.height > mainBounds.height) {
+                    y = event.clientY - mainBounds.top - tooltipRect.height - 15;
+                }
+                
+                brainTooltip.style.left = `${x}px`;
+                brainTooltip.style.top = `${y}px`;
+            }
+
+            function handleRegionMouseLeave(event, id) {
+                const region = brainRegionsData[id];
+                const path = event.target;
+                 if (id !== selectedRegionId) {
+                    const {r, g, b} = region.color;
+                    path.style.fill = `rgba(${r}, ${g}, ${b}, 0.4)`;
+                    path.style.filter = 'none';
+                }
+                brainTooltip.classList.remove('opacity-100');
+                brainTooltip.classList.add('opacity-0');
+            }
+            
+            function deselectAllRegions() {
+                document.querySelectorAll('.brain-region').forEach(p => {
+                    const regionId = p.id;
+                    const regionData = brainRegionsData[regionId];
+                    const {r, g, b} = regionData.color;
+                    p.style.fill = `rgba(${r}, ${g}, ${b}, 0.4)`;
+                    p.style.stroke = `rgba(${r}, ${g}, ${b}, 0.8)`;
+                    p.style.filter = 'none';
+                    p.classList.remove('selected');
+                });
+                selectedRegionId = null;
+            }
+
+            function handleRegionClick(event, id) {
+                deselectAllRegions(); // Clear previous selection styles
+
+                const region = brainRegionsData[id];
+                const path = event.target;
+                selectedRegionId = id;
+
+                const {r, g, b} = region.color;
+                path.style.fill = `rgba(${r}, ${g}, ${b}, 0.8)`; // Prominent fill for selected
+                path.style.stroke = `rgba(255, 255, 255, 0.9)`; // White stroke for selected
+                path.style.filter = `drop-shadow(0 0 12px rgba(${r},${g},${b},1)) drop-shadow(0 0 5px rgba(255,255,255,0.7))`; // Stronger glow
+                path.classList.add('selected');
+                path.classList.add('animate-pulseOnce'); // Subtle pulse animation
+                setTimeout(() => path.classList.remove('animate-pulseOnce'), 1000);
+
+
+                dataPanelTitle.textContent = region.name;
+                dataPanelContent.innerHTML = `
+                    <div class="space-y-4">
+                        <div>
+                            <h3 class="text-md font-semibold text-red-400 mb-1">Overview</h3>
+                            <p class="text-slate-300 text-xs leading-relaxed">${region.description}</p>
+                        </div>
+                        <div>
+                            <h3 class="text-md font-semibold text-red-400 mb-2">Key Research</h3>
+                            <ul class="space-y-2">
+                                ${region.research.map(r => `
+                                    <li class="p-2 bg-slate-800/70 rounded-md border border-slate-700/50">
+                                        <h4 class="font-medium text-slate-200 text-xs">${r.title}</h4>
+                                        <p class="text-slate-400 text-xs mt-0.5">${r.summary}</p>
+                                        <p class="text-xs mt-1 ${r.status.toLowerCase().includes('active') || r.status.toLowerCase().includes('ongoing') ? 'text-green-400' : 'text-sky-400'}">Status: ${r.status}</p>
+                                    </li>
+                                `).join('')}
+                            </ul>
+                        </div>
+                        <div>
+                            <h3 class="text-md font-semibold text-red-400 mb-2">Active Experiments</h3>
+                             <ul class="space-y-2">
+                                ${region.experiments.map(exp => `
+                                    <li class="p-2 bg-slate-800/70 rounded-md border border-slate-700/50 flex items-start space-x-3">
+                                        ${exp.imagePlaceholder ? '<div class="flex-shrink-0 bg-slate-700 border-2 border-dashed border-slate-600 rounded-lg w-12 h-12 mt-1"></div>' : '<div class="flex-shrink-0 bg-red-500/20 border-2 border-dashed border-red-500/50 rounded-lg w-12 h-12 mt-1"></div>'}
+                                        <div>
+                                            <h4 class="font-medium text-slate-200 text-xs">${exp.name}</h4>
+                                            <p class="text-slate-400 text-xs mt-0.5">${exp.details}</p>
+                                        </div>
+                                    </li>
+                                `).join('')}
+                            </ul>
+                        </div>
+                        <div>
+                            <h3 class="text-md font-semibold text-red-400 mb-2">${region.dataVisualizations.title}</h3>
+                            <canvas id="region-chart" class="max-h-48"></canvas>
+                        </div>
+                    </div>
+                `;
+                renderChart(region.dataVisualizations);
+            }
+            
+            function renderChart(vizData) {
+                if (currentChart) {
+                    currentChart.destroy();
+                }
+                const ctx = document.getElementById('region-chart').getContext('2d');
+                currentChart = new Chart(ctx, {
+                    type: vizData.type,
+                    data: {
+                        labels: vizData.labels,
+                        datasets: [{
+                            label: vizData.title,
+                            data: vizData.values,
+                            backgroundColor: vizData.type === 'line' || vizData.type === 'radar' ? 'rgba(239, 68, 68, 0.3)' : vizData.labels.map((_, i) => `rgba(239, 68, 68, ${0.8 - i*0.1})`),
+                            borderColor: 'rgba(239, 68, 68, 1)', // red-500
+                            borderWidth: 1,
+                            pointBackgroundColor: 'rgba(239, 68, 68, 1)',
+                            tension: 0.3,
+                            fill: vizData.type === 'line' || vizData.type === 'radar' ? true : false,
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: { display: false },
+                            title: { display: false }
+                        },
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                grid: { color: 'rgba(100, 116, 139, 0.2)' }, // slate-500
+                                ticks: { color: '#94a3b8' } // slate-400
+                            },
+                            x: {
+                                grid: { color: 'rgba(100, 116, 139, 0.2)' },
+                                ticks: { color: '#94a3b8' }
+                            },
+                             r: { // For radar charts
+                                angleLines: { color: 'rgba(100, 116, 139, 0.2)' },
+                                grid: { color: 'rgba(100, 116, 139, 0.2)' },
+                                pointLabels: { color: '#94a3b8', font: { size: 10 } },
+                                ticks: { backdropColor: 'transparent', color: '#94a3b8' }
+                            }
+                        }
+                    }
+                });
+            }
+
+            // Body Systems Interaction
+            document.querySelectorAll('[data-system]').forEach(button => {
+                button.addEventListener('click', () => {
+                    const system = button.dataset.system;
+                    let targetRegionId = '';
+                    if (system === 'visual') targetRegionId = 'occipital-lobe';
+                    else if (system === 'auditory') targetRegionId = 'temporal-lobe';
+                    else if (system === 'motor') {
+                        handleRegionClick({target: document.getElementById('frontal-lobe')}, 'frontal-lobe'); // Select frontal
+                        // Could also highlight cerebellum if logic allows multiple highlights or connections
+                        const cerebellumPath = document.getElementById('cerebellum');
+                        const {r,g,b} = brainRegionsData['cerebellum'].color;
+                        cerebellumPath.style.fill = `rgba(${r},${g},${b}, 0.6)`; // Slightly highlight
+                        setTimeout(() => { // Revert after a bit if not fully selected
+                            if (selectedRegionId !== 'cerebellum') cerebellumPath.style.fill = `rgba(${r},${g},${b}, 0.4)`;
+                        }, 2000);
+                        return; // Special handling for multi-region
+                    }
+                    else if (system === 'sensory') targetRegionId = 'parietal-lobe';
+                    
+                    if (targetRegionId && document.getElementById(targetRegionId)) {
+                        handleRegionClick({target: document.getElementById(targetRegionId)}, targetRegionId);
+                         // Add a visual cue like a ping animation on the selected region
+                        const path = document.getElementById(targetRegionId);
+                        path.classList.add('animate-pulseOnce');
+                        setTimeout(() => path.classList.remove('animate-pulseOnce'), 1000);
+                    }
+                });
+            });
+
+            // Neural Pathway Toggle
+            const pathwayToggleBtn = document.getElementById('pathway-toggle-btn');
+            const exitPathwayBtn = document.getElementById('exit-pathway-btn');
+            const neuralPathwayOverlay = document.getElementById('neural-pathway-overlay');
+            const mainBrainArea = document.getElementById('brain-interactive-area').querySelector('#brain-svg-container'); // The direct parent of SVG
+            
+            let pathwayAnimationId;
+            const pathwayCanvas = document.getElementById('neural-pathway-canvas');
+            const pathwayCtx = pathwayCanvas.getContext('2d');
+            let particles = [];
+
+            function resizePathwayCanvas() {
+                pathwayCanvas.width = neuralPathwayOverlay.clientWidth;
+                pathwayCanvas.height = neuralPathwayOverlay.clientHeight;
+            }
+
+            function initParticles() {
+                particles = [];
+                for (let i = 0; i < 100; i++) {
+                    particles.push({
+                        x: Math.random() * pathwayCanvas.width,
+                        y: Math.random() * pathwayCanvas.height,
+                        vx: (Math.random() - 0.5) * 1,
+                        vy: (Math.random() - 0.5) * 1,
+                        size: Math.random() * 2 + 1,
+                        color: `rgba(239, 68, 68, ${Math.random() * 0.5 + 0.3})` // Varying red opacity
+                    });
+                }
+            }
+
+            function animatePathways() {
+                pathwayCtx.clearRect(0, 0, pathwayCanvas.width, pathwayCanvas.height);
+                particles.forEach(p => {
+                    p.x += p.vx;
+                    p.y += p.vy;
+
+                    if (p.x < 0 || p.x > pathwayCanvas.width) p.vx *= -1;
+                    if (p.y < 0 || p.y > pathwayCanvas.height) p.vy *= -1;
+
+                    pathwayCtx.beginPath();
+                    pathwayCtx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+                    pathwayCtx.fillStyle = p.color;
+                    pathwayCtx.fill();
+
+                    // Connect nearby particles
+                    particles.forEach(otherP => {
+                        const dist = Math.hypot(p.x - otherP.x, p.y - otherP.y);
+                        if (dist < 100) { // Connection distance
+                            pathwayCtx.beginPath();
+                            pathwayCtx.moveTo(p.x, p.y);
+                            pathwayCtx.lineTo(otherP.x, otherP.y);
+                            pathwayCtx.strokeStyle = `rgba(220, 38, 38, ${ (1 - dist/100) * 0.2 })`; // Fainter red lines
+                            pathwayCtx.lineWidth = 0.5;
+                            pathwayCtx.stroke();
+                        }
+                    });
+                });
+                pathwayAnimationId = requestAnimationFrame(animatePathways);
+            }
+
+
+            pathwayToggleBtn.addEventListener('click', () => {
+                mainBrainArea.classList.add('opacity-0', 'pointer-events-none');
+                neuralPathwayOverlay.classList.remove('hidden');
+                neuralPathwayOverlay.classList.add('flex');
+                resizePathwayCanvas();
+                initParticles();
+                animatePathways();
+                 pathwayToggleBtn.textContent = "Viewing Pathways...";
+                pathwayToggleBtn.disabled = true;
+            });
+
+            exitPathwayBtn.addEventListener('click', () => {
+                cancelAnimationFrame(pathwayAnimationId);
+                mainBrainArea.classList.remove('opacity-0', 'pointer-events-none');
+                neuralPathwayOverlay.classList.add('hidden');
+                neuralPathwayOverlay.classList.remove('flex');
+                pathwayToggleBtn.textContent = "Neural Pathways";
+                pathwayToggleBtn.disabled = false;
+            });
+            
+            window.addEventListener('resize', () => {
+                if (!neuralPathwayOverlay.classList.contains('hidden')) {
+                    resizePathwayCanvas();
+                    // No need to re-init particles, they'll adjust to new bounds
+                }
+            });
+
+        }); // End DOMContentLoaded
+    </script>
+</body>
+</html>

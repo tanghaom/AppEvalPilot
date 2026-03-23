@@ -1,0 +1,9 @@
+{
+  "web_id": "web_93",
+  "task_id": 3,
+  "task_type": "dynamic",
+  "instruction": "Task: Input text into the 'Title' input field of an expanded timeline entry.\nExpected Result: The text entered by the user is displayed as the title for that entry. The underlying data for the entry is updated to reflect this change.\n\nNote: The task is only considered successful if the expected result is achieved; otherwise, it is deemed infeasible.",
+  "max_steps": 15,
+  "expected": "The text entered by the user is displayed as the title for that entry. The underlying data for the entry is updated to reflect this change.",
+  "label": 1
+}

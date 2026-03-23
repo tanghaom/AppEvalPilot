@@ -1,0 +1,9 @@
+{
+  "web_id": "web_97",
+  "task_id": 3,
+  "task_type": "dynamic",
+  "instruction": "Task: Click a 'Replay Cutscene' button after completion\nExpected Result: The entire cutscene sequence resets and plays again from the beginning, including all introductory animations, dialogue progression mechanics (triggered by 'Next Dialogue' clicks), camera pans, character streaming with sound, background music, and concluding with the 'To be continued...' message.\n\nNote: The task is only considered successful if the expected result is achieved; otherwise, it is deemed infeasible.",
+  "max_steps": 15,
+  "expected": "The entire cutscene sequence resets and plays again from the beginning, including all introductory animations, dialogue progression mechanics (triggered by 'Next Dialogue' clicks), camera pans, character streaming with sound, background music, and concluding with the 'To be continued...' message.",
+  "label": 0
+}

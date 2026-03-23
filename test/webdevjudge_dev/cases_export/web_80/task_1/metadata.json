@@ -1,0 +1,9 @@
+{
+  "web_id": "web_80",
+  "task_id": 1,
+  "task_type": "dynamic",
+  "instruction": "Task: User selects an AI model from a predefined list in the UI.\nExpected Result: The interface updates to display information and configuration options relevant to the selected model.\n\nNote: The task is only considered successful if the expected result is achieved; otherwise, it is deemed infeasible.",
+  "max_steps": 15,
+  "expected": "The interface updates to display information and configuration options relevant to the selected model.",
+  "label": 1
+}

@@ -1,0 +1,1000 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Villareal’s Pizzeria - Italian & Asian Fusion in Raleigh</title>
+    <meta name="description" content="Experience the unique blend of authentic Italian and Asian family recipes at Villareal’s Pizzeria in Raleigh, NC. Order online, reserve a table, or explore our menu.">
+    <meta name="keywords" content="Villareal’s Pizzeria, Raleigh pizzeria, Italian food Raleigh, Asian food Raleigh, Italian Asian fusion, pizza, pasta, family restaurant Raleigh">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Base styles */
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        h1, h2, h3, h4, h5, h6 {
+            font-family: 'Lora', serif;
+        }
+
+        /* Helper for Alpine.js or simple JS hide/show */
+        [x-cloak] { display: none !important; }
+
+        /* Custom utility classes (Tailwind @apply can be used here if using a build step, otherwise define full CSS) */
+        .nav-link {
+            padding: 0.5rem 0.75rem; /* py-2 px-3 */
+            border-radius: 0.375rem; /* rounded-md */
+            font-size: 0.875rem; /* text-sm */
+            font-weight: 500; /* font-medium */
+            color: #4B5563; /* text-gray-600 - Adjusted for brand.dark */
+            transition: background-color 0.15s ease-in-out, color 0.15s ease-in-out;
+        }
+        .nav-link:hover {
+            background-color: #E5E7EB; /* bg-gray-200 - Adjusted for brand.light */
+            color: #1F2937; /* text-gray-800 - Adjusted for brand.dark */
+        }
+        .nav-link-active {
+            background-color: #B91C1C; /* bg-red-700 - brand.primary */
+            color: white;
+        }
+        .nav-link-active:hover {
+            background-color: #991B1B; /* bg-red-800 */
+            color: white;
+        }
+
+        .btn {
+            @apply font-semibold py-2 px-4 rounded-lg shadow-md transition duration-150 ease-in-out focus:outline-none focus:ring-2 focus:ring-offset-2;
+        }
+        .btn-primary {
+            @apply bg-red-600 text-white hover:bg-red-700 focus:ring-red-500;
+        }
+        .btn-secondary {
+            @apply bg-emerald-600 text-white hover:bg-emerald-700 focus:ring-emerald-500;
+        }
+        .btn-outline {
+            @apply bg-transparent border-2 font-semibold py-2 px-4 rounded-lg shadow-sm transition duration-150 ease-in-out;
+        }
+        .btn-outline-primary {
+            @apply border-red-600 text-red-600 hover:bg-red-600 hover:text-white focus:ring-red-500;
+        }
+        .btn-outline-secondary {
+            @apply border-emerald-600 text-emerald-600 hover:bg-emerald-600 hover:text-white focus:ring-emerald-500;
+        }
+
+        .section-title {
+            @apply text-3xl md:text-4xl font-bold text-center mb-4 text-red-700; /* brand.primary */
+        }
+        .section-subtitle {
+            @apply text-lg md:text-xl text-center text-stone-600 mb-10 md:mb-12 max-w-2xl mx-auto;
+        }
+        .card {
+            @apply bg-white rounded-xl shadow-lg overflow-hidden transition-shadow duration-300 hover:shadow-xl;
+        }
+        .placeholder-img {
+            @apply bg-gray-200 border-2 border-dashed border-gray-400 rounded-xl flex items-center justify-center text-gray-500 text-xs;
+        }
+        /* Specific placeholder sizes based on usage */
+        .placeholder-img-sm { @apply w-16 h-16; }
+        .placeholder-img-md { @apply w-full h-48; }
+        .placeholder-img-lg { @apply w-full h-64; }
+
+        /* Page transition simulation */
+        main > section {
+            display: none;
+        }
+        main > section.active {
+            display: block;
+        }
+
+        /* Modal Styling */
+        .modal-backdrop {
+            @apply fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50;
+        }
+        .modal-content {
+            @apply bg-white p-6 rounded-lg shadow-xl max-w-lg w-full;
+        }
+        
+        /* Custom scrollbar for cart */
+        .cart-items-container::-webkit-scrollbar {
+            width: 8px;
+        }
+        .cart-items-container::-webkit-scrollbar-thumb {
+            background-color: #D1D5DB; /* gray-400 */
+            border-radius: 4px;
+        }
+        .cart-items-container::-webkit-scrollbar-track {
+            background-color: #F3F4F6; /* gray-100 */
+        }
+    </style>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Lora:ital,wght@0,400..700;1,400..700&display=swap" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        brand: {
+                            primary: '#B91C1C', // red-700
+                            secondary: '#047857', // emerald-700
+                            light: '#F5F5F4', // stone-100
+                            dark: '#292524', // stone-800
+                            text: '#374151', // gray-700
+                        }
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                        serif: ['Lora', 'serif']
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+<body class="bg-brand-light text-brand-text">
+
+    <!-- Header -->
+    <header class="bg-white shadow-md sticky top-0 z-40">
+        <div class="container mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex items-center justify-between h-20">
+                <div class="flex-shrink-0">
+                    <a href="#" onclick="app.navigateTo('home')" class="text-2xl font-bold font-serif text-brand-primary">Villareal’s Pizzeria</a>
+                </div>
+                <nav class="hidden md:flex space-x-1">
+                    <a href="#" onclick="app.navigateTo('home')" class="nav-link" data-nav="home" data-translate="nav.home">Home</a>
+                    <a href="#" onclick="app.navigateTo('menu')" class="nav-link" data-nav="menu" data-translate="nav.menu">Menu</a>
+                    <a href="#" onclick="app.navigateTo('reservations')" class="nav-link" data-nav="reservations" data-translate="nav.reservations">Reservations</a>
+                    <a href="#" onclick="app.navigateTo('about')" class="nav-link" data-nav="about" data-translate="nav.about">About Us</a>
+                    <a href="#" onclick="app.navigateTo('promotions')" class="nav-link" data-nav="promotions" data-translate="nav.promotions">Promotions</a>
+                    <a href="#" onclick="app.navigateTo('blog')" class="nav-link" data-nav="blog" data-translate="nav.blog">Blog</a>
+                    <a href="#" onclick="app.navigateTo('team')" class="nav-link" data-nav="team" data-translate="nav.team">Our Team</a>
+                </nav>
+                <div class="flex items-center">
+                    <div class="mr-4">
+                        <button onclick="app.setLanguage('en')" class="text-sm font-medium p-1" id="lang-en">EN</button>
+                        <span class="text-sm text-gray-400">|</span>
+                        <button onclick="app.setLanguage('it')" class="text-sm font-medium p-1" id="lang-it">IT</button>
+                    </div>
+                    <button onclick="app.toggleCart()" class="relative mr-2 btn btn-outline-secondary">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 3h1.386c.51 0 .955.343 1.087.835l.383 1.437M7.5 14.25a3 3 0 0 0-3 3h15.75m-12.75-3h11.218c1.121-2.3 2.1-4.684 2.924-7.138a60.114 60.114 0 0 0-16.536-1.84M7.5 14.25 5.106 5.272M6 20.25a.75.75 0 1 1-1.5 0 .75.75 0 0 1 1.5 0Zm12.75 0a.75.75 0 1 1-1.5 0 .75.75 0 0 1 1.5 0Z" />
+                        </svg>
+                        <span id="cart-count" class="absolute -top-2 -right-2 bg-red-500 text-white text-xs rounded-full px-1.5 py-0.5">0</span>
+                    </button>
+                    <button class="md:hidden p-2 rounded-md text-gray-600 hover:text-gray-900 hover:bg-gray-100" id="mobile-menu-button">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-3.75 5.25h-16.5" />
+                        </svg>
+                    </button>
+                </div>
+            </div>
+        </div>
+        <!-- Mobile Menu -->
+        <div class="md:hidden hidden" id="mobile-menu">
+            <div class="px-2 pt-2 pb-3 space-y-1 sm:px-3">
+                <a href="#" onclick="app.navigateTo('home'); app.closeMobileMenu();" class="block nav-link" data-nav="home" data-translate="nav.home">Home</a>
+                <a href="#" onclick="app.navigateTo('menu'); app.closeMobileMenu();" class="block nav-link" data-nav="menu" data-translate="nav.menu">Menu</a>
+                <a href="#" onclick="app.navigateTo('reservations'); app.closeMobileMenu();" class="block nav-link" data-nav="reservations" data-translate="nav.reservations">Reservations</a>
+                <a href="#" onclick="app.navigateTo('about'); app.closeMobileMenu();" class="block nav-link" data-nav="about" data-translate="nav.about">About Us</a>
+                <a href="#" onclick="app.navigateTo('promotions'); app.closeMobileMenu();" class="block nav-link" data-nav="promotions" data-translate="nav.promotions">Promotions</a>
+                <a href="#" onclick="app.navigateTo('blog'); app.closeMobileMenu();" class="block nav-link" data-nav="blog" data-translate="nav.blog">Blog</a>
+                <a href="#" onclick="app.navigateTo('team'); app.closeMobileMenu();" class="block nav-link" data-nav="team" data-translate="nav.team">Our Team</a>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content Area -->
+    <main class="container mx-auto px-4 sm:px-6 lg:px-8 py-8 md:py-12">
+        <!-- Home Page -->
+        <section id="home">
+            <!-- Hero Section -->
+            <div class="bg-gradient-to-r from-red-600 to-orange-500 text-white rounded-xl shadow-2xl p-8 md:p-16 mb-12 text-center md:text-left">
+                <div class="md:flex md:items-center">
+                    <div class="md:w-1/2 mb-8 md:mb-0">
+                        <h1 class="text-4xl md:text-5xl font-bold mb-4" data-translate="home.heroTitle">Welcome to Villareal’s Pizzeria!</h1>
+                        <p class="text-lg md:text-xl mb-6" data-translate="home.heroSubtitle">A delicious journey where Italian tradition meets Asian innovation, right here in Raleigh.</p>
+                        <div class="space-x-0 space-y-4 md:space-y-0 md:space-x-4">
+                            <button onclick="app.navigateTo('menu')" class="btn bg-white text-red-700 hover:bg-red-50 w-full md:w-auto" data-translate="home.viewMenu">View Our Menu</button>
+                            <button onclick="app.navigateTo('reservations')" class="btn btn-outline border-white text-white hover:bg-white hover:text-red-700 w-full md:w-auto" data-translate="home.reserveTable">Reserve a Table</button>
+                        </div>
+                    </div>
+                    <div class="md:w-1/2 flex justify-center md:justify-end">
+                         <div class="placeholder-img w-full max-w-md h-64 md:h-80 rounded-lg shadow-lg">Hero Image (e.g., Fusion Dish Collage)</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- About Us Snippet -->
+            <div class="mb-16 text-center">
+                <h2 class="section-title" data-translate="home.ourStoryTitle">Our Story: A Taste of Two Worlds</h2>
+                <p class="section-subtitle" data-translate="home.ourStoryText">Five years ago, Antonia Villareal moved from Foggia, Italy, to Raleigh, bringing cherished family recipes. Together with her husband Emi, whose family boasts a rich Asian culinary heritage, they've created Villareal’s Pizzeria – a unique dining experience where every dish tells a story of family, tradition, and flavorful fusion.</p>
+                <button onclick="app.navigateTo('about')" class="btn btn-primary" data-translate="home.learnMore">Learn More About Us</button>
+            </div>
+
+            <!-- Signature Dishes -->
+            <div class="mb-16">
+                <h2 class="section-title" data-translate="home.signatureDishesTitle">Signature Fusion Dishes</h2>
+                <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-8" id="home-signature-dishes">
+                    <!-- Signature dishes will be populated by JavaScript -->
+                </div>
+            </div>
+
+            <!-- Customer Reviews Snippet -->
+            <div class="mb-16">
+                <h2 class="section-title" data-translate="home.reviewsTitle">What Our Customers Say</h2>
+                <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
+                    <div class="card p-6">
+                        <p class="text-stone-700 mb-4 italic">"Absolutely blown away by the Kimchi Carbonara! A must-try. The atmosphere is so welcoming too."</p>
+                        <p class="font-semibold text-brand-primary">- Sarah K.</p>
+                    </div>
+                    <div class="card p-6">
+                        <p class="text-stone-700 mb-4 italic">"Finally, a place that does both amazing pizza and incredible Asian-inspired dishes. The Bulgogi Pizza is my new favorite!"</p>
+                        <p class="font-semibold text-brand-primary">- Mike R.</p>
+                    </div>
+                    <div class="card p-6">
+                        <p class="text-stone-700 mb-4 italic">"A true family restaurant with heart. You can taste the passion in every bite. We'll be back for sure!"</p>
+                        <p class="font-semibold text-brand-primary">- The Lee Family</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Menu Page -->
+        <section id="menu">
+            <h1 class="section-title" data-translate="menu.title">Our Menu</h1>
+            <p class="section-subtitle" data-translate="menu.subtitle">Explore our unique selection of Italian classics, Asian specialties, and innovative fusion creations. All made with love and the freshest ingredients.</p>
+            <div id="menu-items-container" class="space-y-12">
+                <!-- Menu categories and items will be populated by JavaScript -->
+            </div>
+        </section>
+
+        <!-- Reservations Page -->
+        <section id="reservations">
+            <h1 class="section-title" data-translate="reservations.title">Reserve Your Table</h1>
+            <p class="section-subtitle" data-translate="reservations.subtitle">We'd love to host you! Fill out the form below to request a reservation. We'll confirm with you shortly.</p>
+            <div class="max-w-xl mx-auto bg-white p-8 rounded-xl shadow-lg">
+                <form id="reservation-form" class="space-y-6">
+                    <div>
+                        <label for="res-name" class="block text-sm font-medium text-gray-700" data-translate="form.name">Name</label>
+                        <input type="text" id="res-name" name="name" required class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-red-500 focus:border-red-500 sm:text-sm">
+                    </div>
+                    <div>
+                        <label for="res-phone" class="block text-sm font-medium text-gray-700" data-translate="form.phone">Phone</label>
+                        <input type="tel" id="res-phone" name="phone" required class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-red-500 focus:border-red-500 sm:text-sm">
+                    </div>
+                    <div>
+                        <label for="res-email" class="block text-sm font-medium text-gray-700" data-translate="form.email">Email</label>
+                        <input type="email" id="res-email" name="email" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-red-500 focus:border-red-500 sm:text-sm">
+                    </div>
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div>
+                            <label for="res-date" class="block text-sm font-medium text-gray-700" data-translate="form.date">Date</label>
+                            <input type="date" id="res-date" name="date" required class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-red-500 focus:border-red-500 sm:text-sm">
+                        </div>
+                        <div>
+                            <label for="res-time" class="block text-sm font-medium text-gray-700" data-translate="form.time">Time</label>
+                            <input type="time" id="res-time" name="time" required class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-red-500 focus:border-red-500 sm:text-sm">
+                        </div>
+                        <div>
+                            <label for="res-guests" class="block text-sm font-medium text-gray-700" data-translate="form.guests">Guests</label>
+                            <input type="number" id="res-guests" name="guests" min="1" required class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-red-500 focus:border-red-500 sm:text-sm">
+                        </div>
+                    </div>
+                    <div>
+                        <label for="res-requests" class="block text-sm font-medium text-gray-700" data-translate="form.requests">Special Requests (optional)</label>
+                        <textarea id="res-requests" name="requests" rows="3" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-red-500 focus:border-red-500 sm:text-sm"></textarea>
+                    </div>
+                    <div>
+                        <button type="submit" class="w-full btn btn-primary" data-translate="form.submitReservation">Request Reservation</button>
+                    </div>
+                </form>
+                <div id="reservation-confirmation" class="hidden mt-6 p-4 bg-green-100 text-green-700 rounded-md">
+                    <p data-translate="reservations.confirmation">Thank you! Your reservation request has been sent. We will contact you shortly to confirm.</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- About Us Page -->
+        <section id="about">
+            <h1 class="section-title" data-translate="about.title">Our Story</h1>
+            <div class="bg-white p-8 rounded-xl shadow-lg space-y-6">
+                <div class="md:flex md:space-x-8 items-center">
+                    <div class="md:w-1/3 mb-6 md:mb-0">
+                        <div class="placeholder-img-lg rounded-lg shadow-md">Antonia & Emi Villareal</div>
+                    </div>
+                    <div class="md:w-2/3">
+                        <h2 class="text-2xl font-semibold text-brand-secondary mb-3" data-translate="about.subtitle1">From Foggia to Raleigh: A Culinary Dream</h2>
+                        <p class="mb-4" data-translate="about.p1">Antonia Villareal's journey began in Foggia, a charming town in Southern Italy, where she grew up surrounded by the rich aromas and traditions of Italian home cooking. Food was more than sustenance; it was family, celebration, and love. Five years ago, she brought these cherished traditions and a dream to Raleigh, North Carolina, seeking a new life with her family.</p>
+                        <p class="mb-4" data-translate="about.p2">In Raleigh, Antonia met Emi, whose family holds a vibrant legacy of Asian culinary arts. Emi's grandparents passed down secret family recipes from generations, full of unique spices and techniques. It was a match made in culinary heaven. Their shared passion for food and family sparked an idea: why not blend their distinct culinary worlds?</p>
+                    </div>
+                </div>
+                <div>
+                    <h2 class="text-2xl font-semibold text-brand-secondary mb-3" data-translate="about.subtitle2">Villareal’s Pizzeria: A Fusion of Hearts and Flavors</h2>
+                    <p class="mb-4" data-translate="about.p3">And so, Villareal’s Pizzeria was born. It's more than just a restaurant; it's a testament to their journey, a celebration of two cultures, and a place where families can come together. Here, you'll find classic Italian pizzas and pastas made with Nonna's love, alongside exciting Asian-inspired dishes and truly unique fusion creations that you won't find anywhere else.</p>
+                    <p class="mb-4" data-translate="about.p4">Our philosophy is simple: use the freshest local ingredients, honor traditional cooking methods, and infuse every dish with creativity and passion. We believe in the power of food to connect people, and we invite you to be a part of our extended family. Join us for a meal and experience the magic of Italian warmth and Asian zest, all under one roof.</p>
+                </div>
+                <div class="grid md:grid-cols-2 gap-6 pt-6">
+                    <div class="card p-6">
+                        <h3 class="text-xl font-semibold text-brand-primary mb-2" data-translate="about.italianHeritage">Our Italian Heritage</h3>
+                        <p class="text-sm" data-translate="about.italianText">Authentic recipes, fresh pasta, slow-cooked sauces, and the art of the perfect pizza crust – all inspired by generations of Italian family cooking.</p>
+                        <div class="placeholder-img-sm mx-auto mt-4">Italian Icon (e.g., Olive Branch)</div>
+                    </div>
+                    <div class="card p-6">
+                        <h3 class="text-xl font-semibold text-brand-primary mb-2" data-translate="about.asianInfluence">Our Asian Influence</h3>
+                        <p class="text-sm" data-translate="about.asianText">Bold flavors, unique spices, and family recipes from across Asia, bringing an exciting twist to our menu and creating unforgettable fusion dishes.</p>
+                         <div class="placeholder-img-sm mx-auto mt-4">Asian Icon (e.g., Lantern)</div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Promotions Page -->
+        <section id="promotions">
+            <h1 class="section-title" data-translate="promotions.title">Special Offers & Promotions</h1>
+            <p class="section-subtitle" data-translate="promotions.subtitle">Enjoy great deals on your favorite Villareal's dishes!</p>
+            <div class="space-y-8">
+                <div class="card md:flex">
+                    <div class="md:w-1/3">
+                         <div class="placeholder-img-md rounded-t-xl md:rounded-l-xl md:rounded-t-none">Promotion Image 1</div>
+                    </div>
+                    <div class="md:w-2/3 p-6">
+                        <h2 class="text-2xl font-semibold text-brand-secondary mb-2" data-translate="promotions.promo1Title">Weekday Lunch Fusion Special</h2>
+                        <p class="text-stone-700 mb-3" data-translate="promotions.promo1Desc">Get any of our signature fusion bowls (e.g., Teriyaki Chicken Pasta, Spicy Korean Pork Belly Pizza Slice) with a side salad and a drink for just $12.99. Monday to Friday, 11 AM - 2 PM.</p>
+                        <p class="text-sm text-gray-500" data-translate="promotions.promo1Terms">Dine-in only. Cannot be combined with other offers.</p>
+                    </div>
+                </div>
+                <div class="card md:flex">
+                     <div class="md:w-1/3">
+                         <div class="placeholder-img-md rounded-t-xl md:rounded-l-xl md:rounded-t-none">Promotion Image 2</div>
+                    </div>
+                    <div class="md:w-2/3 p-6">
+                        <h2 class="text-2xl font-semibold text-brand-secondary mb-2" data-translate="promotions.promo2Title">Family Feast Combo</h2>
+                        <p class="text-stone-700 mb-3" data-translate="promotions.promo2Desc">Two large 1-topping pizzas (Italian or Fusion!), a large order of Garlic Knots with Marinara & Gochujang Aioli, and a 2-liter soda for $39.99. Perfect for a family night!</p>
+                        <p class="text-sm text-gray-500" data-translate="promotions.promo2Terms">Available for dine-in or takeout. Premium toppings extra.</p>
+                    </div>
+                </div>
+                 <div class="card md:flex">
+                     <div class="md:w-1/3">
+                         <div class="placeholder-img-md rounded-t-xl md:rounded-l-xl md:rounded-t-none">Promotion Image 3</div>
+                    </div>
+                    <div class="md:w-2/3 p-6">
+                        <h2 class="text-2xl font-semibold text-brand-secondary mb-2" data-translate="promotions.promo3Title">Happy Hour Bites & Brews</h2>
+                        <p class="text-stone-700 mb-3" data-translate="promotions.promo3Desc">Join us from 4 PM - 6 PM on weekdays for 50% off select appetizers (like our Arancini with Yuzu Dip or Edamame with Parmesan & Truffle Oil) and $2 off all draft beers and house wines.</p>
+                        <p class="text-sm text-gray-500" data-translate="promotions.promo3Terms">Bar area and patio only.</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Blog/News Page -->
+        <section id="blog">
+            <h1 class="section-title" data-translate="blog.title">News & Stories from Villareal's</h1>
+            <p class="section-subtitle" data-translate="blog.subtitle">Stay updated with our latest news, culinary adventures, and stories from our kitchen.</p>
+            <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-8" id="blog-posts-container">
+                <!-- Blog posts will be populated by JavaScript -->
+            </div>
+        </section>
+        
+        <!-- Single Blog Post View (hidden by default) -->
+        <section id="blog-post-detail" class="hidden">
+            <button onclick="app.navigateTo('blog')" class="btn btn-outline-primary mb-6" data-translate="blog.back">← Back to Blog</button>
+            <div class="bg-white p-8 rounded-xl shadow-lg">
+                <h1 id="blog-post-title" class="text-3xl font-bold text-brand-primary mb-4"></h1>
+                <p id="blog-post-date" class="text-sm text-gray-500 mb-4"></p>
+                <div id="blog-post-image" class="placeholder-img-lg mb-6 rounded-md">Blog Post Image</div>
+                <div id="blog-post-content" class="prose max-w-none"></div>
+            </div>
+        </section>
+
+        <!-- Team Page -->
+        <section id="team">
+            <h1 class="section-title" data-translate="team.title">Meet Our Family</h1>
+            <p class="section-subtitle" data-translate="team.subtitle">The heart and soul behind Villareal’s Pizzeria. We're passionate about food and dedicated to bringing you an unforgettable dining experience.</p>
+            <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
+                <div class="card text-center p-6">
+                    <div class="placeholder-img-sm w-32 h-32 rounded-full mx-auto mb-4 shadow-md">Antonia</div>
+                    <h3 class="text-xl font-semibold text-brand-secondary" data-translate="team.antoniaName">Antonia Villareal</h3>
+                    <p class="text-red-600 font-medium" data-translate="team.antoniaRole">Co-Founder & Head Chef (Italian Cuisine)</p>
+                    <p class="text-sm text-stone-600 mt-2" data-translate="team.antoniaBio">"From my nonna's kitchen in Foggia to your table in Raleigh, I bring the authentic taste of Italy. Food is my love language!"</p>
+                </div>
+                <div class="card text-center p-6">
+                    <div class="placeholder-img-sm w-32 h-32 rounded-full mx-auto mb-4 shadow-md">Emi</div>
+                    <h3 class="text-xl font-semibold text-brand-secondary" data-translate="team.emiName">Emi (Villareal)</h3>
+                    <p class="text-red-600 font-medium" data-translate="team.emiRole">Co-Founder & Head Chef (Asian Cuisine)</p>
+                    <p class="text-sm text-stone-600 mt-2" data-translate="team.emiBio">"My family's Asian recipes are a treasure I love to share. Blending them with Italian classics is an exciting culinary adventure."</p>
+                </div>
+                <div class="card text-center p-6">
+                     <div class="placeholder-img-sm w-32 h-32 rounded-full mx-auto mb-4 shadow-md">Marco</div>
+                    <h3 class="text-xl font-semibold text-brand-secondary" data-translate="team.marcoName">Marco Rossi</h3>
+                    <p class="text-red-600 font-medium" data-translate="team.marcoRole">Sous Chef & Pizza Innovator</p>
+                    <p class="text-sm text-stone-600 mt-2" data-translate="team.marcoBio">"Crafting the perfect pizza, whether classic or fusion, is my passion. Always experimenting with new flavors!"</p>
+                </div>
+                 <div class="card text-center p-6">
+                     <div class="placeholder-img-sm w-32 h-32 rounded-full mx-auto mb-4 shadow-md">Sofia Chen</div>
+                    <h3 class="text-xl font-semibold text-brand-secondary" data-translate="team.sofiaName">Sofia Chen</h3>
+                    <p class="text-red-600 font-medium" data-translate="team.sofiaRole">Pastry Chef & Dessert Artist</p>
+                    <p class="text-sm text-stone-600 mt-2" data-translate="team.sofiaBio">"Ending your meal on a sweet note is my goal. I love creating desserts that blend Italian elegance with Asian subtleties."</p>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- Cart Modal -->
+    <div id="cart-modal" class="modal-backdrop hidden">
+        <div class="modal-content max-w-2xl">
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="text-2xl font-semibold text-brand-primary" data-translate="cart.title">Your Order</h2>
+                <button onclick="app.toggleCart()" class="text-gray-500 hover:text-gray-700">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                </button>
+            </div>
+            <div id="cart-items-list" class="cart-items-container max-h-96 overflow-y-auto space-y-4 mb-6 pr-2">
+                <!-- Cart items will be populated here -->
+                <p id="cart-empty-message" class="text-center text-gray-500" data-translate="cart.empty">Your cart is empty.</p>
+            </div>
+            <div class="border-t pt-4">
+                <div class="flex justify-between items-center mb-4">
+                    <p class="text-lg font-semibold" data-translate="cart.total">Total:</p>
+                    <p id="cart-total" class="text-lg font-semibold text-brand-secondary">$0.00</p>
+                </div>
+                <button id="checkout-button" class="w-full btn btn-primary" data-translate="cart.checkout" onclick="alert(app.translations[app.currentLang]['alert.checkoutMock'])">Proceed to Checkout (Mock)</button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Footer -->
+    <footer class="bg-stone-800 text-stone-300 py-12">
+        <div class="container mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-8 mb-8">
+                <div>
+                    <h3 class="text-xl font-semibold font-serif text-white mb-3">Villareal’s Pizzeria</h3>
+                    <p class="text-sm mb-2" data-translate="footer.address">123 Main Street, Raleigh, NC 27601</p>
+                    <p class="text-sm mb-2" data-translate="footer.phone">Phone: (919) 555-1234</p>
+                    <p class="text-sm" data-translate="footer.email">Email: info@villarealspizzeria.com</p>
+                </div>
+                <div>
+                    <h3 class="text-lg font-semibold text-white mb-3" data-translate="footer.quickLinks">Quick Links</h3>
+                    <ul class="space-y-2 text-sm">
+                        <li><a href="#" onclick="app.navigateTo('menu')" class="hover:text-red-400 transition-colors" data-translate="nav.menu">Menu</a></li>
+                        <li><a href="#" onclick="app.navigateTo('reservations')" class="hover:text-red-400 transition-colors" data-translate="nav.reservations">Reservations</a></li>
+                        <li><a href="#" onclick="app.navigateTo('about')" class="hover:text-red-400 transition-colors" data-translate="nav.about">About Us</a></li>
+                         <li><a href="#" onclick="app.navigateTo('promotions')" class="hover:text-red-400 transition-colors" data-translate="nav.promotions">Promotions</a></li>
+                    </ul>
+                </div>
+                <div>
+                    <h3 class="text-lg font-semibold text-white mb-3" data-translate="footer.newsletter">Newsletter</h3>
+                    <p class="text-sm mb-3" data-translate="footer.newsletterText">Sign up for updates on new dishes and special offers!</p>
+                    <form id="newsletter-form" class="flex">
+                        <input type="email" id="newsletter-email" placeholder="Your email" data-placeholder-translate="form.emailPlaceholder" class="w-full px-3 py-2 text-sm text-stone-800 rounded-l-md focus:outline-none focus:ring-2 focus:ring-red-500" required>
+                        <button type="submit" class="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-r-md text-sm font-semibold" data-translate="form.subscribe">Subscribe</button>
+                    </form>
+                    <p id="newsletter-confirmation" class="hidden mt-2 text-sm text-emerald-400" data-translate="footer.newsletterConfirm">Thanks for subscribing!</p>
+                </div>
+            </div>
+            <div class="border-t border-stone-700 pt-8 text-center text-sm">
+                <p>&copy; <span id="current-year"></span> Villareal’s Pizzeria. All Rights Reserved.</p>
+                <p class="mt-1" data-translate="footer.credits">A taste of Italy and Asia, lovingly crafted in Raleigh.</p>
+            </div>
+        </div>
+    </footer>
+
+    <script>
+        const App = () => {
+            // STATE
+            let currentPage = 'home';
+            let currentLang = 'en';
+            let cart = [];
+            const menuData = {
+                en: {
+                    categories: [
+                        { name: "Signature Fusion Pizzas", id: "fusion-pizza", items: [
+                            { id: "fp1", name: "Bulgogi Beef Pizza", description: "Marinated Korean BBQ beef, mozzarella, scallions, kimchi aioli drizzle.", price: 18.99, image: "placeholder-img-md" },
+                            { id: "fp2", name: "Spicy Szechuan Sausage Pizza", description: "Szechuan-spiced Italian sausage, bell peppers, onions, chili flakes, mozzarella.", price: 17.99, image: "placeholder-img-md" },
+                            { id: "fp3", name: "Tom Yum Shrimp Pizza", description: "Tom Yum marinated shrimp, mushrooms, cilantro, mozzarella, lime zest.", price: 19.99, image: "placeholder-img-md" }
+                        ]},
+                        { name: "Classic Italian Pizzas", id: "italian-pizza", items: [
+                            { id: "ip1", name: "Margherita", description: "San Marzano tomatoes, fresh mozzarella, basil, olive oil.", price: 14.99, image: "placeholder-img-md" },
+                            { id: "ip2", name: "Pepperoni", description: "Classic pepperoni, mozzarella, tomato sauce.", price: 16.99, image: "placeholder-img-md" }
+                        ]},
+                        { name: "Fusion Pastas & Bowls", id: "fusion-pasta", items: [
+                            { id: "ppb1", name: "Kimchi Carbonara", description: "Spaghetti with crispy pancetta, creamy egg yolk sauce, pecorino, and a spicy kimchi kick.", price: 16.50, image: "placeholder-img-md" },
+                            { id: "ppb2", name: "Teriyaki Chicken Alfredo", description: "Fettuccine Alfredo with grilled teriyaki chicken, broccoli, and a sprinkle of sesame seeds.", price: 17.00, image: "placeholder-img-md" }
+                        ]},
+                        { name: "Italian Pastas", id: "italian-pasta", items: [
+                            { id: "ipa1", name: "Lasagna Classica", description: "Layers of fresh pasta, rich meat sauce, béchamel, and parmesan.", price: 15.99, image: "placeholder-img-md" }
+                        ]},
+                        { name: "Asian Specialties", id: "asian-specialties", items: [
+                            { id: "as1", name: "Pad Thai (Villareal's Style)", description: "Rice noodles stir-fried with shrimp or chicken, tofu, peanuts, bean sprouts, and a tangy tamarind- Modena balsamic sauce.", price: 15.50, image: "placeholder-img-md" },
+                            { id: "as2", name: "Gyoza with Parmesan Crisp", description: "Pan-fried pork and vegetable dumplings served with a soy-balsamic dipping sauce and a crispy parmesan wafer.", price: 10.99, image: "placeholder-img-md" }
+                        ]},
+                        { name: "Appetizers & Sides", id: "appetizers", items: [
+                            { id: "ap1", name: "Arancini with Yuzu Aioli", description: "Crispy fried risotto balls filled with mozzarella, served with a zesty yuzu aioli.", price: 9.99, image: "placeholder-img-md" },
+                            { id: "ap2", name: "Garlic Knots with Marinara & Gochujang Aioli", description: "Warm garlic knots served with classic marinara and a spicy Korean gochujang aioli.", price: 7.99, image: "placeholder-img-md" }
+                        ]},
+                        { name: "Desserts", id: "desserts", items: [
+                            { id: "d1", name: "Matcha Tiramisu", description: "Classic tiramisu with a green tea twist.", price: 8.50, image: "placeholder-img-md" },
+                            { id: "d2", name: "Limoncello Panna Cotta with Ginger Syrup", description: "Creamy Italian panna cotta infused with limoncello, topped with a candied ginger syrup.", price: 7.99, image: "placeholder-img-md" }
+                        ]},
+                    ]
+                },
+                it: { // Sample translations for menu
+                    categories: [
+                        { name: "Pizze Fusion Speciali", id: "fusion-pizza", items: [
+                            { id: "fp1", name: "Pizza Bulgogi Manzo", description: "Manzo marinato BBQ coreano, mozzarella, scalogno, salsa aioli al kimchi.", price: 18.99, image: "placeholder-img-md" },
+                            { id: "fp2", name: "Pizza Salsiccia Piccante Szechuan", description: "Salsiccia italiana speziata Szechuan, peperoni, cipolle, scaglie di peperoncino, mozzarella.", price: 17.99, image: "placeholder-img-md" },
+                            { id: "fp3", name: "Pizza Gamberi Tom Yum", description: "Gamberi marinati Tom Yum, funghi, coriandolo, mozzarella, scorza di lime.", price: 19.99, image: "placeholder-img-md" }
+                        ]},
+                        { name: "Pizze Classiche Italiane", id: "italian-pizza", items: [
+                            { id: "ip1", name: "Margherita", description: "Pomodori San Marzano, mozzarella fresca, basilico, olio d'oliva.", price: 14.99, image: "placeholder-img-md" },
+                            { id: "ip2", name: "Pepperoni (Salame Piccante)", description: "Classico salame piccante, mozzarella, salsa di pomodoro.", price: 16.99, image: "placeholder-img-md" }
+                        ]},
+                        { name: "Pasta & Bowl Fusion", id: "fusion-pasta", items: [
+                            { id: "ppb1", name: "Carbonara al Kimchi", description: "Spaghetti con pancetta croccante, cremosa salsa all'uovo, pecorino e un tocco piccante di kimchi.", price: 16.50, image: "placeholder-img-md" },
+                            { id: "ppb2", name: "Alfredo al Pollo Teriyaki", description: "Fettuccine Alfredo con pollo teriyaki grigliato, broccoli e una spolverata di semi di sesamo.", price: 17.00, image: "placeholder-img-md" }
+                        ]},
+                        { name: "Paste Italiane", id: "italian-pasta", items: [
+                            { id: "ipa1", name: "Lasagna Classica", description: "Strati di pasta fresca, ricco ragù di carne, besciamella e parmigiano.", price: 15.99, image: "placeholder-img-md" }
+                        ]},
+                        { name: "Specialità Asiatiche", id: "asian-specialties", items: [
+                            { id: "as1", name: "Pad Thai (Stile Villareal)", description: "Noodles di riso saltati con gamberi o pollo, tofu, arachidi, germogli di soia e una salsa agrodolce al tamarindo e balsamico di Modena.", price: 15.50, image: "placeholder-img-md" },
+                            { id: "as2", name: "Gyoza con Crosta di Parmigiano", description: "Ravioli di maiale e verdure fritti in padella serviti con salsa di soia e balsamico e una cialda croccante di parmigiano.", price: 10.99, image: "placeholder-img-md" }
+                        ]},
+                        { name: "Antipasti & Contorni", id: "appetizers", items: [
+                            { id: "ap1", name: "Arancini con Aioli allo Yuzu", description: "Crocchette di risotto fritte ripiene di mozzarella, servite con una vivace aioli allo yuzu.", price: 9.99, image: "placeholder-img-md" },
+                            { id: "ap2", name: "Nodini all'Aglio con Marinara & Aioli Gochujang", description: "Caldi nodini all'aglio serviti con marinara classica e una piccante aioli coreana al gochujang.", price: 7.99, image: "placeholder-img-md" }
+                        ]},
+                        { name: "Dolci", id: "desserts", items: [
+                            { id: "d1", name: "Tiramisù al Matcha", description: "Classico tiramisù con un tocco di tè verde.", price: 8.50, image: "placeholder-img-md" },
+                            { id: "d2", name: "Panna Cotta al Limoncello con Sciroppo allo Zenzero", description: "Cremosa panna cotta italiana infusa al limoncello, guarnita con uno sciroppo di zenzero candito.", price: 7.99, image: "placeholder-img-md" }
+                        ]},
+                    ]
+                }
+            };
+
+            const blogPostsData = {
+                en: [
+                    { id: 1, title: "The Story Behind Our Kimchi Carbonara", date: "October 26, 2023", image: "placeholder-img-lg", content: "<p>Our Kimchi Carbonara is more than just a dish; it's a symbol of our culinary philosophy. It started with Antonia's perfect Carbonara recipe, a closely guarded family secret from Foggia. Then came Emi's suggestion: 'What if we add a bit of kimchi?' The rest, as they say, is history...</p><p>The spicy, tangy fermented cabbage cuts through the richness of the pancetta and egg, creating a flavor explosion that's both familiar and surprisingly new. It took many attempts to perfect the balance, ensuring the kimchi complemented rather than overpowered the delicate Carbonara. We invite you to try this signature dish and taste the harmony of two worlds.</p>" },
+                    { id: 2, title: "Ingredient Spotlight: San Marzano Tomatoes & Szechuan Peppercorns", date: "November 5, 2023", image: "placeholder-img-lg", content: "<p>At Villareal's, quality ingredients are paramount. For our Italian dishes, we insist on San Marzano tomatoes, grown in the volcanic soil near Mount Vesuvius. Their sweetness and low acidity make them perfect for our pizza and pasta sauces.</p><p>On the Asian side, one of our favorite spices is the Szechuan peppercorn. It's not actually a pepper, but the husk of a tiny fruit, and it creates a unique tingling numbness on the palate (ma la!). We use it to add authentic KICK to dishes like our Spicy Szechuan Sausage Pizza.</p>" },
+                    { id: 3, title: "Community Love: Villareal's at the Raleigh Food Festival", date: "November 15, 2023", image: "placeholder-img-lg", content: "<p>We had an amazing time at the Raleigh Food Festival last weekend! It was wonderful to meet so many fellow food lovers and share our passion for Italian-Asian fusion. Our Bulgogi Pizza sliders were a huge hit! Thank you to everyone who stopped by our booth. We're proud to be part of Raleigh's vibrant food scene.</p>" }
+                ],
+                it: [ // Sample translations for blog posts
+                    { id: 1, title: "La Storia Dietro la Nostra Carbonara al Kimchi", date: "26 Ottobre 2023", image: "placeholder-img-lg", content: "<p>La nostra Carbonara al Kimchi è più di un semplice piatto; è un simbolo della nostra filosofia culinaria. È iniziata con la ricetta perfetta della Carbonara di Antonia, un segreto di famiglia custodito gelosamente da Foggia. Poi è arrivato il suggerimento di Emi: 'E se aggiungessimo un po' di kimchi?' Il resto, come si suol dire, è storia...</p><p>Il cavolo fermentato piccante e acidulo taglia la ricchezza della pancetta e dell'uovo, creando un'esplosione di sapore che è sia familiare che sorprendentemente nuova. Ci sono voluti molti tentativi per perfezionare l'equilibrio, assicurando che il kimchi completasse anziché sovrastare la delicata Carbonara. Vi invitiamo a provare questo piatto d'autore e ad assaporare l'armonia di due mondi.</p>" },
+                    { id: 2, title: "Ingredienti in Primo Piano: Pomodori San Marzano & Pepe di Szechuan", date: "5 Novembre 2023", image: "placeholder-img-lg", content: "<p>Da Villareal, gli ingredienti di qualità sono fondamentali. Per i nostri piatti italiani, insistiamo sui pomodori San Marzano, coltivati nel terreno vulcanico vicino al Vesuvio. La loro dolcezza e bassa acidità li rendono perfetti per le nostre salse per pizza e pasta.</p><p>Sul versante asiatico, una delle nostre spezie preferite è il pepe di Szechuan. Non è in realtà un pepe, ma la buccia di un piccolo frutto, e crea un intorpidimento formicolante unico sul palato (ma la!). Lo usiamo per aggiungere un autentico KICK a piatti come la nostra Pizza Piccante con Salsiccia Szechuan.</p>" },
+                    { id: 3, title: "Amore dalla Comunità: Villareal's al Raleigh Food Festival", date: "15 Novembre 2023", image: "placeholder-img-lg", content: "<p>Ci siamo divertiti moltissimo al Raleigh Food Festival lo scorso fine settimana! È stato meraviglioso incontrare così tanti appassionati di cibo e condividere la nostra passione per la fusione italo-asiatica. I nostri mini-slider di Pizza Bulgogi sono stati un successone! Grazie a tutti coloro che si sono fermati al nostro stand. Siamo orgogliosi di far parte della vivace scena gastronomica di Raleigh.</p>" }
+                ]
+            };
+
+            const translations = {
+                en: {
+                    "nav.home": "Home", "nav.menu": "Menu", "nav.reservations": "Reservations", "nav.about": "About Us", "nav.promotions": "Promotions", "nav.blog": "Blog", "nav.team": "Our Team",
+                    "home.heroTitle": "Welcome to Villareal’s Pizzeria!", "home.heroSubtitle": "A delicious journey where Italian tradition meets Asian innovation, right here in Raleigh.", "home.viewMenu": "View Our Menu", "home.reserveTable": "Reserve a Table",
+                    "home.ourStoryTitle": "Our Story: A Taste of Two Worlds", "home.ourStoryText": "Five years ago, Antonia Villareal moved from Foggia, Italy, to Raleigh, bringing cherished family recipes. Together with her husband Emi, whose family boasts a rich Asian culinary heritage, they've created Villareal’s Pizzeria – a unique dining experience where every dish tells a story of family, tradition, and flavorful fusion.", "home.learnMore": "Learn More About Us",
+                    "home.signatureDishesTitle": "Signature Fusion Dishes", "home.reviewsTitle": "What Our Customers Say",
+                    "menu.title": "Our Menu", "menu.subtitle": "Explore our unique selection of Italian classics, Asian specialties, and innovative fusion creations. All made with love and the freshest ingredients.", "menu.addToOrder": "Add to Order",
+                    "reservations.title": "Reserve Your Table", "reservations.subtitle": "We'd love to host you! Fill out the form below to request a reservation. We'll confirm with you shortly.", "reservations.confirmation": "Thank you! Your reservation request has been sent. We will contact you shortly to confirm.",
+                    "about.title": "Our Story", "about.subtitle1": "From Foggia to Raleigh: A Culinary Dream",
+                    "about.p1": "Antonia Villareal's journey began in Foggia, a charming town in Southern Italy, where she grew up surrounded by the rich aromas and traditions of Italian home cooking. Food was more than sustenance; it was family, celebration, and love. Five years ago, she brought these cherished traditions and a dream to Raleigh, North Carolina, seeking a new life with her family.",
+                    "about.p2": "In Raleigh, Antonia met Emi, whose family holds a vibrant legacy of Asian culinary arts. Emi's grandparents passed down secret family recipes from generations, full of unique spices and techniques. It was a match made in culinary heaven. Their shared passion for food and family sparked an idea: why not blend their distinct culinary worlds?",
+                    "about.subtitle2": "Villareal’s Pizzeria: A Fusion of Hearts and Flavors",
+                    "about.p3": "And so, Villareal’s Pizzeria was born. It's more than just a restaurant; it's a testament to their journey, a celebration of two cultures, and a place where families can come together. Here, you'll find classic Italian pizzas and pastas made with Nonna's love, alongside exciting Asian-inspired dishes and truly unique fusion creations that you won't find anywhere else.",
+                    "about.p4": "Our philosophy is simple: use the freshest local ingredients, honor traditional cooking methods, and infuse every dish with creativity and passion. We believe in the power of food to connect people, and we invite you to be a part of our extended family. Join us for a meal and experience the magic of Italian warmth and Asian zest, all under one roof.",
+                    "about.italianHeritage": "Our Italian Heritage", "about.italianText": "Authentic recipes, fresh pasta, slow-cooked sauces, and the art of the perfect pizza crust – all inspired by generations of Italian family cooking.",
+                    "about.asianInfluence": "Our Asian Influence", "about.asianText": "Bold flavors, unique spices, and family recipes from across Asia, bringing an exciting twist to our menu and creating unforgettable fusion dishes.",
+                    "promotions.title": "Special Offers & Promotions", "promotions.subtitle": "Enjoy great deals on your favorite Villareal's dishes!",
+                    "promotions.promo1Title": "Weekday Lunch Fusion Special", "promotions.promo1Desc": "Get any of our signature fusion bowls (e.g., Teriyaki Chicken Pasta, Spicy Korean Pork Belly Pizza Slice) with a side salad and a drink for just $12.99. Monday to Friday, 11 AM - 2 PM.", "promotions.promo1Terms": "Dine-in only. Cannot be combined with other offers.",
+                    "promotions.promo2Title": "Family Feast Combo", "promotions.promo2Desc": "Two large 1-topping pizzas (Italian or Fusion!), a large order of Garlic Knots with Marinara & Gochujang Aioli, and a 2-liter soda for $39.99. Perfect for a family night!", "promotions.promo2Terms": "Available for dine-in or takeout. Premium toppings extra.",
+                    "promotions.promo3Title": "Happy Hour Bites & Brews", "promotions.promo3Desc": "Join us from 4 PM - 6 PM on weekdays for 50% off select appetizers (like our Arancini with Yuzu Dip or Edamame with Parmesan & Truffle Oil) and $2 off all draft beers and house wines.", "promotions.promo3Terms": "Bar area and patio only.",
+                    "blog.title": "News & Stories from Villareal's", "blog.subtitle": "Stay updated with our latest news, culinary adventures, and stories from our kitchen.", "blog.readMore": "Read More", "blog.back": "← Back to Blog",
+                    "team.title": "Meet Our Family", "team.subtitle": "The heart and soul behind Villareal’s Pizzeria. We're passionate about food and dedicated to bringing you an unforgettable dining experience.",
+                    "team.antoniaName": "Antonia Villareal", "team.antoniaRole": "Co-Founder & Head Chef (Italian Cuisine)", "team.antoniaBio": "\"From my nonna's kitchen in Foggia to your table in Raleigh, I bring the authentic taste of Italy. Food is my love language!\"",
+                    "team.emiName": "Emi (Villareal)", "team.emiRole": "Co-Founder & Head Chef (Asian Cuisine)", "team.emiBio": "\"My family's Asian recipes are a treasure I love to share. Blending them with Italian classics is an exciting culinary adventure.\"",
+                    "team.marcoName": "Marco Rossi", "team.marcoRole": "Sous Chef & Pizza Innovator", "team.marcoBio": "\"Crafting the perfect pizza, whether classic or fusion, is my passion. Always experimenting with new flavors!\"",
+                    "team.sofiaName": "Sofia Chen", "team.sofiaRole": "Pastry Chef & Dessert Artist", "team.sofiaBio": "\"Ending your meal on a sweet note is my goal. I love creating desserts that blend Italian elegance with Asian subtleties.\"",
+                    "cart.title": "Your Order", "cart.empty": "Your cart is empty.", "cart.total": "Total:", "cart.checkout": "Proceed to Checkout (Mock)", "cart.removeItem": "Remove",
+                    "footer.address": "123 Main Street, Raleigh, NC 27601", "footer.phone": "Phone: (919) 555-1234", "footer.email": "Email: info@villarealspizzeria.com",
+                    "footer.quickLinks": "Quick Links", "footer.newsletter": "Newsletter", "footer.newsletterText": "Sign up for updates on new dishes and special offers!", "footer.newsletterConfirm": "Thanks for subscribing!",
+                    "footer.credits": "A taste of Italy and Asia, lovingly crafted in Raleigh.",
+                    "form.name": "Name", "form.phone": "Phone", "form.email": "Email", "form.date": "Date", "form.time": "Time", "form.guests": "Guests", "form.requests": "Special Requests (optional)", "form.submitReservation": "Request Reservation", "form.emailPlaceholder": "Your email", "form.subscribe": "Subscribe",
+                    "alert.checkoutMock": "This is a mock checkout. No order has been placed."
+                },
+                it: {
+                    "nav.home": "Home", "nav.menu": "Menù", "nav.reservations": "Prenotazioni", "nav.about": "Chi Siamo", "nav.promotions": "Promozioni", "nav.blog": "Blog", "nav.team": "Il Nostro Team",
+                    "home.heroTitle": "Benvenuti alla Pizzeria Villareal!", "home.heroSubtitle": "Un delizioso viaggio dove la tradizione italiana incontra l'innovazione asiatica, proprio qui a Raleigh.", "home.viewMenu": "Guarda il Nostro Menù", "home.reserveTable": "Prenota un Tavolo",
+                    "home.ourStoryTitle": "La Nostra Storia: Un Assaggio di Due Mondi", "home.ourStoryText": "Cinque anni fa, Antonia Villareal si è trasferita da Foggia, Italia, a Raleigh, portando con sé preziose ricette di famiglia. Insieme a suo marito Emi, la cui famiglia vanta una ricca eredità culinaria asiastica, hanno creato la Pizzeria Villareal – un'esperienza culinaria unica dove ogni piatto racconta una storia di famiglia, tradizione e saporita fusione.", "home.learnMore": "Scopri di Più su di Noi",
+                    "home.signatureDishesTitle": "Piatti Fusion Speciali", "home.reviewsTitle": "Cosa Dicono i Nostri Clienti",
+                    "menu.title": "Il Nostro Menù", "menu.subtitle": "Esplora la nostra selezione unica di classici italiani, specialità asiatiche e creazioni fusion innovative. Tutto fatto con amore e con gli ingredienti più freschi.", "menu.addToOrder": "Aggiungi all'Ordine",
+                    "reservations.title": "Prenota il Tuo Tavolo", "reservations.subtitle": "Saremo lieti di ospitarti! Compila il modulo sottostante per richiedere una prenotazione. Ti confermeremo a breve.", "reservations.confirmation": "Grazie! La tua richiesta di prenotazione è stata inviata. Ti contatteremo a breve per confermare.",
+                    "about.title": "La Nostra Storia", "about.subtitle1": "Da Foggia a Raleigh: Un Sogno Culinario",
+                    "about.p1": "Il viaggio di Antonia Villareal è iniziato a Foggia, un'incantevole cittadina del Sud Italia, dove è cresciuta circondata dai ricchi aromi e dalle tradizioni della cucina casalinga italiana. Il cibo era più di un sostentamento; era famiglia, festa e amore. Cinque anni fa, ha portato queste preziose tradizioni e un sogno a Raleigh, North Carolina, in cerca di una nuova vita con la sua famiglia.",
+                    "about.p2": "A Raleigh, Antonia ha incontrato Emi, la cui famiglia detiene una vibrante eredità di arti culinarie asiatiche. I nonni di Emi hanno tramandato ricette di famiglia segrete da generazioni, piene di spezie e tecniche uniche. È stato un incontro fatto nel paradiso culinario. La loro comune passione per il cibo e la famiglia ha acceso un'idea: perché non fondere i loro distinti mondi culinari?",
+                    "about.subtitle2": "Pizzeria Villareal: Una Fusione di Cuori e Sapori",
+                    "about.p3": "E così è nata la Pizzeria Villareal. È più di un semplice ristorante; è una testimonianza del loro viaggio, una celebrazione di due culture e un luogo dove le famiglie possono riunirsi. Qui troverete pizze e paste classiche italiane fatte con l'amore della Nonna, accanto a entusiasmanti piatti di ispirazione asiatica e creazioni fusion davvero uniche che non troverete da nessun'altra parte.",
+                    "about.p4": "La nostra filosofia è semplice: utilizzare gli ingredienti locali più freschi, onorare i metodi di cottura tradizionali e infondere ogni piatto con creatività e passione. Crediamo nel potere del cibo di connettere le persone e vi invitiamo a far parte della nostra famiglia allargata. Unitevi a noi per un pasto e sperimentate la magia del calore italiano e del brio asiatico, tutto sotto lo stesso tetto.",
+                    "about.italianHeritage": "La Nostra Eredità Italiana", "about.italianText": "Ricette autentiche, pasta fresca, sughi cotti lentamente e l'arte della pizza perfetta – tutto ispirato da generazioni di cucina familiare italiana.",
+                    "about.asianInfluence": "La Nostra Influenza Asiatica", "about.asianText": "Sapori audaci, spezie uniche e ricette di famiglia da tutta l'Asia, che portano un tocco eccitante al nostro menù e creano piatti fusion indimenticabili.",
+                    "promotions.title": "Offerte Speciali & Promozioni", "promotions.subtitle": "Goditi fantastiche offerte sui tuoi piatti Villareal preferiti!",
+                    "promotions.promo1Title": "Speciale Pranzo Fusion Infrasettimanale", "promotions.promo1Desc": "Prendi uno dei nostri bowl fusion d'autore (es. Pasta Teriyaki con Pollo, Trancio di Pizza Piccante Coreana con Pancetta di Maiale) con un'insalata mista e una bevanda a soli €12.99. Dal lunedì al venerdì, dalle 11:00 alle 14:00.", "promotions.promo1Terms": "Solo per consumazione sul posto. Non cumulabile con altre offerte.",
+                    "promotions.promo2Title": "Combo Festa in Famiglia", "promotions.promo2Desc": "Due pizze grandi con 1 ingrediente (Italiane o Fusion!), una porzione grande di Nodini all'Aglio con Marinara & Aioli Gochujang, e una bibita da 2 litri a €39.99. Perfetto per una serata in famiglia!", "promotions.promo2Terms": "Disponibile per consumazione sul posto o da asporto. Ingredienti premium extra.",
+                    "promotions.promo3Title": "Happy Hour: Stuzzichini & Birre", "promotions.promo3Desc": "Unisciti a noi dalle 16:00 alle 18:00 nei giorni feriali per il 50% di sconto su antipasti selezionati (come i nostri Arancini con Salsa Yuzu o Edamame con Parmigiano e Olio Tartufato) e €2 di sconto su tutte le birre alla spina e i vini della casa.", "promotions.promo3Terms": "Solo area bar e patio.",
+                    "blog.title": "Notizie & Storie da Villareal's", "blog.subtitle": "Rimani aggiornato con le nostre ultime notizie, avventure culinarie e storie dalla nostra cucina.", "blog.readMore": "Leggi di Più", "blog.back": "← Torna al Blog",
+                    "team.title": "Incontra la Nostra Famiglia", "team.subtitle": "Il cuore e l'anima dietro la Pizzeria Villareal. Siamo appassionati di cibo e dedicati a offrirvi un'esperienza culinaria indimenticabile.",
+                    "team.antoniaName": "Antonia Villareal", "team.antoniaRole": "Co-Fondatrice & Chef Capo (Cucina Italiana)", "team.antoniaBio": "\"Dalla cucina di mia nonna a Foggia alla vostra tavola a Raleigh, porto il gusto autentico dell'Italia. Il cibo è il mio linguaggio d'amore!\"",
+                    "team.emiName": "Emi (Villareal)", "team.emiRole": "Co-Fondatore & Chef Capo (Cucina Asiatica)", "team.emiBio": "\"Le ricette asiatiche della mia famiglia sono un tesoro che amo condividere. Fonderle con i classici italiani è un'avventura culinaria entusiasmante.\"",
+                    "team.marcoName": "Marco Rossi", "team.marcoRole": "Sous Chef & Innovatore della Pizza", "team.marcoBio": "\"Creare la pizza perfetta, classica o fusion, è la mia passione. Sempre a sperimentare nuovi sapori!\"",
+                    "team.sofiaName": "Sofia Chen", "team.sofiaRole": "Pastry Chef & Artista dei Dolci", "team.sofiaBio": "\"Concludere il pasto con una nota dolce è il mio obiettivo. Adoro creare dessert che fondono l'eleganza italiana con le sottigliezze asiatiche.\"",
+                    "cart.title": "Il Tuo Ordine", "cart.empty": "Il tuo carrello è vuoto.", "cart.total": "Totale:", "cart.checkout": "Procedi al Checkout (Mock)", "cart.removeItem": "Rimuovi",
+                    "footer.address": "Via Principale 123, Raleigh, NC 27601", "footer.phone": "Telefono: (919) 555-1234", "footer.email": "Email: info@villarealspizzeria.com",
+                    "footer.quickLinks": "Link Rapidi", "footer.newsletter": "Newsletter", "footer.newsletterText": "Iscriviti per aggiornamenti su nuovi piatti e offerte speciali!", "footer.newsletterConfirm": "Grazie per l'iscrizione!",
+                    "footer.credits": "Un assaggio d'Italia e Asia, amorevolmente preparato a Raleigh.",
+                    "form.name": "Nome", "form.phone": "Telefono", "form.email": "Email", "form.date": "Data", "form.time": "Ora", "form.guests": "Ospiti", "form.requests": "Richieste Speciali (opzionale)", "form.submitReservation": "Richiedi Prenotazione", "form.emailPlaceholder": "La tua email", "form.subscribe": "Iscriviti",
+                    "alert.checkoutMock": "Questo è un checkout fittizio. Nessun ordine è stato effettuato."
+                }
+            };
+
+            // DOM Elements
+            const mainContent = document.querySelector('main');
+            const mobileMenuButton = document.getElementById('mobile-menu-button');
+            const mobileMenu = document.getElementById('mobile-menu');
+            const reservationForm = document.getElementById('reservation-form');
+            const reservationConfirmation = document.getElementById('reservation-confirmation');
+            const newsletterForm = document.getElementById('newsletter-form');
+            const newsletterConfirmation = document.getElementById('newsletter-confirmation');
+            const cartModal = document.getElementById('cart-modal');
+            const cartItemsList = document.getElementById('cart-items-list');
+            const cartTotalEl = document.getElementById('cart-total');
+            const cartCountEl = document.getElementById('cart-count');
+            const cartEmptyMessage = document.getElementById('cart-empty-message');
+            const checkoutButton = document.getElementById('checkout-button');
+            const menuItemsContainer = document.getElementById('menu-items-container');
+            const blogPostsContainer = document.getElementById('blog-posts-container');
+            const homeSignatureDishesContainer = document.getElementById('home-signature-dishes');
+
+            // FUNCTIONS
+            const navigateTo = (pageId, param) => {
+                if (pageId === 'blog-post' && param) {
+                    renderBlogPostDetail(param);
+                    currentPage = 'blog-post-detail';
+                } else {
+                    currentPage = pageId;
+                }
+                
+                document.querySelectorAll('main > section').forEach(sec => sec.classList.remove('active'));
+                const activePage = document.getElementById(currentPage);
+                if (activePage) activePage.classList.add('active');
+                
+                window.location.hash = pageId + (param ? `/${param}` : ''); // Update hash
+                updateNavLinks();
+                window.scrollTo(0, 0);
+                translatePage(); // Ensure new page content is translated
+            };
+            
+            const closeMobileMenu = () => {
+                mobileMenu.classList.add('hidden');
+            };
+
+            const updateNavLinks = () => {
+                document.querySelectorAll('nav a[data-nav], #mobile-menu a[data-nav]').forEach(link => {
+                    link.classList.remove('nav-link-active');
+                    link.classList.remove('bg-red-600', 'text-white'); // Reset active classes
+                    link.classList.add('text-gray-600'); // Reset to default text color
+
+                    if (link.dataset.nav === currentPage.split('/')[0]) { // Handle base page for things like blog-post-detail
+                        link.classList.add('nav-link-active');
+                    }
+                });
+                // Highlight active language button
+                document.getElementById('lang-en').classList.toggle('font-bold', currentLang === 'en');
+                document.getElementById('lang-en').classList.toggle('text-red-700', currentLang === 'en');
+                document.getElementById('lang-it').classList.toggle('font-bold', currentLang === 'it');
+                document.getElementById('lang-it').classList.toggle('text-red-700', currentLang === 'it');
+            };
+
+            const setLanguage = (lang) => {
+                currentLang = lang;
+                document.documentElement.lang = lang;
+                translatePage();
+                renderMenu(); // Re-render menu for language change
+                renderBlogPosts(); // Re-render blog posts
+                renderHomeSignatureDishes(); // Re-render signature dishes on home
+                updateNavLinks(); // Update nav link texts and active state
+                updateCartItemDisplayNames(); // If cart items have translatable names
+            };
+
+            const translatePage = () => {
+                document.querySelectorAll('[data-translate]').forEach(el => {
+                    const key = el.dataset.translate;
+                    if (translations[currentLang] && translations[currentLang][key]) {
+                        el.textContent = translations[currentLang][key];
+                    } else if (translations.en && translations.en[key]) { // Fallback to English
+                        el.textContent = translations.en[key];
+                    }
+                });
+                document.querySelectorAll('[data-placeholder-translate]').forEach(el => {
+                    const key = el.dataset.placeholderTranslate;
+                     if (translations[currentLang] && translations[currentLang][key]) {
+                        el.placeholder = translations[currentLang][key];
+                    } else if (translations.en && translations.en[key]) { // Fallback to English
+                        el.placeholder = translations.en[key];
+                    }
+                });
+            };
+
+            const renderMenu = () => {
+                if (!menuItemsContainer) return;
+                menuItemsContainer.innerHTML = '';
+                const currentMenuData = menuData[currentLang] || menuData.en;
+
+                currentMenuData.categories.forEach(category => {
+                    const categoryDiv = document.createElement('div');
+                    categoryDiv.innerHTML = `<h2 class="text-2xl md:text-3xl font-semibold text-brand-secondary mb-6">${category.name}</h2>`;
+                    const itemsGrid = document.createElement('div');
+                    itemsGrid.className = 'grid md:grid-cols-2 lg:grid-cols-3 gap-8';
+                    
+                    category.items.forEach(item => {
+                        const itemCard = document.createElement('div');
+                        itemCard.className = 'card flex flex-col';
+                        itemCard.innerHTML = `
+                            <div class="placeholder-img ${item.image} rounded-t-xl">${item.name} Image</div>
+                            <div class="p-6 flex flex-col flex-grow">
+                                <h3 class="text-xl font-semibold text-brand-primary mb-2">${item.name}</h3>
+                                <p class="text-sm text-stone-600 mb-3 flex-grow">${item.description}</p>
+                                <div class="flex justify-between items-center mt-auto">
+                                    <p class="text-lg font-bold text-emerald-700">$${item.price.toFixed(2)}</p>
+                                    <button onclick="app.addToCart('${item.id}', '${item.name.replace(/'/g, "\\'")}', ${item.price})" class="btn btn-sm btn-secondary" data-translate="menu.addToOrder">${translations[currentLang]['menu.addToOrder'] || 'Add to Order'}</button>
+                                </div>
+                            </div>
+                        `;
+                        itemsGrid.appendChild(itemCard);
+                    });
+                    categoryDiv.appendChild(itemsGrid);
+                    menuItemsContainer.appendChild(categoryDiv);
+                });
+            };
+            
+            const renderHomeSignatureDishes = () => {
+                if (!homeSignatureDishesContainer) return;
+                homeSignatureDishesContainer.innerHTML = '';
+                const currentMenuData = menuData[currentLang] || menuData.en;
+                // Select first 3 signature dishes (assuming fusion are signature)
+                const signatureDishes = currentMenuData.categories
+                    .find(cat => cat.id === 'fusion-pizza' || cat.id === 'fusion-pasta')?.items.slice(0, 3) || [];
+
+                signatureDishes.forEach(item => {
+                    const dishCard = document.createElement('div');
+                    dishCard.className = 'card';
+                    dishCard.innerHTML = `
+                        <div class="placeholder-img ${item.image} rounded-t-xl">${item.name} Image</div>
+                        <div class="p-6">
+                            <h3 class="text-xl font-semibold text-brand-primary mb-2">${item.name}</h3>
+                            <p class="text-sm text-stone-600 mb-4">${item.description.substring(0,100)}...</p>
+                            <button onclick="app.navigateTo('menu')" class="btn btn-sm btn-outline-primary w-full">${translations[currentLang]['home.viewMenu'] || 'View Menu'}</button>
+                        </div>
+                    `;
+                    homeSignatureDishesContainer.appendChild(dishCard);
+                });
+            };
+
+            const renderBlogPosts = () => {
+                if (!blogPostsContainer) return;
+                blogPostsContainer.innerHTML = '';
+                const currentBlogData = blogPostsData[currentLang] || blogPostsData.en;
+
+                currentBlogData.forEach(post => {
+                    const postCard = document.createElement('div');
+                    postCard.className = 'card';
+                    postCard.innerHTML = `
+                        <div class="placeholder-img ${post.image || 'placeholder-img-md'} rounded-t-xl">Blog Image</div>
+                        <div class="p-6">
+                            <h3 class="text-xl font-semibold text-brand-primary mb-2">${post.title}</h3>
+                            <p class="text-xs text-gray-500 mb-3">${post.date}</p>
+                            <p class="text-sm text-stone-600 mb-4">${post.content.substring(0, 100).replace(/<[^>]+>/g, '')}...</p>
+                            <button onclick="app.navigateTo('blog-post', '${post.id}')" class="btn btn-sm btn-secondary" data-translate="blog.readMore">${translations[currentLang]['blog.readMore'] || 'Read More'}</button>
+                        </div>
+                    `;
+                    blogPostsContainer.appendChild(postCard);
+                });
+            };
+
+            const renderBlogPostDetail = (postId) => {
+                const currentBlogData = blogPostsData[currentLang] || blogPostsData.en;
+                const post = currentBlogData.find(p => p.id == postId);
+                if (post) {
+                    document.getElementById('blog-post-title').textContent = post.title;
+                    document.getElementById('blog-post-date').textContent = post.date;
+                    document.getElementById('blog-post-content').innerHTML = post.content;
+                    // Image placeholder could be updated if image path was in post data
+                    // document.getElementById('blog-post-image').className = `placeholder-img ${post.image || 'placeholder-img-lg'} mb-6 rounded-md`;
+
+                    // Hide other sections, show blog post detail section
+                    document.querySelectorAll('main > section').forEach(sec => sec.classList.remove('active'));
+                    document.getElementById('blog-post-detail').classList.add('active');
+                    currentPage = 'blog-post-detail'; // Update current page tracker
+                    updateNavLinks(); // Ensure nav highlights 'blog'
+                } else {
+                    navigateTo('blog'); // If post not found, go back to blog list
+                }
+            };
+
+            const addToCart = (id, name, price) => {
+                const existingItem = cart.find(item => item.id === id);
+                if (existingItem) {
+                    existingItem.quantity++;
+                } else {
+                    cart.push({ id, name, price, quantity: 1 });
+                }
+                updateCartDisplay();
+            };
+
+            const removeFromCart = (id) => {
+                cart = cart.filter(item => item.id !== id);
+                updateCartDisplay();
+            };
+
+            const updateCartQuantity = (id, change) => {
+                const item = cart.find(item => item.id === id);
+                if (item) {
+                    item.quantity += change;
+                    if (item.quantity <= 0) {
+                        removeFromCart(id);
+                    } else {
+                        updateCartDisplay();
+                    }
+                }
+            };
+            
+            const updateCartItemDisplayNames = () => {
+                 // This function is a bit complex if item names are fixed in cart.
+                 // A better approach for full multilingual cart would be to store item IDs
+                 // and look up their names from menuData[currentLang] during rendering.
+                 // For now, names are added in current language, so they don't auto-update on lang switch.
+                 // We can re-render cart with updated names if needed.
+                 updateCartDisplay(); // This will re-render and use current lang for new lookups if names are dynamic
+            };
+
+            const updateCartDisplay = () => {
+                cartItemsList.innerHTML = '';
+                if (cart.length === 0) {
+                    cartEmptyMessage.style.display = 'block';
+                    checkoutButton.disabled = true;
+                    checkoutButton.classList.add('opacity-50', 'cursor-not-allowed');
+                } else {
+                    cartEmptyMessage.style.display = 'none';
+                    checkoutButton.disabled = false;
+                    checkoutButton.classList.remove('opacity-50', 'cursor-not-allowed');
+
+                    cart.forEach(item => {
+                        // For display, try to get the name in the current language if not already set
+                        let displayName = item.name;
+                        const currentMenu = menuData[currentLang] || menuData.en;
+                        outerLoop:
+                        for (const category of currentMenu.categories) {
+                            for (const menuItem of category.items) {
+                                if (menuItem.id === item.id) {
+                                    displayName = menuItem.name;
+                                    break outerLoop;
+                                }
+                            }
+                        }
+
+                        const li = document.createElement('div');
+                        li.className = 'flex justify-between items-center border-b pb-2';
+                        li.innerHTML = `
+                            <div class="flex-grow">
+                                <p class="font-semibold">${displayName}</p>
+                                <p class="text-sm text-gray-600">$${item.price.toFixed(2)} x ${item.quantity}</p>
+                            </div>
+                            <div class="flex items-center space-x-2">
+                                <button onclick="app.updateCartQuantity('${item.id}', -1)" class="px-2 py-1 text-sm bg-gray-200 rounded hover:bg-gray-300">-</button>
+                                <span>${item.quantity}</span>
+                                <button onclick="app.updateCartQuantity('${item.id}', 1)" class="px-2 py-1 text-sm bg-gray-200 rounded hover:bg-gray-300">+</button>
+                                <button onclick="app.removeFromCart('${item.id}')" class="text-red-500 hover:text-red-700 text-sm" data-translate="cart.removeItem">
+                                    ${translations[currentLang]['cart.removeItem'] || 'Remove'}
+                                </button>
+                            </div>
+                            <p class="font-semibold w-20 text-right">$${(item.price * item.quantity).toFixed(2)}</p>
+                        `;
+                        cartItemsList.appendChild(li);
+                    });
+                }
+
+                const total = cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
+                cartTotalEl.textContent = `$${total.toFixed(2)}`;
+                cartCountEl.textContent = cart.reduce((sum, item) => sum + item.quantity, 0);
+            };
+            
+            const toggleCart = () => {
+                cartModal.classList.toggle('hidden');
+                if (!cartModal.classList.contains('hidden')) {
+                    updateCartDisplay(); // Refresh cart display when opening
+                }
+            };
+
+            // Event Listeners
+            mobileMenuButton.addEventListener('click', () => {
+                mobileMenu.classList.toggle('hidden');
+            });
+
+            if (reservationForm) {
+                reservationForm.addEventListener('submit', (e) => {
+                    e.preventDefault();
+                    // Mock submission
+                    reservationConfirmation.classList.remove('hidden');
+                    reservationForm.reset();
+                    setTimeout(() => reservationConfirmation.classList.add('hidden'), 5000);
+                });
+            }
+
+            if (newsletterForm) {
+                newsletterForm.addEventListener('submit', (e) => {
+                    e.preventDefault();
+                    // Mock submission
+                    newsletterConfirmation.classList.remove('hidden');
+                    document.getElementById('newsletter-email').value = '';
+                    setTimeout(() => newsletterConfirmation.classList.add('hidden'), 3000);
+                });
+            }
+            
+            // Handle hash changes for SPA navigation (e.g. back/forward button)
+            window.addEventListener('hashchange', () => {
+                const hash = window.location.hash.substring(1);
+                const [pageId, param] = hash.split('/');
+                if (pageId) {
+                    if (pageId === 'blog-post' && param) {
+                         navigateTo(pageId, param);
+                    } else if (document.getElementById(pageId)) {
+                        navigateTo(pageId);
+                    }
+                } else {
+                    navigateTo('home'); // Default to home if hash is empty or invalid
+                }
+            });
+
+
+            // INITIALIZATION
+            const init = () => {
+                document.getElementById('current-year').textContent = new Date().getFullYear();
+                
+                // Initial page load based on hash or default to home
+                const initialHash = window.location.hash.substring(1);
+                const [initialPageId, initialParam] = initialHash.split('/');
+
+                if (initialPageId) {
+                     if (initialPageId === 'blog-post' && initialParam) {
+                         navigateTo(initialPageId, initialParam);
+                     } else if (document.getElementById(initialPageId)) {
+                        navigateTo(initialPageId);
+                     } else {
+                        navigateTo('home');
+                     }
+                } else {
+                    navigateTo('home');
+                }
+
+                setLanguage(currentLang); // This will also call renderMenu, renderBlogPosts, etc.
+                updateCartDisplay();
+            };
+
+            // Expose public methods
+            return {
+                navigateTo,
+                setLanguage,
+                addToCart,
+                removeFromCart,
+                updateCartQuantity,
+                toggleCart,
+                closeMobileMenu,
+                init,
+                // Expose for alert message translation
+                translations, 
+                currentLang
+            };
+        };
+
+        // Initialize the app
+        const app = App();
+        document.addEventListener('DOMContentLoaded', app.init);
+
+    </script>
+</body>
+</html>

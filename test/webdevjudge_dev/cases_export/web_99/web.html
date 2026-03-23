@@ -1,0 +1,441 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Connections Game</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            10%, 30%, 50%, 70%, 90% { transform: translateX(-5px); }
+            20%, 40%, 60%, 80% { transform: translateX(5px); }
+        }
+        .animate-shake {
+            animation: shake 0.5s ease-in-out;
+        }
+
+        @keyframes pop {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.03); }
+        }
+        .animate-pop {
+            animation: pop 0.4s ease-out;
+        }
+        
+        .word-tile {
+            transition: transform 0.2s ease-out, background-color 0.3s ease-in-out, box-shadow 0.2s ease-out;
+            -webkit-tap-highlight-color: transparent; /* Disable tap highlight on mobile */
+        }
+        .word-tile:hover:not(.selected):not(.solved) {
+            transform: scale(1.03);
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        }
+        .word-tile.selected:not(.solved) {
+            transform: scale(1.05) translateY(-3px);
+            box-shadow: 0 6px 20px rgba(0,0,0,0.15);
+        }
+
+        /* Basic confetti for win - using pseudo elements on a container */
+        .confetti-container {
+            position: relative;
+            overflow: hidden; /* Keep confetti within bounds if desired */
+        }
+        @keyframes confetti-fall {
+            0% { transform: translateY(-100%) rotateZ(0deg); opacity: 1; }
+            100% { transform: translateY(150vh) rotateZ(360deg); opacity: 0; } /* Increased Y distance */
+        }
+        .confetti-piece {
+            position: absolute;
+            width: 8px;
+            height: 16px;
+            background-color: #fff;
+            opacity: 0;
+            animation: confetti-fall 3s linear infinite;
+        }
+        /* Add more variations for confetti pieces */
+        .confetti-piece:nth-child(5n+1) { background-color: #fde047; /* yellow-400 */ animation-duration: 2.5s; animation-delay: 0s; }
+        .confetti-piece:nth-child(5n+2) { background-color: #86efac; /* green-300 */ animation-duration: 3s; animation-delay: -0.5s; }
+        .confetti-piece:nth-child(5n+3) { background-color: #7dd3fc; /* sky-300 */ animation-duration: 3.5s; animation-delay: -1s; }
+        .confetti-piece:nth-child(5n+4) { background-color: #c4b5fd; /* violet-300 */ animation-duration: 4s; animation-delay: -1.5s; }
+        .confetti-piece:nth-child(5n+5) { background-color: #fda4af; /* rose-300 */ animation-duration: 2.8s; animation-delay: -0.2s; }
+
+        .solved-category-row {
+            transition: background-color 0.5s ease-in-out, opacity 0.5s ease-in-out;
+        }
+    </style>
+</head>
+<body class="bg-slate-900 text-slate-100 min-h-screen flex flex-col items-center justify-center p-4 font-sans select-none">
+
+    <div id="game-container" class="w-full max-w-2xl mx-auto">
+        <header class="text-center mb-6">
+            <h1 class="text-4xl font-bold text-slate-50">Connections</h1>
+            <p class="text-slate-400 text-sm mt-1">Group words into four categories.</p>
+        </header>
+
+        <div id="solved-categories-container" class="mb-4 space-y-2 flex flex-col">
+            <!-- Solved categories will appear here -->
+        </div>
+
+        <div id="word-grid" class="grid grid-cols-4 gap-2 sm:gap-3 mb-6">
+            <!-- Word tiles will be injected here -->
+        </div>
+        
+        <div id="message-area" class="text-center h-8 mb-4 text-slate-300" aria-live="polite">
+            <!-- Feedback messages appear here -->
+        </div>
+
+        <div class="flex items-center justify-between mb-6">
+            <div>
+                <span class="text-sm text-slate-400 mr-2">Mistakes remaining:</span>
+                <div id="lives-container" class="flex space-x-1.5">
+                    <!-- Lives indicators (dots) -->
+                </div>
+            </div>
+            <div class="space-x-2">
+                <button id="deselect-all-button" class="px-4 py-2 bg-slate-600 hover:bg-slate-500 text-slate-50 rounded-md text-sm font-medium transition-colors">Deselect All</button>
+                <button id="submit-button" class="px-5 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-md text-sm font-medium transition-colors disabled:bg-slate-500 disabled:cursor-not-allowed" disabled>Submit</button>
+            </div>
+        </div>
+
+        <button id="play-again-button" class="hidden w-full mt-4 px-6 py-3 bg-emerald-500 hover:bg-emerald-400 text-emerald-900 rounded-md text-lg font-semibold transition-colors">Play Again</button>
+
+        <div id="confetti-parent" class="fixed inset-0 pointer-events-none z-50">
+            <!-- Confetti pieces will be added here -->
+        </div>
+    </div>
+
+    <script>
+        const Game = {
+            config: {
+                initialLives: 4,
+                categoriesData: [ // difficulty 0 (easiest) to 3 (hardest)
+                    { name: "SHADES OF YELLOW", words: ["GOLD", "LEMON", "MUSTARD", "DAFFODIL"], difficulty: 0 },
+                    { name: "CULINARY HERBS", words: ["BASIL", "MINT", "ROSEMARY", "THYME"], difficulty: 1 },
+                    { name: "TYPES OF BRIDGE", words: ["SUSPENSION", "TRUSS", "ARCH", "BEAM"], difficulty: 2 },
+                    { name: "___ BALL", words: ["CRYSTAL", "FIRE", "FOOT", "ODD"], difficulty: 3 }
+                ],
+                categoryDisplayConfigs: [
+                    { bg: 'bg-yellow-400', text: 'text-yellow-900', border: 'border-yellow-500', nameColor: 'text-yellow-950' },
+                    { bg: 'bg-green-400', text: 'text-green-900', border: 'border-green-500', nameColor: 'text-green-950' },
+                    { bg: 'bg-sky-400', text: 'text-sky-900', border: 'border-sky-500', nameColor: 'text-sky-950' }, // Changed from blue for better distinction
+                    { bg: 'bg-purple-400', text: 'text-purple-900', border: 'border-purple-500', nameColor: 'text-purple-950' }
+                ],
+                tileBaseBg: 'bg-slate-700',
+                tileText: 'text-slate-50',
+                tileSelectedBg: 'bg-indigo-500',
+                tileSelectedText: 'text-white',
+            },
+            state: {
+                currentLives: 0,
+                selectedWords: [], // { text: string, categoryId: number, element: HTMLElement, uniqueId: string }
+                solvedCategoriesOrder: [], // Store difficulty order of solved categories
+                gameCategories: [], // Processed categories with display config
+                allWordsFlat: [], // { text: string, categoryId: number, uniqueId: string }
+                isGameOver: false,
+            },
+
+            init() {
+                this.state.currentLives = this.config.initialLives;
+                this.state.selectedWords = [];
+                this.state.solvedCategoriesOrder = [];
+                this.state.isGameOver = false;
+
+                // Process categories
+                this.state.gameCategories = this.config.categoriesData.map(cat => ({
+                    ...cat,
+                    id: cat.difficulty, // Using difficulty as ID for simplicity if unique
+                    displayConfig: this.config.categoryDisplayConfigs[cat.difficulty],
+                    solved: false,
+                    wordsFound: [] // Store word objects when found
+                }));
+                
+                // Prepare and shuffle words
+                this.state.allWordsFlat = [];
+                this.state.gameCategories.forEach(cat => {
+                    cat.words.forEach(wordText => {
+                        this.state.allWordsFlat.push({
+                            text: wordText,
+                            categoryId: cat.id,
+                            uniqueId: `word-${cat.id}-${wordText.toLowerCase().replace(/\s+/g, '')}`
+                        });
+                    });
+                });
+                this.shuffleArray(this.state.allWordsFlat);
+
+                this.renderGrid();
+                this.updateLivesDisplay();
+                this.updateSubmitButtonState();
+                this.clearMessage();
+                document.getElementById('solved-categories-container').innerHTML = '';
+                document.getElementById('play-again-button').classList.add('hidden');
+                this.clearConfetti();
+
+                document.getElementById('submit-button').addEventListener('click', () => this.handleSubmit());
+                document.getElementById('deselect-all-button').addEventListener('click', () => this.deselectAllWords());
+                document.getElementById('play-again-button').addEventListener('click', () => this.init());
+            },
+
+            shuffleArray(array) {
+                for (let i = array.length - 1; i > 0; i--) {
+                    const j = Math.floor(Math.random() * (i + 1));
+                    [array[i], array[j]] = [array[j], array[i]];
+                }
+            },
+
+            renderGrid() {
+                const gridElement = document.getElementById('word-grid');
+                gridElement.innerHTML = ''; // Clear existing grid
+                this.state.allWordsFlat.forEach(wordData => {
+                    const tile = document.createElement('button');
+                    tile.classList.add('word-tile', 'p-2', 'sm:p-3', 'rounded-lg', 'font-medium', 'text-sm', 'sm:text-base', 'uppercase', 'aspect-square', 'flex', 'items-center', 'justify-center', 'focus:outline-none', 'focus:ring-2', 'focus:ring-indigo-400', this.config.tileBaseBg, this.config.tileText);
+                    tile.textContent = wordData.text;
+                    tile.dataset.wordId = wordData.uniqueId; // Store uniqueId for identification
+                    
+                    tile.addEventListener('click', () => this.handleWordClick(wordData, tile));
+                    gridElement.appendChild(tile);
+                });
+            },
+
+            handleWordClick(wordData, tileElement) {
+                if (this.state.isGameOver || tileElement.classList.contains('solved')) return;
+
+                const isSelected = this.state.selectedWords.some(sw => sw.uniqueId === wordData.uniqueId);
+
+                if (isSelected) {
+                    this.deselectWord(wordData, tileElement);
+                } else {
+                    if (this.state.selectedWords.length < 4) {
+                        this.selectWord(wordData, tileElement);
+                    } else {
+                        // Optionally provide feedback: "Max 4 words selected"
+                        this.showMessage("You can only select 4 words.", "text-amber-400", 2000);
+                    }
+                }
+                this.updateSubmitButtonState();
+            },
+
+            selectWord(wordData, tileElement) {
+                this.state.selectedWords.push({ ...wordData, element: tileElement });
+                tileElement.classList.remove(this.config.tileBaseBg, this.config.tileText);
+                tileElement.classList.add(this.config.tileSelectedBg, this.config.tileSelectedText, 'selected');
+                tileElement.setAttribute('aria-pressed', 'true');
+            },
+
+            deselectWord(wordData, tileElement) {
+                this.state.selectedWords = this.state.selectedWords.filter(sw => sw.uniqueId !== wordData.uniqueId);
+                tileElement.classList.remove(this.config.tileSelectedBg, this.config.tileSelectedText, 'selected');
+                tileElement.classList.add(this.config.tileBaseBg, this.config.tileText);
+                tileElement.setAttribute('aria-pressed', 'false');
+            },
+
+            deselectAllWords() {
+                if (this.state.isGameOver) return;
+                [...this.state.selectedWords].forEach(sw => this.deselectWord(sw, sw.element)); // Iterate copy as array is modified
+                this.updateSubmitButtonState();
+            },
+
+            updateSubmitButtonState() {
+                const submitButton = document.getElementById('submit-button');
+                submitButton.disabled = this.state.selectedWords.length !== 4 || this.state.isGameOver;
+            },
+
+            updateLivesDisplay() {
+                const livesContainer = document.getElementById('lives-container');
+                livesContainer.innerHTML = '';
+                for (let i = 0; i < this.config.initialLives; i++) {
+                    const dot = document.createElement('div');
+                    dot.classList.add('w-3', 'h-3', 'sm:w-3.5', 'sm:h-3.5', 'rounded-full', 'transition-all', 'duration-300');
+                    if (i < this.state.currentLives) {
+                        dot.classList.add('bg-indigo-400'); // Filled dot
+                    } else {
+                        dot.classList.add('bg-slate-600'); // Empty dot
+                    }
+                    livesContainer.appendChild(dot);
+                }
+            },
+
+            showMessage(message, colorClass = 'text-slate-300', duration = 3000) {
+                const messageArea = document.getElementById('message-area');
+                messageArea.textContent = message;
+                messageArea.className = `text-center h-8 mb-4 ${colorClass} transition-opacity duration-300 opacity-100`;
+                if (this.messageTimeout) clearTimeout(this.messageTimeout);
+                if (duration > 0) {
+                    this.messageTimeout = setTimeout(() => {
+                        messageArea.classList.add('opacity-0');
+                    }, duration);
+                }
+            },
+            
+            clearMessage() {
+                const messageArea = document.getElementById('message-area');
+                messageArea.textContent = '';
+                messageArea.className = 'text-center h-8 mb-4 text-slate-300 opacity-0';
+                 if (this.messageTimeout) clearTimeout(this.messageTimeout);
+            },
+
+            handleSubmit() {
+                if (this.state.selectedWords.length !== 4 || this.state.isGameOver) return;
+
+                const firstCategoryId = this.state.selectedWords[0].categoryId;
+                const allSameCategory = this.state.selectedWords.every(sw => sw.categoryId === firstCategoryId);
+                const category = this.state.gameCategories.find(cat => cat.id === firstCategoryId);
+
+                if (allSameCategory && category && !category.solved) {
+                    this.processCorrectGuess(category);
+                } else {
+                    this.processIncorrectGuess();
+                }
+            },
+
+            processCorrectGuess(category) {
+                this.showMessage(`Correct! Category: ${category.name}`, category.displayConfig.text.replace('text-', 'text-'), 4000);
+                category.solved = true;
+                category.wordsFound = [...this.state.selectedWords]; // Store the actual word objects with elements
+
+                // Add to solvedCategoriesOrder to maintain render order
+                this.state.solvedCategoriesOrder.push(category.difficulty);
+                this.state.solvedCategoriesOrder.sort((a,b) => a - b); // Ensure sorted by difficulty
+
+                // Create solved category row and move words
+                this.renderSolvedCategories();
+
+                // Remove solved words from selectable grid and deselect logic
+                this.state.selectedWords.forEach(sw => {
+                    sw.element.classList.add('solved', 'opacity-0', 'pointer-events-none'); // Make original tiles invisible and non-interactive
+                });
+                this.state.selectedWords = [];
+                this.updateSubmitButtonState();
+
+                // Check for win
+                if (this.state.solvedCategoriesOrder.length === this.state.gameCategories.length) {
+                    this.endGame(true);
+                }
+            },
+
+            renderSolvedCategories() {
+                const container = document.getElementById('solved-categories-container');
+                container.innerHTML = ''; // Clear and re-render all solved categories in order
+
+                this.state.solvedCategoriesOrder.forEach(difficulty => {
+                    const category = this.state.gameCategories.find(cat => cat.difficulty === difficulty);
+                    if (!category || !category.solved) return;
+
+                    const solvedRow = document.createElement('div');
+                    solvedRow.classList.add('solved-category-row', 'p-4', 'rounded-lg', 'flex', 'flex-col', 'items-center', 'justify-center', 'animate-pop', category.displayConfig.bg);
+                    solvedRow.style.order = category.difficulty; // CSS order for flex items
+
+                    const categoryNameEl = document.createElement('h3');
+                    categoryNameEl.classList.add('font-bold', 'text-base', 'sm:text-lg', 'uppercase', category.displayConfig.nameColor);
+                    categoryNameEl.textContent = category.name;
+                    solvedRow.appendChild(categoryNameEl);
+
+                    const wordsEl = document.createElement('p');
+                    wordsEl.classList.add('text-sm', 'sm:text-base', 'font-medium', 'uppercase', category.displayConfig.text);
+                    wordsEl.textContent = category.words.join(', '); // Use original words from config for consistent order
+                    solvedRow.appendChild(wordsEl);
+                    
+                    container.appendChild(solvedRow);
+                });
+            },
+
+            processIncorrectGuess() {
+                this.state.currentLives--;
+                this.updateLivesDisplay();
+
+                const selectedElements = this.state.selectedWords.map(sw => sw.element);
+                selectedElements.forEach(el => {
+                    el.classList.add('animate-shake');
+                    // Flash red briefly
+                    const originalBg = el.classList.contains(this.config.tileSelectedBg) ? this.config.tileSelectedBg : this.config.tileBaseBg;
+                    el.classList.remove(originalBg);
+                    el.classList.add('bg-red-500');
+
+                    setTimeout(() => {
+                        el.classList.remove('animate-shake', 'bg-red-500');
+                        el.classList.add(originalBg); // Restore original or selected BG
+                    }, 500);
+                });
+                
+                // Life decrease animation effect could be added to updateLivesDisplay
+                const livesContainer = document.getElementById('lives-container');
+                livesContainer.lastChild?.classList.add('transform', 'scale-75', 'opacity-50');
+
+
+                if (this.state.currentLives === 0) {
+                    this.showMessage("No more lives!", "text-red-400", 0);
+                    this.endGame(false);
+                } else {
+                    // Deselect after a short delay to allow user to see the incorrect group
+                    setTimeout(() => {
+                         this.deselectAllWords();
+                    }, 500);
+                    this.showMessage(`Incorrect guess. Mistakes remaining: ${this.state.currentLives}`, "text-red-400");
+                }
+            },
+
+            endGame(isWin) {
+                this.state.isGameOver = true;
+                this.updateSubmitButtonState(); // Disable submit button
+                document.getElementById('deselect-all-button').disabled = true;
+
+                // Clear interactive grid and reveal all categories in the solved area
+                const wordGridElement = document.getElementById('word-grid');
+                wordGridElement.classList.add('opacity-50', 'pointer-events-none'); // Dim grid
+
+                // Ensure all categories are "solved" for display purposes if lost
+                if (!isWin) {
+                    this.state.gameCategories.forEach(cat => {
+                        if (!cat.solved) {
+                             // Find original words for category for consistent display
+                            cat.wordsFound = cat.words.map(wordText => ({
+                                text: wordText,
+                                categoryId: cat.id,
+                                element: null // No specific element to animate from grid for auto-solved
+                            }));
+                            cat.solved = true; 
+                            if (!this.state.solvedCategoriesOrder.includes(cat.difficulty)) {
+                                this.state.solvedCategoriesOrder.push(cat.difficulty);
+                            }
+                        }
+                    });
+                    this.state.solvedCategoriesOrder.sort((a,b) => a-b);
+                }
+                
+                this.renderSolvedCategories(); // Re-render to show all, styled correctly
+
+                if (isWin) {
+                    this.showMessage("Congratulations! You solved it!", "text-green-400", 0);
+                    this.triggerConfetti();
+                } else {
+                    this.showMessage("Game Over. Better luck tomorrow!", "text-red-400", 0);
+                }
+                document.getElementById('play-again-button').classList.remove('hidden');
+            },
+
+            triggerConfetti() {
+                const confettiParent = document.getElementById('confetti-parent');
+                confettiParent.innerHTML = ''; // Clear previous confetti
+                for (let i = 0; i < 50; i++) { // Create 50 confetti pieces
+                    const piece = document.createElement('div');
+                    piece.classList.add('confetti-piece');
+                    piece.style.left = Math.random() * 100 + 'vw'; // Start across viewport width
+                    piece.style.animationDelay = Math.random() * 2 + 's'; // Random delay
+                    const randomSize = Math.random() * 6 + 8; // size between 8px and 14px
+                    piece.style.width = randomSize + 'px';
+                    piece.style.height = randomSize * (Math.random() * 0.5 + 1.5) + 'px'; // rectangular, slightly variable aspect
+                    confettiParent.appendChild(piece);
+                }
+            },
+
+            clearConfetti() {
+                const confettiParent = document.getElementById('confetti-parent');
+                confettiParent.innerHTML = '';
+            }
+        };
+
+        document.addEventListener('DOMContentLoaded', () => Game.init());
+    </script>
+
+</body>
+</html>

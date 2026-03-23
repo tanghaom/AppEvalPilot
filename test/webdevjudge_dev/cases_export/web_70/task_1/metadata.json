@@ -1,0 +1,9 @@
+{
+  "web_id": "web_70",
+  "task_id": 1,
+  "task_type": "dynamic",
+  "instruction": "Task: Click a main navigation link or button to view adoptable dogs (e.g., 'Adopt a Dog' or 'View Dogs').\nExpected Result: The section displaying a list or grid of adoptable dogs becomes visible.\n\nNote: The task is only considered successful if the expected result is achieved; otherwise, it is deemed infeasible.",
+  "max_steps": 15,
+  "expected": "The section displaying a list or grid of adoptable dogs becomes visible.",
+  "label": 1
+}

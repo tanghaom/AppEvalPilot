@@ -1,0 +1,9 @@
+{
+  "web_id": "web_84",
+  "task_id": 2,
+  "task_type": "dynamic",
+  "instruction": "Task: Press 'w' key to activate wire drawing mode, then click on a connection point (terminal) of a placed component, move the mouse cursor to a connection point of another (or the same) component, and click again.\nExpected Result: Wire drawing mode is visually indicated (e.g., cursor changes, status message). A wire segment is drawn and visually connects the two specified component terminals on the canvas. The wire should preferably snap to terminals.\n\nNote: The task is only considered successful if the expected result is achieved; otherwise, it is deemed infeasible.",
+  "max_steps": 15,
+  "expected": "Wire drawing mode is visually indicated (e.g., cursor changes, status message). A wire segment is drawn and visually connects the two specified component terminals on the canvas. The wire should preferably snap to terminals.",
+  "label": 1
+}

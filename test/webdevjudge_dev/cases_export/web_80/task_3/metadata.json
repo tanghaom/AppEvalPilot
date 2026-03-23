@@ -1,0 +1,9 @@
+{
+  "web_id": "web_80",
+  "task_id": 3,
+  "task_type": "dynamic",
+  "instruction": "Task: User adjusts a specific model parameter (e.g., 'temperature' or 'max tokens') using a UI control like a slider, dropdown, or number input.\nExpected Result: The UI reflects the newly set parameter value, and this value will be used for the subsequent generation process.\n\nNote: The task is only considered successful if the expected result is achieved; otherwise, it is deemed infeasible.",
+  "max_steps": 15,
+  "expected": "The UI reflects the newly set parameter value, and this value will be used for the subsequent generation process.",
+  "label": 1
+}

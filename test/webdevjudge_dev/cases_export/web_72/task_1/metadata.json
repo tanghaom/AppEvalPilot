@@ -1,0 +1,9 @@
+{
+  "web_id": "web_72",
+  "task_id": 1,
+  "task_type": "dynamic",
+  "instruction": "Task: Scroll down the project update feed to view more updates (simulated infinite scroll).\nExpected Result: New project update cards are dynamically added to the list as the user scrolls, displaying more content.\n\nNote: The task is only considered successful if the expected result is achieved; otherwise, it is deemed infeasible.",
+  "max_steps": 15,
+  "expected": "New project update cards are dynamically added to the list as the user scrolls, displaying more content.",
+  "label": 1
+}

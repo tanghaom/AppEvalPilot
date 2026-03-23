@@ -1,0 +1,9 @@
+{
+  "web_id": "web_26",
+  "task_id": 5,
+  "task_type": "dynamic",
+  "instruction": "Task: Hover over an interactive celestial-themed element (e.g., a moon icon, star graphic) on the page.\nExpected Result: A subtle visual effect (e.g., glow, shimmer, or slight animation) is applied to the hovered element.\n\nNote: The task is only considered successful if the expected result is achieved; otherwise, it is deemed infeasible.",
+  "max_steps": 15,
+  "expected": "A subtle visual effect (e.g., glow, shimmer, or slight animation) is applied to the hovered element.",
+  "label": 0
+}

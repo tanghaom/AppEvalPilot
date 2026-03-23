@@ -1,0 +1,617 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WebFrame Browser</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        #tabs-container::-webkit-scrollbar { height: 4px; }
+        #tabs-container::-webkit-scrollbar-track { background: transparent; }
+        #tabs-container::-webkit-scrollbar-thumb { background: #9ca3af; border-radius: 2px; }
+        #tabs-container::-webkit-scrollbar-thumb:hover { background: #6b7280; }
+        #tabs-container { scrollbar-width: thin; scrollbar-color: #9ca3af transparent; }
+
+        .browser-iframe { width: 100%; height: 100%; border: none; background-color: white; }
+        .browser-iframe:not(.active) { display: none; }
+        
+        .tab-close-button svg { pointer-events: none; } /* Allow click on button, not svg itself */
+
+        body {
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+        }
+    </style>
+</head>
+<body class="overflow-hidden select-none">
+
+    <div id="browser-container" class="w-full h-screen flex flex-col bg-neutral-200 text-neutral-800">
+        <!-- Tab Bar -->
+        <div class="h-10 flex items-end bg-neutral-200 border-b border-neutral-300 shadow-sm">
+            <div id="tabs-container" class="flex-grow h-full flex items-end overflow-x-auto whitespace-nowrap pl-1 pt-1">
+                <!-- Tabs will be rendered here by JS -->
+            </div>
+            <button id="new-tab-button" title="New Tab" class="flex-shrink-0 p-2 h-9 w-9 m-0.5 mr-1 rounded-md hover:bg-neutral-300/70 text-neutral-600 flex items-center justify-center">
+                <!-- Add Icon SVG -->
+            </button>
+        </div>
+
+        <!-- Controls Bar -->
+        <div class="h-12 bg-white flex items-center px-2 py-1.5 border-b border-neutral-300">
+            <button id="back-button" title="Back" class="p-2 rounded-full hover:bg-neutral-100 text-neutral-500 disabled:text-neutral-300 disabled:cursor-not-allowed">
+                <!-- Back Icon SVG -->
+            </button>
+            <button id="forward-button" title="Forward" class="p-2 rounded-full hover:bg-neutral-100 text-neutral-500 disabled:text-neutral-300 disabled:cursor-not-allowed">
+                <!-- Forward Icon SVG -->
+            </button>
+            <button id="reload-button" title="Reload" class="p-2 rounded-full hover:bg-neutral-100 text-neutral-600 disabled:text-neutral-300 disabled:cursor-not-allowed">
+                <!-- Reload Icon SVG -->
+            </button>
+            <div class="flex-grow mx-2 relative flex items-center group">
+                <div id="url-protocol-indicator" class="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-500 h-4 w-4">
+                    <!-- Shield or Globe Icon SVG -->
+                </div>
+                <input id="address-bar" type="text" class="w-full h-9 pl-9 pr-3 py-1.5 bg-neutral-100 group-hover:bg-neutral-200/60 focus:bg-white rounded-full focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm select-auto" placeholder="Search or type a URL">
+            </div>
+            <button id="ua-modal-toggle-button" title="Menu / Change User Agent" class="p-2 rounded-full hover:bg-neutral-100 text-neutral-600">
+                <!-- Menu Icon SVG -->
+            </button>
+        </div>
+
+        <!-- Content Area -->
+        <div id="content-area" class="flex-grow relative bg-white">
+            <!-- iframes will be added here -->
+            <div id="error-overlay" class="absolute inset-0 bg-white p-8 flex-col items-center justify-center text-center text-neutral-600 hidden">
+                <h2 class="text-2xl font-semibold mb-2">Unable to load page</h2>
+                <p class="mb-4">The page at <code id="error-url" class="text-sm bg-neutral-100 p-1 rounded"></code> could not be loaded.</p>
+                <p class="text-xs">This might be because the website prevents embedding (e.g., via <code>X-Frame-Options</code> header) or due to network issues.</p>
+            </div>
+        </div>
+
+        <!-- User Agent Changer Modal -->
+        <div id="ua-modal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50 p-4">
+            <div class="bg-white p-6 rounded-lg shadow-xl w-full max-w-md">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="text-lg font-semibold">Change User Agent</h3>
+                    <button id="close-ua-modal-button-x" class="text-2xl font-light text-neutral-500 hover:text-neutral-700">&times;</button>
+                </div>
+                <p class="text-sm text-neutral-600 mb-3">
+                    <strong>Note:</strong> This setting is for display and simulation. Due to browser security, it <strong>does NOT</strong> change the actual User-Agent header for requests made by web pages loaded in this clone.
+                </p>
+                <div class="mb-4">
+                    <label for="ua-select" class="block text-sm font-medium text-neutral-700 mb-1">Select User Agent:</label>
+                    <select id="ua-select" class="w-full p-2 border border-neutral-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 text-sm select-auto">
+                        <!-- UA options will be rendered here -->
+                    </select>
+                </div>
+                <p class="text-xs text-neutral-500 mb-4">Current simulated UA: <code id="current-selected-ua-display" class="bg-neutral-100 p-1 rounded text-xs break-all select-all"></code></p>
+                <button id="close-ua-modal-button-main" class="w-full bg-blue-500 text-white py-2 rounded-md hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50">Apply and Close</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const ICONS = {
+            back: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-5 h-5"><path fill-rule="evenodd" d="M12.79 5.23a.75.75 0 01-.02 1.06L8.832 10l3.938 3.71a.75.75 0 11-1.04 1.08l-4.5-4.25a.75.75 0 010-1.08l4.5-4.25a.75.75 0 011.06.02z" clip-rule="evenodd" /></svg>',
+            forward: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-5 h-5"><path fill-rule="evenodd" d="M7.21 14.77a.75.75 0 01.02-1.06L11.168 10 7.23 6.29a.75.75 0 111.04-1.08l4.5 4.25a.75.75 0 010 1.08l-4.5 4.25a.75.75 0 01-1.06-.02z" clip-rule="evenodd" /></svg>',
+            reload: '<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5"><path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99" /></svg>',
+            add: '<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-5 h-5"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" /></svg>',
+            close: '<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-3.5 h-3.5"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>',
+            menu: '<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5"><path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" /></svg>',
+            shield: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="currentColor" class="w-4 h-4 text-green-600"><path fill-rule="evenodd" d="M8 1a.75.75 0 0 1 .75.75v1.19l.563.258c.21.097.396.228.558.385l.374.369c.203.2.383.432.536.682l.225.371c.15.247.273.508.365.776l.125.367a3.24 3.24 0 0 1 0 1.322l-.125.367c-.092.268-.215.53-.365.776l-.225.371a2.722 2.722 0 0 1-.536.682l-.374.369a2.76 2.76 0 0 1-.558.385l-.563.258V14.25A.75.75 0 0 1 8 15a.75.75 0 0 1-.75-.75v-1.19l-.563-.258a2.76 2.76 0 0 1-.558-.385l-.374-.369a2.722 2.722 0 0 1-.536-.682l-.225-.371c-.15-.247-.273-.508-.365-.776l-.125-.367a3.24 3.24 0 0 1 0-1.322l.125-.367c.092-.268.215-.53.365-.776l.225-.371a2.722 2.722 0 0 1 .536-.682l.374-.369c.162-.157.349-.288.558-.385l.563-.258V1.75A.75.75 0 0 1 8 1Zm0 3.57a.64.64 0 0 0-.37.115l-.562.258c-.21.097-.396.228-.558.385l-.374.369a2.722 2.722 0 0 0-.536.682l-.225.371c-.15.247-.273.508-.365.776l-.125.367a3.24 3.24 0 0 0 0 1.322l.125.367c.092.268.215.53.365.776l.225.371c.152.25.332.482.536.682l.374.369c.162.157.349.288.558.385l.563.258A.64.64 0 0 0 8 11.43a.64.64 0 0 0 .37-.115l.563-.258c.21-.097.396-.228.558-.385l.374-.369a2.722 2.722 0 0 0 .536-.682l.225-.371c.15-.247.273-.508.365-.776l.125-.367a3.24 3.24 0 0 0 0-1.322l-.125-.367c-.092-.268-.215-.53-.365-.776l-.225-.371a2.722 2.722 0 0 0-.536-.682l-.374-.369a2.76 2.76 0 0 0-.558-.385l-.563-.258A.64.64 0 0 0 8 4.57Z" clip-rule="evenodd" /></svg>',
+            globe: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="currentColor" class="w-4 h-4 text-neutral-500"><path d="M8 16A8 8 0 1 0 8 0a8 8 0 0 0 0 16ZM4.25 10.25a.75.75 0 0 0 0 1.5h7.5a.75.75 0 0 0 0-1.5h-7.5Z M10.5 5a.75.75 0 0 1 .75.75v1.5a.75.75 0 0 1-1.5 0v-1.5A.75.75 0 0 1 10.5 5ZM4.75 5.75A.75.75 0 0 0 4 5a.75.75 0 0 0-.75.75v1.5a.75.75 0 0 0 1.5 0v-1.5Z"/></svg>',
+            defaultFavicon: '<svg class="w-4 h-4 text-neutral-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M12 21a9.004 9.004 0 008.716-6.747M12 21a9.004 9.004 0 01-8.716-6.747M12 21c2.485 0 4.5-4.03 4.5-9S14.485 3 12 3m0 18c-2.485 0-4.5-4.03-4.5-9S9.515 3 12 3m0 0a8.997 8.997 0 017.843 4.582M12 3a8.997 8.997 0 00-7.843 4.582m15.686 0A11.953 11.953 0 0112 10.5c-2.998 0-5.74-1.1-7.843-2.918m15.686 0A8.959 8.959 0 0121 12c0 .778-.099 1.533-.284 2.253m0 0A17.919 17.919 0 0112 16.5c-3.162 0-6.133-.815-8.716-2.247m0 0A9.004 9.004 0 013 12c0-1.612.449-3.112 1.231-4.418" /></svg>'
+        };
+
+        let appState = {
+            tabs: [],
+            activeTabId: null,
+            userAgents: {
+                'default': 'Default (Current Browser)',
+                'chrome_win': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/100.0.4896.127 Safari/537.36',
+                'firefox_mac': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:99.0) Gecko/20100101 Firefox/99.0',
+                'safari_iphone': 'Mozilla/5.0 (iPhone; CPU iPhone OS 15_4 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/15.4 Mobile/15E148 Safari/604.1',
+                'edge_win': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/100.0.4896.127 Safari/537.36 Edg/100.0.1185.36'
+            },
+            currentUserAgentKey: 'default',
+            isUAModalOpen: false,
+        };
+
+        // DOM Elements
+        const tabsContainer = document.getElementById('tabs-container');
+        const newTabButton = document.getElementById('new-tab-button');
+        const backButton = document.getElementById('back-button');
+        const forwardButton = document.getElementById('forward-button');
+        const reloadButton = document.getElementById('reload-button');
+        const addressBar = document.getElementById('address-bar');
+        const contentArea = document.getElementById('content-area');
+        const uaModalToggleButton = document.getElementById('ua-modal-toggle-button');
+        const uaModal = document.getElementById('ua-modal');
+        const closeUAModalButtonX = document.getElementById('close-ua-modal-button-x');
+        const closeUAModalButtonMain = document.getElementById('close-ua-modal-button-main');
+        const uaSelect = document.getElementById('ua-select');
+        const currentUADisplay = document.getElementById('current-selected-ua-display');
+        const urlProtocolIndicator = document.getElementById('url-protocol-indicator');
+        const errorOverlay = document.getElementById('error-overlay');
+        const errorUrlElement = document.getElementById('error-url');
+
+        // Helper Functions
+        const generateId = () => `tab_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+        const getDomain = (url) => {
+            try {
+                const parsedUrl = new URL(url);
+                return parsedUrl.hostname;
+            } catch (e) { return null; }
+        };
+
+        function sanitizeTitle(title) {
+            if (!title) return 'Untitled';
+            return title.replace(/</g, "&lt;").replace(/>/g, "&gt;");
+        }
+
+        // Core Logic
+        function addNewTab(url = 'about:blank', makeActive = true) {
+            const tabId = generateId();
+            const newTab = {
+                id: tabId,
+                url: url === 'about:blank' ? '' : url, // Store empty for about:blank internally initially
+                pendingUrl: url, // URL we intend to load
+                displayUrl: url === 'about:blank' ? '' : url,
+                title: 'New Tab',
+                history: [],
+                historyIndex: -1,
+                isLoading: true,
+                favicon: null, // Store actual favicon URL if fetched
+                iframeElement: null,
+                hasLoadFailed: false,
+            };
+            appState.tabs.push(newTab);
+            
+            const iframe = document.createElement('iframe');
+            iframe.id = `iframe-${tabId}`;
+            iframe.className = 'browser-iframe';
+            // Sandbox for security, but allow necessary features for websites to function
+            iframe.sandbox = "allow-forms allow-modals allow-popups allow-presentation allow-same-origin allow-scripts allow-top-navigation allow-top-navigation-by-user-activation allow-downloads";
+            iframe.src = url; // Initial load
+            newTab.iframeElement = iframe;
+            contentArea.appendChild(iframe);
+
+            iframe.onload = () => handleIframeLoad(tabId);
+            iframe.onerror = () => handleIframeError(tabId); // This might not always fire for content blocking
+
+            if (makeActive || appState.tabs.length === 1) {
+                switchToTab(tabId);
+            }
+            render();
+        }
+
+        function handleIframeLoad(tabId) {
+            const tab = appState.tabs.find(t => t.id === tabId);
+            if (!tab) return;
+
+            tab.isLoading = false;
+            tab.hasLoadFailed = false;
+            errorOverlay.classList.add('hidden');
+
+            try {
+                const iframeWindow = tab.iframeElement.contentWindow;
+                const newUrl = iframeWindow.location.href;
+                const newTitle = sanitizeTitle(iframeWindow.document.title);
+
+                if (newUrl === 'about:blank' && tab.pendingUrl !== 'about:blank') {
+                     // This means the page might have been blocked (e.g. X-Frame-Options)
+                     // Or it's a genuine about:blank load initiated by the page.
+                     // If contentWindow.document.body.innerHTML is empty and not an error page, it's probably blocked.
+                    if(iframeWindow.document.body && iframeWindow.document.body.childElementCount === 0 && !iframeWindow.document.title) {
+                        console.warn(`Iframe for ${tab.pendingUrl} loaded about:blank, possibly blocked.`);
+                        handleIframeError(tabId, tab.pendingUrl); // Treat as error
+                        return; // Don't update history or title
+                    }
+                }
+                
+                tab.url = newUrl;
+                tab.displayUrl = newUrl;
+                tab.title = newTitle || getDomain(newUrl) || 'Untitled';
+
+                // Update history
+                if (newUrl !== 'about:blank') { // Don't push about:blank to history array multiple times for new tabs
+                     if (tab.history[tab.historyIndex] !== newUrl) {
+                        tab.history = tab.history.slice(0, tab.historyIndex + 1);
+                        tab.history.push(newUrl);
+                        tab.historyIndex = tab.history.length - 1;
+                    }
+                } else if (tab.history.length === 0 && newUrl === 'about:blank') {
+                    // For a brand new tab starting with about:blank, add it once.
+                    tab.history.push(newUrl);
+                    tab.historyIndex = 0;
+                }
+
+
+                if (tab.id === appState.activeTabId) {
+                    addressBar.value = newUrl === 'about:blank' ? '' : newUrl;
+                    updateNavButtonStates();
+                    updateUrlProtocolIndicator(newUrl);
+                }
+                fetchFavicon(tab);
+
+            } catch (e) {
+                console.warn("Cross-origin restriction accessing iframe content:", e);
+                // If we can't access, it's likely cross-origin or an error page
+                // Keep the URL we tried to load (pendingUrl) as the display URL
+                tab.title = getDomain(tab.pendingUrl) || 'Restricted Page';
+                tab.displayUrl = tab.pendingUrl;
+                // We cannot confirm if it loaded or was blocked by X-Frame-Options. Browser shows its own error.
+                // We can show our generic error message though.
+                handleIframeError(tabId, tab.pendingUrl);
+            }
+            tab.pendingUrl = null; // Clear pending URL after load attempt
+            renderTabs();
+        }
+        
+        function handleIframeError(tabId, failedUrl) {
+            const tab = appState.tabs.find(t => t.id === tabId);
+            if (!tab) return;
+
+            tab.isLoading = false;
+            tab.hasLoadFailed = true;
+            tab.title = getDomain(failedUrl || tab.url || tab.pendingUrl) || "Page Load Error";
+            
+            if (tab.id === appState.activeTabId) {
+                errorUrlElement.textContent = failedUrl || tab.url || tab.pendingUrl || 'the requested page';
+                errorOverlay.classList.remove('hidden');
+                // Show the URL we tried to load in the address bar
+                addressBar.value = failedUrl || tab.url || tab.pendingUrl || '';
+                updateUrlProtocolIndicator(addressBar.value);
+            }
+            renderTabs();
+            updateNavButtonStates();
+        }
+
+
+        function fetchFavicon(tab) {
+            if (tab.url && tab.url !== 'about:blank') {
+                const domain = getDomain(tab.url);
+                if (domain) {
+                    tab.favicon = `https://www.google.com/s2/favicons?domain=${domain}&sz=16`;
+                } else {
+                    tab.favicon = null;
+                }
+            } else {
+                tab.favicon = null;
+            }
+            renderTabs();
+        }
+
+        function switchToTab(tabId) {
+            appState.activeTabId = tabId;
+            const activeTab = appState.tabs.find(t => t.id === tabId);
+
+            appState.tabs.forEach(tab => {
+                if (tab.iframeElement) {
+                    tab.iframeElement.classList.toggle('active', tab.id === tabId);
+                }
+            });
+
+            if (activeTab) {
+                addressBar.value = activeTab.displayUrl === 'about:blank' ? '' : activeTab.displayUrl;
+                if (activeTab.hasLoadFailed) {
+                    errorUrlElement.textContent = activeTab.url || activeTab.pendingUrl || 'the requested page';
+                    errorOverlay.classList.remove('hidden');
+                } else {
+                    errorOverlay.classList.add('hidden');
+                }
+                updateNavButtonStates();
+                updateUrlProtocolIndicator(activeTab.url);
+            } else if (appState.tabs.length === 0) { // All tabs closed
+                addressBar.value = '';
+                errorOverlay.classList.add('hidden');
+                updateNavButtonStates(); // Disable all
+                updateUrlProtocolIndicator('');
+            }
+            renderTabs();
+        }
+
+        function closeTab(tabId) {
+            const tabIndex = appState.tabs.findIndex(t => t.id === tabId);
+            if (tabIndex === -1) return;
+
+            const tabToClose = appState.tabs[tabIndex];
+            if (tabToClose.iframeElement) {
+                tabToClose.iframeElement.remove();
+            }
+            appState.tabs.splice(tabIndex, 1);
+
+            if (appState.activeTabId === tabId) {
+                if (appState.tabs.length > 0) {
+                    const newActiveIndex = Math.max(0, tabIndex - 1);
+                    switchToTab(appState.tabs[newActiveIndex].id);
+                } else {
+                    appState.activeTabId = null;
+                    addNewTab(); // Open a new default tab if last one is closed
+                }
+            }
+            if (appState.tabs.length === 0) { // Should be handled by addNewTab now
+                 addressBar.value = '';
+                 updateNavButtonStates();
+                 updateUrlProtocolIndicator('');
+                 errorOverlay.classList.add('hidden');
+            }
+            render();
+        }
+
+        function navigateToUrl(url) {
+            const activeTab = appState.tabs.find(t => t.id === appState.activeTabId);
+            if (!activeTab) return;
+
+            let processedUrl = url.trim();
+            if (!processedUrl) return;
+
+            if (!processedUrl.startsWith('http://') && !processedUrl.startsWith('https://') && !processedUrl.startsWith('about:') && !processedUrl.startsWith('file:')) {
+                // Check if it looks like a domain name (e.g. example.com) or search query
+                if (processedUrl.includes('.') && !processedUrl.includes(' ')) {
+                    processedUrl = `https://` + processedUrl;
+                } else {
+                    // Treat as search query, use Google
+                    processedUrl = `https://www.google.com/search?q=${encodeURIComponent(processedUrl)}`;
+                }
+            }
+            
+            activeTab.isLoading = true;
+            activeTab.pendingUrl = processedUrl; // Store what we are trying to load
+            activeTab.displayUrl = processedUrl; // Show this in address bar immediately
+            activeTab.hasLoadFailed = false;
+            errorOverlay.classList.add('hidden');
+            
+            if (activeTab.iframeElement) {
+                activeTab.iframeElement.src = processedUrl;
+            }
+            addressBar.value = processedUrl; // Update address bar
+            renderTabs(); // For loading indicator
+            updateNavButtonStates();
+            updateUrlProtocolIndicator(processedUrl);
+        }
+
+        function goBack() {
+            const activeTab = appState.tabs.find(t => t.id === appState.activeTabId);
+            if (activeTab && activeTab.iframeElement) {
+                try {
+                    // Try iframe's internal history first
+                    activeTab.iframeElement.contentWindow.history.back();
+                    // onload will handle state update. If this fails due to cross-origin, it will be caught there.
+                } catch (e) {
+                    console.warn("Failed to use iframe history.back() due to cross-origin, falling back to custom history.", e);
+                    // Fallback to custom history
+                    if (activeTab.historyIndex > 0) {
+                        activeTab.historyIndex--;
+                        const targetUrl = activeTab.history[activeTab.historyIndex];
+                        activeTab.pendingUrl = targetUrl;
+                        activeTab.isLoading = true;
+                        activeTab.iframeElement.src = targetUrl;
+                        render(); // Update UI immediately
+                    }
+                }
+            }
+        }
+
+        function goForward() {
+            const activeTab = appState.tabs.find(t => t.id === appState.activeTabId);
+            if (activeTab && activeTab.iframeElement) {
+                 try {
+                    activeTab.iframeElement.contentWindow.history.forward();
+                } catch (e) {
+                    console.warn("Failed to use iframe history.forward() due to cross-origin, falling back to custom history.", e);
+                    if (activeTab.historyIndex < activeTab.history.length - 1) {
+                        activeTab.historyIndex++;
+                        const targetUrl = activeTab.history[activeTab.historyIndex];
+                        activeTab.pendingUrl = targetUrl;
+                        activeTab.isLoading = true;
+                        activeTab.iframeElement.src = targetUrl;
+                        render();
+                    }
+                }
+            }
+        }
+
+        function reloadTab() {
+            const activeTab = appState.tabs.find(t => t.id === appState.activeTabId);
+            if (activeTab && activeTab.iframeElement) {
+                activeTab.isLoading = true;
+                activeTab.hasLoadFailed = false;
+                errorOverlay.classList.add('hidden');
+                // Use pendingUrl if exists (e.g. failed load), else current URL
+                activeTab.pendingUrl = activeTab.pendingUrl || activeTab.url;
+                activeTab.iframeElement.src = activeTab.pendingUrl;
+                render();
+            }
+        }
+        
+        function updateNavButtonStates() {
+            const activeTab = appState.tabs.find(t => t.id === appState.activeTabId);
+            if (activeTab) {
+                // Attempt to check iframe's own history length/state if possible
+                let canGoBack = activeTab.historyIndex > 0;
+                let canGoForward = activeTab.historyIndex < activeTab.history.length - 1;
+
+                try {
+                    // This check might be restricted by cross-origin policies
+                    if (activeTab.iframeElement && activeTab.iframeElement.contentWindow && activeTab.iframeElement.contentWindow.history.length > 1) {
+                        // This is tricky as iframe history.length doesn't directly map to a simple back/forward enable state.
+                        // We rely more on our custom history for enabling/disabling, but iframe's history.back/forward is tried first.
+                        // A more robust check would be needed if we didn't have our custom history.
+                    }
+                } catch (e) { /* ignore cross-origin errors */ }
+
+                backButton.disabled = !canGoBack;
+                forwardButton.disabled = !canGoForward;
+                reloadButton.disabled = activeTab.isLoading || !activeTab.url && !activeTab.pendingUrl;
+            } else {
+                backButton.disabled = true;
+                forwardButton.disabled = true;
+                reloadButton.disabled = true;
+            }
+        }
+        
+        function updateUrlProtocolIndicator(url) {
+            if (!url || url === 'about:blank') {
+                urlProtocolIndicator.innerHTML = ICONS.globe; // Default for empty or about:blank
+                return;
+            }
+            try {
+                const parsedUrl = new URL(url);
+                if (parsedUrl.protocol === 'https:') {
+                    urlProtocolIndicator.innerHTML = ICONS.shield;
+                } else {
+                    urlProtocolIndicator.innerHTML = ICONS.globe;
+                }
+            } catch (e) {
+                urlProtocolIndicator.innerHTML = ICONS.globe; // Default for invalid URLs
+            }
+        }
+
+        // Rendering Functions
+        function renderTabs() {
+            tabsContainer.innerHTML = ''; // Clear existing tabs
+            appState.tabs.forEach(tab => {
+                const isActive = tab.id === appState.activeTabId;
+                const tabElement = document.createElement('div');
+                tabElement.className = `flex-shrink-0 group flex items-center max-w-[200px] h-full cursor-pointer text-sm relative 
+                    ${isActive 
+                        ? 'bg-white rounded-t-md border-t border-x border-neutral-300 -mb-px z-10 text-neutral-800' 
+                        : 'bg-neutral-200 hover:bg-neutral-100/80 text-neutral-600 hover:text-neutral-700 border-r border-transparent'}`;
+                
+                // Simplified separator: inactive tabs get a right border if next tab is not active or it's not the last one.
+                // This logic is better handled by ensuring active tab overlaps or specific border styling.
+                // For now, active tab style is dominant.
+                if (!isActive) {
+                     // Add a subtle separator for inactive tabs
+                    tabElement.style.borderRight = "1px solid #d1d5db"; // neutral-300
+                }
+                if (isActive && appState.tabs.length > 1) { // If active and not only tab, ensure its border style wins
+                    tabElement.style.borderRightColor = "#d1d5db"; 
+                }
+
+
+                tabElement.title = tab.title;
+                tabElement.innerHTML = `
+                    <span class="w-4 h-4 mx-2 flex-shrink-0 flex items-center justify-center">
+                        ${tab.isLoading 
+                            ? `<svg class="animate-spin h-3 w-3 text-blue-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>`
+                            : (tab.favicon ? `<img src="${tab.favicon}" class="w-4 h-4" alt="" onerror="this.style.display='none'; this.nextElementSibling.style.display='block';">` : '') + 
+                              `<span class="${tab.favicon ? 'hidden' : 'block'} w-4 h-4">${ICONS.defaultFavicon}</span>`
+                        }
+                    </span>
+                    <span class="truncate pr-1">${sanitizeTitle(tab.title) || 'New Tab'}</span>
+                    <button data-tab-id="${tab.id}" class="tab-close-button ml-auto mr-1 p-1 rounded hover:bg-neutral-400/40 group-hover:opacity-100 ${isActive ? 'opacity-100' : 'opacity-0 focus:opacity-100'} transition-opacity">
+                        ${ICONS.close}
+                    </button>
+                `;
+                tabElement.addEventListener('click', (e) => {
+                    if (e.target.closest('.tab-close-button')) return; // Handled by its own listener
+                    switchToTab(tab.id);
+                });
+                tabElement.querySelector('.tab-close-button').addEventListener('click', (e) => {
+                    e.stopPropagation(); // Prevent tab switch
+                    closeTab(tab.id);
+                });
+                tabsContainer.appendChild(tabElement);
+            });
+        }
+
+        function renderUAModal() {
+            uaModal.classList.toggle('hidden', !appState.isUAModalOpen);
+            uaModal.classList.toggle('flex', appState.isUAModalOpen);
+
+            if (appState.isUAModalOpen) {
+                uaSelect.innerHTML = '';
+                Object.entries(appState.userAgents).forEach(([key, value]) => {
+                    const option = document.createElement('option');
+                    option.value = key;
+                    option.textContent = key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()) + (key === 'default' ? '' : ` - ${value.substring(0,40)}...`);
+                    option.selected = key === appState.currentUserAgentKey;
+                    uaSelect.appendChild(option);
+                });
+                currentUADisplay.textContent = appState.userAgents[appState.currentUserAgentKey];
+            }
+        }
+        
+        function render() {
+            renderTabs();
+            renderUAModal(); // Manages its own visibility
+            updateNavButtonStates();
+            // Active tab specific updates are handled in switchToTab or iframe load handlers
+            const activeTab = appState.tabs.find(t => t.id === appState.activeTabId);
+            if (activeTab) {
+                 updateUrlProtocolIndicator(activeTab.url);
+                 addressBar.value = (activeTab.displayUrl === 'about:blank' ? '' : activeTab.displayUrl) || '';
+                 if (activeTab.hasLoadFailed) {
+                    errorUrlElement.textContent = activeTab.url || activeTab.pendingUrl || 'the requested page';
+                    errorOverlay.classList.remove('hidden');
+                 } else {
+                    errorOverlay.classList.add('hidden');
+                 }
+            } else { // No active tab (e.g. all closed before new one added)
+                updateUrlProtocolIndicator('');
+                addressBar.value = '';
+                errorOverlay.classList.add('hidden');
+            }
+        }
+
+        // Event Listeners Setup
+        function initEventListeners() {
+            newTabButton.innerHTML = ICONS.add;
+            newTabButton.addEventListener('click', () => addNewTab());
+
+            backButton.innerHTML = ICONS.back;
+            backButton.addEventListener('click', goBack);
+
+            forwardButton.innerHTML = ICONS.forward;
+            forwardButton.addEventListener('click', goForward);
+
+            reloadButton.innerHTML = ICONS.reload;
+            reloadButton.addEventListener('click', reloadTab);
+
+            addressBar.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') {
+                    navigateToUrl(addressBar.value);
+                }
+            });
+
+            uaModalToggleButton.innerHTML = ICONS.menu;
+            uaModalToggleButton.addEventListener('click', () => {
+                appState.isUAModalOpen = !appState.isUAModalOpen;
+                renderUAModal();
+            });
+            
+            const closeModal = () => {
+                appState.isUAModalOpen = false;
+                renderUAModal();
+            };
+            closeUAModalButtonX.addEventListener('click', closeModal);
+            closeUAModalButtonMain.addEventListener('click', () => {
+                appState.currentUserAgentKey = uaSelect.value;
+                // Note: Actual UA change for iframe is not possible client-side. This is simulation.
+                // One could try to re-load active tab's iframe IF this was supposed to actually do something to the request.
+                // But since it can't, we just update the display.
+                closeModal();
+                currentUADisplay.textContent = appState.userAgents[appState.currentUserAgentKey]; // Update display after modal is hidden too.
+            });
+            uaModal.addEventListener('click', (e) => { // Close on backdrop click
+                if (e.target === uaModal) closeModal();
+            });
+            
+            uaSelect.addEventListener('change', () => {
+                currentUADisplay.textContent = appState.userAgents[uaSelect.value];
+            });
+        }
+
+        // Initialization
+        document.addEventListener('DOMContentLoaded', () => {
+            initEventListeners();
+            addNewTab('about:blank'); // Start with a new tab
+            currentUADisplay.textContent = appState.userAgents[appState.currentUserAgentKey]; // Init display
+            updateUrlProtocolIndicator(''); // Initial state for empty tab
+        });
+
+    </script>
+</body>
+</html>
