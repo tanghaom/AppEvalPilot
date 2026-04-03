@@ -23,7 +23,7 @@ from metagpt.schema import AIMessage
 from metagpt.utils.common import encode_image
 
 from appeval.prompts.osagent import ActionPromptContext
-from appeval.prompts.text_agent import TextPrompt, compute_element_diff, text_agent_system_prompt
+from appeval.prompts.text_agent import TextPrompt, compute_element_diff, is_tree_unchanged, text_agent_system_prompt
 from appeval.roles.osagent import OSAgent
 
 
@@ -47,9 +47,16 @@ Visual verification is needed when the test checks:
 - Game state verification (e.g. "check score increases", "verify health decreases",
   "check game over screen shows final score") — these values are rendered on canvas,
   not as DOM text elements.
+- **SVG / custom component interactions** where the target element is rendered visually
+  but may lack accessibility attributes (e.g. SVG chart segments, icon-only buttons,
+  CSS-styled divs, shadow DOM widgets, custom sliders or toggles).
+- **Interactions where the target is described visually** rather than by a text label
+  (e.g. "click the top-right icon", "drag the handle", "click the highlighted cell",
+  "select the colored chip", "click the X button in the corner").
 
 Visual verification is NOT needed when the test only checks:
 - Functionality (click, input, navigation, form submission) on standard HTML pages
+  where the target element has a clear text label in the accessibility tree
 - Text content, labels, or values in standard DOM elements
 - Element existence or absence in standard web pages
 - Error messages or notifications (text-based)
@@ -77,7 +84,7 @@ def create_text_agent(**kwargs) -> OSAgent:
     kwargs["use_icon_detect"] = False
     kwargs["use_icon_caption"] = False
     kwargs["use_som"] = False
-    kwargs["use_tell_verifier"] = False
+    kwargs["use_tell_verifier"] = True
     kwargs["use_reflection"] = False
     kwargs.setdefault("use_chrome_debugger", False)
     kwargs.setdefault("think_history_images", 0)
@@ -434,12 +441,118 @@ def _parse_think_output_v2(self, output_action: str) -> None:
     self.rc.confidence = confidence
 
 
+# ── Code-level guardrail helpers (FIX-C1/C2/C3) ──
+
+_GAME_KEY_PATTERN = re.compile(
+    r"pyautogui\.(?:press|hotkey)\(\s*['\"]?(left|right|up|down|space|w|a|s|d)['\"]?",
+    re.IGNORECASE,
+)
+_TEXT_EDITING_COMBO = re.compile(
+    r"pyautogui\.hotkey\([^)]*(?:ctrl|alt|command|shift)",
+    re.IGNORECASE,
+)
+
+
+def _is_keyboard_game_action(action: str) -> bool:
+    """True if action contains keyboard game inputs (arrows/WASD/space), not text-editing combos."""
+    if _TEXT_EDITING_COMBO.search(action):
+        return False
+    return bool(_GAME_KEY_PATTERN.search(action))
+
+
+def _has_canvas_element(elements: List[Dict[str, Any]]) -> bool:
+    """True if the a11y tree contains a canvas-related element."""
+    for el in elements:
+        text = (el.get("text") or "").lower()
+        ctrl = (el.get("control_type") or "").lower()
+        if "canvas" in text or "canvas" in ctrl:
+            return True
+    return False
+
+
+def _get_canvas_center(
+    elements: List[Dict[str, Any]], width: int, height: int
+) -> Tuple[int, int]:
+    """Return center of the canvas element, or screen center as fallback."""
+    for el in elements:
+        text = (el.get("text") or "").lower()
+        ctrl = (el.get("control_type") or "").lower()
+        if "canvas" in text or "canvas" in ctrl:
+            coords = el.get("coordinates", [])
+            if len(coords) == 2:
+                return coords[0], coords[1]
+            elif len(coords) >= 4:
+                return (coords[0] + coords[2]) // 2, (coords[1] + coords[3]) // 2
+    return width // 2, height // 2
+
+
 # ── Act (text-only, simplified) ──
 
 async def _act_text(self) -> AIMessage:
-    """Execute action — simplified for text-only mode. No TellVerifier, no screenshot management."""
+    """Execute action for text mode, including TellVerifier support when enabled."""
     self.run_action_failed = False
     self.run_action_failed_exception = ""
+
+    # ================================================================
+    # Code-level guardrails (FIX-C1 / FIX-C2 / FIX-C3)
+    # ================================================================
+
+    # FIX-C1+C4: Block early Tell — agent must have ≥3 Run actions before reporting
+    if self.rc.action.startswith("Tell"):
+        run_count = sum(1 for a in self.rc.action_history if a.startswith("Run"))
+        if run_count < 3:
+            logger.warning(
+                f"🚫 [FIX-C1/C4] Early Tell blocked: {run_count} Run actions < 3 minimum"
+            )
+            self.rc.action = "Wait (Tell rejected — interact with the page more first)"
+            self.rc.error_flag = True
+            self.rc.error_message = (
+                f"ACTION REJECTED: You tried to report results (Tell) but have only "
+                f"executed {run_count} real interactions (Run). You MUST perform at "
+                f"least 3 Run actions (click, type, scroll) before reporting. "
+                f"Read the element tree, find target elements, and interact NOW. "
+                f"Try different approaches if previous attempts didn't work."
+            )
+
+    # FIX-C3: Block 3+ consecutive identical Run actions
+    if self.rc.action.startswith("Run") and len(self.rc.action_history) >= 2:
+        if (
+            self.rc.action_history[-1] == self.rc.action
+            and self.rc.action_history[-2] == self.rc.action
+        ):
+            logger.warning(
+                f"🔄 [FIX-C3] Blocked identical action repeated 3x: "
+                f"{self.rc.action[:80]}"
+            )
+            self.rc.action = (
+                "Wait (Same action repeated 3 times — try a different approach)"
+            )
+            self.rc.error_flag = True
+            self.rc.error_message = (
+                "ACTION REJECTED: You repeated the exact same action 3 times. "
+                "This clearly isn't working. Try a DIFFERENT approach: "
+                "different coordinates, different element, different method, "
+                "or scroll/navigate first to find the right target."
+            )
+
+    # FIX-C2: Auto-focus canvas before keyboard game actions
+    if self.rc.action.startswith("Run") and _is_keyboard_game_action(self.rc.action):
+        if _has_canvas_element(self.rc.perception_infos):
+            cx, cy = _get_canvas_center(
+                self.rc.perception_infos, self.width, self.height
+            )
+            try:
+                import pyautogui
+                pyautogui.click(cx, cy)
+                time.sleep(0.5)
+                logger.info(
+                    f"🎮 [FIX-C2] Auto-focused canvas at ({cx}, {cy}) "
+                    f"before keyboard action"
+                )
+            except Exception as e:
+                logger.warning(f"[FIX-C2] Canvas auto-focus failed: {e}")
+
+    # ================================================================
 
     if "Stop" in self.rc.action:
         return AIMessage(content=self.rc.action, cause_by=Action)
@@ -459,6 +572,20 @@ async def _act_text(self) -> AIMessage:
             self.run_action_failed_exception = e
 
     time.sleep(0.5)
+
+    # Runtime visual fallback: consecutive action failures → a11y coords unreliable
+    if not getattr(self, '_visual_supplement', False) and getattr(self, '_debug_screenshots', True):
+        fail_count = getattr(self, '_action_fail_count', 0)
+        if self.run_action_failed:
+            self._action_fail_count = fail_count + 1
+            if self._action_fail_count >= 2:
+                self._visual_supplement = True
+                logger.info("👁️ 2 consecutive action failures → enabling visual supplement")
+                prev_origin = f"{self.save_img}/origin_{self.rc.iter - 1}.jpg"
+                if Path(prev_origin).exists():
+                    self._prev_screenshot_path = prev_origin
+        else:
+            self._action_fail_count = 0
 
     # Save previous elements for diff computation in next _think_text
     self.rc.last_perception_infos = copy.deepcopy(self.rc.perception_infos)
@@ -485,6 +612,82 @@ async def _act_text(self) -> AIMessage:
             prev_origin = f"{self.save_img}/origin_{self.rc.iter - 1}.jpg"
             if Path(prev_origin).exists():
                 self._prev_screenshot_path = prev_origin
+
+    # Runtime visual fallback: a11y tree unchanged for 2+ consecutive steps → agent stuck,
+    # fall back to screenshot mode so the model can visually locate UI elements
+    if not getattr(self, '_visual_supplement', False) and getattr(self, '_debug_screenshots', True):
+        prev_els = getattr(self.rc, 'last_perception_infos', None) or []
+        if is_tree_unchanged(prev_els, self.rc.perception_infos):
+            no_change_count = getattr(self, '_no_change_count', 0) + 1
+            self._no_change_count = no_change_count
+            if no_change_count >= 2:
+                self._visual_supplement = True
+                logger.info(
+                    f"👁️ {no_change_count} steps with no a11y tree change → enabling visual supplement"
+                )
+                prev_origin = f"{self.save_img}/origin_{self.rc.iter - 1}.jpg"
+                if Path(prev_origin).exists():
+                    self._prev_screenshot_path = prev_origin
+        else:
+            self._no_change_count = 0
+
+    # Reuse OSAgent's Tell verification semantics so TextAgent can correct or retry
+    # before the Tell action is committed into history.
+    if self.use_tell_verifier and self.rc.action.startswith("Tell"):
+        try:
+            logger.info("Tell action detected, triggering verification...")
+            verification_result = await self.tell_verifier.run(
+                tell_content=self.rc.action,
+                action_history=self.rc.action_history,
+                reflection_history=self.rc.reflection_thought_history,
+                screenshot_dir=self.save_img,
+                current_iter=self.rc.iter,
+                test_cases=getattr(self, 'instruction', ''),
+            )
+
+            if verification_result.has_action_error:
+                logger.warning(
+                    f"Tell action verification found ACTION ERROR ({verification_result.verification_status}), "
+                    f"agent will retry with corrective guidance. Reasoning: {verification_result.reasoning}"
+                )
+                self.rc.error_flag = True
+                corrective_guidance = verification_result.get_corrective_guidance() or ""
+                action_error = verification_result.action_error
+                error_type_desc = (
+                    "Interaction Modality Mismatch (W4): Wrong interaction method used"
+                    if action_error and action_error.error_type == "W4"
+                    else "Mechanics & Focus Failure (W6): Basic operation mistake"
+                )
+                self.rc.error_message = (
+                    f"ACTION ERROR - {error_type_desc}\\n"
+                    f"Error Description: {action_error.error_description if action_error else verification_result.reasoning}\\n"
+                    f"Required Action: {action_error.required_action if action_error else 'Review task requirements'}\\n"
+                    f"Corrective Guidance: {corrective_guidance}\\n"
+                    f"Please follow the corrective guidance above to retry the operation correctly."
+                )
+                self._action_error_detected = True
+                self.rc.action = "Wait (Action error detected, retrying with corrective guidance)"
+                logger.info(
+                    f"Agent will continue with corrective guidance: {corrective_guidance[:200]}..."
+                )
+            elif verification_result.needs_correction:
+                logger.warning(
+                    f"Tell action verification found hallucination ({verification_result.verification_status}), "
+                    f"correcting action. Reasoning: {verification_result.reasoning[:200]}..."
+                )
+                self.rc.action = verification_result.corrected_action
+                self._action_error_detected = False
+                logger.info(f"Corrected Tell action: {self.rc.action[:200]}...")
+            else:
+                logger.info(
+                    f"Tell action verification passed: {verification_result.verification_status}"
+                )
+                self._action_error_detected = False
+        except Exception as e:
+            logger.error(
+                f"Tell action verification failed with error: {str(e)}, using original action"
+            )
+            self._action_error_detected = False
 
     # Append to history lists (same fields as v1 for compatibility)
     self.rc.thought_history.append(self.rc.thought)
@@ -536,6 +739,17 @@ async def _react_text(self) -> AIMessage:
                         self.rc.perception_infos, self.instruction
                     )
 
+                # FIX-C5: Force visual mode when canvas element exists
+                # Canvas apps (drawing tools, games) render content as pixels,
+                # invisible to a11y tree — agent needs screenshots to see what happened
+                if not self._visual_supplement:
+                    if _has_canvas_element(self.rc.perception_infos):
+                        self._visual_supplement = True
+                        logger.info(
+                            "🎨 [FIX-C5] Canvas element detected in a11y tree "
+                            "→ forcing visual supplement mode"
+                        )
+
             # Task list: generated ONCE, then kept as read-only reference
             self.rc.task_list = await self._generate_initial_task_list(
                 self.instruction, self.screenshot_file, None
@@ -554,6 +768,12 @@ async def _react_text(self) -> AIMessage:
         if self.rc.action.startswith("Tell"):
             logger.info("Tell action completed, exiting loop")
             break
+        elif getattr(self, "_action_error_detected", False):
+            logger.info(
+                "Action error detected, continuing loop to retry with corrective guidance"
+            )
+            self._action_error_detected = False
+            continue
 
     # Force Tell at max_iters
     if self.rc.iter >= self.max_iters and not (

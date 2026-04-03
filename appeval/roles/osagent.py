@@ -985,6 +985,7 @@ Rules:
         trajectory_tail: str = "",
         screenshot_b64: str = "",
         failure_category: str = "",
+        ablation_no_diversity: bool = False,
     ) -> List[Dict[str, str]]:
         """Generate N candidate retry plans (text strategies) without executing anything.
 

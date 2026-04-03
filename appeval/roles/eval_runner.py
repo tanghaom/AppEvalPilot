@@ -466,6 +466,13 @@ class AppEvalRole(Role):
             "save_profile_per_step": kwargs.get("save_profile_per_step", False),
             "branching_n_candidates": int(kwargs.get("branching_n_candidates", 0)),
             "branching_k": int(kwargs.get("branching_k", 1)),
+            # Ablation switches (all default to False = full method)
+            "ablation_no_sou": kwargs.get("ablation_no_sou", False),
+            "ablation_no_diversity": kwargs.get("ablation_no_diversity", False),
+            "ablation_eig_mode": kwargs.get("ablation_eig_mode", "llm"),  # "llm"|"random"|"fixed"
+            "ablation_no_simulation": kwargs.get("ablation_no_simulation", False),
+            "ablation_no_verification_gate": kwargs.get("ablation_no_verification_gate", False),
+            "ablation_no_trigger": kwargs.get("ablation_no_trigger", False),
         }
 
         # Store agent_class for _init_osagent
@@ -1550,6 +1557,7 @@ Please use the Tell action to report the results of all test cases before execut
         resume_cp_for_branching: Optional[dict] = None
         resume_retry_context_text = ""
         force_baseline_from_start = False
+        force_baseline_retry = bool(self.rc.agent_params.get("force_baseline_retry", False))
         if sequential_mode and resume_checkpoint_path:
             _cp = _load_resume_checkpoint(resume_checkpoint_path)
             if _cp is None:
@@ -1562,7 +1570,7 @@ Please use the Tell action to report the results of all test cases before execut
                 resume_retry_context_text = _build_retry_context_text(rr)
                 restart_iter = rr.get("restart_from_iter")
                 if restart_iter is not None:
-                    if int(restart_iter) == 0:
+                    if int(restart_iter) == 0 or force_baseline_retry:
                         # restart_from_iter=0 means retry from scratch; do baseline startup instead of resume.
                         force_baseline_from_start = True
                         logger.info("[resume] restart_from_iter=0, forcing baseline restart from start_func")
@@ -1738,8 +1746,11 @@ Please use the Tell action to report the results of all test cases before execut
 
                         # Step A2: classify failure category for dimension-weight routing
                         config_file = str(getattr(self, "_config_file", "") or "")
+                        _ablation_no_sou = bool(self.rc.agent_params.get("ablation_no_sou", False))
                         failure_category = "unknown"
-                        if fail_reason:
+                        if _ablation_no_sou:
+                            logger.info("[branching][ablation] No SOU modeling: skipping classify_failure, using uniform weights")
+                        elif fail_reason:
                             try:
                                 classify_result = await supervisor_classify_failure_async(
                                     fail_reason=fail_reason,
@@ -1749,14 +1760,17 @@ Please use the Tell action to report the results of all test cases before execut
                                 self._accumulate_sv_usage(classify_result if isinstance(classify_result, dict) else {})
                             except Exception as _ce:
                                 logger.warning(f"[branching] classify_failure failed: {_ce}, using 'unknown'")
-                        logger.info(f"[branching] failure_category={failure_category!r}")
+                        logger.info(f"[branching] failure_category={failure_category!r} (ablation_no_sou={_ablation_no_sou})")
 
                         # Initial P(env_fail): start with the assumption that agent can complete
                         # the task (p_env_fail low), then let branch failures raise it.
                         _coarse_type = str((resume_restart_rec or {}).get("failure_type", "agent") or "agent").lower()
                         p_env_fail = {"env": 0.10, "ambiguous": 0.10}.get(_coarse_type, 0.10)
                         _coarse_p_env_fail = p_env_fail
-                        _dim_weights = compute_dimension_weights(failure_category)
+                        if _ablation_no_sou:
+                            _dim_weights = {"A": 1/3, "B": 1/3, "C": 1/3}
+                        else:
+                            _dim_weights = compute_dimension_weights(failure_category)
                         _dim_weights_round = {
                             "A": round(float(_dim_weights.get("A", 0.0)), 4),
                             "B": round(float(_dim_weights.get("B", 0.0)), 4),
@@ -1765,6 +1779,7 @@ Please use the Tell action to report the results of all test cases before execut
 
                         # Step B: agent generates N candidate plans
                         logger.info(f"[branching] Generating {branching_n} candidate retry plans...")
+                        _ablation_no_diversity = bool(self.rc.agent_params.get("ablation_no_diversity", False))
                         candidate_plan_items = await self.osagent.generate_retry_plans(
                             n=branching_n,
                             task_desc=task_desc,
@@ -1772,7 +1787,8 @@ Please use the Tell action to report the results of all test cases before execut
                             restart_explanation=restart_explanation,
                             trajectory_tail=traj_tail,
                             screenshot_b64=screenshot_b64,
-                            failure_category=failure_category,
+                            failure_category="" if _ablation_no_sou else failure_category,
+                            ablation_no_diversity=_ablation_no_diversity,
                         )
                         if not candidate_plan_items:
                             logger.warning("[branching] No plans generated, falling back to single-run mode")

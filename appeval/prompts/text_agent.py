@@ -56,6 +56,30 @@ If an element is not listed, it is not visible or not present on the current pag
 - Elements with control_type 'button', 'link', 'textField' are interactive.
 - **Smart search**: If a target element is NOT found after scrolling, try `pyautogui.hotkey('ctrl', 'f')` to open browser search and type the keyword to locate it quickly. If Ctrl+F also finds nothing, the feature likely does not exist — report Fail immediately.
 - **Interaction verification**: After modifying a value (input, toggle, select, edit), you MUST verify the change actually took effect by checking the element's current value/state in the NEXT element tree. Do NOT assume success just because the action ran without error. If the value in the element tree did not change, the modification FAILED — try a different approach (e.g. clear field first, use clipboard paste, or try a different input method).
+
+**[FIX-1] Minimum interaction before reporting:**
+- You MUST execute at least 2 `Run` actions (real interactions) before issuing a `Tell`.
+- NEVER report results at Step 0 or Step 1 without having actually interacted with the UI.
+- If you cannot find the target element, scroll the page fully first, then try Ctrl+F before giving up.
+
+**[FIX-2] Text input standard procedure:**
+- Step 1: `pyautogui.click(x, y)` on the input field to focus it. Wait 0.5s.
+- Step 2: `pyautogui.hotkey('ctrl', 'a')` to select all existing text. Wait 0.3s.
+- Step 3: pyperclip.copy("your text"); pyautogui.hotkey('ctrl', 'v') to paste. Wait 1s.
+- Step 4: Verify in the NEXT element tree that the field value changed from placeholder to your text.
+- If the value is still the placeholder after paste, try `pyautogui.tripleClick(x, y)` then retype.
+- After typing into a chat/search/send box, you MUST also complete the submission: press Enter or click the Send/Submit/Search button. Typing alone is NOT sufficient.
+
+**[FIX-3] Form filling — complete ALL fields before submitting:**
+- Before clicking Submit/Save/Send, verify in the element tree that EVERY required field has a non-empty value.
+- Fill fields in top-to-bottom order. Do NOT skip any field — missing required fields cause validation errors.
+- If a form needs to be opened first (e.g., via an "Add" or "Edit" button), click that button and confirm the form appeared in the element tree BEFORE attempting to fill fields.
+
+**[FIX-4] Canvas/game keyboard focus:**
+- For canvas-based games or WebGL apps, keyboard input (arrow keys, WASD, etc.) requires the canvas to be focused.
+- Before pressing any keyboard key: `pyautogui.click(canvas_x, canvas_y); time.sleep(1)` to focus the canvas.
+- If you don't know the canvas coordinates, click the center of the screen after the game starts.
+- Confirm the game has actually started (score/board visible in screenshot) before sending key input.
 """
 
         # ── 4-section output format ──
@@ -241,6 +265,22 @@ def compute_element_diff(
         parts.append(f"**−Removed** ({len(removed)}): {', '.join(sample)}")
 
     return "\n" + "\n".join(parts) + "\n"
+
+
+def is_tree_unchanged(
+    prev_elements: List[Dict],
+    curr_elements: List[Dict],
+) -> bool:
+    """Return True if the element tree is essentially unchanged between two steps.
+
+    Compares the set of element texts; if neither new nor removed texts exist,
+    the tree is considered unchanged.
+    """
+    if not prev_elements or not curr_elements:
+        return False
+    prev_texts = {el.get("text", "") for el in prev_elements if el.get("text")}
+    curr_texts = {el.get("text", "") for el in curr_elements if el.get("text")}
+    return prev_texts == curr_texts
 
 
 # ── System prompt for text-only batch testing (with optional visual supplement) ──

@@ -295,11 +295,16 @@ async def start_windows(
     if os.name == "nt":
         process = subprocess.Popen(cmd, shell=True, creationflags=CREATE_NO_WINDOW)
     else:
+        # Fix: override TMPDIR to /tmp so Chrome can write shared memory files
+        # (avoids "Permission denied" when TMPDIR points to another user's directory)
+        chrome_env = os.environ.copy()
+        chrome_env["TMPDIR"] = "/tmp"
         # 抑制 Chrome 的 stderr（SSL handshake、GCM DEPRECATED 等）避免刷屏
         process = subprocess.Popen(
             cmd, shell=True,
             stdout=subprocess.DEVNULL,
             stderr=subprocess.DEVNULL,
+            env=chrome_env,
         )
     return process.pid
 

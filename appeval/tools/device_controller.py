@@ -532,8 +532,8 @@ class PCController(BaseController):
     def _handle_run(self, action: str) -> None:
         """Handle 'Run' action"""
         code = self._extract_code(action)
-        # Apply y-offset to convert CDP viewport coords → absolute screen coords
-        if getattr(self, "remote_debugging_port", None):
+        # Apply y-offset only when CDP returns viewport-relative coordinates.
+        if self.a11y_mode != "atspi" and getattr(self, "remote_debugging_port", None):
             offset = self._get_chrome_ui_y_offset()
             if offset > 0:
                 import re
